@@ -1,0 +1,9 @@
+Package: mcvirt
+Version: 0.1
+Section: utils
+Maintainer: I.T. Dev Ltd <admin@itdev.co.uk>
+Architecture: all
+Depends: python, python-libvirt, qemu
+Description: Virtualization host management utility.
+ McVirt is a tool for controlling VMs built around
+ libvirt, using kvn backed virtualisation.

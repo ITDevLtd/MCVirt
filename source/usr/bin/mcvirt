@@ -1,0 +1,42 @@
+#!/usr/bin/python
+#
+# Copyright I.T. Dev Ltd 2014
+# http://www.itdev.co.uk
+#
+
+
+import sys
+import argparse
+
+sys.path.insert(0, '/usr/lib')
+from mcvirt.mcvirt import McVirt
+from mcvirt.virtual_machine import VirtualMachine
+
+def main(action, vm_name):
+  """Pass the parameters and perform actions as necessary"""
+  # Connect to libvirt and exit if an error occures
+  mcvirt_instance = McVirt()
+
+  vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
+
+  # Perform functions on the VM based on the action passed to the script
+  if (action == 'start'):
+    vm_object.start()
+  elif (action == 'stop'):
+    vm_object.stop()
+
+if __name__ == "__main__":
+
+  action_epilog = """
+Possible actions include:
+  start - Start the VM
+  stop  - Stop the VM"""
+
+  # Create an argument parser object
+  parser = argparse.ArgumentParser(description = 'Perform actions on the McVirt host')
+  parser.add_argument('action', metavar = 'Action', type = str, help = 'Action to perform on VM',
+    choices = ['start', 'stop'])
+  parser.add_argument('vm_name', metavar = 'VM Name', type = str, help = 'Name of VM')
+  args = parser.parse_args()
+
+  main(args.action, args.vm_name)

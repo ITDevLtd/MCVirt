@@ -1,0 +1,59 @@
+= Controlling VMs =
+
+ * All commands must be performed on the McVirt host, which can be accessed via SSH using LDAP credentials.
+
+== Start VM ==
+
+ * Use the McVirt utility to start VMs:
+{{{
+mcvirt start <VM name>
+}}}
+
+== Stop VM ==
+
+ * Use the McVirt utility to stop VMs:
+{{{
+mcvirt stop <VM name>
+}}}
+
+== Reset VM ==
+
+ * Use virsh to reset VMs:
+{{{
+virsh reset <VM Name>
+}}}
+
+== Connect to VNC ==
+
+ * By default, VMs are started with a VNC console, for which the port is automatically generated.
+ * The default listening IP address is 127.0.0.1, meaning that it can only be accessed from the host itself.
+ * To gain access to a VNC console, ssh to the host, forwarding the port:
+   1. Determine the port that the VM is listening on:
+{{{
+virsh vncdisplay <VM Name>
+127.0.0.1:4
+}}}
+   1. SSH onto the host, calculating the port to forward as 5900 + the port provided in the previous step (in this case, 4, meaning that the port to fowrad would be 5904)
+     * The local port can be any available port. In this example, 1232 is used:
+{{{
+ssh <Username>@<Node> -L 1232:127.0.0.1:5904
+}}}
+   1. Use an VNC client to connect to 127.0.0.1:1232 on your local PC
+
+== Removing VNC display ==
+
+ * By disabling the VNC display, a greater VM performance may be achieved.
+ * Power off the VM
+ * Perform:
+{{{
+virsh edit <VM Name>
+}}}
+ * Remove the <display type='vnc'... /> line from the configuration.
+ * Save the configuration and start the VM
+
+== Monitoring Resources ==
+
+ * To monitor resources, the following commands are available that can be run from an SSH console:
+   * top - monitor CPU/memory usages by processes
+   * iftop - monitor network usage
+   * iotop - monitor disk usages

@@ -1,0 +1,5 @@
+<network ipv6='no'>
+  <name>Production</name>
+  <forward mode='bridge'/>
+  <bridge name='vmbr0'/>
+</network>

@@ -1,0 +1,11 @@
+<pool type='dir'>
+  <name>VM Store</name>
+  <target>
+    <path>/var/lib/mcvirt</path>
+    <permissions>
+      <owner>0</owner>
+      <group>0</group>
+      <mode>640</mode>
+    </permissions>
+  </target>
+</pool>

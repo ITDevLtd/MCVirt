@@ -1,0 +1,33 @@
+== Create/Remove VMs ==
+
+=== Create VM ===
+
+ * Virsh is used to create virtual machines, using the [source:/mcvirt/trunk/Documentation/virsh_example/domain.xml domain XML] example.
+ * Adapt the example, changing the domain name, memory size (specified in MB) as required, vcpu, which is the number of virtual CPUs.
+ * Change the disk source so that the path is '/var/lib/mcvirt/$VM_NAME/vm-$VM_NAME-disk-1.raw', where $VM_NAME is the name of the VM.
+ * Additional NICs can be added to the machine by duplicating the 'interface' section of the XML; the 'network' attribute of the 'source' tag specifies the network that the interface is connected to
+
+ * Create a directory for the VM HDD:
+{{{
+mkdir /var/lib/mcvirt/vm/<VM Name>
+}}}
+ * Create the raw disk file, filling in the VM name and the disk size in MB:
+{{{
+dd if=/dev/zero of=/var/lib/mcvirt/<VM Name>/vm-<VM Name>-disk-1.raw bs=1M count=<Size of disk in MB>
+}}}
+ * Import the VM by performing the following:
+{{{
+virsh define domain.xml
+}}}
+
+=== Removing VM ===
+
+ * Ensure that the VM is stopped.
+ * Remove the VM using virsh:
+{{{
+virsh undefine '<VM Name>'
+}}}
+ * Remove the storage directory for the VM:
+{{{
+rm -r /var/lib/mcvirt/vm/<VM Name>
+}}}

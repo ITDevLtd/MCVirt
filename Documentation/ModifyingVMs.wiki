@@ -1,0 +1,17 @@
+= Modifying VMs =
+
+=== Increase Disk Size ===
+
+ * Power off the VM
+ * Perform the following command, adjusting the count (which is the number of Megabytes to add to the disk) and the disk name:
+{{{
+dd if=/dev/zero bs=1M count=1 >> /var/lib/mcvirt/vm/$VM_NAME/vm-<VM Name>-disk-1.raw
+}}}
+
+=== Attaching ISO ===
+
+ * Perform the following, editing the path to the ISO that you wish to attach:
+{{{
+virsh attach-disk <VM Name> /var/lib/mcvirt/iso/ubuntu-12.04.1-server-amd64.iso hdc --type cdrom
+}}}
+ * The ISO is attached to the VM until it is powered off (destroyed), meaning that the VM can then be reset to boot into the ISO.
