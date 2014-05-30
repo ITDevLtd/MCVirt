@@ -1,33 +1,28 @@
 == Create/Remove VMs ==
 
+ * All commands must be performed on the McVirt host, which can be accessed via SSH using LDAP credentials.
+
 === Create VM ===
 
- * Virsh is used to create virtual machines, using the [source:/mcvirt/trunk/Documentation/virsh_example/domain.xml domain XML] example.
- * Adapt the example, changing the domain name, memory size (specified in MB) as required, vcpu, which is the number of virtual CPUs.
- * Change the disk source so that the path is '/var/lib/mcvirt/$VM_NAME/vm-$VM_NAME-disk-1.raw', where $VM_NAME is the name of the VM.
- * Additional NICs can be added to the machine by duplicating the 'interface' section of the XML; the 'network' attribute of the 'source' tag specifies the network that the interface is connected to
-
- * Create a directory for the VM HDD:
+ * Use the McVirt utility to create VMs:
 {{{
-mkdir /var/lib/mcvirt/vm/<VM Name>
+mcvirt create '<VM Name>'
 }}}
- * Create the raw disk file, filling in the VM name and the disk size in MB:
-{{{
-dd if=/dev/zero of=/var/lib/mcvirt/<VM Name>/vm-<VM Name>-disk-1.raw bs=1M count=<Size of disk in MB>
-}}}
- * Import the VM by performing the following:
-{{{
-virsh define domain.xml
-}}}
+ * The following parameters are available:
+   * '''--memory''' - Amount of memory to allocate to the VM (MB) (required)
+   * '''--disk-size''' - Size of initial disk to be added to the VM (MB) (required)
+   * '''--cpu-count''' - Number of vCPUs to be allocated to the VM (required)
+   * '''--network''' - Provide the name of a network to be attached to the VM. (optional)
+     * This can be called as multiple times.
+     * A separate network interface is added to the VM for each network.
+     * A network can be specified multiple times to create multiple adapters connected to the same network.
 
 === Removing VM ===
 
  * Ensure that the VM is stopped.
- * Remove the VM using virsh:
+ * Use the McVirt utility to remove the VM:
 {{{
-virsh undefine '<VM Name>'
+mcvirt delete <VM Name>
 }}}
- * Remove the storage directory for the VM:
-{{{
-rm -r /var/lib/mcvirt/vm/<VM Name>
-}}}
+ * Without any parameters, the VM will simply be 'unregistered' from the host.
+ * To remove all data associated with the VM, supply the parameter '''--remove-data'''
