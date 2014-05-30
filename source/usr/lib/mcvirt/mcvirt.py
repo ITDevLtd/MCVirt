@@ -3,9 +3,14 @@
 # http://www.itdev.co.uk
 #
 import libvirt
+import sys
 
 class McVirt:
   """Provides general McVirt functions"""
+
+  TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
+  BASE_STORAGE_DIR = '/var/lib/mcvirt'
+  BASE_VM_STORAGE_DIR = BASE_STORAGE_DIR + '/vm'
 
   def __init__(self, uri = None):
     """Perform initial connection to libvirt"""
@@ -19,7 +24,15 @@ class McVirt:
     """
     connection = libvirt.open(uri)
     if (connection == None):
-      print 'Failed to open connection to the hypervisor'
-      sys.exit(1)
+      raise McVirtException('Failed to open connection to the hypervisor')
     else:
       self.connection = connection
+
+
+class McVirtException(Exception):
+  """Provides an exception to be throw for errors in McVirt"""
+
+  def __init__(self, message):
+    """Print the error message with the exception and exit"""
+    print message
+    sys.exit(1)

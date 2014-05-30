@@ -12,31 +12,57 @@ sys.path.insert(0, '/usr/lib')
 from mcvirt.mcvirt import McVirt
 from mcvirt.virtual_machine import VirtualMachine
 
-def main(action, vm_name):
-  """Pass the parameters and perform actions as necessary"""
-  # Connect to libvirt and exit if an error occures
+if __name__ == "__main__":
+
+  parent_parser = argparse.ArgumentParser(add_help = False)
+  parent_parser.add_argument('vm_name', metavar = 'VM Name', type = str, help = 'Name of VM')
+
+  # Create an argument parser object
+  parser = argparse.ArgumentParser(description = 'Manage the McVirt host')
+  subparsers = parser.add_subparsers(dest = 'action', metavar = 'Action', help = 'Action to perform on VM')
+
+  # Add arguments for starting a VM
+  start_parser = subparsers.add_parser('start', help = 'Start VM help', parents = [parent_parser])
+
+  # Add arguments for stopping a VM
+  stop_parser = subparsers.add_parser('stop', help = 'Stop VM help', parents = [parent_parser])
+
+  # Add arguments for creating a VM
+  create_parser = subparsers.add_parser('create', help = 'Create VM help', parents = [parent_parser])
+  create_parser.add_argument('--memory', dest = 'memory', metavar = 'Memory', type = int,
+    help = 'Amount of memory to allocate to the VM (MB)', required = True)
+  create_parser.add_argument('--disk-size', dest = 'disk_size', metavar = 'Disk Size', type = int,
+    help = 'Size of disk to be created for the VM (MB)', required = True)
+  create_parser.add_argument('--cpu-count', dest = 'cpu_count', metavar = 'CPU Count', type = int,
+    help = 'Number of virtual CPU cores to be allocated to the VM', required = True)
+  create_parser.add_argument('--network', dest = 'networks', metavar = 'Network Connection', type = str,
+    action = 'append', help = 'Name of networks to connect VM to (each network has a seperate NIC)')
+
+  # Get arguments for deleting a VM
+  delete_parser = subparsers.add_parser('delete', help = 'Delete VM help', parents = [parent_parser])
+  delete_parser.add_argument('--remove-data', dest = 'remove_data', help = 'Removes the VM data from the host',
+    action = 'store_true')
+
+  # Get an instance of McVirt
   mcvirt_instance = McVirt()
 
-  vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
+  args = parser.parse_args()
+  action = args.action
+  vm_name = args.vm_name
 
   # Perform functions on the VM based on the action passed to the script
   if (action == 'start'):
+    vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
     vm_object.start()
+
   elif (action == 'stop'):
+    vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
     vm_object.stop()
 
-if __name__ == "__main__":
+  elif (action == 'create'):
+    VirtualMachine.create(mcvirt_instance.connection, vm_name, args.cpu_count,
+      args.memory, args.disk_size, args.networks)
 
-  action_epilog = """
-Possible actions include:
-  start - Start the VM
-  stop  - Stop the VM"""
-
-  # Create an argument parser object
-  parser = argparse.ArgumentParser(description = 'Perform actions on the McVirt host')
-  parser.add_argument('action', metavar = 'Action', type = str, help = 'Action to perform on VM',
-    choices = ['start', 'stop'])
-  parser.add_argument('vm_name', metavar = 'VM Name', type = str, help = 'Name of VM')
-  args = parser.parse_args()
-
-  main(args.action, args.vm_name)
+  elif (action == 'delete'):
+    vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
+    vm_object.delete(args.remove_data)
