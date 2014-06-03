@@ -87,6 +87,28 @@ class VirtualMachine:
       print 'Successfully removed VM data from host'
 
 
+  def attach_iso(self, path):
+    """Attaches an ISO image to the disk drive of the VM"""
+
+    # Ensure that the ISO image exists
+    full_path = McVirt.ISO_STORAGE_DIR + '/' + path
+    if (not os.path.isfile(full_path)):
+      raise McVirtException('ISO image not found: %s' % path)
+
+    # Import cdrom XML template
+    cdrom_xml = ET.parse(McVirt.TEMPLATE_DIR + '/cdrom.xml')
+
+    # Add iso image path to cdrom XML
+    cdrom_xml.find('source').set('file', full_path)
+    cdrom_xml_string = ET.tostring(cdrom_xml.getroot(), encoding = 'utf8', method = 'xml')
+
+    # Update the libvirt cdrom device
+    if (not self.domain_object.updateDeviceFlags(cdrom_xml_string)):
+      print 'Attached ISO %s' % path
+    else:
+      raise McVirtException('An error occured whilst attaching ISO')
+
+
   @staticmethod
   def __checkExists(libvirt_connection, name):
     """Check if a domain exists"""
@@ -131,9 +153,12 @@ class VirtualMachine:
     # Import domain XML template
     domain_xml = ET.parse(McVirt.TEMPLATE_DIR + '/domain.xml')
 
+    # Convert memory size from megabytes into kilobytes
+    memory_allocation_kb = memory_allocation * 1024
+
     # Add Name, RAM and CPU variables to XML
     domain_xml.find('./name').text = str(name)
-    domain_xml.find('./memory').text = str(memory_allocation)
+    domain_xml.find('./memory').text = str(memory_allocation_kb)
     domain_xml.find('./vcpu').text = str(cpu_cores)
 
     # Create directory for VM

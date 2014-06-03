@@ -11,6 +11,7 @@ class McVirt:
   TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
   BASE_STORAGE_DIR = '/var/lib/mcvirt'
   BASE_VM_STORAGE_DIR = BASE_STORAGE_DIR + '/vm'
+  ISO_STORAGE_DIR = BASE_STORAGE_DIR + '/iso'
 
   def __init__(self, uri = None):
     """Perform initial connection to libvirt"""
