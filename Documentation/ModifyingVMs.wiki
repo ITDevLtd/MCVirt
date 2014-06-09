@@ -10,8 +10,9 @@ dd if=/dev/zero bs=1M count=1 >> /var/lib/mcvirt/vm/$VM_NAME/vm-<VM Name>-disk-1
 
 === Attaching ISO ===
 
- * Perform the following, editing the path to the ISO that you wish to attach:
+ * ISO images can be attached to the cdrom drive of a VM whilst booting the VM
+ * Use the McVirt utility to start the VM, using the '--iso' parameter to define the ISO image to be attached to the VM
 {{{
-virsh attach-disk <VM Name> /var/lib/mcvirt/iso/ubuntu-12.04.1-server-amd64.iso hdc --type cdrom
+mcvirt start <VM Name> --iso <Name of ISO file>
 }}}
- * The ISO is attached to the VM until it is powered off (destroyed), meaning that the VM can then be reset to boot into the ISO.
+ * The VM must be stored within /var/lib/mcvirt/iso and specifying just the filename in the above command.

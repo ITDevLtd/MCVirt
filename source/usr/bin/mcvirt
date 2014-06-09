@@ -23,6 +23,7 @@ if __name__ == "__main__":
 
   # Add arguments for starting a VM
   start_parser = subparsers.add_parser('start', help = 'Start VM help', parents = [parent_parser])
+  start_parser.add_argument('--iso', metavar = 'ISO Path', type = str, help = 'Path of ISO to attach to VM')
 
   # Add arguments for stopping a VM
   stop_parser = subparsers.add_parser('stop', help = 'Stop VM help', parents = [parent_parser])
@@ -36,7 +37,7 @@ if __name__ == "__main__":
   create_parser.add_argument('--cpu-count', dest = 'cpu_count', metavar = 'CPU Count', type = int,
     help = 'Number of virtual CPU cores to be allocated to the VM', required = True)
   create_parser.add_argument('--network', dest = 'networks', metavar = 'Network Connection', type = str,
-    action = 'append', help = 'Name of networks to connect VM to (each network has a seperate NIC)')
+    action = 'append', help = 'Name of networks to connect VM to (each network has a separate NIC)')
 
   # Get arguments for deleting a VM
   delete_parser = subparsers.add_parser('delete', help = 'Delete VM help', parents = [parent_parser])
@@ -53,6 +54,10 @@ if __name__ == "__main__":
   # Perform functions on the VM based on the action passed to the script
   if (action == 'start'):
     vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
+
+    # If an ISO has been specified, attach it to the VM before booting
+    if (args.iso):
+      vm_object.attach_iso(args.iso)
     vm_object.start()
 
   elif (action == 'stop'):
