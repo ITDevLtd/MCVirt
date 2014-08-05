@@ -13,11 +13,6 @@
   </features>
   <clock offset='utc'/>
   <devices>
-    <disk type='block' device='disk'>
-      <driver name='qemu' type='raw' cache='none'/>
-      <source/>
-      <target dev='sda' bus='virtio'/>
-    </disk>
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
       <target dev='hdc' bus='ide'/>

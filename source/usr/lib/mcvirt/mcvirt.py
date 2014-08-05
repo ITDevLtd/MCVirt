@@ -4,6 +4,8 @@
 #
 import libvirt
 import sys
+import os
+from lockfile import FileLock
 
 class McVirt:
   """Provides general McVirt functions"""
@@ -12,11 +14,34 @@ class McVirt:
   BASE_STORAGE_DIR = '/var/lib/mcvirt'
   BASE_VM_STORAGE_DIR = BASE_STORAGE_DIR + '/vm'
   ISO_STORAGE_DIR = BASE_STORAGE_DIR + '/iso'
+  LOCK_FILE_DIR = '/var/run/lock/mcvirt'
+  LOCK_FILE = LOCK_FILE_DIR + '/lock'
 
   def __init__(self, uri = None):
-    """Perform initial connection to libvirt"""
+    """Checks lock file and performs initial connection to libvirt"""
+    # Create lock file, if it does not exist
+    if (os.path.isfile(self.LOCK_FILE)):
+      if (not os.path.isdir(self.LOCK_FILE_DIR)):
+        os.mkdir(self.LOCK_FILE_DIR)
+      open(self.LOCK_FILE, 'a').close()
+
+    # Attempt to lock lockfile
+    self.obtained_filelock = False
+    self.lockfile_object = FileLock(self.LOCK_FILE)
+    try:
+      self.lockfile_object.acquire()
+      self.obtained_filelock = True
+    except:
+      raise McVirtException('An instance of McVirt is already running')
 
     self.__connect(uri)
+
+
+  def __del__(self):
+    """Removes McVirt lock file on object destruction"""
+    if (self.obtained_filelock):
+      self.lockfile_object.release()
+
 
   def __connect(self, uri):
     """

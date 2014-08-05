@@ -10,7 +10,10 @@ import argparse
 
 sys.path.insert(0, '/usr/lib')
 from mcvirt.mcvirt import McVirt
-from mcvirt.virtual_machine import VirtualMachine
+from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+from mcvirt.virtual_machine.hard_drive import HardDrive
+from mcvirt.virtual_machine.disk_drive import DiskDrive
+from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 
 if __name__ == "__main__":
 
@@ -44,6 +47,23 @@ if __name__ == "__main__":
   delete_parser.add_argument('--remove-data', dest = 'remove_data', help = 'Removes the VM data from the host',
     action = 'store_true')
 
+  # Get arguments for updating a VM
+  update_parser = subparsers.add_parser('update', help = 'Update VM help', parents = [parent_parser])
+  update_parser.add_argument('--memory', dest = 'memory', metavar = 'Memory', type = int,
+    help = 'Amount of memory to allocate to the VM (MB)')
+  update_parser.add_argument('--cpu-count', dest = 'cpu_count', metavar = 'CPU Count', type = int,
+    help = 'Number of virtual CPU cores to be allocated to the VM')
+  update_parser.add_argument('--add-network', dest = 'add_network', metavar = 'Add Network', type = str,
+    help = 'Adds a NIC to the VM, connected to the given network')
+  update_parser.add_argument('--remove-network', dest = 'remove_network', metavar = 'Remove Network', type = str,
+    help = 'Removes a NIC from VM with the given MAC-address (e.g. \'00:00:00:00:00:00)\'')
+  update_parser.add_argument('--add-disk', dest = 'add_disk', metavar = 'Add Disk', type = int,
+    help = 'Add disk to the VM (size in MB)')
+  update_parser.add_argument('--increase-disk', dest = 'increase_disk', metavar = 'Increase Disk', type = int,
+    help = 'Increases VM disk by provided amount (MB)')
+  update_parser.add_argument('--disk-id', dest = 'disk_id', metavar = 'Disk Id', type = int,
+    help = 'The ID of the disk to be increased by')
+
   # Get an instance of McVirt
   mcvirt_instance = McVirt()
 
@@ -57,7 +77,8 @@ if __name__ == "__main__":
 
     # If an ISO has been specified, attach it to the VM before booting
     if (args.iso):
-      vm_object.attach_iso(args.iso)
+      disk_drive_object = DiskDrive(vm_object)
+      disk_drive_object.attachISO(args.iso)
     vm_object.start()
 
   elif (action == 'stop'):
@@ -71,3 +92,19 @@ if __name__ == "__main__":
   elif (action == 'delete'):
     vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
     vm_object.delete(args.remove_data)
+
+  elif (action == 'update'):
+    vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
+    if (args.memory):
+      vm_object.updateRAM(args.memory)
+    if (args.cpu_count):
+      vm_object.updateCPU(args.cpu_count)
+    if (args.remove_network):
+      NetworkAdapter.delete(vm_object, args.remove_network)
+    if (args.add_network):
+      NetworkAdapter.create(vm_object, args.add_network)
+    if (args.add_disk):
+      HardDrive.create(vm_object, args.add_disk)
+    if (args.increase_disk and args.disk_id):
+      harddrive_object = HardDrive(vm_object, args.disk_id)
+      harddrive_object.increaseSize(args.increase_disk)

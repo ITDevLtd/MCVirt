@@ -9,7 +9,11 @@ from subprocess import call
 import os
 import shutil
 
-from mcvirt import McVirt, McVirtException
+from mcvirt.mcvirt import McVirt, McVirtException
+from mcvirt.virtual_machine.hard_drive import HardDrive
+from mcvirt.virtual_machine.disk_drive import DiskDrive
+from mcvirt.virtual_machine.network_adapter import NetworkAdapter
+from mcvirt.virtual_machine.config import Config as VirtualMachineConfig
 
 class VirtualMachine:
   """Provides operations to manage a libvirt virtual machine"""
@@ -27,6 +31,9 @@ class VirtualMachine:
     if (not VirtualMachine.__checkExists(self.connection, self.name)):
       raise McVirtException('Error: Virtual Machine does not exist')
 
+    # Get config object
+    self.config = VirtualMachineConfig(self)
+
     # Create a libvirt domain object
     self.domain_object = self.__getDomainObject()
 
@@ -42,7 +49,7 @@ class VirtualMachine:
     """Stops the VM"""
 
     # Determine if VM is running
-    if (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING):
+    if (self.isRunning()):
 
       # Stop the VM
       self.domain_object.destroy()
@@ -56,7 +63,7 @@ class VirtualMachine:
     """Starts the VM"""
 
     # Determine if VM is stopped
-    if (self.domain_object.state()[0] != libvirt.VIR_DOMAIN_RUNNING):
+    if (not self.isRunning()):
 
       # Start the VM
       self.domain_object.create()
@@ -64,6 +71,10 @@ class VirtualMachine:
 
     else:
       raise McVirtException('The VM is already running')
+
+
+  def isRunning(self):
+    return (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING)
 
 
   def delete(self, delete_disk = False):
@@ -87,26 +98,39 @@ class VirtualMachine:
       print 'Successfully removed VM data from host'
 
 
-  def attach_iso(self, path):
-    """Attaches an ISO image to the disk drive of the VM"""
+  def updateRAM(self, memory_allocation):
+    """Updates the amount of RAM alloocated to a VM"""
 
-    # Ensure that the ISO image exists
-    full_path = McVirt.ISO_STORAGE_DIR + '/' + path
-    if (not os.path.isfile(full_path)):
-      raise McVirtException('ISO image not found: %s' % path)
+    def updateXML(domain_xml):
+      # Capture original allocation
+      old_ram_allocation = domain_xml.find('./memory').text
 
-    # Import cdrom XML template
-    cdrom_xml = ET.parse(McVirt.TEMPLATE_DIR + '/cdrom.xml')
+      # Convert original allocation from KiB to MB
+      old_ram_allocation_mb = ((int(old_ram_allocation) * 1024) / 1000000)
 
-    # Add iso image path to cdrom XML
-    cdrom_xml.find('source').set('file', full_path)
-    cdrom_xml_string = ET.tostring(cdrom_xml.getroot(), encoding = 'utf8', method = 'xml')
+      # Update RAM allocation and unit measurement
+      domain_xml.find('./memory').text = str(memory_allocation)
+      domain_xml.find('./memory').set('unit', 'MB')
+      domain_xml.find('./currentMemory').text = str(memory_allocation)
+      domain_xml.find('./currentMemory').set('unit', 'MB')
+      print 'RAM allocation will be changed from %sMB to %sMB.' % (old_ram_allocation_mb, memory_allocation)
 
-    # Update the libvirt cdrom device
-    if (not self.domain_object.updateDeviceFlags(cdrom_xml_string)):
-      print 'Attached ISO %s' % path
-    else:
-      raise McVirtException('An error occured whilst attaching ISO')
+    self.editConfig(updateXML)
+
+
+  def updateCPU(self, cpu_count):
+    """Updates the number of CPU cores attached to a VM"""
+
+    def updateXML(domain_xml):
+      # Capture original settings
+      old_cpu_count = domain_xml.find('./vcpu').text
+
+      # Update RAM allocation and unit measurement
+      domain_xml.find('./vcpu').text = str(cpu_count)
+      print 'Number of virtual cores will be changed from %s to %s.' % (old_cpu_count, cpu_count)
+
+    self.editConfig(updateXML)
+
 
 
   @staticmethod
@@ -131,10 +155,25 @@ class VirtualMachine:
     return McVirt.BASE_VM_STORAGE_DIR + '/' + name
 
 
-  @staticmethod
-  def getDiskPath(name, disk_number = 1):
-    """Returns the path of a disk image for a given VM"""
-    return VirtualMachine.getVMDir(name) + '/' + 'vm-%s-disk-%s.raw' % (name, disk_number)
+  def editConfig(self, callback_function):
+    """Provides an interface for updating the libvirt configuration, by obtaining
+    the configuration, performing a callback function to perform changes on the configuration
+    and pushing the configuration back into LibVirt"""
+    # Obtain VM XML
+    domain_flags = (libvirt.VIR_DOMAIN_XML_INACTIVE + libvirt.VIR_DOMAIN_XML_SECURE)
+    domain_xml = ET.fromstring(self.domain_object.XMLDesc(domain_flags))
+
+    # Perform callback function to make changes to the XML
+    callback_function(domain_xml)
+
+    # Push XML changes back to libvirt
+    domain_xml_string = ET.tostring(domain_xml, encoding = 'utf8', method = 'xml')
+
+    try:
+      self.connection.defineXML(domain_xml_string)
+    except:
+      raise McVirtException('Error: An error occured whilst updating the VM')
+    print 'The configuration changes will be updated on next VM boot.'
 
 
   @staticmethod
@@ -167,29 +206,8 @@ class VirtualMachine:
     else:
       raise McVirtException('Error: VM directory already exists')
 
-    # Create disk image
-    disk_path = VirtualMachine.getDiskPath(name, 1)
-    print 'Creating disk image'
-    call(['dd', 'if=/dev/zero', 'of=%s' % disk_path, 'bs=1M', 'count=%s' % disk_size])
-
-    # Set disk name in domain XML
-    domain_xml.find('./devices/disk[@device="disk"]/source').set('dev', disk_path)
-
-    # If any have been specified, add a network configuration for each of the
-    # network interfaces to the domain XML
-    if (network_interfaces != None):
-      devices_xml = domain_xml.find('./devices')
-      for network in network_interfaces:
-        interface_xml = ET.SubElement(devices_xml, 'interface')
-        interface_xml.set('type', 'network')
-
-        # Create 'source'
-        interface_source_xml = ET.SubElement(interface_xml, 'source')
-        interface_source_xml.set('network', network)
-
-        # Create 'model'
-        interface_model_xml = ET.SubElement(interface_xml, 'model')
-        interface_model_xml.set('type', 'virtio')
+    # Create VM configuration file
+    VirtualMachineConfig.create(name)
 
     # Register VM with LibVirt
     print 'Registering VM wth libvirt'
@@ -199,3 +217,17 @@ class VirtualMachine:
       libvirt_connection.defineXML(domain_xml_string)
     except:
       raise McVirtException('Error: An error occured whilst registering VM')
+
+    # Obtain an object for the new VM, to use to create disks/network interfaces
+    vm_object = VirtualMachine(libvirt_connection, name)
+
+    # Create disk image
+    print 'Creating disk image'
+    HardDrive.create(vm_object, disk_size)
+
+    # If any have been specified, add a network configuration for each of the
+    # network interfaces to the domain XML
+    if (network_interfaces != None):
+      devices_xml = domain_xml.find('./devices')
+      for network in network_interfaces:
+        NetworkAdapter.create(vm_object, network)
