@@ -80,9 +80,10 @@ class HardDrive:
       vm_object.editConfig(updateXML)
 
       # Update VM config file
-      vm_config = vm_object.config.getConfig()
-      vm_config['disks'].append(disk_id)
-      vm_object.config.updateConfig(vm_config)
+      def addDiskToConfig(vm_config):
+        vm_config['disks'].append(disk_id)
+
+      vm_object.getConfigObject().updateConfig(addDiskToConfig)
     except:
       # If attaching the HDD to the VM fails, remove the disk image
       os.unlink(disk_path)

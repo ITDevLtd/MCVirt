@@ -1,0 +1,8 @@
+#!/bin/bash
+#
+# Copyright I.T. Dev Ltd 2014
+# http://www.itdev.co.uk
+#
+
+
+sudo /usr/bin/mcvirt $@

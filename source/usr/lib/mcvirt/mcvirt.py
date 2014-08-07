@@ -7,6 +7,9 @@ import sys
 import os
 from lockfile import FileLock
 
+from mcvirt_config import McVirtConfig
+from auth import Auth
+
 class McVirt:
   """Provides general McVirt functions"""
 
@@ -19,6 +22,9 @@ class McVirt:
 
   def __init__(self, uri = None):
     """Checks lock file and performs initial connection to libvirt"""
+    self.obtained_filelock = False
+    self.config = McVirtConfig()
+    self.auth = Auth(self.getConfigObject())
     # Create lock file, if it does not exist
     if (os.path.isfile(self.LOCK_FILE)):
       if (not os.path.isdir(self.LOCK_FILE_DIR)):
@@ -26,7 +32,6 @@ class McVirt:
       open(self.LOCK_FILE, 'a').close()
 
     # Attempt to lock lockfile
-    self.obtained_filelock = False
     self.lockfile_object = FileLock(self.LOCK_FILE)
     try:
       self.lockfile_object.acquire()
@@ -54,6 +59,16 @@ class McVirt:
     else:
       self.connection = connection
 
+  def getLibvirtConnection(self):
+    """Obtains a connection to libvirt"""
+    return self.connection
+
+  def getConfigObject(self):
+    """Obtains the instance of McVirt permissions"""
+    return self.config
+
+  def getAuthObject(self):
+    return self.auth
 
 class McVirtException(Exception):
   """Provides an exception to be throw for errors in McVirt"""

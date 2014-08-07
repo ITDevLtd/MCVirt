@@ -7,21 +7,30 @@
 
 import sys
 import argparse
+import socket
 
 sys.path.insert(0, '/usr/lib')
-from mcvirt.mcvirt import McVirt
+from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.virtual_machine.hard_drive import HardDrive
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 
+class ArgumentParserError(Exception):
+  pass
+
+class ThrowingArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise McVirtException(message)
+
+
 if __name__ == "__main__":
 
-  parent_parser = argparse.ArgumentParser(add_help = False)
+  parent_parser = ThrowingArgumentParser(add_help = False)
   parent_parser.add_argument('vm_name', metavar = 'VM Name', type = str, help = 'Name of VM')
 
   # Create an argument parser object
-  parser = argparse.ArgumentParser(description = 'Manage the McVirt host')
+  parser = ThrowingArgumentParser(description = 'Manage the McVirt host')
   subparsers = parser.add_subparsers(dest = 'action', metavar = 'Action', help = 'Action to perform on VM')
 
   # Add arguments for starting a VM
@@ -64,47 +73,101 @@ if __name__ == "__main__":
   update_parser.add_argument('--disk-id', dest = 'disk_id', metavar = 'Disk Id', type = int,
     help = 'The ID of the disk to be increased by')
 
-  # Get an instance of McVirt
-  mcvirt_instance = McVirt()
+  # Get arguments for making permission changes to a VM
+  permission_parser = subparsers.add_parser('permission', help = 'Update VM permissions help', parents = [parent_parser])
+  permission_parser.add_argument('--add-user', dest = 'add_user', metavar = 'Add User', type = str,
+    help = 'Adds a given user to a VM, allowing them to perform basic functions.')
+  permission_parser.add_argument('--delete-user', dest = 'delete_user', metavar = 'Delete User', type = str,
+    help = 'Removes a given user from a VM. This prevents them to perform basic functions.')
+  permission_parser.add_argument('--add-owner', dest = 'add_owner', metavar = 'Add Owner', type = str,
+    help = 'Adds a given user as an owner to a VM, allowing them to perform basic functions and manager users.')
+  permission_parser.add_argument('--delete-owner', dest = 'delete_owner', metavar = 'Delete User', type = str,
+    help = 'Removes a given owner from a VM. This prevents them to perform basic functions and manager users.')
 
-  args = parser.parse_args()
-  action = args.action
-  vm_name = args.vm_name
+  info_parser = subparsers.add_parser('info', help = 'View VM info help', parents = [parent_parser])
 
-  # Perform functions on the VM based on the action passed to the script
-  if (action == 'start'):
-    vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
 
-    # If an ISO has been specified, attach it to the VM before booting
-    if (args.iso):
-      disk_drive_object = DiskDrive(vm_object)
-      disk_drive_object.attachISO(args.iso)
-    vm_object.start()
+  def parse_arguments(parser, script_args = None):
+    """"""
+    # Get an instance of McVirt
+    mcvirt_instance = McVirt()
 
-  elif (action == 'stop'):
-    vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
-    vm_object.stop()
+    # If arguments have been specified, split, so that
+    # an array is sent to the argument parser
+    if (script_args != None):
+      script_args = script_args.split()
 
-  elif (action == 'create'):
-    VirtualMachine.create(mcvirt_instance.connection, vm_name, args.cpu_count,
-      args.memory, args.disk_size, args.networks)
+    args = parser.parse_args(script_args)
+    action = args.action
+    vm_name = args.vm_name
 
-  elif (action == 'delete'):
-    vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
-    vm_object.delete(args.remove_data)
+    # Perform functions on the VM based on the action passed to the script
+    if (action == 'start'):
+      vm_object = VirtualMachine(mcvirt_instance, vm_name)
 
-  elif (action == 'update'):
-    vm_object = VirtualMachine(mcvirt_instance.connection, vm_name)
-    if (args.memory):
-      vm_object.updateRAM(args.memory)
-    if (args.cpu_count):
-      vm_object.updateCPU(args.cpu_count)
-    if (args.remove_network):
-      NetworkAdapter.delete(vm_object, args.remove_network)
-    if (args.add_network):
-      NetworkAdapter.create(vm_object, args.add_network)
-    if (args.add_disk):
-      HardDrive.create(vm_object, args.add_disk)
-    if (args.increase_disk and args.disk_id):
-      harddrive_object = HardDrive(vm_object, args.disk_id)
-      harddrive_object.increaseSize(args.increase_disk)
+      # If an ISO has been specified, attach it to the VM before booting
+      if (args.iso):
+        disk_drive_object = DiskDrive(vm_object)
+        disk_drive_object.attachISO(args.iso)
+      vm_object.start()
+
+    elif (action == 'stop'):
+      vm_object = VirtualMachine(mcvirt_instance, vm_name)
+      vm_object.stop()
+
+    elif (action == 'create'):
+      VirtualMachine.create(mcvirt_instance, vm_name, args.cpu_count,
+        args.memory, args.disk_size, args.networks)
+
+    elif (action == 'delete'):
+      vm_object = VirtualMachine(mcvirt_instance, vm_name)
+      vm_object.delete(args.remove_data)
+
+    elif (action == 'update'):
+      vm_object = VirtualMachine(mcvirt_instance, vm_name)
+      if (args.memory):
+        vm_object.updateRAM(args.memory)
+      if (args.cpu_count):
+        vm_object.updateCPU(args.cpu_count)
+      if (args.remove_network):
+        NetworkAdapter.delete(vm_object, args.remove_network)
+      if (args.add_network):
+        NetworkAdapter.create(vm_object, args.add_network)
+      if (args.add_disk):
+        HardDrive.create(vm_object, args.add_disk)
+      if (args.increase_disk and args.disk_id):
+        harddrive_object = HardDrive(vm_object, args.disk_id)
+        harddrive_object.increaseSize(args.increase_disk)
+
+    elif (action == 'permission'):
+      vm_object = VirtualMachine(mcvirt_instance, vm_name)
+      auth_object = mcvirt_instance.getAuthObject()
+      if (args.add_user):
+        auth_object.addUserPermissionGroup(vm_object, 'user', args.add_user)
+      if (args.delete_user):
+        auth_object.deleteUserPermissionGroup(vm_object, 'user', args.delete_user)
+      if (args.add_owner):
+        auth_object.addUserPermissionGroup(vm_object, 'owner', args.add_owner)
+      if (args.delete_owner):
+        auth_object.deleteUserPermissionGroup(vm_object, 'owner', args.delete_owner)
+
+    elif (action == 'info'):
+      vm_object = VirtualMachine(mcvirt_instance, vm_name)
+      auth_object = mcvirt_instance.getAuthObject()
+      vm_object.getInfo()
+      auth_object.getInfo(vm_object)
+
+
+  if (len(sys.argv) > 1):
+    parse_arguments(parser)
+  else:
+    while (1):
+      sys.stdout.write('mcvirt@%s> ' % socket.gethostname())
+      command = sys.stdin.readline().rstrip().lstrip()
+      if (command == 'exit'):
+        sys.exit()
+      else:
+        try:
+          parse_arguments(parser, command)
+        except:
+          pass

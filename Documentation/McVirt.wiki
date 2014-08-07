@@ -4,3 +4,4 @@
  * [source:/mcvirt/trunk/Documentation/CreateRemoveVMs.wiki Create/Remove VMs] - Procedures for creating and deleting virtual machines
  * [source:/mcvirt/trunk/Documentation/ControllingVMs.wiki Controlling VMs] - Instructions for using the McVirt script and controlling virtual machines
  * [source:/mcvirt/trunk/Documentation/ModifyingVMs.wiki Modifying VMs] - Procedures for making changes to virtual machine configurations
+ * [source:/mcvirt/trunk/Documentation/Permissions.wiki Permissions] - Procedures for configuring permissions within McVirt

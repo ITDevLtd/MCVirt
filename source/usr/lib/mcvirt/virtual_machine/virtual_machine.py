@@ -13,14 +13,16 @@ from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.virtual_machine.hard_drive import HardDrive
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
-from mcvirt.virtual_machine.config import Config as VirtualMachineConfig
+from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
+from mcvirt.auth import Auth
 
 class VirtualMachine:
   """Provides operations to manage a libvirt virtual machine"""
 
-  def __init__(self, libvirt_connection, name):
+  def __init__(self, mcvirt_object, name):
     """Sets member variables and obtains libvirt domain object"""
-    self.connection = libvirt_connection
+    self.auth = mcvirt_object.getAuthObject()
+    self.connection = mcvirt_object.getLibvirtConnection()
     self.name = name
 
     # Ensure that the connection is alive
@@ -37,6 +39,13 @@ class VirtualMachine:
     # Create a libvirt domain object
     self.domain_object = self.__getDomainObject()
 
+  def getConfigObject(self):
+    """Returns the configuration object for the VM"""
+    return self.config
+
+  def getName(self):
+    """Returns the name of the VM"""
+    return self.name
 
   def __getDomainObject(self):
     """Looks up libvirt domain object, based on VM name,
@@ -47,6 +56,8 @@ class VirtualMachine:
 
   def stop(self):
     """Stops the VM"""
+    # Check the user has permission to start/stop VMs
+    self.auth.checkPermission(Auth.PERMISSIONS.CHANGE_VM_POWER_STATE, self)
 
     # Determine if VM is running
     if (self.isRunning()):
@@ -61,6 +72,8 @@ class VirtualMachine:
 
   def start(self):
     """Starts the VM"""
+    # Check the user has permission to start/stop VMs
+    self.auth.checkPermission(Auth.PERMISSIONS.CHANGE_VM_POWER_STATE, self)
 
     # Determine if VM is stopped
     if (not self.isRunning()):
@@ -76,9 +89,13 @@ class VirtualMachine:
   def isRunning(self):
     return (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING)
 
+  def getInfo(self):
+    print 'Name: ' + self.getName()
 
   def delete(self, delete_disk = False):
     """Delete the VM - removing it from libvirt and from the filesystem"""
+    # Check the user has permission to modify VMs
+    self.auth.checkPermission(Auth.PERMISSIONS.MODIFY_VM, self)
 
     # Determine if VM is running
     if (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING):
@@ -100,6 +117,8 @@ class VirtualMachine:
 
   def updateRAM(self, memory_allocation):
     """Updates the amount of RAM alloocated to a VM"""
+    # Check the user has permission to modify VMs
+    self.auth.checkPermission(Auth.PERMISSIONS.MODIFY_VM, self)
 
     def updateXML(domain_xml):
       # Capture original allocation
@@ -120,6 +139,8 @@ class VirtualMachine:
 
   def updateCPU(self, cpu_count):
     """Updates the number of CPU cores attached to a VM"""
+    # Check the user has permission to modify VMs
+    self.auth.checkPermission(Auth.PERMISSIONS.MODIFY_VM, self)
 
     def updateXML(domain_xml):
       # Capture original settings
@@ -177,8 +198,10 @@ class VirtualMachine:
 
 
   @staticmethod
-  def create(libvirt_connection, name, cpu_cores, memory_allocation, disk_size, network_interfaces):
+  def create(mcvirt_instance, name, cpu_cores, memory_allocation, disk_size, network_interfaces):
     """Creates a VM and returns the virtual_machine object for it"""
+    # Check the user has permission to create VMs
+    mcvirt_instance.getAuthObject().checkPermission(Auth.PERMISSIONS.CREATE_VM)
 
     # Validate the VM name
     valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
@@ -186,7 +209,7 @@ class VirtualMachine:
       raise McVirtException('Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes')
 
     # Determine if VM already exists
-    if (VirtualMachine.__checkExists(libvirt_connection, name)):
+    if (VirtualMachine.__checkExists(mcvirt_instance.getLibvirtConnection(), name)):
       raise McVirtException('Error: VM already exists')
 
     # Import domain XML template
@@ -214,12 +237,12 @@ class VirtualMachine:
     domain_xml_string = ET.tostring(domain_xml.getroot(), encoding = 'utf8', method = 'xml')
 
     try:
-      libvirt_connection.defineXML(domain_xml_string)
+      mcvirt_instance.getLibvirtConnection().defineXML(domain_xml_string)
     except:
       raise McVirtException('Error: An error occured whilst registering VM')
 
     # Obtain an object for the new VM, to use to create disks/network interfaces
-    vm_object = VirtualMachine(libvirt_connection, name)
+    vm_object = VirtualMachine(mcvirt_instance, name)
 
     # Create disk image
     print 'Creating disk image'
