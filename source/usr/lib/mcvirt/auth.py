@@ -36,10 +36,21 @@ class Auth:
   def getUsername(self):
     """Obtains the username of the current user"""
     from mcvirt import McVirtException
-    if (os.getenv('SUDO_USER')):
-      return os.getenv('SUDO_USER')
-    elif (os.geteuid() == 0):
-      return 'root'
+
+    # Ensure that McVirt is effectively running as root
+    if (os.geteuid() == 0):
+
+      # If SUDO_USER has been set, then it must have been run
+      # as root, and this variable can be used to obtain the username
+      if (os.getenv('SUDO_USER')):
+        return os.getenv('SUDO_USER')
+
+      # Else, assume that root is running the script, as this is the only
+      # way to obtain an EUID of 0 without using sudo.
+      else:
+        return 'root'
+
+    # If the script is not being run with root privileges, return False
     else:
       return False
 
