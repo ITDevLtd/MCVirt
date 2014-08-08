@@ -6,7 +6,7 @@ import libvirt
 import xml.etree.ElementTree as ET
 import os
 
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import McVirtException, McVirt
 
 class DiskDrive:
   """Provides operations to manage the disk drive attached to a VM"""

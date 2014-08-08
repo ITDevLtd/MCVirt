@@ -23,7 +23,6 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         raise McVirtException(message)
 
-
 if __name__ == "__main__":
 
   parent_parser = ThrowingArgumentParser(add_help = False)
@@ -85,7 +84,8 @@ if __name__ == "__main__":
     help = 'Removes a given owner from a VM. This prevents them to perform basic functions and manager users.')
 
   info_parser = subparsers.add_parser('info', help = 'View VM info help', parents = [parent_parser])
-
+  info_parser.add_argument('--vnc-port', dest = 'vnc_port', help = 'Displays the port that VNC is being hosted from',
+    action = 'store_true')
 
   def parse_arguments(parser, script_args = None):
     """"""
@@ -154,8 +154,11 @@ if __name__ == "__main__":
     elif (action == 'info'):
       vm_object = VirtualMachine(mcvirt_instance, vm_name)
       auth_object = mcvirt_instance.getAuthObject()
-      vm_object.getInfo()
-      auth_object.getInfo(vm_object)
+      if (args.vnc_port):
+        print vm_object.getVncPort()
+      else:
+        vm_object.getInfo()
+        auth_object.getInfo(vm_object)
 
 
   if (len(sys.argv) > 1):

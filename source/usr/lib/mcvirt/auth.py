@@ -9,28 +9,29 @@ from texttable import Texttable
 class Auth:
   """Provides authentication and permissions for performing functions within McVirt"""
 
-  PERMISSIONS = Enum('CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS')
+  PERMISSIONS = Enum('CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS', 'VIEW_VNC_CONSOLE')
 
   # Set the permissions for the permissions groups
   PERMISSION_GROUPS = \
-   {
-     'user':
-     [
-       PERMISSIONS.CHANGE_VM_POWER_STATE.index
-     ],
-     'owner':
-     [
-       PERMISSIONS.CHANGE_VM_POWER_STATE.index,
-       PERMISSIONS.MANAGE_VM_USERS.index
-     ]
-   }
+    {
+      'user':
+      [
+        PERMISSIONS.CHANGE_VM_POWER_STATE.index,
+        PERMISSIONS.VIEW_VNC_CONSOLE.index
+      ],
+      'owner':
+      [
+        PERMISSIONS.CHANGE_VM_POWER_STATE.index,
+        PERMISSIONS.MANAGE_VM_USERS.index,
+        PERMISSIONS.VIEW_VNC_CONSOLE.index
+      ]
+    }
 
   def __init__(self, mcvirt_config):
     """Sets member variables"""
     self.username = self.getUsername()
     self.checkRootPrivileges()
     self.config = mcvirt_config
-
 
 
   def getUsername(self):

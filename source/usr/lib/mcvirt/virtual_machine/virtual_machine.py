@@ -194,7 +194,6 @@ class VirtualMachine:
       self.connection.defineXML(domain_xml_string)
     except:
       raise McVirtException('Error: An error occured whilst updating the VM')
-    print 'The configuration changes will be updated on next VM boot.'
 
 
   @staticmethod
@@ -254,3 +253,18 @@ class VirtualMachine:
       devices_xml = domain_xml.find('./devices')
       for network in network_interfaces:
         NetworkAdapter.create(vm_object, network)
+
+
+  def getVncPort(self):
+    """Returns the port used by the VNC display for the VM"""
+    # Check the user has permission to view the VM console
+    self.auth.checkPermission(Auth.PERMISSIONS.VIEW_VNC_CONSOLE, self)
+
+    if (not self.isRunning()):
+      raise McVirtException('The VM is not running')
+    domain_xml = ET.fromstring(self.domain_object.XMLDesc(libvirt.VIR_DOMAIN_XML_SECURE))
+
+    if (domain_xml.find('./devices/graphics[@type="vnc"]') == None):
+      raise McVirtException('VNC is not emabled on the VM')
+    else:
+      return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
