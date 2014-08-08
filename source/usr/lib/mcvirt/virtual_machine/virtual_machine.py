@@ -268,3 +268,25 @@ class VirtualMachine:
       raise McVirtException('VNC is not emabled on the VM')
     else:
       return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
+
+
+  def setBootOrder(self, boot_devices):
+    """Sets the boot devices and the order in which devices are booted from"""
+
+    def updateXML(domain_xml):
+      old_boot_objects = domain_xml.findall('./os/boot')
+      os_xml = domain_xml.find('./os')
+
+      # Remove old boot XML configuration elements
+      for old_boot_object in old_boot_objects:
+        os_xml.remove(old_boot_object)
+
+      # Add new boot XML configuration elements
+      for new_boot_device in boot_devices:
+        new_boot_xml_object = ET.Element('boot')
+        new_boot_xml_object.set('dev', new_boot_device)
+
+        # Appened new XML configuration onto OS section of domain XML
+        os_xml.append(new_boot_xml_object)
+
+    self.editConfig(updateXML)

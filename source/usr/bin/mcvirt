@@ -104,11 +104,18 @@ if __name__ == "__main__":
     # Perform functions on the VM based on the action passed to the script
     if (action == 'start'):
       vm_object = VirtualMachine(mcvirt_instance, vm_name)
+      disk_drive_object = DiskDrive(vm_object)
 
-      # If an ISO has been specified, attach it to the VM before booting
       if (args.iso):
-        disk_drive_object = DiskDrive(vm_object)
+        # If an ISO has been specified, attach it to the VM before booting
+        # and adjust boot order to boot from ISO first
         disk_drive_object.attachISO(args.iso)
+        vm_object.setBootOrder(['cdrom', 'hd'])
+      else:
+        # If not ISO was specified, remove any attached ISOs and change boot order
+        # to boot from HDD
+        disk_drive_object.removeISO()
+        vm_object.setBootOrder(['hd'])
       vm_object.start()
 
     elif (action == 'stop'):
