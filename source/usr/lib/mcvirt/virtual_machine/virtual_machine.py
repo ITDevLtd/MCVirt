@@ -30,14 +30,15 @@ class VirtualMachine:
       raise McVirtException('Error: Connection not alive')
 
     # Check that the domain exists
-    if (not VirtualMachine.__checkExists(self.connection, self.name)):
+    if (not VirtualMachine._checkExists(self.connection, self.name)):
       raise McVirtException('Error: Virtual Machine does not exist')
 
     # Get config object
     self.config = VirtualMachineConfig(self)
+    self.mcvirt_config = mcvirt_object.getConfigObject()
 
     # Create a libvirt domain object
-    self.domain_object = self.__getDomainObject()
+    self.domain_object = self._getDomainObject()
 
   def getConfigObject(self):
     """Returns the configuration object for the VM"""
@@ -47,7 +48,7 @@ class VirtualMachine:
     """Returns the name of the VM"""
     return self.name
 
-  def __getDomainObject(self):
+  def _getDomainObject(self):
     """Looks up libvirt domain object, based on VM name,
     and return object"""
     # Get the domain object.
@@ -101,6 +102,12 @@ class VirtualMachine:
     if (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING):
       raise McVirtException('Error: Can\'t delete running VM')
 
+    # If 'delete_disk' has been passed as True, delete disks associated
+    # with VM
+    if (delete_disk):
+      for disk_object in self.getDiskObjects():
+        disk_object.delete()
+
     # Undefine object from libvirt
     try:
       self.domain_object.undefine()
@@ -153,9 +160,17 @@ class VirtualMachine:
     self.editConfig(updateXML)
 
 
+  def getDiskObjects(self):
+    """Returns an array of disk objects for the disks attached to the VM"""
+    disks = self.config.getConfig()['disks']
+    disk_objects = []
+    for disk_id in disks:
+      disk_objects.append(HardDrive(self, disk_id))
+    return disk_objects
+
 
   @staticmethod
-  def __checkExists(libvirt_connection, name):
+  def _checkExists(libvirt_connection, name):
     """Check if a domain exists"""
 
     # Obtain array of all domains from libvirt
@@ -208,7 +223,7 @@ class VirtualMachine:
       raise McVirtException('Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes')
 
     # Determine if VM already exists
-    if (VirtualMachine.__checkExists(mcvirt_instance.getLibvirtConnection(), name)):
+    if (VirtualMachine._checkExists(mcvirt_instance.getLibvirtConnection(), name)):
       raise McVirtException('Error: VM already exists')
 
     # Import domain XML template

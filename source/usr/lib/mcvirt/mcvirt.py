@@ -25,8 +25,9 @@ class McVirt:
     self.obtained_filelock = False
     self.config = McVirtConfig()
     self.auth = Auth(self.getConfigObject())
+
     # Create lock file, if it does not exist
-    if (os.path.isfile(self.LOCK_FILE)):
+    if (not os.path.isfile(self.LOCK_FILE)):
       if (not os.path.isdir(self.LOCK_FILE_DIR)):
         os.mkdir(self.LOCK_FILE_DIR)
       open(self.LOCK_FILE, 'a').close()
@@ -39,7 +40,7 @@ class McVirt:
     except:
       raise McVirtException('An instance of McVirt is already running')
 
-    self.__connect(uri)
+    self._connect(uri)
 
 
   def __del__(self):
@@ -48,7 +49,7 @@ class McVirt:
       self.lockfile_object.release()
 
 
-  def __connect(self, uri):
+  def _connect(self, uri):
     """
     Connect to libvirt and store the connection as an object variable.
     Exit if an error occures whilst connecting.

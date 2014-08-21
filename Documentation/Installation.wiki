@@ -10,9 +10,8 @@
 
  * McVirt is currently build to support Ubuntu 14.04 with native version of dependencies.
  * When installing the operating system create the following logical volumes:
-   * Root - Create a 10GB partition using ext4
+   * Root - Create a 50GB partition using ext4. This is used for the operating system, McVirt configurations and ISO images
    * SWAP - leave the suggested SWAP volume unaltered
-   * McVirt - Create a partition using the rest of the available disk space and mount on '''/var/lib/mcvirt'''
 
 == Installing Package ==
 
@@ -41,3 +40,8 @@ virsh pool-autostart 'Production'
 virsh pool-start 'Production'
 }}}
   '''Note:''' Replace 'Production' with the name of the new network object.
+
+== Configure McVirt ==
+
+ * The first time McVirt is run, it creates a configuration file for itself, found in '''/var/lib/mcvirt/config.json'''.
+ * Set the volume group for the VMs to be stored in, within the configuration file.

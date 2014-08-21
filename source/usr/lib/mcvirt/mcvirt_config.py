@@ -23,10 +23,11 @@ class McVirtConfig(ConfigFile):
 
     # Create basic config
     json_data = \
-      {
-        'superusers': [],
-        'permissions': {}
-      }
+    {
+      'superusers': [],
+      'permissions': {},
+      'vm_storage_vg': ''
+    }
 
     # Write the configuration to disk
     McVirtConfig.writeJSON(json_data, self.config_file)
