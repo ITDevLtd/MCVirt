@@ -12,12 +12,10 @@ class ConfigFile():
     """Sets member variables and obtains libvirt domain object"""
     raise NotImplementedError
 
-
   @staticmethod
   def getConfigPath(vm_name):
     """Provides the path of the VM-spefic configuration file"""
     raise NotImplementedError
-
 
   def getConfig(self):
     """Loads the VM configuration from disk and returns the parsed JSON"""
@@ -26,7 +24,6 @@ class ConfigFile():
     config_file.close()
     return config
 
-
   def updateConfig(self, callback_function):
     """Writes a provided configuration back to the configuration file"""
     config = self.getConfig()
@@ -34,11 +31,9 @@ class ConfigFile():
     ConfigFile.writeJSON(config, self.config_file)
     self.config = config
 
-
   def getPermissionConfig(self):
     config = self.getConfig()
     return config['permissions']
-
 
   @staticmethod
   def writeJSON(data, file_name):
@@ -49,7 +44,6 @@ class ConfigFile():
     config_file = open(file_name, 'w')
     config_file.write(json_data)
     config_file.close()
-
 
   @staticmethod
   def create(self):

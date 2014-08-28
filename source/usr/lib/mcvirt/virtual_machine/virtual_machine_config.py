@@ -18,13 +18,11 @@ class VirtualMachineConfig(ConfigFile):
     if (not os.path.isfile(self.config_file)):
       raise McVirtException('Could not find config file for %s' % vm_object.name)
 
-
   @staticmethod
   def getConfigPath(vm_name):
     """Provides the path of the VM-spefic configuration file"""
     from mcvirt.virtual_machine.virtual_machine import VirtualMachine
     return ('%s/config.json' % VirtualMachine.getVMDir(vm_name))
-
 
   @staticmethod
   def create(vm_name):
@@ -39,7 +37,9 @@ class VirtualMachineConfig(ConfigFile):
           'user': [],
           'owner': [],
         },
-        'disks': []
+        'disks': [],
+        'clone_parent': False,
+        'clone_children': []
       }
 
     # Write the configuration to disk

@@ -15,7 +15,6 @@ class NetworkAdapter:
     self.domain_object = domain_object
     self.mac_address = mac_address
 
-
   @staticmethod
   def createXML(network):
     """Creates a basic XML configuration for a network interface,
@@ -33,6 +32,20 @@ class NetworkAdapter:
 
     return interface_xml
 
+  def getConfig(self):
+    domain_config = self.domain_object.getLibvirtConfig()
+    interface_config = domain_config.find('./devices/interface[@type="network"]/mac[@address="%s"]/..' % self.mac_address)
+
+    if (interface_config == None):
+      raise McVirtException('Interface does not exist: %s' % self.mac_address)
+
+    return interface_config
+
+  def getConnectedNetwork(self):
+    """Returns the network that a given interface is connected to"""
+    interface_config = self.getConfig()
+    network = interface_config.find('./source').get('network')
+    return network
 
   @staticmethod
   def create(vm_object, network):
@@ -41,10 +54,8 @@ class NetworkAdapter:
       network_xml = NetworkAdapter.createXML(network)
       device_xml = domain_xml.find('./devices')
       device_xml.append(network_xml)
-      print 'Added interface to network \'%s\'' % network
 
     vm_object.editConfig(updateXML)
-
 
   @staticmethod
   def delete(vm_object, mac_address):
@@ -57,6 +68,5 @@ class NetworkAdapter:
         raise McVirtException('Not interface with MAC address \'%s\' attached to VM' % mac_address)
 
       device_xml.remove(interface_xml)
-      print 'Added interface'
 
     vm_object.editConfig(updateXML)

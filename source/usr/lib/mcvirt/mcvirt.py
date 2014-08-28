@@ -6,6 +6,7 @@ import libvirt
 import sys
 import os
 from lockfile import FileLock
+import subprocess
 
 from mcvirt_config import McVirtConfig
 from auth import Auth
@@ -42,12 +43,10 @@ class McVirt:
 
     self._connect(uri)
 
-
   def __del__(self):
     """Removes McVirt lock file on object destruction"""
     if (self.obtained_filelock):
       self.lockfile_object.release()
-
 
   def _connect(self, uri):
     """
@@ -69,12 +68,24 @@ class McVirt:
     return self.config
 
   def getAuthObject(self):
+    """Returns an instance of the auth class"""
     return self.auth
 
-class McVirtException(Exception):
-  """Provides an exception to be throw for errors in McVirt"""
+  @staticmethod
+  def runCommand(command_args):
+    """Runs system command, throwing an exception if the exit code is not 0"""
+    command_process = subprocess.Popen(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if (command_process.wait()):
+      raise McVirtCommandException("Command: %s\nExit code: %s\nOutput:\n%s" %
+        (' '.join(command_args), command_process.returncode, command_process.stdout.read() + command_process.stderr.read()))
+    return (command_process.returncode, command_process.stdout.read(), command_process.stderr.read())
 
-  def __init__(self, message):
-    """Print the error message with the exception and exit"""
-    print message
-    sys.exit(1)
+
+class McVirtException(Exception):
+  """Provides an exception to be thrown for errors in McVirt"""
+  pass
+
+
+class McVirtCommandException(McVirtException):
+  """Provides an exception to be throwm after errors whilst calling external commands"""
+  pass

@@ -4,10 +4,10 @@
 #
 import libvirt
 import xml.etree.ElementTree as ET
-import commands
+import subprocess
 import os
 
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import McVirt, McVirtException, McVirtCommandException
 
 class HardDrive:
   """Provides operations to manage hard drives, used by VMs"""
@@ -21,17 +21,21 @@ class HardDrive:
     if (not self._checkExists()):
       raise McVirtException('Disk %s for %s does not exist' % (self.id, self.vm_object.name))
 
-
   def increaseSize(self, increase_size):
     """Increases the size of a VM hard drive, given the size to increase the drive by"""
     # Ensure VM is stopped
     if (self.vm_object.isRunning()):
       raise McVirtException('VM must be stopped before increasing disk size')
-    command = 'lvextend -L +%sM %s' % (increase_size, self.path)
-    (status, output) = commands.getstatusoutput(command)
-    if (status):
-      raise McVirtException("Error whilst extending logical volume:\nCommand: %s\nExit code: %s\nOutput: %s" % (command, status, output))
 
+    # Ensure that VM has not been cloned and is not a clone
+    if (self.vm_object.getCloneParent() or self.vm_object.getCloneChildren()):
+      raise McVirtException('Cannot increase the disk of a cloned VM or a clone.')
+
+    command_args = ('lvextend', '-L', '+%sM' % increase_size, self.path)
+    try:
+      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+    except McVirtCommandException, e:
+      raise McVirtException("Error whilst extending logical volume:\n" + str(e))
 
   def _checkExists(self):
     """Checks if a disk exists, which is required before any operations
@@ -41,7 +45,6 @@ class HardDrive:
     else:
       return False
 
-
   @staticmethod
   def getDiskPath(volume_group, vm_name, disk_number = 1):
     """Returns the path of a disk image for a given VM"""
@@ -49,12 +52,10 @@ class HardDrive:
 
     return '/dev/' + volume_group + '/' + HardDrive.getDiskName(vm_name, disk_number)
 
-
   @staticmethod
   def getDiskName(vm_name, disk_number = 1):
     """Returns the name of a disk logical volume, for a given VM"""
     return 'mcvirt_vm-%s-disk-%s' % (vm_name, disk_number)
-
 
   def delete(self):
     """Delete the logical volume for the disk"""
@@ -83,10 +84,38 @@ class HardDrive:
   @staticmethod
   def _removeLogicalVolume(path):
     """Removes a logical volume"""
-    command = 'lvremove -f %s' % (path)
-    (status, output) = commands.getstatusoutput(command)
-    if (status):
-      raise McVirtException("Error whilst removing disk logical volume:\nCommand: %s\nExit code: %s\nOutput: %s" % (command, status, output))
+    command_args = ('lvremove', '-f', path)
+    try:
+      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+    except McVirtCommandException, e:
+      raise McVirtException("Error whilst removing disk logical volume:\n" + str(e))
+
+  def getSize(self):
+    """Gets the size of the disk (in MB)"""
+    # Use 'lvs' to obtain the size of the disk
+    command_args = ('lvs', '--nosuffix', '--noheadings', '--units', 'm', '--options', 'lv_size', self.path)
+    try:
+      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+    except McVirtCommandException, e:
+      raise McVirtException("Error whilst obtaining the size of the logical volume:\n" + str(e))
+
+    lv_size = command_output.strip().split('.')[0]
+    return int(lv_size)
+
+  def clone(self, destination_vm_object):
+    """Clone a VM, using snapshotting, attaching it to the new VM object"""
+    new_logical_volume_name = HardDrive.getDiskName(destination_vm_object.getName(), self.id)
+    disk_size = self.getSize()
+
+    # Perform a logical volume snapshot
+    command_args = ('lvcreate', '-L', '%sM' % disk_size, '-s', '-n', new_logical_volume_name, self.path)
+    try:
+      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+    except McVirtCommandException, e:
+      raise McVirtException("Error whilst cloning disk logical volume:\n" + str(e))
+
+    new_disk_object = HardDrive(destination_vm_object, self.id)
+    new_disk_object._addToVirtualMachine()
 
   @staticmethod
   def create(vm_object, size):
@@ -102,10 +131,21 @@ class HardDrive:
       raise McVirtException('Disk already exists: %s' % disk_path)
 
     # Create the raw disk image
-    command = 'lvcreate %s --name=%s --size=%sM' % (volume_group, logical_volume_name, size)
-    (status, output) = commands.getstatusoutput(command)
-    if (status):
-      raise McVirtException("Error whilst creating disk logical volume:\nCommand: %s\nExit code: %s\nOutput: %s" % (command, status, output))
+    command_args = ('lvcreate', volume_group, '--name', logical_volume_name, '--size', '%sM' % size)
+    try:
+      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+    except McVirtCommandException, e:
+      raise McVirtException("Error whilst creating disk logical volume:\n" + str(e))
+
+    disk_object = HardDrive(vm_object, disk_id)
+    disk_object._addToVirtualMachine()
+
+  def _addToVirtualMachine(self):
+    """Adds the current disk to a give VM"""
+    disk_id = self.id
+    volume_group = self.host_volume_group
+    disk_path = self.path
+    vm_object = self.vm_object
 
     # Update the libvirt domain XML configuration
     def updateXML(domain_xml):
@@ -130,11 +170,11 @@ class HardDrive:
 
   def activateDisk(self):
     """Starts the disk logical volume"""
-    command = 'lvchange -ay %s' % (self.path)
-    (status, output) = commands.getstatusoutput(command)
-    if (status):
-      raise McVirtException("Error whilst activating disk logical volume:\nCommand: %s\nExit code: %s\nOutput: %s" % (command, status, output))
-
+    command_args = ('lvchange', '-a', 'y', self.path)
+    try:
+      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+    except McVirtCommandException, e:
+      raise McVirtException("Error whilst activating disk logical volume:\n" + str(e))
 
   @staticmethod
   def _getAvailableId(vm_object):
@@ -150,7 +190,6 @@ class HardDrive:
         found_available_id = True
     return disk_id
 
-
   @staticmethod
   def getTargetDev(disk_id):
     """Determines the target dev, based on the disk's ID"""
@@ -160,7 +199,6 @@ class HardDrive:
 
     # Use ascii numbers to map 1 => a, 2 => b, etc...
     return 'sd' + chr(96 + int(disk_id))
-
 
   @staticmethod
   def createXML(path, disk_id):

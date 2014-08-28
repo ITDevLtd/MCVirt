@@ -33,7 +33,6 @@ class Auth:
     self.checkRootPrivileges()
     self.config = mcvirt_config
 
-
   def getUsername(self):
     """Obtains the username of the current user"""
     from mcvirt import McVirtException
@@ -55,7 +54,6 @@ class Auth:
     else:
       return False
 
-
   def checkRootPrivileges(self):
     """Ensures that the user is either running as root
     or using sudo"""
@@ -64,7 +62,6 @@ class Auth:
       raise McVirtException('McVirt must be run using sudo')
     else:
       return True
-
 
   def checkPermission(self, permission_enum, vm_object = None):
     """Checks if the user has a given permission, either globally through McVirt or for a
@@ -111,13 +108,11 @@ class Auth:
 
     return False
 
-
   def isSuperuser(self):
     """Determines if the current user is a superuser of McVirt"""
     superusers = self.config.getConfig()['superusers']
     username = self.getUsername()
     return ((username in superusers) or (username == 'root'))
-
 
   def addUserPermissionGroup(self, vm_object, permission_group, username):
     """Adds a user to a permissions group on a VM object"""
@@ -168,11 +163,9 @@ class Auth:
       else:
         raise McVirtException('User \'%s\' not in group \'%s\'' % (username, permission_group))
 
-
   def getPermissionGroups(self):
     """Returns a list of user groups"""
     return Auth.PERMISSION_GROUPS.keys()
-
 
   def getUsersInPermissionGroup(self, permission_group, vm_object = None):
     from mcvirt import McVirtException

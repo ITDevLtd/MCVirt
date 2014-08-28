@@ -15,7 +15,6 @@ class DiskDrive:
     """Sets member variables and obtains libvirt domain object"""
     self.vm_object = vm_object
 
-
   def attachISO(self, iso_file):
     """Attaches an ISO image to the disk drive of the VM"""
 
@@ -36,7 +35,6 @@ class DiskDrive:
       print 'Attached ISO %s' % iso_file
     else:
       raise McVirtException('An error occured whilst attaching ISO')
-
 
   def removeISO(self):
     """Removes ISO attached to the disk drive of a VM"""

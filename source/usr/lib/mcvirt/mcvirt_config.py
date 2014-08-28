@@ -17,7 +17,6 @@ class McVirtConfig(ConfigFile):
     if (not os.path.isfile(self.config_file)):
       self.create()
 
-
   def create(self):
     """Creates a basic VM configuration for new VMs"""
 
