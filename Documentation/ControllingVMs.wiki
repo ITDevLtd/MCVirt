@@ -27,13 +27,19 @@ virsh reset <VM Name>
 
  * By default, VMs are started with a VNC console, for which the port is automatically generated.
  * The default listening IP address is 127.0.0.1, meaning that it can only be accessed from the host itself.
- * To gain access to a VNC console, ssh to the host, forwarding the port:
+ * To access VNC, using the connect_vnc.pl script:
+{{{
+connect_vnc.pl <VM Name>
+Username: <Username>
+Password:
+}}}
+ * To manually gain access to a VNC console, ssh to the host, forwarding the port:
    1. Determine the port that the VM is listening on:
 {{{
-virsh vncdisplay <VM Name>
-127.0.0.1:4
+mcvirt info <VM Name> --vnc-port
+5904
 }}}
-   1. SSH onto the host, calculating the port to forward as 5900 + the port provided in the previous step (in this case, 4, meaning that the port to fowrad would be 5904)
+   1. SSH onto the host, calculating the port to forward as the port provided in the previous step (in this case, 4, meaning that the port to fowrad would be 5904)
      * The local port can be any available port. In this example, 1232 is used:
 {{{
 ssh <Username>@<Node> -L 1232:127.0.0.1:5904
@@ -57,3 +63,13 @@ virsh edit <VM Name>
    * top - monitor CPU/memory usages by processes
    * iftop - monitor network usage
    * iotop - monitor disk usages
+
+== Back up VM ==
+ * If the VM can be powered off:
+   * Power off the VM
+   * Login to <Node> as root
+   * Ensure the LV of the HDD is active
+   * Perform a dd of the HDD to a backup location:
+{{{
+dd if=/dev/<Node>-vg/mcvirt_vm-test-vm5-disk-1 of=/path/to/backup/location.raw bs=1M
+}}}
