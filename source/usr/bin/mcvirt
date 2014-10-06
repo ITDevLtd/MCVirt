@@ -132,7 +132,7 @@ if __name__ == "__main__":
       elif (action == 'create'):
         # Convert memory allocation from MiB to KiB
         memory_allocation = int(args.memory) * 1024
-        VirtualMachine.create(mcvirt_instance, vm_name, args.cpu_count,
+        VirtualMachine.createAuthCheck(mcvirt_instance, vm_name, args.cpu_count,
           memory_allocation, [args.disk_size], args.networks)
 
       elif (action == 'delete'):

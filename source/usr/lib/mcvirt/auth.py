@@ -9,7 +9,7 @@ from texttable import Texttable
 class Auth:
   """Provides authentication and permissions for performing functions within McVirt"""
 
-  PERMISSIONS = Enum('CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS', 'VIEW_VNC_CONSOLE')
+  PERMISSIONS = Enum('CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS', 'VIEW_VNC_CONSOLE', 'CLONE_VM', 'DELETE_CLONE')
 
   # Set the permissions for the permissions groups
   PERMISSION_GROUPS = \
@@ -23,7 +23,9 @@ class Auth:
       [
         PERMISSIONS.CHANGE_VM_POWER_STATE.index,
         PERMISSIONS.MANAGE_VM_USERS.index,
-        PERMISSIONS.VIEW_VNC_CONSOLE.index
+        PERMISSIONS.VIEW_VNC_CONSOLE.index,
+        PERMISSIONS.CLONE_VM.index,
+        PERMISSIONS.DELETE_CLONE.index
       ]
     }
 
@@ -63,6 +65,18 @@ class Auth:
     else:
       return True
 
+  def assertPermission(self, permission_enum, vm_object = None):
+    """Uses checkPermission function to determine if a user has a given permission
+    and throws an exception if the permission is not present"""
+    from mcvirt import McVirtException
+
+    if (self.checkPermission(permission_enum, vm_object)):
+      return True
+    else:
+      # If the permission has not been found, throw an exception explaining that
+      # the user does not have permission
+      raise McVirtException('User does not have the required permission: %s' % permission_enum.key)
+
   def checkPermission(self, permission_enum, vm_object = None):
     """Checks if the user has a given permission, either globally through McVirt or for a
     given VM"""
@@ -86,9 +100,7 @@ class Auth:
       if (self.checkPermissionInConfig(vm_config, self.getUsername(), permission_enum)):
         return True
 
-    # If the permission has not been found, throw an exception explaining that
-    # the user does not have permission
-    raise McVirtException('User does not have the required permission: %s' % permission_enum.key)
+    return False
 
   def checkPermissionInConfig(self, permission_config, user, permission_enum):
     """Reads a permissions config and determines if a user has a given permission"""
@@ -120,7 +132,7 @@ class Auth:
 
     # Check if user running script is able to add users to permission group
     if (self.isSuperuser() or
-      (self.checkPermission(Auth.PERMISSIONS.MANAGE_VM_USERS, vm_object) and permission_group == 'user')):
+      (self.assertPermission(Auth.PERMISSIONS.MANAGE_VM_USERS, vm_object) and permission_group == 'user')):
 
       # Check if user is already in the group
       permission_config = vm_object.config.getPermissionConfig()
@@ -145,7 +157,7 @@ class Auth:
 
     # Check if user running script is able to remove users to permission group
     if (self.isSuperuser() or
-      (self.checkPermission(Auth.PERMISSIONS.MANAGE_VM_USERS, vm_object) and permission_group == 'user')):
+      (self.assertPermission(Auth.PERMISSIONS.MANAGE_VM_USERS, vm_object) and permission_group == 'user')):
 
       # Check if user exists in the group
       permission_config = vm_object.config.getPermissionConfig()
@@ -166,6 +178,18 @@ class Auth:
   def getPermissionGroups(self):
     """Returns a list of user groups"""
     return Auth.PERMISSION_GROUPS.keys()
+
+  def copyPermissions(self, source_vm, dest_vm):
+    """Copies the permissions from a given VM to this VM.
+    This functionality is used whilst cloning a VM"""
+    # Obtain permission configuration for source VM
+    permission_config = source_vm.config.getPermissionConfig()
+
+    # Add permissions configuration from source VM to destination VM
+    def addUserToConfig(vm_config):
+      vm_config['permissions'] = permission_config
+
+    dest_vm.config.updateConfig(addUserToConfig)
 
   def getUsersInPermissionGroup(self, permission_group, vm_object = None):
     from mcvirt import McVirtException
