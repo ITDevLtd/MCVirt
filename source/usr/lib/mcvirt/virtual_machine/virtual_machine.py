@@ -303,7 +303,7 @@ class VirtualMachine:
   def createAuthCheck(mcvirt_instance, name, cpu_cores, memory_allocation, hard_drives, network_interfaces):
     """Checks that the user has permission to create VMs and creates the new VM"""
     mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CREATE_VM)
-    create(mcvirt_instance, name, cpu_cores, memory_allocation, hard_drives, network_interfaces)
+    VirtualMachine.create(mcvirt_instance, name, cpu_cores, memory_allocation, hard_drives, network_interfaces)
 
   @staticmethod
   def create(mcvirt_instance, name, cpu_cores, memory_allocation, hard_drives, network_interfaces):
