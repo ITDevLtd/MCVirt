@@ -23,6 +23,37 @@ mcvirt stop <VM name>
 virsh reset <VM Name>
 }}}
 
+== Get VM information ==
+
+ * In order to view information about a VM, use the 'info' parameter for McVirt:
+{{{
+mcvirt info <VM Name>
+}}}
+ * Example output:
+{{{
+<Username>@host:~# mcvirt info test-vm
+Name              | test-vm
+CPU Cores         | 1
+Memory Allocation | 512MB
+State             | Running
+ISO location      | /var/lib/mcvirt/iso/ubuntu-12.04-server-amd64.iso
+-- Disk ID --     | -- Disk Size --
+1                 | 8GB
+-- MAC Address -- | -- Network --
+52:54:00:2b:8a:a1 | Production
+-- Group --       | -- Users --
+owner             | mc
+user              | nd
+}}}
+
+== Listing virtual machines ==
+
+ * In order to list the virtual machines on a host, run the following:
+{{{
+mcvirt list
+}}}
+ * This will provide the names of the virtual machines and their current state (running/stopped)
+
 == Connect to VNC ==
 
  * By default, VMs are started with a VNC console, for which the port is automatically generated.

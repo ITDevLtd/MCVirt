@@ -53,3 +53,15 @@ class DiskDrive:
       # Update the libvirt cdrom device
       if (self.vm_object.domain_object.updateDeviceFlags(cdrom_xml_string)):
         raise McVirtException('An error occured whilst detaching ISO')
+
+  def getCurrentDisk(self):
+    """Returns the path of the disk currently attached to the VM"""
+
+    # Import cdrom XML template
+    domain_config = self.vm_object.getLibvirtConfig()
+    source_xml = domain_config.find('./devices/disk[@device="cdrom"]/source')
+
+    if (source_xml is not None):
+      return source_xml.get('file')
+    else:
+      return None

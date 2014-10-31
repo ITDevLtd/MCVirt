@@ -202,16 +202,3 @@ class Auth:
       return permission_config[permission_group]
     else:
       raise McVirtException('Permission group \'%s\' does not exist' % permission_group)
-
-  def getInfo(self, vm_object = None):
-    """Prints permission configuration for a given user"""
-    table = Texttable()
-    table.header(('User Group', 'Users'))
-
-    for permission_group in self.getPermissionGroups():
-
-      users = self.getUsersInPermissionGroup(permission_group, vm_object)
-      users_string = ','.join(users)
-      table.add_row((permission_group, users_string))
-    print 'Permissions:'
-    print table.draw()

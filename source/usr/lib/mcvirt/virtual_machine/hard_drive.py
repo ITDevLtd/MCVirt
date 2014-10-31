@@ -102,6 +102,10 @@ class HardDrive:
     lv_size = command_output.strip().split('.')[0]
     return int(lv_size)
 
+  def getId(self):
+    """Returns the disk ID of the current disk"""
+    return self.id
+
   def clone(self, destination_vm_object):
     """Clone a VM, using snapshotting, attaching it to the new VM object"""
     new_logical_volume_name = HardDrive.getDiskName(destination_vm_object.getName(), self.id)

@@ -26,7 +26,6 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 if __name__ == "__main__":
 
   parent_parser = ThrowingArgumentParser(add_help=False)
-  parent_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
   # Create an argument parser object
   parser = ThrowingArgumentParser(description='Manage the McVirt host')
@@ -35,9 +34,11 @@ if __name__ == "__main__":
   # Add arguments for starting a VM
   start_parser = subparsers.add_parser('start', help='Start VM help', parents=[parent_parser])
   start_parser.add_argument('--iso', metavar='ISO Path', type=str, help='Path of ISO to attach to VM')
+  start_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
   # Add arguments for stopping a VM
   stop_parser = subparsers.add_parser('stop', help='Stop VM help', parents=[parent_parser])
+  stop_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
   # Add arguments for creating a VM
   create_parser = subparsers.add_parser('create', help='Create VM help', parents=[parent_parser])
@@ -49,11 +50,13 @@ if __name__ == "__main__":
     help='Number of virtual CPU cores to be allocated to the VM', required=True)
   create_parser.add_argument('--network', dest='networks', metavar='Network Connection', type=str,
     action='append', help='Name of networks to connect VM to (each network has a separate NIC)')
+  create_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
   # Get arguments for deleting a VM
   delete_parser = subparsers.add_parser('delete', help='Delete VM help', parents=[parent_parser])
   delete_parser.add_argument('--remove-data', dest='remove_data', help='Removes the VM data from the host',
     action='store_true')
+  delete_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
   # Get arguments for updating a VM
   update_parser = subparsers.add_parser('update', help='Update VM help', parents=[parent_parser])
@@ -71,6 +74,7 @@ if __name__ == "__main__":
     help='Increases VM disk by provided amount (MB)')
   update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
     help='The ID of the disk to be increased by')
+  update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
   # Get arguments for making permission changes to a VM
   permission_parser = subparsers.add_parser('permission', help='Update VM permissions help', parents=[parent_parser])
@@ -82,16 +86,22 @@ if __name__ == "__main__":
     help='Adds a given user as an owner to a VM, allowing them to perform basic functions and manager users.')
   permission_parser.add_argument('--delete-owner', dest='delete_owner', metavar='Delete User', type=str,
     help='Removes a given owner from a VM. This prevents them to perform basic functions and manager users.')
+  permission_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
   # Get arguments for getting VM information
   info_parser = subparsers.add_parser('info', help='View VM info help', parents=[parent_parser])
   info_parser.add_argument('--vnc-port', dest='vnc_port', help='Displays the port that VNC is being hosted from',
     action='store_true')
+  info_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+
+  # Get arguments for listing VMs
+  list_parser = subparsers.add_parser('list', help='List VMs present on host', parents=[parent_parser])
 
   # Get arguments for cloning a VM
   clone_parser = subparsers.add_parser('clone', help='Clone a VM permissions help', parents=[parent_parser])
   clone_parser.add_argument('--template', dest='template', metavar='Parent VM', type=str, required=True,
     help='The name of the VM to clone from')
+  clone_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
 
   def parse_arguments(parser, script_args = None):
@@ -102,7 +112,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args(script_args)
     action = args.action
-    vm_name = args.vm_name
 
     try:
       # Get an instance of McVirt
@@ -110,7 +119,7 @@ if __name__ == "__main__":
 
       # Perform functions on the VM based on the action passed to the script
       if (action == 'start'):
-        vm_object = VirtualMachine(mcvirt_instance, vm_name)
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         disk_drive_object = DiskDrive(vm_object)
 
         if (args.iso):
@@ -126,21 +135,21 @@ if __name__ == "__main__":
         vm_object.start()
 
       elif (action == 'stop'):
-        vm_object = VirtualMachine(mcvirt_instance, vm_name)
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         vm_object.stop()
 
       elif (action == 'create'):
         # Convert memory allocation from MiB to KiB
         memory_allocation = int(args.memory) * 1024
-        VirtualMachine.createAuthCheck(mcvirt_instance, vm_name, args.cpu_count,
+        VirtualMachine.createAuthCheck(mcvirt_instance, args.vm_name, args.cpu_count,
           memory_allocation, [args.disk_size], args.networks)
 
       elif (action == 'delete'):
-        vm_object = VirtualMachine(mcvirt_instance, vm_name)
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         vm_object.delete(args.remove_data)
 
       elif (action == 'update'):
-        vm_object = VirtualMachine(mcvirt_instance, vm_name)
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         if (args.memory):
           old_ram_allocation = int(vm_object.getRAM()) / 1024
           print 'RAM allocation will be changed from %sMiB to %sMiB.' % (old_ram_allocation, args.memory)
@@ -161,7 +170,7 @@ if __name__ == "__main__":
           harddrive_object.increaseSize(args.increase_disk)
 
       elif (action == 'permission'):
-        vm_object = VirtualMachine(mcvirt_instance, vm_name)
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         auth_object = mcvirt_instance.getAuthObject()
         if (args.add_user):
           auth_object.addUserPermissionGroup(vm_object, 'user', args.add_user)
@@ -173,17 +182,19 @@ if __name__ == "__main__":
           auth_object.deleteUserPermissionGroup(vm_object, 'owner', args.delete_owner)
 
       elif (action == 'info'):
-        vm_object = VirtualMachine(mcvirt_instance, vm_name)
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         auth_object = mcvirt_instance.getAuthObject()
         if (args.vnc_port):
           print vm_object.getVncPort()
         else:
-          vm_object.getInfo()
-          auth_object.getInfo(vm_object)
+          vm_object.printInfo()
 
       elif (action == 'clone'):
         vm_object = VirtualMachine(mcvirt_instance, args.template)
-        vm_object.clone(mcvirt_instance, vm_name)
+        vm_object.clone(mcvirt_instance, args.vm_name)
+
+      elif (action == 'list'):
+        mcvirt_instance.listVms()
 
     except (McVirtException, McVirtCommandException), e:
       print 'Error: ' + str(e)

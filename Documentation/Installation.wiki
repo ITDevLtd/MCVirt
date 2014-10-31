@@ -35,9 +35,9 @@ virsh net-undefine default
  * Adapt the example, changing the network name, which is used to identify the network object for use with virtual machines, and bridge name, which identifies the vmbr interface that the network binds to.
  * Import the adapted network XML using the following:
 {{{
-virsh pool-define < network.xml
-virsh pool-autostart 'Production'
-virsh pool-start 'Production'
+virsh net-define ./network.xml
+virsh net-autostart 'Production'
+virsh net-start 'Production'
 }}}
   '''Note:''' Replace 'Production' with the name of the new network object.
 

@@ -47,6 +47,10 @@ class NetworkAdapter:
     network = interface_config.find('./source').get('network')
     return network
 
+  def getMacAddress(self):
+    """Returns the MAC address of the current network object"""
+    return self.mac_address
+
   @staticmethod
   def create(vm_object, network):
     """Add interface device to the given VM object, connected to the given network"""

@@ -8,6 +8,7 @@ import re
 from subprocess import call
 import os
 import shutil
+from texttable import Texttable
 
 from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.virtual_machine.hard_drive import HardDrive
@@ -92,8 +93,49 @@ class VirtualMachine:
   def isRunning(self):
     return (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING)
 
-  def getInfo(self):
-    print 'Name: ' + self.getName()
+  def printInfo(self):
+    """Prints information about the current VM"""
+    table = Texttable()
+    warnings = ''
+    table.set_deco(Texttable.HEADER | Texttable.VLINES)
+    table.add_row(('Name', self.getName()))
+    table.add_row(('CPU Cores', self.getCPU()))
+    table.add_row(('Memory Allocation', str(int(self.getRAM())/1024) + 'MB'))
+    table.add_row(('State', 'Running' if (self.isRunning()) else 'Stopped'))
+
+    # Display the path of the attached ISO (if present)
+    disk_object = DiskDrive(self)
+    disk_path = disk_object.getCurrentDisk()
+    if (disk_path is not None):
+      table.add_row(('ISO location', disk_path))
+
+    # Get info for each disk
+    disk_objects = self.getDiskObjects()
+    if (len(disk_objects) != 0):
+      table.add_row(('-- Disk ID --', '-- Disk Size --'))
+      for disk_object in disk_objects:
+        table.add_row((str(disk_object.getId()), str(int(disk_object.getSize())/1000) + 'GB'))
+    else:
+      warnings += "No hard disks present on machine\n"
+
+    # Create info table for network adapters
+    network_adapters = self.getNetworkObjects()
+    if (len(network_adapters) != 0):
+      table.add_row(('-- MAC Address --', '-- Network --'))
+      for network_adapter in network_adapters:
+        table.add_row((network_adapter.getMacAddress(), network_adapter.getConnectedNetwork()))
+    else:
+      warnings += "No network adapters present on machine\n"
+
+    # Get information about the permissions for the VM
+    table.add_row(('-- Group --', '-- Users --'))
+    for permission_group in self.auth.getPermissionGroups():
+      users = self.auth.getUsersInPermissionGroup(permission_group, self)
+      users_string = ','.join(users)
+      table.add_row((permission_group, users_string))
+
+    print table.draw() + "\n"
+    print warnings
 
   def delete(self, delete_disk = False):
     """Delete the VM - removing it from libvirt and from the filesystem"""
