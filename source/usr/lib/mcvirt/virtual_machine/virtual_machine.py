@@ -103,15 +103,25 @@ class VirtualMachine:
     table.add_row(('Memory Allocation', str(int(self.getRAM())/1024) + 'MB'))
     table.add_row(('State', 'Running' if (self.isRunning()) else 'Stopped'))
 
+    # Display clone children, if they exist
+    clone_children = self.getCloneChildren()
+    if (len(clone_children)):
+      table.add_row(('Clone Children', ','.join(clone_children)))
+
+    # Display clone parent, if it exists
+    clone_parent = self.getCloneParent()
+    if (clone_parent):
+      table.add_row(('Clone Parent', clone_parent))
+
     # Display the path of the attached ISO (if present)
     disk_object = DiskDrive(self)
     disk_path = disk_object.getCurrentDisk()
-    if (disk_path is not None):
+    if (disk_path):
       table.add_row(('ISO location', disk_path))
 
     # Get info for each disk
     disk_objects = self.getDiskObjects()
-    if (len(disk_objects) != 0):
+    if (len(disk_objects)):
       table.add_row(('-- Disk ID --', '-- Disk Size --'))
       for disk_object in disk_objects:
         table.add_row((str(disk_object.getId()), str(int(disk_object.getSize())/1000) + 'GB'))

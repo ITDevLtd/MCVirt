@@ -5,7 +5,7 @@
 #
 
 
-VERSION=0.6
+VERSION=0.7
 ARCH=all
 
 # Create a temporary directory
