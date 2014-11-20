@@ -52,7 +52,7 @@ class McVirt:
   def _connect(self, uri):
     """
     Connect to libvirt and store the connection as an object variable.
-    Exit if an error occures whilst connecting.
+    Exit if an error occurs whilst connecting.
     """
     connection = libvirt.open(uri)
     if (connection == None):
@@ -108,5 +108,5 @@ class McVirtException(Exception):
 
 
 class McVirtCommandException(McVirtException):
-  """Provides an exception to be throwm after errors whilst calling external commands"""
+  """Provides an exception to be thrown after errors whilst calling external commands"""
   pass
