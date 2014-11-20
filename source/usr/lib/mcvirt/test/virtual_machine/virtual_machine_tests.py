@@ -13,11 +13,11 @@ from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 
 def stopAndDelete(mcvirt_connection, vm_name):
   """Stops and removes VMs"""
-    if (VirtualMachine._checkExists(mcvirt_connection.getLibvirtConnection(), vm_name)):
-      vm_object = VirtualMachine(mcvirt_connection, vm_name)
-      if (vm_object.isRunning()):
-        vm_object.stop()
-      vm_object.delete(True)
+  if (VirtualMachine._checkExists(mcvirt_connection.getLibvirtConnection(), vm_name)):
+    vm_object = VirtualMachine(mcvirt_connection, vm_name)
+    if (vm_object.isRunning()):
+      vm_object.stop()
+    vm_object.delete(True)
 
 class VirtualMachineTests(unittest.TestCase):
 
