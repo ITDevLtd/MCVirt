@@ -46,7 +46,7 @@ class McVirt:
 
   def __del__(self):
     """Removes McVirt lock file on object destruction"""
-    if (self.obtained_filelock):
+    if (self.obtained_filelock and self.lockfile_object.is_locked()):
       self.lockfile_object.release()
 
   def _connect(self, uri):
