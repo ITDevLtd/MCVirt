@@ -38,7 +38,7 @@ class VirtualMachineTests(unittest.TestCase):
     # Ensure any test VM is stopped and removed from the machine
     stopAndDelete(self.mcvirt, self.test_vm_name)
 
-  def testCreate(self):
+  def test_create(self):
     """Tests the creation of VMs through the argument parser"""
     # Ensure VM does not exist
     self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
@@ -56,7 +56,14 @@ class VirtualMachineTests(unittest.TestCase):
     # Ensure VM exists
     self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
 
-  def testStart(self):
+    # Obtain VM object
+    vm_object = VirtualMachine(self.mcvirt, self.test_vm_name)
+
+    # Check each of the attributes for VM
+    self.assertEqual(int(vm_object.getRAM()), int(memory_allocation) * 1024)
+    self.assertEqual(vm_object.getCPU(), cpu_count)
+
+  def test_start(self):
     """Tests starting VMs through the argument parser"""
     # Create Virtual machine
     test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
@@ -67,7 +74,7 @@ class VirtualMachineTests(unittest.TestCase):
     # Ensure that it is running
     self.assertTrue(test_vm_object.isRunning())
 
-  def testStop(self):
+  def test_stop(self):
     """Tests stopping VMs through the argument parser"""
     # Create virtual machine for testing
     test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
