@@ -111,81 +111,87 @@ class Parser:
     # Get an instance of McVirt
     mcvirt_instance = McVirt()
 
-    # Perform functions on the VM based on the action passed to the script
-    if (action == 'start'):
-      vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-      disk_drive_object = DiskDrive(vm_object)
+    try:
+      # Perform functions on the VM based on the action passed to the script
+      if (action == 'start'):
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        disk_drive_object = DiskDrive(vm_object)
 
-      if (args.iso):
-        # If an ISO has been specified, attach it to the VM before booting
-        # and adjust boot order to boot from ISO first
-        disk_drive_object.attachISO(args.iso)
-        vm_object.setBootOrder(['cdrom', 'hd'])
-      else:
-        # If not ISO was specified, remove any attached ISOs and change boot order
-        # to boot from HDD
-        disk_drive_object.removeISO()
-        vm_object.setBootOrder(['hd'])
-      vm_object.start()
+        if (args.iso):
+          # If an ISO has been specified, attach it to the VM before booting
+          # and adjust boot order to boot from ISO first
+          disk_drive_object.attachISO(args.iso)
+          vm_object.setBootOrder(['cdrom', 'hd'])
+        else:
+          # If not ISO was specified, remove any attached ISOs and change boot order
+          # to boot from HDD
+          disk_drive_object.removeISO()
+          vm_object.setBootOrder(['hd'])
+        vm_object.start()
 
-    elif (action == 'stop'):
-      vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-      vm_object.stop()
+      elif (action == 'stop'):
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        vm_object.stop()
 
-    elif (action == 'create'):
-      # Convert memory allocation from MiB to KiB
-      memory_allocation = int(args.memory) * 1024
-      VirtualMachine.createAuthCheck(mcvirt_instance, args.vm_name, args.cpu_count,
-        memory_allocation, [args.disk_size], args.networks)
+      elif (action == 'create'):
+        # Convert memory allocation from MiB to KiB
+        memory_allocation = int(args.memory) * 1024
+        VirtualMachine.createAuthCheck(mcvirt_instance, args.vm_name, args.cpu_count,
+          memory_allocation, [args.disk_size], args.networks)
 
-    elif (action == 'delete'):
-      vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-      vm_object.delete(args.remove_data)
+      elif (action == 'delete'):
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        vm_object.delete(args.remove_data)
 
-    elif (action == 'update'):
-      vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-      if (args.memory):
-        old_ram_allocation = int(vm_object.getRAM()) / 1024
-        print 'RAM allocation will be changed from %sMiB to %sMiB.' % (old_ram_allocation, args.memory)
-        new_ram_allocation = int(args.memory) * 1024
-        vm_object.updateRAM(new_ram_allocation)
-      if (args.cpu_count):
-        old_cpu_count = vm_object.getCPU()
-        print 'Number of virtual cores will be changed from %s to %s.' % (old_cpu_count, args.cpu_count)
-        vm_object.updateCPU(args.cpu_count)
-      if (args.remove_network):
-        NetworkAdapter.delete(vm_object, args.remove_network)
-      if (args.add_network):
-        NetworkAdapter.create(vm_object, args.add_network)
-      if (args.add_disk):
-        HardDrive.create(vm_object, args.add_disk)
-      if (args.increase_disk and args.disk_id):
-        harddrive_object = HardDrive(vm_object, args.disk_id)
-        harddrive_object.increaseSize(args.increase_disk)
+      elif (action == 'update'):
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        if (args.memory):
+          old_ram_allocation = int(vm_object.getRAM()) / 1024
+          print 'RAM allocation will be changed from %sMiB to %sMiB.' % (old_ram_allocation, args.memory)
+          new_ram_allocation = int(args.memory) * 1024
+          vm_object.updateRAM(new_ram_allocation)
+        if (args.cpu_count):
+          old_cpu_count = vm_object.getCPU()
+          print 'Number of virtual cores will be changed from %s to %s.' % (old_cpu_count, args.cpu_count)
+          vm_object.updateCPU(args.cpu_count)
+        if (args.remove_network):
+          NetworkAdapter.delete(vm_object, args.remove_network)
+        if (args.add_network):
+          NetworkAdapter.create(vm_object, args.add_network)
+        if (args.add_disk):
+          HardDrive.create(vm_object, args.add_disk)
+        if (args.increase_disk and args.disk_id):
+          harddrive_object = HardDrive(vm_object, args.disk_id)
+          harddrive_object.increaseSize(args.increase_disk)
 
-    elif (action == 'permission'):
-      vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-      auth_object = mcvirt_instance.getAuthObject()
-      if (args.add_user):
-        auth_object.addUserPermissionGroup(vm_object, 'user', args.add_user)
-      if (args.delete_user):
-        auth_object.deleteUserPermissionGroup(vm_object, 'user', args.delete_user)
-      if (args.add_owner):
-        auth_object.addUserPermissionGroup(vm_object, 'owner', args.add_owner)
-      if (args.delete_owner):
-        auth_object.deleteUserPermissionGroup(vm_object, 'owner', args.delete_owner)
+      elif (action == 'permission'):
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        auth_object = mcvirt_instance.getAuthObject()
+        if (args.add_user):
+          auth_object.addUserPermissionGroup(vm_object, 'user', args.add_user)
+        if (args.delete_user):
+          auth_object.deleteUserPermissionGroup(vm_object, 'user', args.delete_user)
+        if (args.add_owner):
+          auth_object.addUserPermissionGroup(vm_object, 'owner', args.add_owner)
+        if (args.delete_owner):
+          auth_object.deleteUserPermissionGroup(vm_object, 'owner', args.delete_owner)
 
-    elif (action == 'info'):
-      vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-      auth_object = mcvirt_instance.getAuthObject()
-      if (args.vnc_port):
-        print vm_object.getVncPort()
-      else:
-        vm_object.printInfo()
+      elif (action == 'info'):
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        auth_object = mcvirt_instance.getAuthObject()
+        if (args.vnc_port):
+          print vm_object.getVncPort()
+        else:
+          vm_object.printInfo()
 
-    elif (action == 'clone'):
-      vm_object = VirtualMachine(mcvirt_instance, args.template)
-      vm_object.clone(mcvirt_instance, args.vm_name)
+      elif (action == 'clone'):
+        vm_object = VirtualMachine(mcvirt_instance, args.template)
+        vm_object.clone(mcvirt_instance, args.vm_name)
 
-    elif (action == 'list'):
-      mcvirt_instance.listVms()
+      elif (action == 'list'):
+        mcvirt_instance.listVms()
+    except Exception, e:
+      # Unset mcvirt instance - forcing the object to be destroyed
+      mcvirt_instance = None
+      print str(e)
+      sys.exit(1)
