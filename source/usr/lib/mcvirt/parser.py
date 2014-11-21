@@ -193,5 +193,4 @@ class Parser:
     except Exception, e:
       # Unset mcvirt instance - forcing the object to be destroyed
       mcvirt_instance = None
-      print str(e)
-      sys.exit(1)
+      raise e
