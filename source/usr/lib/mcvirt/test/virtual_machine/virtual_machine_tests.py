@@ -4,12 +4,14 @@
 #
 import unittest
 import sys
+import os
+import shutil
 
 sys.path.insert(0, '/usr/lib')
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import McVirt
-from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+from mcvirt.mcvirt import McVirt, McVirtException
+from mcvirt.virtual_machine.virtual_machine import VirtualMachine, InvalidVirtualMachineName, VMAlreadyExistsException, VMDirectoryAlreadyExists
 
 def stopAndDelete(mcvirt_connection, vm_name):
   """Stops and removes VMs"""
@@ -30,6 +32,12 @@ class VirtualMachineTests(unittest.TestCase):
     self.mcvirt = McVirt()
     self.test_vm_name = 'unittest-test-vm'
 
+    # Setup variable for test VM
+    self.cpu_count = '1'
+    self.disk_size = '100'
+    self.memory_allocation = '100'
+    self.network_name = 'Production'
+
     # Ensure any test VM is stopped and removed from the machine
     stopAndDelete(self.mcvirt, self.test_vm_name)
 
@@ -43,15 +51,10 @@ class VirtualMachineTests(unittest.TestCase):
     # Ensure VM does not exist
     self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
 
-    cpu_count = '1'
-    disk_size = '100'
-    memory_allocation = '100'
-    network_name = 'Production'
-
     # Create virtual machine using parser
     self.parser.parse_arguments('create %s' % self.test_vm_name +
       ' --cpu-count %s --disk-size %s --memory %s --network %s' %
-      (cpu_count, disk_size, memory_allocation, network_name))
+      (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name))
 
     # Ensure VM exists
     self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
@@ -60,8 +63,59 @@ class VirtualMachineTests(unittest.TestCase):
     vm_object = VirtualMachine(self.mcvirt, self.test_vm_name)
 
     # Check each of the attributes for VM
-    self.assertEqual(int(vm_object.getRAM()), int(memory_allocation) * 1024)
-    self.assertEqual(vm_object.getCPU(), cpu_count)
+    self.assertEqual(int(vm_object.getRAM()), int(self.memory_allocation) * 1024)
+    self.assertEqual(vm_object.getCPU(), self.cpu_count)
+
+  def test_invalid_name(self):
+    """Attempts to create a virtual machine with an invalid name"""
+    invalid_vm_name = 'invalid.name+'
+
+    # Ensure VM does not exist
+    self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), invalid_vm_name))
+
+    # Attempt to create VM and ensure exception is thrown
+    with self.assertRaises(InvalidVirtualMachineName):
+      self.parser.parse_arguments('create "%s"' % invalid_vm_name +
+        ' --cpu-count %s --disk-size %s --memory %s --network %s' %
+        (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name))
+
+    # Ensure VM has not been created
+    self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), invalid_vm_name))
+
+  def test_create_duplicate(self):
+    """Attempts to create two VMs with the same name"""
+    # Create Virtual machine
+    original_memory_allocation = 200
+    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, original_memory_allocation, [100], ['Production'])
+    self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
+
+    # Attempt to create VM with duplicate name, ensuring that an exception is thrown
+    with self.assertRaises(VMAlreadyExistsException):
+      VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
+
+    # Ensure original VM already exists
+    self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
+
+    # Check memory amount of VM matches original VM
+    self.assertEqual(int(test_vm_object.getRAM()), int(original_memory_allocation))
+
+    # Remove test VM
+    test_vm_object.delete(True)
+
+  def test_vm_directory_already_exists(self):
+    """Attempts to create a VM whilst the directory for the VM already exists"""
+    # Create the directory for the VM
+    os.makedirs(VirtualMachine.getVMDir(self.test_vm_name))
+
+    # Attempt to create VM, expecting an exception for the directory already existing
+    with self.assertRaises(VMDirectoryAlreadyExists):
+      VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
+
+    # Ensure the VM has not been created
+    self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
+
+    # Remove directory
+    shutil.rmtree(VirtualMachine.getVMDir(self.test_vm_name))
 
   def test_start(self):
     """Tests starting VMs through the argument parser"""
