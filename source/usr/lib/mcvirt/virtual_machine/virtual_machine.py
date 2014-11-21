@@ -21,12 +21,20 @@ class InvalidVirtualMachineName(McVirtException):
   """Exception thrown if a VM is created with an invalid name"""
   pass
 
-class VMAlreadyExistsException(McVirtException):
+class VmAlreadyExistsException(McVirtException):
   """Exception thrown if a VM is created with a duplicate name"""
   pass
 
-class VMDirectoryAlreadyExists(McVirtException):
+class VmDirectoryAlreadyExists(McVirtException):
   """Exception thrown if a directory for a VM already exists"""
+  pass
+
+class VmAlreadyStopped(McVirtException):
+  """Exception thrown if a VM is already stopped when attempting to stop it"""
+  pass
+
+class VmAlreadyStarted(McVirtException):
+  """Exception thrown if a VM is already started when attempting to start it"""
   pass
 
 class VirtualMachine:
@@ -81,7 +89,7 @@ class VirtualMachine:
       print 'Successfully stopped VM'
 
     else:
-      raise McVirtException('The VM is already shutdown')
+      raise VmAlreadyStopped('The VM is already shutdown')
 
   def start(self):
     """Starts the VM"""
@@ -100,7 +108,7 @@ class VirtualMachine:
       print 'Successfully started VM'
 
     else:
-      raise McVirtException('The VM is already running')
+      raise VmAlreadyStarted('The VM is already running')
 
   def isRunning(self):
     return (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING)
@@ -380,7 +388,7 @@ class VirtualMachine:
 
     # Determine if VM already exists
     if (VirtualMachine._checkExists(mcvirt_instance.getLibvirtConnection(), name)):
-      raise VMAlreadyExistsException('Error: VM already exists')
+      raise VmAlreadyExistsException('Error: VM already exists')
 
     # Import domain XML template
     domain_xml = ET.parse(McVirt.TEMPLATE_DIR + '/domain.xml')
@@ -394,7 +402,7 @@ class VirtualMachine:
     if (not os.path.exists(VirtualMachine.getVMDir(name))):
       os.makedirs(VirtualMachine.getVMDir(name))
     else:
-      raise VMDirectoryAlreadyExists('Error: VM directory already exists')
+      raise VmDirectoryAlreadyExists('Error: VM directory already exists')
 
     # Create VM configuration file
     VirtualMachineConfig.create(name)
