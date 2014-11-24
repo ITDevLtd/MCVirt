@@ -17,24 +17,24 @@ from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth import Auth
 
-class InvalidVirtualMachineName(McVirtException):
-  """Exception thrown if a VM is created with an invalid name"""
+class InvalidVirtualMachineNameException(McVirtException):
+  """VM is being with an invalid name"""
   pass
 
 class VmAlreadyExistsException(McVirtException):
-  """Exception thrown if a VM is created with a duplicate name"""
+  """VM is being with a duplicate name"""
   pass
 
-class VmDirectoryAlreadyExists(McVirtException):
-  """Exception thrown if a directory for a VM already exists"""
+class VmDirectoryAlreadyExistsException(McVirtException):
+  """Directory for a VM already exists"""
   pass
 
-class VmAlreadyStopped(McVirtException):
-  """Exception thrown if a VM is already stopped when attempting to stop it"""
+class VmAlreadyStoppedException(McVirtException):
+  """VM is already stopped when attempting to stop it"""
   pass
 
-class VmAlreadyStarted(McVirtException):
-  """Exception thrown if a VM is already started when attempting to start it"""
+class VmAlreadyStartedException(McVirtException):
+  """VM is already started when attempting to start it"""
   pass
 
 class VirtualMachine:
@@ -89,7 +89,7 @@ class VirtualMachine:
       print 'Successfully stopped VM'
 
     else:
-      raise VmAlreadyStopped('The VM is already shutdown')
+      raise VmAlreadyStoppedException('The VM is already shutdown')
 
   def start(self):
     """Starts the VM"""
@@ -108,7 +108,7 @@ class VirtualMachine:
       print 'Successfully started VM'
 
     else:
-      raise VmAlreadyStarted('The VM is already running')
+      raise VmAlreadyStartedException('The VM is already running')
 
   def isRunning(self):
     return (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING)
@@ -384,7 +384,7 @@ class VirtualMachine:
     # Validate the VM name
     valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
     if (bool(valid_name_re(name))):
-      raise InvalidVirtualMachineName('Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes')
+      raise InvalidVirtualMachineNameException('Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes')
 
     # Determine if VM already exists
     if (VirtualMachine._checkExists(mcvirt_instance.getLibvirtConnection(), name)):
@@ -402,7 +402,7 @@ class VirtualMachine:
     if (not os.path.exists(VirtualMachine.getVMDir(name))):
       os.makedirs(VirtualMachine.getVMDir(name))
     else:
-      raise VmDirectoryAlreadyExists('Error: VM directory already exists')
+      raise VmDirectoryAlreadyExistsException('Error: VM directory already exists')
 
     # Create VM configuration file
     VirtualMachineConfig.create(name)
