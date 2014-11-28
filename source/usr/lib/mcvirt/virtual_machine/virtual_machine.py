@@ -18,11 +18,11 @@ from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth import Auth
 
 class InvalidVirtualMachineNameException(McVirtException):
-  """VM is being with an invalid name"""
+  """VM is being created with an invalid name"""
   pass
 
 class VmAlreadyExistsException(McVirtException):
-  """VM is being with a duplicate name"""
+  """VM is being created with a duplicate name"""
   pass
 
 class VmDirectoryAlreadyExistsException(McVirtException):
