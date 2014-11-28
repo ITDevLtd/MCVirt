@@ -17,6 +17,26 @@ from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth import Auth
 
+class InvalidVirtualMachineNameException(McVirtException):
+  """VM is being created with an invalid name"""
+  pass
+
+class VmAlreadyExistsException(McVirtException):
+  """VM is being created with a duplicate name"""
+  pass
+
+class VmDirectoryAlreadyExistsException(McVirtException):
+  """Directory for a VM already exists"""
+  pass
+
+class VmAlreadyStoppedException(McVirtException):
+  """VM is already stopped when attempting to stop it"""
+  pass
+
+class VmAlreadyStartedException(McVirtException):
+  """VM is already started when attempting to start it"""
+  pass
+
 class VirtualMachine:
   """Provides operations to manage a libvirt virtual machine"""
 
@@ -69,7 +89,7 @@ class VirtualMachine:
       print 'Successfully stopped VM'
 
     else:
-      raise McVirtException('The VM is already shutdown')
+      raise VmAlreadyStoppedException('The VM is already shutdown')
 
   def start(self):
     """Starts the VM"""
@@ -88,7 +108,7 @@ class VirtualMachine:
       print 'Successfully started VM'
 
     else:
-      raise McVirtException('The VM is already running')
+      raise VmAlreadyStartedException('The VM is already running')
 
   def isRunning(self):
     return (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING)
@@ -364,11 +384,11 @@ class VirtualMachine:
     # Validate the VM name
     valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
     if (bool(valid_name_re(name))):
-      raise McVirtException('Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes')
+      raise InvalidVirtualMachineNameException('Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes')
 
     # Determine if VM already exists
     if (VirtualMachine._checkExists(mcvirt_instance.getLibvirtConnection(), name)):
-      raise McVirtException('Error: VM already exists')
+      raise VmAlreadyExistsException('Error: VM already exists')
 
     # Import domain XML template
     domain_xml = ET.parse(McVirt.TEMPLATE_DIR + '/domain.xml')
@@ -382,7 +402,7 @@ class VirtualMachine:
     if (not os.path.exists(VirtualMachine.getVMDir(name))):
       os.makedirs(VirtualMachine.getVMDir(name))
     else:
-      raise McVirtException('Error: VM directory already exists')
+      raise VmDirectoryAlreadyExistsException('Error: VM directory already exists')
 
     # Create VM configuration file
     VirtualMachineConfig.create(name)
