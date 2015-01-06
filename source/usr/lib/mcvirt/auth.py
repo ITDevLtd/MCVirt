@@ -31,11 +31,12 @@ class Auth:
 
   def __init__(self, mcvirt_config):
     """Sets member variables"""
-    self.username = self.getUsername()
-    self.checkRootPrivileges()
+    self.username = Auth.getUsername()
+    Auth.checkRootPrivileges()
     self.config = mcvirt_config
 
-  def getUsername(self):
+  @staticmethod
+  def getUsername():
     """Obtains the username of the current user"""
     from mcvirt import McVirtException
 
@@ -56,11 +57,12 @@ class Auth:
     else:
       return False
 
-  def checkRootPrivileges(self):
+  @staticmethod
+  def checkRootPrivileges():
     """Ensures that the user is either running as root
     or using sudo"""
     from mcvirt import McVirtException
-    if (not self.getUsername()):
+    if (not Auth.getUsername()):
       raise McVirtException('McVirt must be run using sudo')
     else:
       return True
@@ -88,7 +90,7 @@ class Auth:
 
     # Check the global permissions configuration to determine if the user has been granted the permission
     mcvirt_permissions = self.config.getPermissionConfig()
-    if (self.checkPermissionInConfig(mcvirt_permissions, self.getUsername(), permission_enum)):
+    if (self.checkPermissionInConfig(mcvirt_permissions, Auth.getUsername(), permission_enum)):
       return True
 
     # If a vm_object has been passed, check the VM configuration file for the required permissions
@@ -97,7 +99,7 @@ class Auth:
       vm_config = vm_config_object.getPermissionConfig()
 
       # Determine if the user has been granted the required permissions in the VM configuration file
-      if (self.checkPermissionInConfig(vm_config, self.getUsername(), permission_enum)):
+      if (self.checkPermissionInConfig(vm_config, Auth.getUsername(), permission_enum)):
         return True
 
     return False
@@ -123,7 +125,7 @@ class Auth:
   def isSuperuser(self):
     """Determines if the current user is a superuser of McVirt"""
     superusers = self.config.getConfig()['superusers']
-    username = self.getUsername()
+    username = Auth.getUsername()
     return ((username in superusers) or (username == 'root'))
 
   def addUserPermissionGroup(self, vm_object, permission_group, username):

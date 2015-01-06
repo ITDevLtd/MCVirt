@@ -10,13 +10,9 @@ from virtual_machine.hard_drive import HardDrive
 from virtual_machine.disk_drive import DiskDrive
 from virtual_machine.network_adapter import NetworkAdapter
 
-class ArgumentParserError(Exception):
-  pass
-
 class ThrowingArgumentParser(argparse.ArgumentParser):
   def error(self, message):
-    print message
-    raise ArgumentParserError(message)
+    raise McVirtException(message)
 
 class Parser:
 
@@ -99,6 +95,7 @@ class Parser:
       help='The name of the VM to clone from')
     self.clone_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
+
   def parse_arguments(self, script_args = None):
     # If arguments have been specified, split, so that
     # an array is sent to the argument parser
@@ -106,6 +103,7 @@ class Parser:
       script_args = script_args.split()
 
     args = self.parser.parse_args(script_args)
+
     action = args.action
 
     # Get an instance of McVirt
