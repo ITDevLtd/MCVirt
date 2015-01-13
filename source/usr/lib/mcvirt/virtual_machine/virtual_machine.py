@@ -21,21 +21,26 @@ class InvalidVirtualMachineNameException(McVirtException):
   """VM is being created with an invalid name"""
   pass
 
+
 class VmAlreadyExistsException(McVirtException):
   """VM is being created with a duplicate name"""
   pass
+
 
 class VmDirectoryAlreadyExistsException(McVirtException):
   """Directory for a VM already exists"""
   pass
 
+
 class VmAlreadyStoppedException(McVirtException):
   """VM is already stopped when attempting to stop it"""
   pass
 
+
 class VmAlreadyStartedException(McVirtException):
   """VM is already started when attempting to start it"""
   pass
+
 
 class VirtualMachine:
   """Provides operations to manage a libvirt virtual machine"""

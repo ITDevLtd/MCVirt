@@ -25,21 +25,20 @@
  * By default, libvirt configures a default network, 'default'.
  * This should be removed by performing the following:
 {{{
-virsh net-destroy default
-virsh net-undefine default
+sudo mcvirt network delete default
 }}}
 
-=== Create Network ===
+=== Creating/Removing Network ===
 
- * Virsh is used to create network objects, using the [source:/mcvirt/trunk/Documentation/virsh_example/network.xml network XML] example.
- * Adapt the example, changing the network name, which is used to identify the network object for use with virtual machines, and bridge name, which identifies the vmbr interface that the network binds to.
- * Import the adapted network XML using the following:
+ * Networks provide bridges between physical interfaces and virtual machines.
+ * To create a network on the host, as a superuser perform the following:
 {{{
-virsh net-define ./network.xml
-virsh net-autostart 'Production'
-virsh net-start 'Production'
+sudo mcvirt network create <Network name> --interface <Physical interface>
 }}}
-  '''Note:''' Replace 'Production' with the name of the new network object.
+ * Assuming that there are not any VMs connected to a network, they can be removed using:
+{{{
+sudo mcvirt network delete <Network name>
+}}}
 
 == Configure McVirt ==
 

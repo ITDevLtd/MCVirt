@@ -9,19 +9,26 @@ from virtual_machine.virtual_machine import VirtualMachine
 from virtual_machine.hard_drive import HardDrive
 from virtual_machine.disk_drive import DiskDrive
 from virtual_machine.network_adapter import NetworkAdapter
+from node.network import Network
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
+  """Overrides the ArgumentParser class, in order to change the handling of errors"""
+
   def error(self, message):
+    """Overrides the error function - forcing the argument parser to thrown an McVirt exception on error"""
     raise McVirtException(message)
 
+
 class Parser:
+  """Provides an argument parser for McVirt"""
 
   def __init__(self):
+    """Configures the argument parser object"""
     self.parent_parser = ThrowingArgumentParser(add_help=False)
 
     # Create an argument parser object
     self.parser = ThrowingArgumentParser(description='Manage the McVirt host')
-    self.subparsers = self.parser.add_subparsers(dest='action', metavar='Action', help='Action to perform on VM')
+    self.subparsers = self.parser.add_subparsers(dest='action', metavar='Action', help='Action to perform')
 
     # Add arguments for starting a VM
     self.start_parser = self.subparsers.add_parser('start', help='Start VM help', parents=[self.parent_parser])
@@ -80,6 +87,17 @@ class Parser:
       help='Removes a given owner from a VM. This prevents them to perform basic functions and manager users.')
     self.permission_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
+    self.network_parser = self.subparsers.add_parser('network', help='Manage the virtual networks on the McVirt host')
+    self.network_subparser = self.network_parser.add_subparsers(dest='network_action', metavar='Action', help='Action to perform on the network')
+    self.network_create_parser = self.network_subparser.add_parser('create', help='Create a network on the McVirt host')
+    self.network_create_parser.add_argument('--interface', dest='interface', metavar='Interface', type=str, required=True,
+      help='Physical interface on the system to bridge to the virtual network')
+    self.network_create_parser.add_argument('network', metavar='Network Name', type=str,
+      help='Name of the virtual network to be created')
+    self.network_delete_parser = self.network_subparser.add_parser('delete', help='Delete a network on the McVirt host')
+    self.network_delete_parser.add_argument('network', metavar='Network Name', type=str,
+      help='Name of the virtual network to be removed')
+
     # Get arguments for getting VM information
     self.info_parser = self.subparsers.add_parser('info', help='View VM info help', parents=[self.parent_parser])
     self.info_parser.add_argument('--vnc-port', dest='vnc_port', help='Displays the port that VNC is being hosted from',
@@ -95,15 +113,14 @@ class Parser:
       help='The name of the VM to clone from')
     self.clone_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
-
   def parse_arguments(self, script_args = None):
+    """Parses arguments and performs actions based on the arguments"""
     # If arguments have been specified, split, so that
     # an array is sent to the argument parser
     if (script_args != None):
       script_args = script_args.split()
 
     args = self.parser.parse_args(script_args)
-
     action = args.action
 
     # Get an instance of McVirt
@@ -181,6 +198,13 @@ class Parser:
           print vm_object.getVncPort()
         else:
           vm_object.printInfo()
+
+      elif (action == 'network'):
+        if (args.network_action == 'create'):
+          Network.create(mcvirt_instance, args.network, args.interface)
+        elif (args.network_action == 'delete'):
+          network_object = Network(mcvirt_instance, args.network)
+          network_object.delete()
 
       elif (action == 'clone'):
         vm_object = VirtualMachine(mcvirt_instance, args.template)

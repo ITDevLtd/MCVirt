@@ -7,8 +7,6 @@ import sys
 import os
 import shutil
 
-sys.path.insert(0, '/usr/lib')
-
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine, InvalidVirtualMachineNameException, VmAlreadyExistsException, VmDirectoryAlreadyExistsException, VmAlreadyStartedException, VmAlreadyStoppedException
@@ -21,7 +19,24 @@ def stopAndDelete(mcvirt_connection, vm_name):
       vm_object.stop()
     vm_object.delete(True)
 
+
 class VirtualMachineTests(unittest.TestCase):
+  """Provides unit tests for the VirtualMachine class"""
+
+  @staticmethod
+  def suite():
+    """Returns a test suite of the Virtual Machine tests"""
+    suite = unittest.TestSuite()
+    suite.addTest(VirtualMachineTests('test_create'))
+    suite.addTest(VirtualMachineTests('test_create'))
+    suite.addTest(VirtualMachineTests('test_invalid_name'))
+    suite.addTest(VirtualMachineTests('test_create_duplicate'))
+    suite.addTest(VirtualMachineTests('test_vm_directory_already_exists'))
+    suite.addTest(VirtualMachineTests('test_start'))
+    suite.addTest(VirtualMachineTests('test_start_running_vm'))
+    suite.addTest(VirtualMachineTests('test_stop'))
+    suite.addTest(VirtualMachineTests('test_stop_stopped_vm'))
+    return suite
 
   def setUp(self):
     """Creates various objects and deletes any test VMs"""
@@ -161,6 +176,3 @@ class VirtualMachineTests(unittest.TestCase):
     # Use argument parser to start the VM
     with self.assertRaises(VmAlreadyStoppedException):
       self.parser.parse_arguments('stop %s' % self.test_vm_name)
-
-if __name__ == '__main__':
-  unittest.main()
