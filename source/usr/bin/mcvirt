@@ -10,9 +10,8 @@ import argparse
 import socket
 
 sys.path.insert(0, '/usr/lib')
-from mcvirt.mcvirt import McVirt, McVirtException
+from mcvirt.mcvirt import McVirtException
 from mcvirt.parser import Parser
-from mcvirt.mcvirt_config import McVirtConfig
 from mcvirt.auth import Auth
 
 if __name__ == "__main__":

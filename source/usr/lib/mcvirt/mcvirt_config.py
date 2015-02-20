@@ -25,7 +25,12 @@ class McVirtConfig(ConfigFile):
     {
       'superusers': [],
       'permissions': {},
-      'vm_storage_vg': ''
+      'vm_storage_vg': '',
+      'cluster': \
+      {
+        'cluster_ip': '',
+        'nodes': {}
+      }
     }
 
     # Write the configuration to disk

@@ -10,6 +10,7 @@ from virtual_machine.hard_drive import HardDrive
 from virtual_machine.disk_drive import DiskDrive
 from virtual_machine.network_adapter import NetworkAdapter
 from node.network import Network
+from cluster.cluster import Cluster
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
   """Overrides the ArgumentParser class, in order to change the handling of errors"""
@@ -87,6 +88,7 @@ class Parser:
       help='Removes a given owner from a VM. This prevents them to perform basic functions and manager users.')
     self.permission_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
+    # Create subparser for network-related commands
     self.network_parser = self.subparsers.add_parser('network', help='Manage the virtual networks on the McVirt host')
     self.network_subparser = self.network_parser.add_subparsers(dest='network_action', metavar='Action', help='Action to perform on the network')
     self.network_create_parser = self.network_subparser.add_parser('create', help='Create a network on the McVirt host')
@@ -112,6 +114,18 @@ class Parser:
     self.clone_parser.add_argument('--template', dest='template', metavar='Parent VM', type=str, required=True,
       help='The name of the VM to clone from')
     self.clone_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+
+    # Create subparser for cluster-related commands
+    self.cluster_parser = self.subparsers.add_parser('cluster', help='Manage an McVirt cluster and the connected nodes')
+    self.cluster_subparser = self.cluster_parser.add_subparsers(dest='cluster_action', metavar='Action', help='Action to perform on the cluster')
+    self.node_add_parser = self.cluster_subparser.add_parser('add-node', help='Adds a node to the McVirt cluster')
+    self.node_add_parser.add_argument('--node', dest='node', metavar='node', type=str, required=True,
+      help='Hostname of the remote node to add to the cluster')
+    self.node_add_parser.add_argument('--ip-address', dest='ip_address', metavar='IP Address', type=str, required=True,
+      help='Management IP address of the remote node')
+    self.node_remove_parser = self.cluster_subparser.add_parser('remove-node', help='Removes a node to the McVirt cluster')
+    self.node_remove_parser.add_argument('--node', dest='node', metavar='node', type=str, required=True,
+      help='Hostname of the remote node to remove from the cluster')
 
   def parse_arguments(self, script_args = None):
     """Parses arguments and performs actions based on the arguments"""
@@ -206,6 +220,16 @@ class Parser:
           network_object = Network(mcvirt_instance, args.network)
           network_object.delete()
 
+      elif (action == 'cluster'):
+        if (args.cluster_action == 'add-node'):
+          password = mcvirt_instance.getUserInput('Enter remote node root password: ', True)
+          cluster_object = Cluster(mcvirt_instance)
+          cluster_object.addNode(args.node, args.ip_address, password)
+          print 'Successfully added node %s' % args.node
+        if (args.cluster_action == 'remove-node'):
+          cluster_object = Cluster(mcvirt_instance)
+          cluster_object.removeNode(args.node)
+
       elif (action == 'clone'):
         vm_object = VirtualMachine(mcvirt_instance, args.template)
         vm_object.clone(mcvirt_instance, args.vm_name)
@@ -215,4 +239,4 @@ class Parser:
     except Exception, e:
       # Unset mcvirt instance - forcing the object to be destroyed
       mcvirt_instance = None
-      raise e
+      raise Exception, e, sys.exc_info()[2]

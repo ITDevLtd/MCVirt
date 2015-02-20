@@ -45,6 +45,10 @@ class ConfigFile():
     config_file.write(json_data)
     config_file.close()
 
+    # Check file permissions, only giving read/write access to root
+    os.chmod(file_name, 0600)
+    os.chown(file_name, 0, 0)
+
   @staticmethod
   def create(self):
     """Creates a basic VM configuration for new VMs"""

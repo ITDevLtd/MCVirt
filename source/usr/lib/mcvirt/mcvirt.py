@@ -8,6 +8,7 @@ import os
 from lockfile import FileLock
 import subprocess
 from texttable import Texttable
+import getpass
 
 from mcvirt_config import McVirtConfig
 from auth import Auth
@@ -100,6 +101,14 @@ class McVirt:
       raise McVirtCommandException("Command: %s\nExit code: %s\nOutput:\n%s" %
         (' '.join(command_args), command_process.returncode, command_process.stdout.read() + command_process.stderr.read()))
     return (command_process.returncode, command_process.stdout.read(), command_process.stderr.read())
+
+  def getUserInput(self, display_text, password=False):
+    """Prompts the user for input"""
+    if (password):
+      return getpass.getpass(display_text)
+    else:
+      sys.stdout.write(display_text)
+      return sys.stdin.readline()
 
 
 class McVirtException(Exception):
