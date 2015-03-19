@@ -9,13 +9,26 @@ import sys
 
 sys.path.insert(0, '/usr/lib')
 
-from mcvirt.mcvirt import McVirt
+from mcvirt.mcvirt import McVirt, McVirt
 from cluster.remote import Remote
 
-mcvirt_instance = McVirt()
+mcvirt_instance = McVirt(None, initialise_nodes=False)
 
-output = Remote.receiveRemoteCommand(mcvirt_instance, sys.argv[1])
+end_conection = False
+try:
+  while True:
+    data = str.strip(sys.stdin.readline())
+    (output, end_conection) = Remote.receiveRemoteCommand(mcvirt_instance, data)
 
-if (output is not None):
-  print output
+    sys.stdout.write("%s\n" % output)
+    sys.stdout.flush()
 
+    if (end_conection):
+      break
+except Exception, e:
+  mcvirt_instance.getClusterObject().tearDown()
+  mcvirt_instance = None
+  raise e
+
+mcvirt_instance.getClusterObject().tearDown()
+mcvirt_instance = None

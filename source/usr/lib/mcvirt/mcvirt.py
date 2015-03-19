@@ -23,8 +23,10 @@ class McVirt:
   LOCK_FILE_DIR = '/var/run/lock/mcvirt'
   LOCK_FILE = LOCK_FILE_DIR + '/lock'
 
-  def __init__(self, uri = None):
+  def __init__(self, uri = None, initialise_nodes=True):
     """Checks lock file and performs initial connection to libvirt"""
+    from cluster.cluster import Cluster
+    self.enable_cluster = True
     self.obtained_filelock = False
     self.config = McVirtConfig()
     self.auth = Auth(self.getConfigObject())
@@ -38,16 +40,19 @@ class McVirt:
     # Attempt to lock lockfile
     self.lockfile_object = FileLock(self.LOCK_FILE)
     try:
-      self.lockfile_object.acquire()
+      self.lockfile_object.acquire(timeout=5)
       self.obtained_filelock = True
     except:
       raise McVirtException('An instance of McVirt is already running')
+
+    # Create cluster instance, which will initialise the nodes
+    self.cluster = Cluster(self, initialise_nodes=initialise_nodes)
 
     self._connect(uri)
 
   def __del__(self):
     """Removes McVirt lock file on object destruction"""
-    if (self.obtained_filelock and self.lockfile_object.is_locked()):
+    if (self.obtained_filelock):
       self.lockfile_object.release()
 
   def _connect(self, uri):
@@ -72,6 +77,10 @@ class McVirt:
   def getAuthObject(self):
     """Returns an instance of the auth class"""
     return self.auth
+
+  def getClusterObject(self):
+    """Returns an instance of the cluster class"""
+    return self.cluster
 
   def getAllVirtualMachineObjects(self):
     """Obtain array of all domains from libvirt"""

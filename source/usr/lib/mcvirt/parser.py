@@ -223,12 +223,13 @@ class Parser:
       elif (action == 'cluster'):
         if (args.cluster_action == 'add-node'):
           password = mcvirt_instance.getUserInput('Enter remote node root password: ', True)
-          cluster_object = Cluster(mcvirt_instance)
+          cluster_object = mcvirt_instance.getClusterObject()
           cluster_object.addNode(args.node, args.ip_address, password)
           print 'Successfully added node %s' % args.node
         if (args.cluster_action == 'remove-node'):
-          cluster_object = Cluster(mcvirt_instance)
+          cluster_object = mcvirt_instance.getClusterObject()
           cluster_object.removeNode(args.node)
+          print 'Successfully removed node %s' % args.node
 
       elif (action == 'clone'):
         vm_object = VirtualMachine(mcvirt_instance, args.template)
@@ -238,5 +239,8 @@ class Parser:
         mcvirt_instance.listVms()
     except Exception, e:
       # Unset mcvirt instance - forcing the object to be destroyed
+      mcvirt_instance.getClusterObject().tearDown()
       mcvirt_instance = None
       raise Exception, e, sys.exc_info()[2]
+    mcvirt_instance.getClusterObject().tearDown()
+    mcvirt_instance = None
