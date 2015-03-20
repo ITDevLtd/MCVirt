@@ -26,9 +26,7 @@ try:
     if (end_conection):
       break
 except Exception, e:
-  mcvirt_instance.getClusterObject().tearDown()
   mcvirt_instance = None
   raise e
 
-mcvirt_instance.getClusterObject().tearDown()
 mcvirt_instance = None

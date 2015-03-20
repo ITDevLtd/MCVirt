@@ -7,6 +7,8 @@ from paramiko.client import SSHClient, AutoAddPolicy
 from paramiko.ssh_exception import AuthenticationException
 
 from mcvirt.mcvirt import McVirtException
+from cluster import Cluster
+from mcvirt.auth import Auth
 
 class RemoteCommandExecutionFailedException(McVirtException):
   """A remote command execution fails"""
@@ -31,32 +33,47 @@ class Remote:
 
   @staticmethod
   def receiveRemoteCommand(mcvirt_instance, data):
-    from cluster import Cluster
     """Handles incoming data from the remote host"""
+    from cluster import Cluster
+    from mcvirt.virtual_machine.virtual_machine import VirtualMachine
     received_data = json.loads(data)
-    command = received_data['command']
+    action = received_data['action']
     arguments = received_data['arguments']
 
     return_data = []
     end_connection = False
 
-    if (command == 'cluster-cluster-addNodeRemote'):
+    if (action == 'cluster-cluster-addNodeRemote'):
       # Adds a remote node to the local cluster configuration
-      return_data = mcvirt_instance.getClusterObject().addNodeRemote(arguments['node'], arguments['ip_address'], arguments['public_key'])
-    elif (command == 'cluster-cluster-addHostKey'):
+      cluster_instance = Cluster(mcvirt_instance)
+      return_data = cluster_instance.addNodeRemote(arguments['node'], arguments['ip_address'], arguments['public_key'])
+    elif (action == 'cluster-cluster-addHostKey'):
       # Connect to the remote machine, saving the host key
-      remote = Remote(mcvirt_instance.getClusterObject(), arguments['node'], save_hostkey=True, initialise_node=False)
+      cluster_instance = Cluster(mcvirt_instance)
+      remote = Remote(cluster_instance, arguments['node'], save_hostkey=True, initialise_node=False)
       remote = None
-    elif (command == 'cluster-cluster-removeNodeConfiguration'):
+    elif (action == 'cluster-cluster-removeNodeConfiguration'):
       # Removes a remove McVirt node from the local configuration
-      mcvirt_instance.getClusterObject().removeNodeConfiguration(arguments['node'])
-    elif (command == 'close'):
+      cluster_instance = Cluster(mcvirt_instance)
+      cluster_instance.removeNodeConfiguration(arguments['node'])
+    elif (action == 'auth-addUserPermissionGroup'):
+      auth_object = mcvirt_instance.getAuthObject()
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object,
+                                         permission_group=arguments['permission_group'],
+                                         username=arguments['username'])
+    elif (action == 'auth-deleteUserPermissionGroup'):
+      auth_object = mcvirt_instance.getAuthObject()
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object,
+                                            permission_group=arguments['permission_group'],
+                                            username=arguments['username'])
+    elif (action == 'close'):
       # Delete McVirt instance, which removes the lock and force mcvirt-remote
       # to close
-      mcvirt_instance = None
       end_connection = True
-    elif (command == 'checkStatus'):
-      return_data = '1'
+    elif (action == 'checkStatus'):
+      return_data = ['0']
     else:
       raise UnkownRemoteCommandException('Unknown command: %s' % command)
 
@@ -68,18 +85,17 @@ class Remote:
     self.connection = None
     self.password = password
     self.save_hostkey = save_hostkey
-    self.cluster_instance = cluster_instance
     self.initialise_node = initialise_node
 
     # Ensure the node exists
     if (not self.save_hostkey):
-      self.cluster_instance.ensureNodeExists(self.name)
+      cluster_instance.ensureNodeExists(self.name)
 
     # If the user has not specified a remote IP address, get it from the node configuration
     if (remote_ip):
       self.remote_ip = remote_ip
     else:
-      self.remote_ip = self.cluster_instance.getNodeConfig(name)['ip_address']
+      self.remote_ip = cluster_instance.getNodeConfig(name)['ip_address']
 
     self.__connect()
 
@@ -88,7 +104,7 @@ class Remote:
     if (self.connection):
       # Save the known_hosts file if specified
       if (self.save_hostkey):
-        self.connection.save_host_keys(self.cluster_instance.SSH_KNOWN_HOSTS_FILE)
+        self.connection.save_host_keys(Cluster.SSH_KNOWN_HOSTS_FILE)
 
       if (self.initialise_node):
         # Tell remote script to close
@@ -103,7 +119,7 @@ class Remote:
       ssh_client = SSHClient()
 
       # Loads the user's known hosts file
-      ssh_client.load_host_keys(self.cluster_instance.SSH_KNOWN_HOSTS_FILE)
+      ssh_client.load_host_keys(Cluster.SSH_KNOWN_HOSTS_FILE)
 
       # If the hostkey is to be saved, allow unknown hosts
       if (self.save_hostkey):
@@ -112,9 +128,9 @@ class Remote:
       # Attempt to connect to the host
       try:
         if (self.password is not None):
-          ssh_client.connect(self.remote_ip, username=self.cluster_instance.SSH_USER, password=self.password, timeout=10)
+          ssh_client.connect(self.remote_ip, username=Cluster.SSH_USER, password=self.password, timeout=10)
         else:
-          ssh_client.connect(self.remote_ip, username=self.cluster_instance.SSH_USER, key_filename=self.cluster_instance.SSH_PRIVATE_KEY, timeout=10)
+          ssh_client.connect(self.remote_ip, username=Cluster.SSH_USER, key_filename=Cluster.SSH_PRIVATE_KEY, timeout=10)
       except AuthenticationException:
         raise NodeAuthenticationException('Could not authenticate to node: %s' % self.name)
       except Exception, e:
@@ -128,13 +144,13 @@ class Remote:
         (self.stdin, self.stdout, self.stderr) = self.connection.exec_command(self.REMOTE_MCVIRT_COMMAND)
 
         # Check the remote lock
-        if (self.runRemoteCommand('checkStatus', None) != '1'):
+        if (self.runRemoteCommand('checkStatus', None) != ['0']):
           raise McVirtException('Remote node locked: %s' % self.name)
 
-  def runRemoteCommand(self, command, arguments):
+  def runRemoteCommand(self, action, arguments):
     """Prepare and run a remote command on a cluster node"""
     # Generate a JSON of the command and arguments
-    command_json = json.dumps({'command': command, 'arguments': arguments}, sort_keys=True)
+    command_json = json.dumps({'action': action, 'arguments': arguments}, sort_keys=True)
 
     # Perform the remote command
     self.stdin.write("%s\n" % command_json)

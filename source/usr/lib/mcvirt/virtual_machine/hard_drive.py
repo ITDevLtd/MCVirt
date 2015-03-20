@@ -7,7 +7,9 @@ import xml.etree.ElementTree as ET
 import subprocess
 import os
 
+from mcvirt.system import System
 from mcvirt.mcvirt import McVirt, McVirtException, McVirtCommandException
+from mcvirt.mcvirt_config import McVirtConfig
 
 class HardDrive:
   """Provides operations to manage hard drives, used by VMs"""
@@ -15,7 +17,7 @@ class HardDrive:
   def __init__(self, vm_object, id):
     """Sets member variables and obtains libvirt domain object"""
     self.vm_object = vm_object
-    self.host_volume_group = vm_object.mcvirt_config.getConfig()['vm_storage_vg']
+    self.host_volume_group = McVirtConfig().getConfig()['vm_storage_vg']
     self.id = id
     self.path = HardDrive.getDiskPath(self.host_volume_group, self.vm_object.name, self.id)
     if (not self._checkExists()):
@@ -33,7 +35,7 @@ class HardDrive:
 
     command_args = ('lvextend', '-L', '+%sM' % increase_size, self.path)
     try:
-      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
     except McVirtCommandException, e:
       raise McVirtException("Error whilst extending logical volume:\n" + str(e))
 
@@ -86,7 +88,7 @@ class HardDrive:
     """Removes a logical volume"""
     command_args = ('lvremove', '-f', path)
     try:
-      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
     except McVirtCommandException, e:
       raise McVirtException("Error whilst removing disk logical volume:\n" + str(e))
 
@@ -95,7 +97,7 @@ class HardDrive:
     # Use 'lvs' to obtain the size of the disk
     command_args = ('lvs', '--nosuffix', '--noheadings', '--units', 'm', '--options', 'lv_size', self.path)
     try:
-      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
     except McVirtCommandException, e:
       raise McVirtException("Error whilst obtaining the size of the logical volume:\n" + str(e))
 
@@ -114,7 +116,7 @@ class HardDrive:
     # Perform a logical volume snapshot
     command_args = ('lvcreate', '-L', '%sM' % disk_size, '-s', '-n', new_logical_volume_name, self.path)
     try:
-      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
     except McVirtCommandException, e:
       raise McVirtException("Error whilst cloning disk logical volume:\n" + str(e))
 
@@ -126,7 +128,7 @@ class HardDrive:
     """Creates a new disk image, attaches the disk to the VM and records the disk
     in the VM configuration"""
     disk_id = HardDrive._getAvailableId(vm_object)
-    volume_group = vm_object.mcvirt_config.getConfig()['vm_storage_vg']
+    volume_group = McVirtConfig().getConfig()['vm_storage_vg']
     disk_path = HardDrive.getDiskPath(volume_group, vm_object.name, disk_id)
     logical_volume_name = HardDrive.getDiskName(vm_object.name, disk_id)
 
@@ -137,7 +139,7 @@ class HardDrive:
     # Create the raw disk image
     command_args = ('lvcreate', volume_group, '--name', logical_volume_name, '--size', '%sM' % size)
     try:
-      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
     except McVirtCommandException, e:
       raise McVirtException("Error whilst creating disk logical volume:\n" + str(e))
 
@@ -176,7 +178,7 @@ class HardDrive:
     """Starts the disk logical volume"""
     command_args = ('lvchange', '-a', 'y', self.path)
     try:
-      (exit_code, command_output, command_stderr) = McVirt.runCommand(command_args)
+      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
     except McVirtCommandException, e:
       raise McVirtException("Error whilst activating disk logical volume:\n" + str(e))
 
@@ -186,7 +188,7 @@ class HardDrive:
     of disks attached to the VM"""
     found_available_id = False
     disk_id = 0
-    vm_config = vm_object.config.getConfig()
+    vm_config = vm_object.getConfigObject().getConfig()
     disks = vm_config['disks']
     while (not found_available_id):
       disk_id += 1

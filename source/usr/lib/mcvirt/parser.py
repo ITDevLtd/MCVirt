@@ -11,6 +11,8 @@ from virtual_machine.disk_drive import DiskDrive
 from virtual_machine.network_adapter import NetworkAdapter
 from node.network import Network
 from cluster.cluster import Cluster
+from system import System
+from auth import Auth
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
   """Overrides the ArgumentParser class, in order to change the handling of errors"""
@@ -127,7 +129,7 @@ class Parser:
     self.node_remove_parser.add_argument('--node', dest='node', metavar='node', type=str, required=True,
       help='Hostname of the remote node to remove from the cluster')
 
-  def parse_arguments(self, script_args = None):
+  def parse_arguments(self, script_args = None, mcvirt_instance=None):
     """Parses arguments and performs actions based on the arguments"""
     # If arguments have been specified, split, so that
     # an array is sent to the argument parser
@@ -138,7 +140,8 @@ class Parser:
     action = args.action
 
     # Get an instance of McVirt
-    mcvirt_instance = McVirt()
+    if (mcvirt_instance == None):
+      mcvirt_instance = McVirt()
 
     try:
       # Perform functions on the VM based on the action passed to the script
@@ -197,17 +200,19 @@ class Parser:
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         auth_object = mcvirt_instance.getAuthObject()
         if (args.add_user):
-          auth_object.addUserPermissionGroup(vm_object, 'user', args.add_user)
+          auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object, permission_group='user', username=args.add_user)
+          print 'Successfully added \'%s\' as \'user\' to VM \'%s\'' % (args.add_user, vm_object.getName())
         if (args.delete_user):
-          auth_object.deleteUserPermissionGroup(vm_object, 'user', args.delete_user)
+          auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object, permission_group='user', username=args.delete_user)
+          print 'Successfully removed \'%s\' as \'user\' from VM \'%s\'' % (args.delete_user, vm_object.getName())
         if (args.add_owner):
-          auth_object.addUserPermissionGroup(vm_object, 'owner', args.add_owner)
+          auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object, permission_group='owner', username=args.add_owner)
+          print 'Successfully added \'%s\' as \'owner\' to VM \'%s\'' % (args.add_owner, vm_object.getName())
         if (args.delete_owner):
-          auth_object.deleteUserPermissionGroup(vm_object, 'owner', args.delete_owner)
-
+          auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object, permission_group='owner', username=args.delete_owner)
+          print 'Successfully added \'%s\' as \'owner\' from VM \'%s\'' % (args.delete_owner, vm_object.getName())
       elif (action == 'info'):
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-        auth_object = mcvirt_instance.getAuthObject()
         if (args.vnc_port):
           print vm_object.getVncPort()
         else:
@@ -222,7 +227,7 @@ class Parser:
 
       elif (action == 'cluster'):
         if (args.cluster_action == 'add-node'):
-          password = mcvirt_instance.getUserInput('Enter remote node root password: ', True)
+          password = System.getUserInput('Enter remote node root password: ', True)
           cluster_object = mcvirt_instance.getClusterObject()
           cluster_object.addNode(args.node, args.ip_address, password)
           print 'Successfully added node %s' % args.node
@@ -239,8 +244,4 @@ class Parser:
         mcvirt_instance.listVms()
     except Exception, e:
       # Unset mcvirt instance - forcing the object to be destroyed
-      mcvirt_instance.getClusterObject().tearDown()
-      mcvirt_instance = None
       raise Exception, e, sys.exc_info()[2]
-    mcvirt_instance.getClusterObject().tearDown()
-    mcvirt_instance = None

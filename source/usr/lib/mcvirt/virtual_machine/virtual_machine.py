@@ -47,7 +47,6 @@ class VirtualMachine:
 
   def __init__(self, mcvirt_object, name):
     """Sets member variables and obtains libvirt domain object"""
-    self.auth = mcvirt_object.getAuthObject()
     self.connection = mcvirt_object.getLibvirtConnection()
     self.name = name
     self.mcvirt_object = mcvirt_object
@@ -60,16 +59,12 @@ class VirtualMachine:
     if (not VirtualMachine._checkExists(self.connection, self.name)):
       raise McVirtException('Error: Virtual Machine does not exist')
 
-    # Get config object
-    self.config = VirtualMachineConfig(self)
-    self.mcvirt_config = mcvirt_object.getConfigObject()
-
     # Create a libvirt domain object
     self.domain_object = self._getDomainObject()
 
   def getConfigObject(self):
     """Returns the configuration object for the VM"""
-    return self.config
+    return VirtualMachineConfig(self)
 
   def getName(self):
     """Returns the name of the VM"""
@@ -84,7 +79,7 @@ class VirtualMachine:
   def stop(self):
     """Stops the VM"""
     # Check the user has permission to start/stop VMs
-    self.auth.assertPermission(Auth.PERMISSIONS.CHANGE_VM_POWER_STATE, self)
+    self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.CHANGE_VM_POWER_STATE, self)
 
     # Determine if VM is running
     if (self.isRunning()):
@@ -99,7 +94,7 @@ class VirtualMachine:
   def start(self):
     """Starts the VM"""
     # Check the user has permission to start/stop VMs
-    self.auth.assertPermission(Auth.PERMISSIONS.CHANGE_VM_POWER_STATE, self)
+    self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.CHANGE_VM_POWER_STATE, self)
 
     # Ensure VM hasn't been cloned
     if (self.getCloneChildren()):
@@ -164,8 +159,8 @@ class VirtualMachine:
 
     # Get information about the permissions for the VM
     table.add_row(('-- Group --', '-- Users --'))
-    for permission_group in self.auth.getPermissionGroups():
-      users = self.auth.getUsersInPermissionGroup(permission_group, self)
+    for permission_group in self.mcvirt_object.getAuthObject().getPermissionGroups():
+      users = self.mcvirt_object.getAuthObject().getUsersInPermissionGroup(permission_group, self)
       users_string = ','.join(users)
       table.add_row((permission_group, users_string))
 
@@ -177,8 +172,8 @@ class VirtualMachine:
     # Check the user has permission to modify VMs or
     # that the user is the owner of the VM and the VM is a clone
     if not (
-      self.auth.checkPermission(Auth.PERMISSIONS.MODIFY_VM, self)
-      or (self.getCloneParent() and self.auth.checkPermission(Auth.PERMISSIONS.DELETE_CLONE, self))
+      self.mcvirt_object.getAuthObject().checkPermission(Auth.PERMISSIONS.MODIFY_VM, self)
+      or (self.getCloneParent() and self.mcvirt_object.getAuthObject().checkPermission(Auth.PERMISSIONS.DELETE_CLONE, self))
     ):
       raise McVirtException('User does not have the required permission - '
         + 'User must have MODIFY_VM permission or be the owner of the cloned VM')
@@ -230,7 +225,7 @@ class VirtualMachine:
   def updateRAM(self, memory_allocation):
     """Updates the amount of RAM alloocated to a VM"""
     # Check the user has permission to modify VMs
-    self.auth.assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
+    self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
 
     def updateXML(domain_xml):
       # Update RAM allocation and unit measurement
@@ -248,7 +243,7 @@ class VirtualMachine:
   def updateCPU(self, cpu_count):
     """Updates the number of CPU cores attached to a VM"""
     # Check the user has permission to modify VMs
-    self.auth.assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
+    self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
 
     def updateXML(domain_xml):
       # Update RAM allocation and unit measurement
@@ -270,7 +265,7 @@ class VirtualMachine:
 
   def getDiskObjects(self):
     """Returns an array of disk objects for the disks attached to the VM"""
-    disks = self.config.getConfig()['disks']
+    disks = self.getConfigObject().getConfig()['disks']
     disk_objects = []
     for disk_id in disks:
       disk_objects.append(HardDrive(self, disk_id))
@@ -334,7 +329,7 @@ class VirtualMachine:
     """Clones a VM, creating an identicle machine, using
     LVM snapshotting to duplicate the Hard disk"""
     # Check the user has permission to create VMs
-    mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CLONE_VM, self)
+    self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.CLONE_VM, self)
 
     # Determine if VM is running
     if (self.domain_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING):
@@ -356,7 +351,7 @@ class VirtualMachine:
 
     # Set current user as an owner of the new VM, so that they have permission
     # to perform functions on the VM
-    mcvirt_instance.getAuthObject().copyPermissions(self, new_vm_object)
+    self.mcvirt_object.getAuthObject().copyPermissions(self, new_vm_object)
 
     # Clone the hard drives of the VM
     disk_objects = self.getDiskObjects()
@@ -440,7 +435,7 @@ class VirtualMachine:
   def getVncPort(self):
     """Returns the port used by the VNC display for the VM"""
     # Check the user has permission to view the VM console
-    self.auth.assertPermission(Auth.PERMISSIONS.VIEW_VNC_CONSOLE, self)
+    self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.VIEW_VNC_CONSOLE, self)
 
     if (not self.isRunning()):
       raise McVirtException('The VM is not running')

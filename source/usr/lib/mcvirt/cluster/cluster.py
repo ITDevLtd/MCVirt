@@ -5,6 +5,8 @@
 import os.path
 from mcvirt.auth import Auth
 from mcvirt.mcvirt import McVirtException
+from mcvirt.system import System
+from mcvirt.mcvirt_config import McVirtConfig
 import json
 import socket
 
@@ -30,23 +32,13 @@ class Cluster:
     """Returns the hostname of the system"""
     return socket.gethostname()
 
-  def __init__(self, mcvirt_instance, initialise_nodes=True):
+  def __init__(self, mcvirt_instance):
     """Sets member variables"""
     self.mcvirt_instance = mcvirt_instance
-    self.remote_objects = {}
 
     # Connect to each of the nodes
-    if (initialise_nodes):
+    if (self.mcvirt_instance.initialise_nodes):
       self.connectNodes()
-
-  def tearDown(self):
-    """Disconnect from each node and removes the reference to the McVirt instance"""
-    # Disconnect from each of the nodes
-    for connection in self.remote_objects:
-      self.remote_objects[connection] = None
-    # Remove the McVirt instance, so that garbage collection
-    # works correctly
-    self.mcvirt_instance = None
 
   def addNodeRemote(self, remote_host, remote_ip_address, remote_public_key):
     """Adds the machine to a remote cluster"""
@@ -95,7 +87,7 @@ class Cluster:
     it doesn't already exist"""
     # Generate new ssh key if it doesn't already exist
     if (not os.path.exists(Cluster.SSH_PUBLIC_KEY) or not os.path.exists(Cluster.SSH_PRIVATE_KEY)):
-      self.mcvirt_instance.runCommand(('/usr/bin/ssh-keygen', '-t', 'rsa', '-N', '', '-q', '-f', Cluster.SSH_PRIVATE_KEY))
+      System.runCommand(('/usr/bin/ssh-keygen', '-t', 'rsa', '-N', '', '-q', '-f', Cluster.SSH_PRIVATE_KEY))
 
     # Get contains of public key file
     with open(Cluster.SSH_PUBLIC_KEY, 'r') as f:
@@ -126,13 +118,13 @@ class Cluster:
   def getRemoteNode(self, node):
     """Obtains a Remote object for a node, caching the object"""
     from remote import Remote
-    if (not self.remote_objects.has_key(node)):
-      self.remote_objects[node] = Remote(self, node)
-    return self.remote_objects[node]
+    if (not self.mcvirt_instance.remote_nodes.has_key(node)):
+      self.mcvirt_instance.remote_nodes[node] = Remote(self, node)
+    return self.mcvirt_instance.remote_nodes[node]
 
   def getClusterConfig(self):
     """Gets the McVirt cluster configuration"""
-    return self.mcvirt_instance.getConfigObject().getConfig()['cluster']
+    return McVirtConfig().getConfig()['cluster']
 
   def getNodeConfig(self, node):
     """Returns the configuration for a node"""
@@ -143,6 +135,13 @@ class Cluster:
     """Returns an array of node configurations"""
     cluster_config = self.getClusterConfig()
     return cluster_config['nodes'].keys()
+
+  def runRemoteCommand(self, action, arguments):
+    return_data = {}
+    for node in self.getNodes():
+      node_object = self.getRemoteNode(node)
+      return_data[node] = node_object.runRemoteCommand(action, arguments)
+    return return_data
 
   def checkNodeExists(self, node_name):
     """Determines if a node is already present in the cluster"""
@@ -162,7 +161,7 @@ class Cluster:
         'ip_address': ip_address,
         'public_key': public_key
       }
-    self.mcvirt_instance.getConfigObject().updateConfig(addNode)
+    McVirtConfig().updateConfig(addNode)
     self.buildAuthorizedKeysFile()
 
   def removeNodeConfiguration(self, node_name):
@@ -170,7 +169,7 @@ class Cluster:
     authorized_keys file"""
     def removeNodeConfig(mcvirt_config):
       del(mcvirt_config['cluster']['nodes'][node_name])
-    self.mcvirt_instance.getConfigObject().updateConfig(removeNodeConfig)
+    McVirtConfig().updateConfig(removeNodeConfig)
     self.buildAuthorizedKeysFile()
 
   def buildAuthorizedKeysFile(self):

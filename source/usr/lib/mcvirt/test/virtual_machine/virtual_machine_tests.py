@@ -60,6 +60,7 @@ class VirtualMachineTests(unittest.TestCase):
     """Stops and tears down any test VMs"""
     # Ensure any test VM is stopped and removed from the machine
     stopAndDelete(self.mcvirt, self.test_vm_name)
+    self.mcvirt = None
 
   def test_create(self):
     """Tests the creation of VMs through the argument parser"""
@@ -69,7 +70,8 @@ class VirtualMachineTests(unittest.TestCase):
     # Create virtual machine using parser
     self.parser.parse_arguments('create %s' % self.test_vm_name +
       ' --cpu-count %s --disk-size %s --memory %s --network %s' %
-      (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name))
+      (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name),
+      mcvirt_instance=self.mcvirt)
 
     # Ensure VM exists
     self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
@@ -92,7 +94,8 @@ class VirtualMachineTests(unittest.TestCase):
     with self.assertRaises(InvalidVirtualMachineNameException):
       self.parser.parse_arguments('create "%s"' % invalid_vm_name +
         ' --cpu-count %s --disk-size %s --memory %s --network %s' %
-        (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name))
+        (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name),
+        mcvirt_instance=self.mcvirt)
 
     # Ensure VM has not been created
     self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), invalid_vm_name))
@@ -138,7 +141,7 @@ class VirtualMachineTests(unittest.TestCase):
     test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
 
     # Use argument parser to start the VM
-    self.parser.parse_arguments('start %s' % self.test_vm_name)
+    self.parser.parse_arguments('start %s' % self.test_vm_name, mcvirt_instance=self.mcvirt)
 
     # Ensure that it is running
     self.assertTrue(test_vm_object.isRunning())
@@ -151,7 +154,7 @@ class VirtualMachineTests(unittest.TestCase):
 
     # Use argument parser to start the VM
     with self.assertRaises(VmAlreadyStartedException):
-      self.parser.parse_arguments('start %s' % self.test_vm_name)
+      self.parser.parse_arguments('start %s' % self.test_vm_name, mcvirt_instance=self.mcvirt)
 
   def test_stop(self):
     """Tests stopping VMs through the argument parser"""
@@ -163,7 +166,7 @@ class VirtualMachineTests(unittest.TestCase):
     self.assertTrue(test_vm_object.isRunning())
 
     # Use the argument parser to stop the VM
-    self.parser.parse_arguments('stop %s' % self.test_vm_name)
+    self.parser.parse_arguments('stop %s' % self.test_vm_name, mcvirt_instance=self.mcvirt)
 
     # Ensure the VM is stopped
     self.assertFalse(test_vm_object.isRunning())
@@ -175,4 +178,4 @@ class VirtualMachineTests(unittest.TestCase):
 
     # Use argument parser to start the VM
     with self.assertRaises(VmAlreadyStoppedException):
-      self.parser.parse_arguments('stop %s' % self.test_vm_name)
+      self.parser.parse_arguments('stop %s' % self.test_vm_name, mcvirt_instance=self.mcvirt)
