@@ -12,7 +12,7 @@ def stopAndDelete(mcvirt_connection, vm_name):
   """Stops and removes VMs"""
   if (VirtualMachine._checkExists(mcvirt_connection.getLibvirtConnection(), vm_name)):
     vm_object = VirtualMachine(mcvirt_connection, vm_name)
-    if (vm_object.isRunning()):
+    if (vm_object.getState()):
       vm_object.stop()
     vm_object.delete(True)
 
@@ -84,8 +84,8 @@ class AuthTests(unittest.TestCase):
 
     # Add user to 'user' group and ensure they have been added
     auth_object = self.mcvirt.getAuthObject()
+    auth_object.addUserPermissionGroup(self.mcvirt, 'user', self.test_user, test_vm_object)
     self.assertTrue(self.test_user in auth_object.getUsersInPermissionGroup('user', test_vm_object))
-    auth_object.addUserPermissionGroup(self.mcvirt, test_vm_object, 'user', self.test_user)
 
     # Remove user from 'user' group using parser
     self.parser.parse_arguments('permission --delete-user %s %s' % (self.test_user, self.test_vm['name']),

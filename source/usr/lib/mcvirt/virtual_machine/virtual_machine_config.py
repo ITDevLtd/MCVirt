@@ -25,9 +25,10 @@ class VirtualMachineConfig(ConfigFile):
     return ('%s/config.json' % VirtualMachine.getVMDir(vm_name))
 
   @staticmethod
-  def create(vm_name):
+  def create(vm_name, node, available_nodes, cpu_cores, memory_allocation):
     """Creates a basic VM configuration for new VMs"""
     from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+    from mcvirt.cluster.cluster import Cluster
 
     # Create basic config
     json_data = \
@@ -38,8 +39,13 @@ class VirtualMachineConfig(ConfigFile):
           'owner': [],
         },
         'disks': [],
+        'memory_allocation': str(memory_allocation),
+        'cpu_cores': str(cpu_cores),
         'clone_parent': False,
-        'clone_children': []
+        'clone_children': [],
+        'network_interfaces': {},
+        'node': node,
+        'available_nodes': available_nodes
       }
 
     # Write the configuration to disk

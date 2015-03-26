@@ -31,8 +31,15 @@ class Network:
     self.name = name
 
     # Ensure network exists
-    if (not self._checkExists(mcvirt_object.getLibvirtConnection(), name)):
+    if (not self._checkExists(name)):
       raise NetworkDoesNotExistException('Network does not exist: %s' % name)
+
+  @staticmethod
+  def getConfig():
+    """Returns the network configuration for the node"""
+    from mcvirt.mcvirt_config import McVirtConfig
+    mcvirt_config = McVirtConfig().getConfig()
+    return mcvirt_config['networks']
 
   def delete(self):
     """Deletes a network from the node"""
@@ -51,6 +58,18 @@ class Network:
       self._getLibVirtObject().undefine()
     except:
       raise McVirtException('Failed to delete network from libvirt')
+
+    if (self.mcvirt_object.initialiseNodes()):
+      # Update nodes
+      from mcvirt.cluster.cluster import Cluster
+      cluster = Cluster(self.mcvirt_object)
+      cluster.runRemoteCommand('node-network-delete', {'network_name': self.getName()})
+
+    # Update McVirt config
+    def updateConfig(config):
+      del config['networks'][self.getName()]
+    from mcvirt.mcvirt_config import McVirtConfig
+    McVirtConfig().updateConfig(updateConfig)
 
   def _checkConnectedVirtualMachines(self):
     """Returns an array of VM objects that have an interface connected to the network"""
@@ -85,14 +104,14 @@ class Network:
     return self.name
 
   @staticmethod
-  def _checkExists(libvirt_connection, name):
+  def _checkExists(name):
     """Check if a network exists"""
     # Obtain array of all networks from libvirt
-    all_networks = libvirt_connection.listAllNetworks()
+    networks = Network.getConfig()
 
     # Determine if the name of any of the networks returned
     # matches the requested name
-    return (any(network.name() == name for network in all_networks))
+    return (name in networks.keys())
 
   @staticmethod
   def create(mcvirt_object, name, physical_interface):
@@ -101,7 +120,7 @@ class Network:
     mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_HOST_NETWORKS)
 
     # Ensure network does not already exist
-    if (Network._checkExists(mcvirt_object.getLibvirtConnection(), name)):
+    if (Network._checkExists(name)):
       raise NetworkAlreadyExistsException('Network already exists: %s' % name)
 
     # Create XML for network
@@ -126,3 +145,17 @@ class Network:
       mcvirt_object.getLibvirtConnection().networkDefineXML(network_xml_string)
     except:
       raise McVirtException('An error occurred whilst registering network with LibVirt')
+
+    # Update McVirt config
+    def updateConfig(config):
+      config['networks'][name] = physical_interface
+    from mcvirt.mcvirt_config import McVirtConfig
+    McVirtConfig().updateConfig(updateConfig)
+
+    if (mcvirt_object.initialiseNodes()):
+      # Update nodes
+      from mcvirt.cluster.cluster import Cluster
+      cluster = Cluster(mcvirt_object)
+      cluster.runRemoteCommand('node-network-create',
+                               {'network_name': name,
+                                'physical_interface': physical_interface})

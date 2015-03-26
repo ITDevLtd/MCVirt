@@ -23,6 +23,10 @@ class McVirt:
     # Configure custom username - used for unittests
     self.username = username
 
+    # Cluster configuration
+    self.initialise_nodes = initialise_nodes
+    self.remote_nodes = {}
+
     # Create lock file, if it does not exist
     if (not os.path.isfile(self.LOCK_FILE)):
       if (not os.path.isdir(self.LOCK_FILE_DIR)):
@@ -40,9 +44,6 @@ class McVirt:
 
     # Create cluster instance, which will initialise the nodes
     from cluster.cluster import Cluster
-    # Cluster configuration
-    self.initialise_nodes = initialise_nodes
-    self.remote_nodes = {}
     Cluster(self)
 
     # Connect to LibVirt
@@ -78,16 +79,17 @@ class McVirt:
     return self.connection
 
   def getAuthObject(self):
+    """Returns an instance of the Auth class"""
     from auth import Auth
     return Auth(self.username)
 
   def getAllVirtualMachineObjects(self):
     """Obtain array of all domains from libvirt"""
     from virtual_machine.virtual_machine import VirtualMachine
-    all_domains = self.getLibvirtConnection().listAllDomains()
+    all_vms = VirtualMachine.getAllVms(self)
     vm_objects = []
-    for domain in all_domains:
-      vm_objects.append(VirtualMachine(self, domain.name()))
+    for vm_name in all_vms:
+      vm_objects.append(VirtualMachine(self, vm_name))
 
     return vm_objects
 
@@ -95,12 +97,36 @@ class McVirt:
     """Lists the VMs that are currently on the host"""
     table = Texttable()
     table.set_deco(Texttable.HEADER | Texttable.VLINES)
-    table.header(('VM Name', 'State'))
+    table.header(('VM Name', 'State', 'Node'))
 
     for vm_object in self.getAllVirtualMachineObjects():
-      table.add_row((vm_object.getName(), 'Running' if (vm_object.isRunning()) else 'Stopped'))
+      table.add_row((vm_object.getName(), vm_object.getStateText(),
+                     vm_object.getNode()))
     print table.draw()
 
+  def printInfo(self):
+    """Prints information about the nodes in the cluster"""
+    from cluster.cluster import Cluster
+    table = Texttable()
+    table.set_deco(Texttable.HEADER | Texttable.VLINES)
+    table.header(('Node', 'IP Address', 'Status'))
+    cluster_object = Cluster(self)
+    # Add this node to the table
+    table.add_row((Cluster.getHostname(), cluster_object.getClusterIpAddress(),
+                   'Local'))
+
+    # Add remote nodes
+    for node in cluster_object.getNodes():
+      node_config = cluster_object.getNodeConfig(node)
+      node_status = 'Unreachable'
+      try:
+        cluster_object.getRemoteNode(node)
+        node_status = 'Connected'
+      except:
+        pass
+      table.add_row((node, node_config['ip_address'],
+                     node_status))
+    print table.draw()
 
 class McVirtException(Exception):
   """Provides an exception to be thrown for errors in McVirt"""

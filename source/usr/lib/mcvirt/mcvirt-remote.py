@@ -27,6 +27,6 @@ try:
       break
 except Exception, e:
   mcvirt_instance = None
-  raise e
+  raise Exception, e, sys.exc_info()[2]
 
 mcvirt_instance = None

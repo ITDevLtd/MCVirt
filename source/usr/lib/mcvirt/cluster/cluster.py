@@ -18,6 +18,10 @@ class NodeDoesNotExistException(McVirtException):
   """The node does not exist"""
   pass
 
+class RemoteObjectConflict(McVirtException):
+  """The remote node contains an object that will cause conflict when syncing"""
+  pass
+
 class Cluster:
   """Class to perform node management within the McVirt cluster"""
 
@@ -59,13 +63,109 @@ class Cluster:
     if (self.checkNodeExists(remote_host)):
       raise NodeAlreadyPresent('Node %s is already connected to the cluster' % remote_host)
 
+    # Check remote machine, to ensure it can be synced without any
+    # conflicts
+    remote = Remote(self, remote_host, remote_ip=remote_ip, password=password, save_hostkey=True)
+    self.checkRemoteMachine(remote)
+    remote = None
+
+    # Sync SSH keys
     local_public_key = self.getSshPublicKey()
     remote_public_key = self.configureRemoteMachine(remote_host, remote_ip, password, local_public_key)
+
+    # Add remote node to configuration
     self.addNodeConfiguration(remote_host, remote_ip, remote_public_key)
 
     # Connect to remote machine ensuring that it saves the host file
     remote = Remote(self, remote_host)
     remote.runRemoteCommand('cluster-cluster-addHostKey', {'node': self.getHostname()})
+
+    # Sync networks
+    self.syncNetworks(remote)
+
+    # Sync global permissions
+    self.syncPermissions(remote)
+
+    # Sync VMs
+    self.syncVirtualMachines(remote)
+
+  def syncNetworks(self, remote_object):
+    """Add the local networks to the remote node"""
+    from mcvirt.node.network import Network
+    local_networks = Network.getConfig()
+    for network_name in local_networks.keys():
+      remote_object.runRemoteCommand('node-network-create', {'network_name': network_name,
+                                                             'physical_interface': local_networks[network_name]})
+
+  def syncPermissions(self, remote_object):
+    """Duplicates the global permissions on the local node onto the remote node"""
+    from mcvirt.auth import Auth
+    auth_object = Auth()
+
+    # Sync superusers
+    for superuser in auth_object.getSuperusers():
+      remote_object.runRemoteCommand('auth-addSuperuser', {'username': superuser,
+                                                           'ignore_duplicate': True})
+
+    # Iterate over the permission groups, adding all of the members to the group
+    # on the remote node
+    for group in auth_object.getPermissionGroups():
+      users = auth_object.getUsersInPermissionGroup(group)
+      for user in users:
+        remote_object.runRemoteCommand('auth-addUserPermissionGroup',
+                                       {'permission_group': group,
+                                        'username': user,
+                                        'vm_name': None,
+                                        'ignore_duplicate': True})
+
+  def syncVirtualMachines(self, remote_object):
+    """Duplicates the VM configurations on the local node onto the remote node"""
+    from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+
+    # Obtain list of local VMs
+    for vm_name in VirtualMachine.getAllVms(self.mcvirt_instance):
+      vm_object = VirtualMachine(self.mcvirt_instance, vm_name)
+      remote_object.runRemoteCommand('virtual_machine-create',
+                                     {'vm_name': vm_object.getName(),
+                                      'cpu_cores': vm_object.getCPU(),
+                                      'memory_allocation': vm_object.getRAM(),
+                                      'node': vm_object.getNode(),
+                                      'available_nodes': vm_object.getAvailableNodes()})
+
+      for network_adapter in vm_object.getNetworkObjects():
+        # Add network adapters to VM
+        remote_object.runRemoteCommand('network_adapter-create',
+                                       {'vm_name': vm_object.getName(),
+                                        'network_name': network_adapter.getConnectedNetwork(),
+                                        'mac_address': network_adapter.getMacAddress()})
+
+      # Sync permissions to VM on remote node
+      auth_object = Auth()
+      for group in auth_object.getPermissionGroups():
+        users = auth_object.getUsersInPermissionGroup(group, vm_object)
+        for user in users:
+          remote_object.runRemoteCommand('auth-addUserPermissionGroup',
+                                         {'permission_group': group,
+                                          'username': user,
+                                          'vm_name': vm_object.getName()})
+
+
+  def checkRemoteMachine(self, remote_object):
+    """Performs checks on the remote node to ensure that there will be
+       no object conflicts when syncing the Network and VM configurations"""
+    # Determine if any of the local networks/VMs exist on the remote node
+    remote_networks = remote_object.runRemoteCommand('node-network-getConfig', [])
+    from mcvirt.node.network import Network
+    for local_network in Network.getConfig().keys():
+      if (local_network in remote_networks.keys()):
+        raise RemoteObjectConflict('Remote node contains duplicate network: %s' % local_network)
+
+    from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+    local_vms = VirtualMachine.getAllVms(self.mcvirt_instance)
+    remote_vms = remote_object.runRemoteCommand('virtual_machine-getAllVms', [])
+    for local_vm in local_vms:
+      if (local_vm in remote_vms):
+        raise RemoteObjectConflict('Remote node contains duplicate Virtual Machine: %s' % local_vm)
 
   def removeNode(self, remote_host):
     """Removes a node from the McVirt cluster"""

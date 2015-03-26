@@ -106,7 +106,7 @@ class Parser:
     self.info_parser = self.subparsers.add_parser('info', help='View VM info help', parents=[self.parent_parser])
     self.info_parser.add_argument('--vnc-port', dest='vnc_port', help='Displays the port that VNC is being hosted from',
       action='store_true')
-    self.info_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+    self.info_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM', nargs='?', default=None)
 
     # Get arguments for listing VMs
     self.list_parser = self.subparsers.add_parser('list', help='List VMs present on host', parents=[self.parent_parser])
@@ -141,25 +141,16 @@ class Parser:
 
     # Get an instance of McVirt
     if (mcvirt_instance == None):
-      mcvirt_instance = McVirt()
+      # Add corner-case to allow host info command to not start
+      # the McVirt object, so that it can view the status of nodes in the cluster
+      if not (action == 'info' and args.vm_name is None):
+        mcvirt_instance = McVirt()
 
     try:
       # Perform functions on the VM based on the action passed to the script
       if (action == 'start'):
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-        disk_drive_object = DiskDrive(vm_object)
-
-        if (args.iso):
-          # If an ISO has been specified, attach it to the VM before booting
-          # and adjust boot order to boot from ISO first
-          disk_drive_object.attachISO(args.iso)
-          vm_object.setBootOrder(['cdrom', 'hd'])
-        else:
-          # If not ISO was specified, remove any attached ISOs and change boot order
-          # to boot from HDD
-          disk_drive_object.removeISO()
-          vm_object.setBootOrder(['hd'])
-        vm_object.start()
+        vm_object.start(args.iso if args.iso else None)
 
       elif (action == 'stop'):
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
@@ -187,7 +178,8 @@ class Parser:
           print 'Number of virtual cores will be changed from %s to %s.' % (old_cpu_count, args.cpu_count)
           vm_object.updateCPU(args.cpu_count)
         if (args.remove_network):
-          NetworkAdapter.delete(vm_object, args.remove_network)
+          network_adapter_object = NetworkAdapter(args.remove_network, vm_object)
+          network_adapter_object.delete()
         if (args.add_network):
           NetworkAdapter.create(vm_object, args.add_network)
         if (args.add_disk):
@@ -200,23 +192,28 @@ class Parser:
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         auth_object = mcvirt_instance.getAuthObject()
         if (args.add_user):
-          auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object, permission_group='user', username=args.add_user)
+          auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, permission_group='user', username=args.add_user, vm_object=vm_object)
           print 'Successfully added \'%s\' as \'user\' to VM \'%s\'' % (args.add_user, vm_object.getName())
         if (args.delete_user):
-          auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object, permission_group='user', username=args.delete_user)
+          auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, permission_group='user', username=args.delete_user, vm_object=vm_object)
           print 'Successfully removed \'%s\' as \'user\' from VM \'%s\'' % (args.delete_user, vm_object.getName())
         if (args.add_owner):
-          auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object, permission_group='owner', username=args.add_owner)
+          auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, permission_group='owner', username=args.add_owner, vm_object=vm_object)
           print 'Successfully added \'%s\' as \'owner\' to VM \'%s\'' % (args.add_owner, vm_object.getName())
         if (args.delete_owner):
-          auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object, permission_group='owner', username=args.delete_owner)
+          auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, permission_group='owner', username=args.delete_owner, vm_object=vm_object)
           print 'Successfully added \'%s\' as \'owner\' from VM \'%s\'' % (args.delete_owner, vm_object.getName())
+
       elif (action == 'info'):
-        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-        if (args.vnc_port):
-          print vm_object.getVncPort()
+        if (args.vm_name):
+          vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+          if (args.vnc_port):
+            print vm_object.getVncPort()
+          else:
+            vm_object.printInfo()
         else:
-          vm_object.printInfo()
+          mcvirt_instance = McVirt(initialise_nodes=False)
+          mcvirt_instance.printInfo()
 
       elif (action == 'network'):
         if (args.network_action == 'create'):
@@ -227,12 +224,12 @@ class Parser:
 
       elif (action == 'cluster'):
         if (args.cluster_action == 'add-node'):
-          password = System.getUserInput('Enter remote node root password: ', True)
-          cluster_object = mcvirt_instance.getClusterObject()
+          password = System.getUserInput('Enter \'%s\' root password: ' % args.node, True)
+          cluster_object = Cluster(mcvirt_instance)
           cluster_object.addNode(args.node, args.ip_address, password)
           print 'Successfully added node %s' % args.node
         if (args.cluster_action == 'remove-node'):
-          cluster_object = mcvirt_instance.getClusterObject()
+          cluster_object = Cluster(mcvirt_instance)
           cluster_object.removeNode(args.node)
           print 'Successfully removed node %s' % args.node
 

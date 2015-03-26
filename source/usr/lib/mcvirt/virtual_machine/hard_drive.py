@@ -172,7 +172,7 @@ class HardDrive:
     except:
       # If attaching the HDD to the VM fails, remove the disk image
       HardDrive._removeLogicalVolume(disk_path)
-      raise McVirtException('An error occured whilst attaching the disk to the VM')
+      raise McVirtException('An error occurred whilst attaching the disk to the VM')
 
   def activateDisk(self):
     """Starts the disk logical volume"""

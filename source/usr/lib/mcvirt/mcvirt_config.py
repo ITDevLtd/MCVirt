@@ -24,13 +24,19 @@ class McVirtConfig(ConfigFile):
     json_data = \
     {
       'superusers': [],
-      'permissions': {},
+      'permissions':
+      {
+        'user': [],
+        'owner': [],
+      },
       'vm_storage_vg': '',
       'cluster': \
       {
         'cluster_ip': '',
         'nodes': {}
-      }
+      },
+      'virtual_machines': [],
+      'networks': []
     }
 
     # Write the configuration to disk

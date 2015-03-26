@@ -31,10 +31,10 @@ class DiskDrive:
     cdrom_xml_string = ET.tostring(cdrom_xml.getroot(), encoding = 'utf8', method = 'xml')
 
     # Update the libvirt cdrom device
-    if (not self.vm_object.domain_object.updateDeviceFlags(cdrom_xml_string)):
+    if (not self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):
       print 'Attached ISO %s' % iso_file
     else:
-      raise McVirtException('An error occured whilst attaching ISO')
+      raise McVirtException('An error occurred whilst attaching ISO')
 
   def removeISO(self):
     """Removes ISO attached to the disk drive of a VM"""
@@ -51,8 +51,8 @@ class DiskDrive:
       cdrom_xml_string = ET.tostring(cdrom_xml, encoding = 'utf8', method = 'xml')
 
       # Update the libvirt cdrom device
-      if (self.vm_object.domain_object.updateDeviceFlags(cdrom_xml_string)):
-        raise McVirtException('An error occured whilst detaching ISO')
+      if (self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):
+        raise McVirtException('An error occurred whilst detaching ISO')
 
   def getCurrentDisk(self):
     """Returns the path of the disk currently attached to the VM"""

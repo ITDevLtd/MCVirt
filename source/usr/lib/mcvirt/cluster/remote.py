@@ -47,33 +47,96 @@ class Remote:
       # Adds a remote node to the local cluster configuration
       cluster_instance = Cluster(mcvirt_instance)
       return_data = cluster_instance.addNodeRemote(arguments['node'], arguments['ip_address'], arguments['public_key'])
+
     elif (action == 'cluster-cluster-addHostKey'):
       # Connect to the remote machine, saving the host key
       cluster_instance = Cluster(mcvirt_instance)
       remote = Remote(cluster_instance, arguments['node'], save_hostkey=True, initialise_node=False)
       remote = None
+
     elif (action == 'cluster-cluster-removeNodeConfiguration'):
       # Removes a remove McVirt node from the local configuration
       cluster_instance = Cluster(mcvirt_instance)
       cluster_instance.removeNodeConfiguration(arguments['node'])
+
     elif (action == 'auth-addUserPermissionGroup'):
       auth_object = mcvirt_instance.getAuthObject()
-      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-      auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object,
+      if ('vm_name' in arguments and arguments['vm_name']):
+        vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      else:
+        vm_object = None
+
+      if ('ignore_duplicate' in arguments and arguments['ignore_duplicate']):
+        ignore_duplicate = arguments['ignore_duplicate']
+      else:
+        ignore_duplicate = False
+
+      auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance,
                                          permission_group=arguments['permission_group'],
-                                         username=arguments['username'])
+                                         username=arguments['username'],
+                                         vm_object=vm_object,
+                                         ignore_duplicate=ignore_duplicate)
+
     elif (action == 'auth-deleteUserPermissionGroup'):
       auth_object = mcvirt_instance.getAuthObject()
       vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-      auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, vm_object=vm_object,
+      auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance,
                                             permission_group=arguments['permission_group'],
-                                            username=arguments['username'])
+                                            username=arguments['username'],
+                                            vm_object=vm_object)
+
+    elif (action == 'auth-addSuperuser'):
+      auth_object = mcvirt_instance.getAuthObject()
+      if ('ignore_duplicate' in arguments and arguments['ignore_duplicate']):
+        ignore_duplicate = arguments['ignore_duplicate']
+      else:
+        ignore_duplicate = False
+      auth_object.addSuperuser(arguments['username'],
+                               ignore_duplicate=ignore_duplicate)
+
+    elif (action == 'virtual_machine-create'):
+      VirtualMachine.create(mcvirt_instance, arguments['vm_name'], arguments['cpu_cores'],
+                            arguments['memory_allocation'], node=arguments['node'],
+                            available_nodes=arguments['available_nodes'])
+
+    elif (action == 'virtual_machine-delete'):
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      vm_object.delete(remove_data=arguments['remove_data'])
+
+    elif (action == 'network_adapter-create'):
+      from mcvirt.virtual_machine.network_adapter import NetworkAdapter
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      NetworkAdapter.create(vm_object, arguments['network_name'], arguments['mac_address'])
+
+    elif (action == 'virtual_machine-getState'):
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      return_data = vm_object.getState()
+
+    elif (action == 'virtual_machine-getAllVms'):
+      from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+      return_data = VirtualMachine.getAllVms(mcvirt_instance)
+
+    elif (action == 'node-network-create'):
+      from mcvirt.node.network import Network
+      Network.create(mcvirt_instance, arguments['network_name'], arguments['physical_interface'])
+
+    elif (action == 'node-network-delete'):
+      from mcvirt.node.network import Network
+      network_object = Network(mcvirt_instance, arguments['network_name'])
+      network_object.delete()
+
+    elif (action == 'node-network-getConfig'):
+      from mcvirt.node.network import Network
+      return_data = Network.getConfig()
+
     elif (action == 'close'):
       # Delete McVirt instance, which removes the lock and force mcvirt-remote
       # to close
       end_connection = True
+
     elif (action == 'checkStatus'):
       return_data = ['0']
+
     else:
       raise UnkownRemoteCommandException('Unknown command: %s' % command)
 

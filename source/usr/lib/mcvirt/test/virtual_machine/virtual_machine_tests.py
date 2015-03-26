@@ -15,7 +15,7 @@ def stopAndDelete(mcvirt_connection, vm_name):
   """Stops and removes VMs"""
   if (VirtualMachine._checkExists(mcvirt_connection.getLibvirtConnection(), vm_name)):
     vm_object = VirtualMachine(mcvirt_connection, vm_name)
-    if (vm_object.isRunning()):
+    if (vm_object.getState()):
       vm_object.stop()
     vm_object.delete(True)
 
@@ -144,7 +144,7 @@ class VirtualMachineTests(unittest.TestCase):
     self.parser.parse_arguments('start %s' % self.test_vm_name, mcvirt_instance=self.mcvirt)
 
     # Ensure that it is running
-    self.assertTrue(test_vm_object.isRunning())
+    self.assertTrue(test_vm_object.getState())
 
   def test_start_running_vm(self):
     """Attempts to start a running VM"""
@@ -163,13 +163,13 @@ class VirtualMachineTests(unittest.TestCase):
 
     # Start VM and ensure it is running
     test_vm_object.start()
-    self.assertTrue(test_vm_object.isRunning())
+    self.assertTrue(test_vm_object.getState())
 
     # Use the argument parser to stop the VM
     self.parser.parse_arguments('stop %s' % self.test_vm_name, mcvirt_instance=self.mcvirt)
 
     # Ensure the VM is stopped
-    self.assertFalse(test_vm_object.isRunning())
+    self.assertFalse(test_vm_object.getState())
 
   def test_stop_stopped_vm(self):
     """Attempts to stop an already stopped VM"""

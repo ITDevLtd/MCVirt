@@ -4,6 +4,7 @@
 #
 import getpass
 import subprocess
+import sys
 
 class System:
 
@@ -17,7 +18,7 @@ class System:
     return (command_process.returncode, command_process.stdout.read(), command_process.stderr.read())
 
   @staticmethod
-  def getUserInput(self, display_text, password=False):
+  def getUserInput(display_text, password=False):
     """Prompts the user for input"""
     if (password):
       return getpass.getpass(display_text)
