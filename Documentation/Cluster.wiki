@@ -9,7 +9,7 @@ To view the status of the cluster, run the following on an McVirt node:
 mcvirt info
 }}}
 
-This will provide a table containing the names of the nodes within the cluster. The cluster IP addresses and status of the nodes is also shown within the table.
+This will show the cluster nodes, IP addresses, and status.
 
 == Adding a new node ==
 
@@ -18,8 +18,6 @@ It is best to join a blank node (containing a default configuration without any 
 When a machine is connected to a cluster, it receives the permission/network/virtual machine configuration from the node connecting to it.
 
 '''Note:''' Always run the mcvirt cluster add command from the source machine, containing VMs, connecting to a remote node that is blank.
-
-=== Configuring the new node ===
 
 The new node must be configured on separate network/VLAN for McVirt cluster communication.
 
