@@ -36,7 +36,13 @@ class McVirtConfig(ConfigFile):
         'nodes': {}
       },
       'virtual_machines': [],
-      'networks': []
+      'networks': [],
+      'drbd': \
+      {
+        'secret': '',
+        'sync_rate': '10M',
+        'protocol': 'C'
+      }
     }
 
     # Write the configuration to disk
