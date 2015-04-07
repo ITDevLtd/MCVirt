@@ -70,11 +70,12 @@ Password:
 mcvirt info <VM Name> --vnc-port
 5904
 }}}
-   1. SSH onto the host, calculating the port to forward as the port provided in the previous step (in this case, 4, meaning that the port to fowrad would be 5904)
+   1. SSH onto the host, forwarding the port provided in the previous step (5904 in this case)
      * The local port can be any available port. In this example, 1232 is used:
 {{{
 ssh <Username>@<Node> -L 1232:127.0.0.1:5904
 }}}
+     * For putty, use the tunnels configuration under '''Connection -> SSH -> Tunnels''', where the source port is the local port and the destination is 127.0.0.1:<VNC Port>
    1. Use an VNC client to connect to 127.0.0.1:1232 on your local PC
 
 == Removing VNC display ==
