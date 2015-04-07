@@ -131,6 +131,11 @@ class Parser:
     self.node_remove_parser.add_argument('--node', dest='node', metavar='node', type=str, required=True,
       help='Hostname of the remote node to remove from the cluster')
 
+    # Create subparser for drbd-related commands
+    self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering')
+    self.drbd_parser.add_argument('--enable', dest='enable', help='Enable DRBD support on the cluster',
+      action='store_true')
+
   def parse_arguments(self, script_args = None, mcvirt_instance=None):
     """Parses arguments and performs actions based on the arguments"""
     # If arguments have been specified, split, so that
@@ -234,6 +239,11 @@ class Parser:
           cluster_object = Cluster(mcvirt_instance)
           cluster_object.removeNode(args.node)
           print 'Successfully removed node %s' % args.node
+
+      elif (action == 'drbd'):
+        from node.drbd import DRBD
+        if (args.enable):
+          DRBD.enable(mcvirt_instance)
 
       elif (action == 'clone'):
         vm_object = VirtualMachine(mcvirt_instance, args.template)

@@ -10,7 +10,9 @@ from mcvirt_config import McVirtConfig
 class Auth:
   """Provides authentication and permissions for performing functions within McVirt"""
 
-  PERMISSIONS = Enum('CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS', 'VIEW_VNC_CONSOLE', 'CLONE_VM', 'DELETE_CLONE', 'MANAGE_HOST_NETWORKS', 'MANAGE_CLUSTER')
+  PERMISSIONS = Enum('CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS',
+                     'VIEW_VNC_CONSOLE', 'CLONE_VM', 'DELETE_CLONE', 'MANAGE_HOST_NETWORKS',
+                     'MANAGE_CLUSTER', 'MANAGE_DRBD')
 
   # Set the permissions for the permissions groups
   PERMISSION_GROUPS = \

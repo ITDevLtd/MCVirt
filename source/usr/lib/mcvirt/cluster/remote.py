@@ -129,6 +129,10 @@ class Remote:
       from mcvirt.node.network import Network
       return_data = Network.getConfig()
 
+    elif (action == 'node-drbd-enable'):
+      from mcvirt.node.drbd import DRBD
+      DRBD.enable(mcvirt_instance, arguments['secret'])
+
     elif (action == 'close'):
       # Delete McVirt instance, which removes the lock and force mcvirt-remote
       # to close

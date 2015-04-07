@@ -39,6 +39,7 @@ class McVirtConfig(ConfigFile):
       'networks': [],
       'drbd': \
       {
+        'enabled': 0,
         'secret': '',
         'sync_rate': '10M',
         'protocol': 'C'
