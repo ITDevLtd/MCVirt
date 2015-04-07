@@ -4,9 +4,11 @@
 #
 import argparse
 import sys
-from mcvirt import McVirt, McVirtException, McVirtCommandException
+from mcvirt import McVirt, McVirtException
 from virtual_machine.virtual_machine import VirtualMachine
-from virtual_machine.hard_drive import HardDrive
+from virtual_machine.hard_drive.local import Local as HardDriveLocal
+from virtual_machine.hard_drive.drbd import DRBD as HardDriveDRBD
+from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from virtual_machine.disk_drive import DiskDrive
 from virtual_machine.network_adapter import NetworkAdapter
 from node.network import Network
@@ -183,9 +185,9 @@ class Parser:
         if (args.add_network):
           NetworkAdapter.create(vm_object, args.add_network)
         if (args.add_disk):
-          HardDrive.create(vm_object, args.add_disk)
+          HardDriveLocal.create(vm_object, args.add_disk)
         if (args.increase_disk and args.disk_id):
-          harddrive_object = HardDrive(vm_object, args.disk_id)
+          harddrive_object = HardDriveFactory.getObject(vm_object, args.disk_id)
           harddrive_object.increaseSize(args.increase_disk)
 
       elif (action == 'permission'):

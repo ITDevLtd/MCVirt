@@ -12,11 +12,12 @@ from texttable import Texttable
 
 from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.mcvirt_config import McVirtConfig
-from mcvirt.virtual_machine.hard_drive import HardDrive
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth import Auth
+from mcvirt.virtual_machine.hard_drive.local import Local as HardDriveLocal
+from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 
 class InvalidVirtualMachineNameException(McVirtException):
   """VM is being created with an invalid name"""
@@ -325,10 +326,10 @@ class VirtualMachine:
 
   def getDiskObjects(self):
     """Returns an array of disk objects for the disks attached to the VM"""
-    disks = self.getConfigObject().getConfig()['disks']
+    disks = self.getConfigObject().getConfig()['hard_disks']
     disk_objects = []
     for disk_id in disks:
-      disk_objects.append(HardDrive(self, disk_id))
+      disk_objects.append(HardDriveFactory.getObject(self, disk_id))
     return disk_objects
 
   @staticmethod
@@ -494,7 +495,7 @@ class VirtualMachine:
 
     # Create disk images
     for hard_drive_size in hard_drives:
-      HardDrive.create(vm_object, hard_drive_size)
+      HardDriveLocal.create(vm_object, hard_drive_size)
 
     # If any have been specified, add a network configuration for each of the
     # network interfaces to the domain XML
@@ -582,7 +583,7 @@ class VirtualMachine:
         new_boot_xml_object = ET.Element('boot')
         new_boot_xml_object.set('dev', new_boot_device)
 
-        # Appened new XML configuration onto OS section of domain XML
+        # Append new XML configuration onto OS section of domain XML
         os_xml.append(new_boot_xml_object)
 
     self.editConfig(updateXML)
