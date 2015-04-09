@@ -161,7 +161,8 @@ class DRBD(Base):
     _, sector_size, _ = System.runCommand(['blockdev', '--getss', logical_volume_path])
     sector_size = int(sector_size.strip())
 
-    # Follow the DRBD meta data calculation formula.
+    # Follow the DRBD meta data calculation formula, see
+    # https://drbd.linbit.com/users-guide/ch-internals.html#s-external-meta-data
     meta_size_formula_step_1 = int(math.ceil(raw_size_sectors / 262144))
     meta_size_formula_step_2 = meta_size_formula_step_1 * 8
     meta_size_sectors = meta_size_formula_step_2 + 72

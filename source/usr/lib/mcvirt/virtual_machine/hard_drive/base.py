@@ -233,7 +233,7 @@ class Base(object):
                                  {'config': config_object._dumpConfig(),
                                   'name': name})
     except McVirtCommandException, e:
-      raise McVirtException("Error whilst zeroing logical volume:\n" + str(e))
+      raise McVirtException("Error whilst activating logical volume:\n" + str(e))
 
   def increaseSize(self, increase_size):
     """Increases the size of a VM hard drive, given the size to increase the drive by"""

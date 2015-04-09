@@ -14,7 +14,7 @@ class RemoteCommandExecutionFailedException(McVirtException):
   """A remote command execution fails"""
   pass
 
-class UnkownRemoteCommandException(McVirtException):
+class UnknownRemoteCommandException(McVirtException):
   """An unknown command was passed to the remote machine"""
   pass
 
@@ -218,7 +218,7 @@ class Remote:
       return_data = ['0']
 
     else:
-      raise UnkownRemoteCommandException('Unknown command: %s' % action)
+      raise UnknownRemoteCommandException('Unknown command: %s' % action)
 
     return (json.dumps(return_data), end_connection)
 

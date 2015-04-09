@@ -182,7 +182,6 @@ class DRBD(Base):
     if (config_object.vm_object.mcvirt_object.initialiseNodes()):
       try:
         for node in config_object.vm_object.getAvailableNodes():
-
           # Since the VM configuration contains the local node, catch it, so that there is no attempt to
           # perform a remote command to the local node
           if (node != Cluster.getHostname()):
@@ -211,7 +210,6 @@ class DRBD(Base):
     if (config_object.vm_object.mcvirt_object.initialiseNodes()):
       cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
       for node in config_object.vm_object.getAvailableNodes():
-
           # Since the VM configuration contains the local node, catch it, so that there is no attempt to
           # perform a remote command to the local node
           remote_object = cluster_instance.getRemoteNode(node)

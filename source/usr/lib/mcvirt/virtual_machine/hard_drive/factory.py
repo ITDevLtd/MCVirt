@@ -10,7 +10,7 @@ from mcvirt.virtual_machine.hard_drive.config.base import Base as ConfigBase
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 
-class UnkownStorageTypeException(McVirtException):
+class UnknownStorageTypeException(McVirtException):
   """An hard drive object with an unknown disk type has been initialised"""
   pass
 
@@ -59,4 +59,4 @@ class Factory():
     for hard_drive_class in Factory.getStorageTypes():
       if (storage_type == hard_drive_class.__name__):
         return hard_drive_class
-    raise UnkownStorageTypeException('Attempted to initialise an unknown storage type: %s' % (storage_type))
+    raise UnknownStorageTypeException('Attempted to initialise an unknown storage type: %s' % (storage_type))
