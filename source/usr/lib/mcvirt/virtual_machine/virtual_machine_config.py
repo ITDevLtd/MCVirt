@@ -39,6 +39,7 @@ class VirtualMachineConfig(ConfigFile):
           'owner': [],
         },
         'hard_disks': {},
+        'storage_type': None,
         'memory_allocation': str(memory_allocation),
         'cpu_cores': str(cpu_cores),
         'clone_parent': False,

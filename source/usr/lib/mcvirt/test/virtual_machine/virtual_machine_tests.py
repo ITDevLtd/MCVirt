@@ -69,8 +69,8 @@ class VirtualMachineTests(unittest.TestCase):
 
     # Create virtual machine using parser
     self.parser.parse_arguments('create %s' % self.test_vm_name +
-      ' --cpu-count %s --disk-size %s --memory %s --network %s' %
-      (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name),
+      ' --cpu-count %s --disk-size %s --memory %s --network %s --storage-type %s' %
+      (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name, 'Local'),
       mcvirt_instance=self.mcvirt)
 
     # Ensure VM exists
@@ -93,8 +93,8 @@ class VirtualMachineTests(unittest.TestCase):
     # Attempt to create VM and ensure exception is thrown
     with self.assertRaises(InvalidVirtualMachineNameException):
       self.parser.parse_arguments('create "%s"' % invalid_vm_name +
-        ' --cpu-count %s --disk-size %s --memory %s --network %s' %
-        (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name),
+        ' --cpu-count %s --disk-size %s --memory %s --network %s --storage-type %s' %
+        (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name, 'Local'),
         mcvirt_instance=self.mcvirt)
 
     # Ensure VM has not been created
@@ -104,12 +104,12 @@ class VirtualMachineTests(unittest.TestCase):
     """Attempts to create two VMs with the same name"""
     # Create Virtual machine
     original_memory_allocation = 200
-    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, original_memory_allocation, [100], ['Production'])
+    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, original_memory_allocation, [100], ['Production'], storage_type='Local')
     self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
 
     # Attempt to create VM with duplicate name, ensuring that an exception is thrown
     with self.assertRaises(VmAlreadyExistsException):
-      VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
+      VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'], storage_type='Local')
 
     # Ensure original VM already exists
     self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
@@ -127,7 +127,7 @@ class VirtualMachineTests(unittest.TestCase):
 
     # Attempt to create VM, expecting an exception for the directory already existing
     with self.assertRaises(VmDirectoryAlreadyExistsException):
-      VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
+      VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'], storage_type='Local')
 
     # Ensure the VM has not been created
     self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm_name))
@@ -138,7 +138,7 @@ class VirtualMachineTests(unittest.TestCase):
   def test_start(self):
     """Tests starting VMs through the argument parser"""
     # Create Virtual machine
-    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
+    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'], storage_type='Local')
 
     # Use argument parser to start the VM
     self.parser.parse_arguments('start %s' % self.test_vm_name, mcvirt_instance=self.mcvirt)
@@ -149,7 +149,7 @@ class VirtualMachineTests(unittest.TestCase):
   def test_start_running_vm(self):
     """Attempts to start a running VM"""
     # Create Virtual machine and start it
-    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
+    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'], storage_type='Local')
     test_vm_object.start()
 
     # Use argument parser to start the VM
@@ -159,7 +159,7 @@ class VirtualMachineTests(unittest.TestCase):
   def test_stop(self):
     """Tests stopping VMs through the argument parser"""
     # Create virtual machine for testing
-    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
+    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'], storage_type='Local')
 
     # Start VM and ensure it is running
     test_vm_object.start()
@@ -174,7 +174,7 @@ class VirtualMachineTests(unittest.TestCase):
   def test_stop_stopped_vm(self):
     """Attempts to stop an already stopped VM"""
     # Create Virtual machine
-    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'])
+    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100], ['Production'], storage_type='Local')
 
     # Use argument parser to start the VM
     with self.assertRaises(VmAlreadyStoppedException):

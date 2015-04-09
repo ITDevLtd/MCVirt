@@ -56,6 +56,7 @@ class Cluster:
   def addNode(self, remote_host, remote_ip, password):
     """Connects to a remote McVirt machine, shares SSH keys and clusters the machines"""
     from remote import Remote
+    from mcvirt.node.drbd import DRBD
     # Ensure the user has privileges to manage the cluster
     self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_CLUSTER)
 
@@ -88,6 +89,10 @@ class Cluster:
 
     # Sync VMs
     self.syncVirtualMachines(remote)
+
+    # If DRBD is enabled on the local node, configure/enable it on the remote node
+    if (DRBD.isEnabled()):
+      remote.runRemoteCommand('node-drbd-enable', {'secret': DRBD.getConfig()['secret']})
 
   def syncNetworks(self, remote_object):
     """Add the local networks to the remote node"""

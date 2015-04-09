@@ -6,13 +6,19 @@ import getpass
 import subprocess
 import sys
 
+from mcvirt import McVirtException
+
+class McVirtCommandException(McVirtException):
+  """Provides an exception to be thrown after errors whilst calling external commands"""
+  pass
+
 class System:
 
   @staticmethod
-  def runCommand(command_args):
+  def runCommand(command_args, raise_exception_on_failure=True):
     """Runs system command, throwing an exception if the exit code is not 0"""
     command_process = subprocess.Popen(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if (command_process.wait()):
+    if (command_process.wait() and raise_exception_on_failure):
       raise McVirtCommandException("Command: %s\nExit code: %s\nOutput:\n%s" %
         (' '.join(command_args), command_process.returncode, command_process.stdout.read() + command_process.stderr.read()))
     return (command_process.returncode, command_process.stdout.read(), command_process.stderr.read())

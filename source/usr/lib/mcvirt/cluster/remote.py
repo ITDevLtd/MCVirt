@@ -116,6 +116,82 @@ class Remote:
       from mcvirt.virtual_machine.virtual_machine import VirtualMachine
       return_data = VirtualMachine.getAllVms(mcvirt_instance)
 
+    elif (action == 'virtual_machine-hard_drive-createLogicalVolume'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._createLogicalVolume(hard_drive_config_object,
+                                                                                          name=arguments['name'],
+                                                                                          size=arguments['size'])
+
+    elif (action == 'virtual_machine-hard_drive-removeLogicalVolume'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._removeLogicalVolume(hard_drive_config_object,
+                                                                                          name=arguments['name'])
+
+    elif (action == 'virtual_machine-hard_drive-activateLogicalVolume'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._activateLogicalVolume(hard_drive_config_object,
+                                                                                            name=arguments['name'])
+
+    elif (action == 'virtual_machine-hard_drive-zeroLogicalVolume'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._zeroLogicalVolume(hard_drive_config_object,
+                                                                                        name=arguments['name'],
+                                                                                        size=arguments['size'])
+
+    elif (action == 'virtual_machine-hard_drive-drbd-generateDrbdConfig'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      hard_drive_config_object._generateDrbdConfig()
+
+    elif (action == 'virtual_machine-hard_drive-drbd-removeDrbdConfig'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      hard_drive_config_object._removeDrbdConfig()
+
+    elif (action == 'virtual_machine-hard_drive-drbd-initialiseMetaData'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._initialiseMetaData(hard_drive_config_object._getResourceName())
+
+    elif (action == 'virtual_machine-hard_drive-addToVirtualMachine'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._addToVirtualMachine(hard_drive_config_object,
+                                                                                          activate=False)
+
+    elif (action == 'virtual_machine-hard_drive-removeFromVirtualMachine'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._removeFromVirtualMachine(hard_drive_config_object)
+
+    elif (action == 'virtual_machine-hard_drive-drbd-drbdUp'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+      hard_drive_object._drbdUp()
+
+    elif (action == 'virtual_machine-hard_drive-drbd-drbdDown'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+      hard_drive_object._drbdDown()
+
+    elif (action == 'virtual_machine-hard_drive-drbd-drbdSetSecondary'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+      hard_drive_object._drbdSetSecondary()
+
+    elif (action == 'virtual_machine-hard_drive-drbd-drbdDisconnect'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+      hard_drive_object._drbdDisconnect()
+
     elif (action == 'node-network-create'):
       from mcvirt.node.network import Network
       Network.create(mcvirt_instance, arguments['network_name'], arguments['physical_interface'])
@@ -142,7 +218,7 @@ class Remote:
       return_data = ['0']
 
     else:
-      raise UnkownRemoteCommandException('Unknown command: %s' % command)
+      raise UnkownRemoteCommandException('Unknown command: %s' % action)
 
     return (json.dumps(return_data), end_connection)
 
@@ -216,6 +292,10 @@ class Remote:
 
   def runRemoteCommand(self, action, arguments):
     """Prepare and run a remote command on a cluster node"""
+    # Ensure connection is alive
+    if (self.connection is None):
+      self.__connect()
+
     # Generate a JSON of the command and arguments
     command_json = json.dumps({'action': action, 'arguments': arguments}, sort_keys=True)
 
@@ -234,4 +314,5 @@ class Remote:
       if (stderr):
         exit_code = self.stdout.channel.recv_exit_status()
         self.connection.close()
+        self.connection = None
         raise RemoteCommandExecutionFailedException("Exit Code: %s\nCommand: %s\nStdout: %s\nStderr: %s" % (exit_code, command_json, ''.join(stdout), ''.join(stderr)))

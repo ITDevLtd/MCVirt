@@ -131,8 +131,3 @@ class McVirt:
 class McVirtException(Exception):
   """Provides an exception to be thrown for errors in McVirt"""
   pass
-
-
-class McVirtCommandException(McVirtException):
-  """Provides an exception to be thrown after errors whilst calling external commands"""
-  pass

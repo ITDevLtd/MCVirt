@@ -180,7 +180,7 @@ class VirtualMachine:
     if (len(disk_objects)):
       table.add_row(('-- Disk ID --', '-- Disk Size --'))
       for disk_object in disk_objects:
-        table.add_row((str(disk_object.getId()), str(int(disk_object.getSize())/1000) + 'GB'))
+        table.add_row((str(disk_object.getConfigObject().getId()), str(int(disk_object.getSize())/1000) + 'GB'))
     else:
       warnings += "No hard disks present on machine\n"
 
@@ -216,7 +216,7 @@ class VirtualMachine:
         + 'User must have MODIFY_VM permission or be the owner of the cloned VM')
 
     # Ensure the VM is not being removed from a machine that the VM is not being run on
-    if not (self.isRegisteredLocally() or not self.mcvirt_object.initialiseNodes()):
+    if not (self.isRegisteredLocally() or self.getNode() is None or not self.mcvirt_object.initialiseNodes()):
       remote_node = self.getConfigObject().getConfig()['node']
       raise VmRegisteredElsewhere('The VM \'%s\' is registered on the remote node: %s' %
                                   (self.getName(), remote_node))
@@ -414,7 +414,7 @@ class VirtualMachine:
     for network_object in network_objects:
       networks.append(network_object.getConnectedNetwork())
     new_vm_object = VirtualMachine.create(mcvirt_instance, clone_vm_name, self.getCPU(),
-                                          self.getRAM(), [], networks)
+                                          self.getRAM(), [], networks, auth_check=False)
 
     # Set current user as an owner of the new VM, so that they have permission
     # to perform functions on the VM
@@ -439,16 +439,14 @@ class VirtualMachine:
     return new_vm_object
 
   @staticmethod
-  def createAuthCheck(mcvirt_instance, name, cpu_cores, memory_allocation, hard_drives, network_interfaces):
-    """Checks that the user has permission to create VMs and creates the new VM"""
-    mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CREATE_VM)
-    VirtualMachine.create(mcvirt_instance, name, cpu_cores, memory_allocation, hard_drives, network_interfaces)
-
-  @staticmethod
   def create(mcvirt_instance, name, cpu_cores, memory_allocation, hard_drives = [],
-             network_interfaces = [], node=None, available_nodes=None):
+             network_interfaces = [], node=None, available_nodes=None, storage_type=None,
+             auth_check=True):
     """Creates a VM and returns the virtual_machine object for it"""
     from mcvirt.cluster.cluster import Cluster
+
+    if (auth_check):
+      mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CREATE_VM)
 
     # Validate the VM name
     valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
@@ -470,10 +468,19 @@ class VirtualMachine:
       config['virtual_machines'].append(name)
     McVirtConfig().updateConfig(updateMcVirtConfig)
 
+    if (storage_type is None):
+        storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
+
     # If available nodes has not been passed, assume the local machine is the only
-    # available node
+    # available node if local storage is being used. Use the machines in the cluster
+    # if DRBD is being used
     if (available_nodes == None):
-      available_nodes = [Cluster.getHostname()]
+      if (storage_type == 'DRBD' and mcvirt_instance.initialiseNodes()):
+        cluster_object = Cluster(mcvirt_instance)
+        available_nodes = cluster_object.getNodes()
+        available_nodes.append(Cluster.getHostname())
+      else:
+        available_nodes = [Cluster.getHostname()]
 
     # Create VM configuration file
     VirtualMachineConfig.create(name, node, available_nodes, cpu_cores, memory_allocation)
@@ -481,7 +488,7 @@ class VirtualMachine:
     # Obtain an object for the new VM, to use to create disks/network interfaces
     vm_object = VirtualMachine(mcvirt_instance, name)
 
-    if (node == None):
+    if (node == None or node == Cluster.getHostname()):
       # Register VM with LibVirt
       vm_object.register()
 
@@ -495,7 +502,7 @@ class VirtualMachine:
 
     # Create disk images
     for hard_drive_size in hard_drives:
-      HardDriveLocal.create(vm_object, hard_drive_size)
+      HardDriveFactory.create(vm_object=vm_object, size=hard_drive_size, storage_type=storage_type)
 
     # If any have been specified, add a network configuration for each of the
     # network interfaces to the domain XML

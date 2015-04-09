@@ -12,9 +12,16 @@ class DRBDNotInstalledException(McVirtException):
   """DRBD is not installed"""
   pass
 
+
 class DRBDAlreadyEnabled(McVirtException):
   """DRBD has already been enabled on this node"""
   pass
+
+
+class DRBDNotEnabledOnNode(McVirtException):
+  """DRBD volumes cannot be created on a node that has not been configured to use DRBD"""
+  pass
+
 
 class DRBD:
   """Performs configuration of DRBD on the node"""
@@ -114,12 +121,13 @@ class DRBD:
       System.runCommand([DRBD.DRBDADM, 'adjust', resource])
 
   @staticmethod
-  def getAllDRBDHardDriveObjects(mcvirt_instance):
+  def getAllDrbdHardDriveObjects(mcvirt_instance):
     from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 
     hard_drive_objects = []
-    all_vm_objects = VirtualMachine.getAllVms(mcvirt_instance)
-    for vm_object in all_vm_objects:
+    all_vms = VirtualMachine.getAllVms(mcvirt_instance)
+    for vm_name in all_vms:
+      vm_object = VirtualMachine(mcvirt_object=mcvirt_instance, name=vm_name)
       all_hard_drive_objects = vm_object.getDiskObjects()
 
       for hard_drive_object in all_hard_drive_objects:
@@ -128,3 +136,20 @@ class DRBD:
 
     return hard_drive_objects
 
+  @staticmethod
+  def getUsedDrbdPorts(mcvirt_object):
+    used_ports = []
+
+    for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object):
+      used_ports.append(hard_drive_object.getConfig()._getDrbdPort())
+
+    return used_ports
+
+  @staticmethod
+  def getUsedDrbdMinors(mcvirt_object):
+    used_minors = []
+
+    for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object):
+      used_minors.append(hard_drive_object.getConfig()._getMinorId())
+
+    return used_minors

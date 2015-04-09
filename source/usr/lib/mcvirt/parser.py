@@ -6,14 +6,13 @@ import argparse
 import sys
 from mcvirt import McVirt, McVirtException
 from virtual_machine.virtual_machine import VirtualMachine
-from virtual_machine.hard_drive.local import Local as HardDriveLocal
-from virtual_machine.hard_drive.drbd import DRBD as HardDriveDRBD
 from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from virtual_machine.disk_drive import DiskDrive
 from virtual_machine.network_adapter import NetworkAdapter
 from node.network import Network
 from cluster.cluster import Cluster
 from system import System
+from node.drbd import DRBD as NodeDRBD
 from auth import Auth
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -55,6 +54,11 @@ class Parser:
     self.create_parser.add_argument('--network', dest='networks', metavar='Network Connection', type=str,
       action='append', help='Name of networks to connect VM to (each network has a separate NIC)')
     self.create_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+    # Determine if machine is configured to use DRBD
+    if (NodeDRBD.isEnabled()):
+      hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
+      self.create_parser.add_argument('--storage-type', dest='storage_type', metavar='Storage backing type', type=str,
+        choices=hard_drive_storage_types)
 
     # Get arguments for deleting a VM
     self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM help', parents=[self.parent_parser])
@@ -74,6 +78,12 @@ class Parser:
       help='Removes a NIC from VM with the given MAC-address (e.g. \'00:00:00:00:00:00)\'')
     self.update_parser.add_argument('--add-disk', dest='add_disk', metavar='Add Disk', type=int,
       help='Add disk to the VM (size in MB)')
+    # If the node has been configured to use DRBD, add an argument to allow the user to specify the
+    # storage backend
+    if (NodeDRBD.isEnabled()):
+      hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
+      self.update_parser.add_argument('--storage-type', dest='storage_type', metavar='Storage backing type', type=str,
+        choices=hard_drive_storage_types)
     self.update_parser.add_argument('--increase-disk', dest='increase_disk', metavar='Increase Disk', type=int,
       help='Increases VM disk by provided amount (MB)')
     self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
@@ -164,10 +174,15 @@ class Parser:
         vm_object.stop()
 
       elif (action == 'create'):
+        if (NodeDRBD.isEnabled()):
+          storage_type = args.storage_type
+        else:
+          storage_type = None
         # Convert memory allocation from MiB to KiB
         memory_allocation = int(args.memory) * 1024
-        VirtualMachine.createAuthCheck(mcvirt_instance, args.vm_name, args.cpu_count,
-          memory_allocation, [args.disk_size], args.networks)
+        VirtualMachine.create(mcvirt_instance=mcvirt_instance, name=args.vm_name, cpu_cores=args.cpu_count,
+                              memory_allocation=memory_allocation, hard_drives=[args.disk_size],
+                              network_interfaces=args.networks, storage_type=storage_type)
 
       elif (action == 'delete'):
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
@@ -190,7 +205,27 @@ class Parser:
         if (args.add_network):
           NetworkAdapter.create(vm_object, args.add_network)
         if (args.add_disk):
-          HardDriveLocal.create(vm_object, args.add_disk)
+          # Determine if the VM has already been configured to use a storage type
+          vm_storage_type = vm_object.getConfigObject().getConfig()['storage_type']
+
+          # Ensure that if the VM has not been configured to use a storage type, the node is
+          # capable of DRBD backends that the user has specified a storage backend
+          if (NodeDRBD.isEnabled()):
+            if (vm_storage_type):
+              if (args.storage_type):
+                self.parser.error('The VM has already been configured with a storage type, it cannot be changed.')
+            else:
+              if (args.storage_type):
+                # If the VM has not been configured to use a storage type, use
+                # the storage type parameter
+                vm_storage_type = args.storage_type
+              else:
+                self.parser.error('The VM is not configured with a storage type, --storage-type must be specified')
+          else:
+            # If DRBD is not enabled, assume the default storage type is being used
+            vm_storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
+
+          HardDriveFactory.create(vm_object, args.add_disk, storage_type)
         if (args.increase_disk and args.disk_id):
           harddrive_object = HardDriveFactory.getObject(vm_object, args.disk_id)
           harddrive_object.increaseSize(args.increase_disk)
@@ -241,7 +276,6 @@ class Parser:
           print 'Successfully removed node %s' % args.node
 
       elif (action == 'drbd'):
-        from node.drbd import DRBD
         if (args.enable):
           DRBD.enable(mcvirt_instance)
 
