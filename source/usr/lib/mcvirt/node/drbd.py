@@ -7,6 +7,7 @@ from Cheetah.Template import Template
 from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.mcvirt_config import McVirtConfig
 from mcvirt.system import System
+from mcvirt.auth import Auth
 
 class DRBDNotInstalledException(McVirtException):
   """DRBD is not installed"""
@@ -37,6 +38,17 @@ class DRBD:
   def isEnabled():
     """Determines whether DRBD is enabled on the node or not"""
     return DRBD.getConfig()['enabled']
+
+  @staticmethod
+  def isIgnored(mcvirt_instance):
+    """Determines if the user has specified for DRBD state to be ignored"""
+    return mcvirt_instance.ignore_drbd
+
+  @staticmethod
+  def ignoreDrbd(mcvirt_instance):
+    """Sets a global parameter for ignoring DRBD state"""
+    mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CAN_IGNORE_DRBD)
+    mcvirt_instance.ignore_drbd = True
 
   @staticmethod
   def enable(mcvirt_instance, secret=None):

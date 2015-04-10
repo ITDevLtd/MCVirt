@@ -21,6 +21,7 @@ class McVirt:
   def __init__(self, uri = None, initialise_nodes=True, username=None):
     """Checks lock file and performs initial connection to libvirt"""
     # Configure custom username - used for unittests
+    self.ignore_drbd = False
     self.username = username
 
     # Cluster configuration

@@ -10,25 +10,25 @@ from mcvirt_config import McVirtConfig
 class Auth:
   """Provides authentication and permissions for performing functions within McVirt"""
 
-  PERMISSIONS = Enum('CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS',
-                     'VIEW_VNC_CONSOLE', 'CLONE_VM', 'DELETE_CLONE', 'MANAGE_HOST_NETWORKS',
-                     'MANAGE_CLUSTER', 'MANAGE_DRBD')
+  PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS',
+                                     'VIEW_VNC_CONSOLE', 'CLONE_VM', 'DELETE_CLONE', 'MANAGE_HOST_NETWORKS',
+                                     'MANAGE_CLUSTER', 'MANAGE_DRBD', 'CAN_IGNORE_DRBD'])
 
   # Set the permissions for the permissions groups
   PERMISSION_GROUPS = \
     {
       'user':
       [
-        PERMISSIONS.CHANGE_VM_POWER_STATE.index,
-        PERMISSIONS.VIEW_VNC_CONSOLE.index
+        PERMISSIONS.CHANGE_VM_POWER_STATE,
+        PERMISSIONS.VIEW_VNC_CONSOLE
       ],
       'owner':
       [
-        PERMISSIONS.CHANGE_VM_POWER_STATE.index,
-        PERMISSIONS.MANAGE_VM_USERS.index,
-        PERMISSIONS.VIEW_VNC_CONSOLE.index,
-        PERMISSIONS.CLONE_VM.index,
-        PERMISSIONS.DELETE_CLONE.index
+        PERMISSIONS.CHANGE_VM_POWER_STATE,
+        PERMISSIONS.MANAGE_VM_USERS,
+        PERMISSIONS.VIEW_VNC_CONSOLE,
+        PERMISSIONS.CLONE_VM,
+        PERMISSIONS.DELETE_CLONE
       ]
     }
 
@@ -82,7 +82,7 @@ class Auth:
     else:
       # If the permission has not been found, throw an exception explaining that
       # the user does not have permission
-      raise McVirtException('User does not have the required permission: %s' % permission_enum.key)
+      raise McVirtException('User does not have the required permission: %s' % permission_enum.name)
 
   def checkPermission(self, permission_enum, vm_object = None):
     """Checks if the user has a given permission, either globally through McVirt or for a
@@ -122,7 +122,7 @@ class Auth:
       # Check if user is part of the group and the group contains
       # the required permission
       if ((user in users) and \
-        (permission_enum.index in Auth.PERMISSION_GROUPS[permission_group])):
+        (permission_enum in Auth.PERMISSION_GROUPS[permission_group])):
           return True
 
     return False

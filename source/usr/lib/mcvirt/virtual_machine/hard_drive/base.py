@@ -212,6 +212,18 @@ class Base(object):
     return os.path.lexists(config_object._getLogicalVolumePath(name))
 
   @staticmethod
+  def _ensureLogicalVolumeActive(config_object, name):
+    """Ensures that a logical volume is active"""
+    if (not Base._checkLogicalVolumeActive(config_object, name)):
+      from mcvirt.cluster.cluster import Cluster
+      raise LogicalVolumeIsNotActive('Logical volume %s is not active on %s' % (name, Cluster.getHostname()))
+
+  @staticmethod
+  def _checkLogicalVolumeActive(config_object, name):
+    """Checks that a logical volume is active"""
+    return os.path.exists(config_object._getLogicalVolumePath(name))
+
+  @staticmethod
   def _activateLogicalVolume(config_object, name, perform_on_nodes=False):
     """Activates a logical volume on the node/cluster"""
     from mcvirt.cluster.cluster import Cluster

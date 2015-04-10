@@ -35,8 +35,8 @@ class NetworkAdapter:
 
     return interface_xml
 
-  def getConfig(self):
-    """Returns a dict of the configuration for the network interface"""
+  def getLibvirtConfig(self):
+    """Returns a dict of the LibVirt configuration for the network interface"""
     domain_config = self.vm_object.getLibvirtConfig()
     interface_config = domain_config.find('./devices/interface[@type="network"]/mac[@address="%s"]/..' % self.mac_address)
 
@@ -45,11 +45,20 @@ class NetworkAdapter:
 
     return interface_config
 
+  def getConfig(self):
+    """Returns a dict of the McVirt configuration for the network interface"""
+    vm_config = self.vm_object.getConfigObject().getConfig()
+    network_config = \
+      {
+        'mac_address': self.getMacAddress(),
+        'network': vm_config['network_interfaces'][self.getMacAddress()]
+      }
+    return network_config
+
   def getConnectedNetwork(self):
     """Returns the network that a given interface is connected to"""
     interface_config = self.getConfig()
-    network = interface_config.find('./source').get('network')
-    return network
+    return interface_config['network']
 
   @staticmethod
   def generateMacAddress():

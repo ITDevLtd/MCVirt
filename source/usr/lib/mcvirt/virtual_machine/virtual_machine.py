@@ -113,24 +113,26 @@ class VirtualMachine:
       raise McVirtException('Cloned VMs cannot be started')
 
     # Determine if VM is stopped
-    if (not self.getState()):
-      disk_drive_object = DiskDrive(self)
-      if (iso_name):
-        # If an ISO has been specified, attach it to the VM before booting
-        # and adjust boot order to boot from ISO first
-        disk_drive_object.attachISO(iso_name)
-        self.setBootOrder(['cdrom', 'hd'])
-      else:
-        # If not ISO was specified, remove any attached ISOs and change boot order
-        # to boot from HDD
-        disk_drive_object.removeISO()
-        self.setBootOrder(['hd'])
-
-      # Start the VM
-      self._getLibvirtDomainObject().create()
-      print 'Successfully started VM'
-    else:
+    if (self.getState()):
       raise VmAlreadyStartedException('The VM is already running')
+
+    for disk_object in self.getDiskObjects():
+      disk_object.activateDisk()
+
+    disk_drive_object = DiskDrive(self)
+    if (iso_name):
+      # If an ISO has been specified, attach it to the VM before booting
+      # and adjust boot order to boot from ISO first
+      disk_drive_object.attachISO(iso_name)
+      self.setBootOrder(['cdrom', 'hd'])
+    else:
+      # If not ISO was specified, remove any attached ISOs and change boot order
+      # to boot from HDD
+      disk_drive_object.removeISO()
+      self.setBootOrder(['hd'])
+
+    # Start the VM
+    self._getLibvirtDomainObject().create()
 
   def getState(self):
     """Returns the state of the VM, either running (1) or stopped (0)"""

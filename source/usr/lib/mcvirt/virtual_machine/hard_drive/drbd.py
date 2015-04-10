@@ -3,6 +3,7 @@
 # http://www.itdev.co.uk
 #
 from enum import Enum
+import os
 
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
@@ -10,12 +11,169 @@ from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 from mcvirt.auth import Auth
 from mcvirt.system import System, McVirtCommandException
 from mcvirt.cluster.cluster import Cluster
+from mcvirt.mcvirt import McVirtException
+
+class DrbdStateException(McVirtException):
+  """The DRBD state is not OK"""
+  pass
+
+
+class DrbdBlockDeviceDoesNotExistException(McVirtException):
+  """DRBD block device does not exist"""
+  pass
+
+
+class DrbdConnectionState(Enum):
+  """Library of DRBD connection states"""
+
+  # No network configuration available. The resource has not yet been connected,
+  # or has been administratively disconnected (using drbdadm disconnect), or has
+  # dropped its connection due to failed authentication or split brain.
+  STAND_ALONE = 'StandAlone'
+  # Temporary state during disconnection. The next state is StandAlone.
+  DISCONNECTING = 'Disconnecting'
+  # Temporary state, prior to a connection attempt. Possible next
+  # states: WFConnection and WFReportParams.
+  UNCONNECTED = 'Unconnected'
+  # Temporary state following a timeout in the communication with the peer.
+  # Next state: Unconnected.
+  TIMEOUT = 'Timeout'
+  # Temporary state after the connection to the peer was lost.
+  # Next state: Unconnected.
+  BROKEN_PIPE = 'BrokenPipe'
+  # Temporary state after the connection to the partner was lost.
+  # Next state: Unconnected.
+  NETWORK_FAILURE = 'NetworkFailure'
+  # Temporary state after the connection to the partner was lost.
+  # Next state: Unconnected.
+  PROTOCOL_ERROR = 'ProtocolError'
+  # Temporary state. The peer is closing the connection. Next state: Unconnected.
+  TEAR_DOWN = 'TearDown'
+  # This node is waiting until the peer node becomes visible on the network.
+  WF_CONNECTION = 'WFConnection'
+  # TCP connection has been established, this node waits for the first network packet from the peer.
+  WF_REPORT_PARAMS = 'WFReportParams'
+  # A DRBD connection has been established, data mirroring is now active. This is the normal state.
+  CONNECTED = 'Connected'
+  # Full synchronization, initiated by the administrator, is just starting.
+  # The next possible states are: SyncSource or PausedSyncS.
+  STARTING_SYNC_S = 'StartingSyncS'
+  # Full synchronization, initiated by the administrator, is just starting.
+  # Next state: WFSyncUUID.
+  STARTING_SYNC_T = 'StartingSyncT'
+  # Partial synchronization is just starting. Next possible states:
+  # SyncSource or PausedSyncS.
+  WF_BIT_MAP_S = 'WFBitMapS'
+  # Partial synchronization is just starting. Next possible state: WFSyncUUID.
+  WF_BIT_MAP_T = 'WFBitMapT'
+  # Synchronization is about to begin. Next possible states: SyncTarget or PausedSyncT.
+  WF_SYNC_UUID = 'WFSyncUUID'
+  # Synchronization is currently running, with the local node being the source of synchronization.
+  SYNC_SOURCE = 'SyncSource'
+  # Synchronization is currently running, with the local node being the target of synchronization.
+  SYNC_TARGET = 'SyncTarget'
+  # The local node is the source of an ongoing synchronization, but synchronization is currently paused.
+  # This may be due to a dependency on the completion of another synchronization process, or due to
+  # synchronization having been manually interrupted by drbdadm pause-sync.
+  PAUSED_SYNC_S = 'PausedSyncS'
+  # The local node is the target of an ongoing synchronization, but synchronization is currently paused.
+  # This may be due to a dependency on the completion of another synchronization process, or due to
+  # synchronization having been manually interrupted by drbdadm pause-sync.
+  PAUSED_SYNC_T = 'PausedSyncT'
+  # On-line device verification is currently running, with the local node being the source of verification.
+  VERIFY_S = 'VerifyS'
+  # On-line device verification is currently running, with the local node being the target of verification.
+  VERIFY_T = 'VerifyT'
+
+
+class DrbdRoleState(Enum):
+  """Library of DRBD role states"""
+
+  # The resource is currently in the primary role, and may be read from and written to.
+  # This role only occurs on one of the two nodes, unless dual-primary mode is enabled.
+  PRIMARY = 'Primary'
+  # The resource is currently in the secondary role. It normally receives updates from its peer
+  # (unless running in disconnected mode), but may neither be read from nor written to. This role may
+  # occur on one or both nodes.
+  SECONDARY = 'Secondary'
+  # The resource's role is currently unknown. The local resource role never has this status.
+  # It is only displayed for the peer's resource role, and only in disconnected mode.
+  UNKNOWN = 'Unknown'
+
+  # List of states that mean DRBD is in a suitable state for running a VM
+  OK_STATES = []
+
+  # List of states that will fail unless DRBD state is explicitly ignored
+  WARNING_STATES = []
+
+
+class DrbdDiskState(Enum):
+  """Library of DRBD disk states"""
+
+  # No local block device has been assigned to the DRBD driver. This may mean that the resource has
+  # never attached to its backing device, that it has been manually detached using drbdadm detach,
+  # or that it automatically detached after a lower-level I/O error.
+  DISKLESS = 'Diskless'
+  # Transient state while reading meta data.
+  ATTACHING = 'Attaching'
+  # Transient state following an I/O failure report by the local block device. Next state: Diskless.
+  FAILED = 'Failed'
+  # Transient state when an Attach is carried out on an already-Connected DRBD device.
+  NEGOTIATING = 'Negotiating'
+  # The data is inconsistent. This status occurs immediately upon creation of a new resource,
+  # on both nodes (before the initial full sync). Also, this status is found in one node
+  # (the synchronization target) during synchronization.
+  INCONSISTENT = 'Inconsistent'
+  # Resource data is consistent, but outdated.
+  OUTDATED = 'Outdated'
+  # This state is used for the peer disk if no network connection is available.
+  D_UNKNOWN = 'DUnknown'
+  # Consistent data of a node without connection. When the connection is established,
+  # it is decided whether the data is UpToDate or Outdated.
+  CONSISTENT = 'Consistent'
+  # Consistent, up-to-date state of the data. This is the normal state.
+  UP_TO_DATE = 'UpToDate'
+
+  # List of states that mean DRBD is in a suitable state for running a VM
+  OK_STATES = [UP_TO_DATE]
+
+  # List of states that will fail unless DRBD state is explicitly ignored
+  WARNING_STATES = [CONSISTENT, D_UNKNOWN]
+
 
 class DRBD(Base):
   """Provides operations to manage DRBD-backed hard drives, used by VMs"""
 
-  CREATE_PROGRESS = Enum('START', 'CREATE_RAW_LV', 'CREATE_META_LV', 'CREATE_DRBD_CONFIG', 'CREATE_DRBD_CONFIG_R',
-                         'ADD_TO_VM', 'DRBD_UP', 'DRBD_UP_R', 'OVERWRITE_PEER', 'SET_ROLE')
+  CREATE_PROGRESS = Enum('CREATE_PROGRESS', ['START', 'CREATE_RAW_LV', 'CREATE_META_LV', 'CREATE_DRBD_CONFIG',
+                                             'CREATE_DRBD_CONFIG_R', 'ADD_TO_VM', 'DRBD_UP', 'DRBD_UP_R'])
+
+  # List of states that mean DRBD is in a suitable state for running a VM
+  DRBD_STATES = \
+    {
+      'CONNECTION':
+      {
+        'OK': [DrbdConnectionState.CONNECTED, DrbdConnectionState.VERIFY_S, DrbdConnectionState.VERIFY_T,
+               DrbdConnectionState.PAUSED_SYNC_S, DrbdConnectionState.PAUSED_SYNC_T, DrbdConnectionState.STARTING_SYNC_S,
+               DrbdConnectionState.SYNC_SOURCE, DrbdConnectionState.WF_BIT_MAP_S],
+
+        'WARNING': [DrbdConnectionState.STAND_ALONE, DrbdConnectionState.DISCONNECTING, DrbdConnectionState.UNCONNECTED,
+                    DrbdConnectionState.BROKEN_PIPE, DrbdConnectionState.NETWORK_FAILURE, DrbdConnectionState.WF_CONNECTION,
+                    DrbdConnectionState.WF_REPORT_PARAMS]
+      },
+      'ROLE':
+      {
+        'OK': [DrbdRoleState.PRIMARY],
+        'WARNING': []
+      },
+      'DISK':
+      {
+        'OK': [DrbdDiskState.UP_TO_DATE],
+        'WARNING': [DrbdDiskState.CONSISTENT, DrbdDiskState.D_UNKNOWN]
+      }
+    }
+
+  # List of states that will fail unless DRBD state is explicitly ignored
+
 
   def __init__(self, vm_object, disk_id):
     """Sets member variables"""
@@ -30,6 +188,15 @@ class DRBD(Base):
     DRBD._ensureLogicalVolumeExists(self.getConfigObject(), raw_lv)
     DRBD._ensureLogicalVolumeExists(self.getConfigObject(), meta_lv)
     return True
+
+  def activateDisk(self):
+    """Ensures that the disk is ready to be used by a VM on the local node"""
+    raw_lv = self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_RAW_SUFFIX)
+    meta_lv = self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_META_SUFFIX)
+    DRBD._ensureLogicalVolumeActive(self.getConfigObject(), raw_lv)
+    DRBD._ensureLogicalVolumeActive(self.getConfigObject(), meta_lv)
+    self._checkDrbdStatus()
+    self._ensureBlockDeviceExists()
 
   @staticmethod
   def create(vm_object, size, disk_id=None, drbd_minor=None, drbd_port=None):
@@ -206,10 +373,13 @@ class DRBD(Base):
     # Perform removal on local node
     Base._removeFromVirtualMachine(config_object)
 
-    # If the cluseter is initialised, run on all nodes that the VM is available on
+    # If the cluster is initialised, run on all nodes that the VM is available on
     if (config_object.vm_object.mcvirt_object.initialiseNodes()):
       cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
       for node in config_object.vm_object.getAvailableNodes():
+          # Since the VM configuration contains the local node, catch it, so that there is no attempt to
+          # perform a remote command to the local node
+        if (node != Cluster.getHostname()):
           # Since the VM configuration contains the local node, catch it, so that there is no attempt to
           # perform a remote command to the local node
           remote_object = cluster_instance.getRemoteNode(node)
@@ -248,3 +418,62 @@ class DRBD(Base):
   def _drbdOverwritePeer(self):
     """Force DRBD to overwrite the data on the peer"""
     System.runCommand([NodeDRBD.DRBDADM, '--', '--overwrite-data-of-peer', 'primary', self.getConfigObject()._getResourceName()])
+
+  def _checkDrbdStatus(self):
+    """Checks the status of the DRBD volume and returns the states"""
+    # Check the disk state
+    disk_state, remote_disk_state = self._drbdGetDiskState()
+    self._checkStateType('DISK', disk_state)
+
+    # Check connection state
+    connection_state = self._drbdGetConnectionState()
+    self._checkStateType('CONNECTION', connection_state)
+
+    # Check DRBD role
+    role_state, remote_role_state = self._drbdGetRole()
+    self._checkStateType('ROLE', role_state)
+
+    return ((disk_state, remote_disk_state), connection_state, (role_state, remote_role_state))
+
+  def _checkStateType(self, state_name, state):
+    """Determines if the given type of state is OK or not. An exception
+       is thrown in the event of a bad state"""
+    # Determine if connection state is not OK
+    if (state not in DRBD.DRBD_STATES[state_name]['OK']):
+      # Ignore the state if it is in warning and the user has specified to ignore
+      # the DRBD state
+      if (state in DRBD.DRBD_STATES[state_name]['WARNING']):
+        if (not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object)):
+          raise DrbdStateException('DRBD connection state for the DRBD resource %s is %s so cannot continue. ' %
+                                   (self.getConfigObject()._getResourceName(), state.value) +
+                                   'Run McVirt as a superuser with --ignore-drbd to ignore this issue')
+      else:
+        raise DrbdStateException('DRBD connection state for the DRBD resource %s is %s so cannot continue. ' %
+                                 (self.getConfigObject()._getResourceName(), state.value))
+
+  def _drbdGetConnectionState(self):
+    """Returns the connection state of the DRBD resource"""
+    exit_code, stdout, stderr = System.runCommand([NodeDRBD.DRBDADM, 'cstate', self.getConfigObject()._getResourceName()])
+    state = stdout.strip()
+    return DrbdConnectionState(state)
+
+  def _drbdGetDiskState(self):
+    """Returns the disk state of the DRBD resource"""
+    exit_code, stdout, stderr = System.runCommand([NodeDRBD.DRBDADM, 'dstate', self.getConfigObject()._getResourceName()])
+    states = stdout.strip()
+    (local_state, remote_state) = states.split('/')
+    return (DrbdDiskState(local_state), DrbdDiskState(remote_state))
+
+  def _drbdGetRole(self):
+    """Returns the role of the DRBD resource"""
+    exit_code, stdout, stderr = System.runCommand([NodeDRBD.DRBDADM, 'role', self.getConfigObject()._getResourceName()])
+    states = stdout.strip()
+    (local_state, remote_state) = states.split('/')
+    return (DrbdRoleState(local_state), DrbdRoleState(remote_state))
+
+  def _ensureBlockDeviceExists(self):
+    """Ensures that the DRBD block device exists"""
+    drbd_block_device = self.getConfigObject()._getDrbdDevice()
+    if (not os.path.exists(drbd_block_device)):
+      raise DrbdBlockDeviceDoesNotExistException('DRBD block device %s for resource %s does not exist' %
+                                                 (drbd_block_device, self.getConfigObject()._getResourceName()))

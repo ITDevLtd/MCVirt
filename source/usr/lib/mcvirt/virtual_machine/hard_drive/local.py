@@ -39,10 +39,8 @@ class Local(Base):
   def _checkExists(self):
     """Checks if a disk exists, which is required before any operations
     can be performed on the disk"""
-    if (os.path.lexists(self.getConfigObject()._getDiskPath())):
-      return True
-    else:
-      return False
+    Local._ensureLogicalVolumeExists(self.getConfigObject(), self.getConfigObject()._getDiskName())
+    return True
 
   def _removeStorage(self):
     """Removes the backing logical volume"""

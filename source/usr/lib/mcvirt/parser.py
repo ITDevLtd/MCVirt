@@ -38,6 +38,7 @@ class Parser:
     self.start_parser = self.subparsers.add_parser('start', help='Start VM help', parents=[self.parent_parser])
     self.start_parser.add_argument('--iso', metavar='ISO Path', type=str, help='Path of ISO to attach to VM')
     self.start_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+    self.start_parser.add_argument('--ignore-drbd', dest='ignore_drbd', help='Ignores DRBD state', action='store_true')
 
     # Add arguments for stopping a VM
     self.stop_parser = self.subparsers.add_parser('stop', help='Stop VM help', parents=[self.parent_parser])
@@ -146,6 +147,7 @@ class Parser:
     self.drbd_parser.add_argument('--enable', dest='enable', help='Enable DRBD support on the cluster',
       action='store_true')
 
+
   def parse_arguments(self, script_args = None, mcvirt_instance=None):
     """Parses arguments and performs actions based on the arguments"""
     # If arguments have been specified, split, so that
@@ -166,8 +168,13 @@ class Parser:
     try:
       # Perform functions on the VM based on the action passed to the script
       if (action == 'start'):
+        # If the user has specified to ignore DRBD, set the global parameter
+        if (args.ignore_drbd):
+          NodeDRBD.ignoreDrbd(mcvirt_instance)
+
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         vm_object.start(args.iso if args.iso else None)
+        print 'Successfully started VM'
 
       elif (action == 'stop'):
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
