@@ -90,7 +90,21 @@ class DRBD:
   def getConfig():
     """Returns the global DRBD configuration"""
     mcvirt_config = McVirtConfig()
-    return mcvirt_config.getConfig()['drbd']
+    if ('drbd' in mcvirt_config.getConfig().keys()):
+      return mcvirt_config.getConfig()['drbd']
+    else:
+      return DRBD.getDefaultConfig()
+
+  @staticmethod
+  def getDefaultConfig():
+    default_config = \
+      {
+        'enabled': 0,
+        'secret': '',
+        'sync_rate': '10M',
+        'protocol': 'C'
+      }
+    return default_config
 
   @staticmethod
   def generateConfig(mcvirt_instance):

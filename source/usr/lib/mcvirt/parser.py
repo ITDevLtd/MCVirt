@@ -56,10 +56,9 @@ class Parser:
       action='append', help='Name of networks to connect VM to (each network has a separate NIC)')
     self.create_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
     # Determine if machine is configured to use DRBD
-    if (NodeDRBD.isEnabled()):
-      hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
-      self.create_parser.add_argument('--storage-type', dest='storage_type', metavar='Storage backing type', type=str,
-        choices=hard_drive_storage_types)
+    hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
+    self.create_parser.add_argument('--storage-type', dest='storage_type', metavar='Storage backing type', type=str,
+      choices=hard_drive_storage_types)
 
     # Get arguments for deleting a VM
     self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM help', parents=[self.parent_parser])
@@ -79,12 +78,9 @@ class Parser:
       help='Removes a NIC from VM with the given MAC-address (e.g. \'00:00:00:00:00:00)\'')
     self.update_parser.add_argument('--add-disk', dest='add_disk', metavar='Add Disk', type=int,
       help='Add disk to the VM (size in MB)')
-    # If the node has been configured to use DRBD, add an argument to allow the user to specify the
-    # storage backend
-    if (NodeDRBD.isEnabled()):
-      hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
-      self.update_parser.add_argument('--storage-type', dest='storage_type', metavar='Storage backing type', type=str,
-        choices=hard_drive_storage_types)
+    hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
+    self.update_parser.add_argument('--storage-type', dest='storage_type', metavar='Storage backing type', type=str,
+      choices=hard_drive_storage_types)
     self.update_parser.add_argument('--increase-disk', dest='increase_disk', metavar='Increase Disk', type=int,
       help='Increases VM disk by provided amount (MB)')
     self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,

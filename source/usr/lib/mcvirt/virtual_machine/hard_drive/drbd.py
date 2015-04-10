@@ -100,12 +100,6 @@ class DrbdRoleState(Enum):
   # It is only displayed for the peer's resource role, and only in disconnected mode.
   UNKNOWN = 'Unknown'
 
-  # List of states that mean DRBD is in a suitable state for running a VM
-  OK_STATES = []
-
-  # List of states that will fail unless DRBD state is explicitly ignored
-  WARNING_STATES = []
-
 
 class DrbdDiskState(Enum):
   """Library of DRBD disk states"""
@@ -134,12 +128,6 @@ class DrbdDiskState(Enum):
   # Consistent, up-to-date state of the data. This is the normal state.
   UP_TO_DATE = 'UpToDate'
 
-  # List of states that mean DRBD is in a suitable state for running a VM
-  OK_STATES = [UP_TO_DATE]
-
-  # List of states that will fail unless DRBD state is explicitly ignored
-  WARNING_STATES = [CONSISTENT, D_UNKNOWN]
-
 
 class DRBD(Base):
   """Provides operations to manage DRBD-backed hard drives, used by VMs"""
@@ -147,7 +135,6 @@ class DRBD(Base):
   CREATE_PROGRESS = Enum('CREATE_PROGRESS', ['START', 'CREATE_RAW_LV', 'CREATE_META_LV', 'CREATE_DRBD_CONFIG',
                                              'CREATE_DRBD_CONFIG_R', 'ADD_TO_VM', 'DRBD_UP', 'DRBD_UP_R'])
 
-  # List of states that mean DRBD is in a suitable state for running a VM
   DRBD_STATES = \
     {
       'CONNECTION':
@@ -171,9 +158,6 @@ class DRBD(Base):
         'WARNING': [DrbdDiskState.CONSISTENT, DrbdDiskState.D_UNKNOWN]
       }
     }
-
-  # List of states that will fail unless DRBD state is explicitly ignored
-
 
   def __init__(self, vm_object, disk_id):
     """Sets member variables"""
@@ -433,7 +417,7 @@ class DRBD(Base):
     role_state, remote_role_state = self._drbdGetRole()
     self._checkStateType('ROLE', role_state)
 
-    return ((disk_state, remote_disk_state), connection_state, (role_state, remote_role_state))
+    return ((disk_state, remote_disk_state), connection_state, (role_state, remote_role_statedf ))
 
   def _checkStateType(self, state_name, state):
     """Determines if the given type of state is OK or not. An exception

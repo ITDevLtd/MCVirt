@@ -18,6 +18,9 @@ class VirtualMachineConfig(ConfigFile):
     if (not os.path.isfile(self.config_file)):
       raise McVirtException('Could not find config file for %s' % vm_object.name)
 
+    # Perform upgrade of configuration
+    self.upgrade(vm_object.mcvirt_object)
+
   @staticmethod
   def getConfigPath(vm_name):
     """Provides the path of the VM-spefic configuration file"""
@@ -33,6 +36,7 @@ class VirtualMachineConfig(ConfigFile):
     # Create basic config
     json_data = \
       {
+        'version': VirtualMachineConfig.CURRENT_VERSION,
         'permissions':
         {
           'user': [],
@@ -50,4 +54,36 @@ class VirtualMachineConfig(ConfigFile):
       }
 
     # Write the configuration to disk
-    VirtualMachineConfig.writeJSON(json_data, VirtualMachineConfig.getConfigPath(vm_name))
+    VirtualMachineConfig._writeJSON(json_data, VirtualMachineConfig.getConfigPath(vm_name))
+
+  def _upgrade(self, mcvirt_instance, config):
+    """Perform an upgrade of the configuration file"""
+    if (self._getVersion() < 1):
+      # Convert old disk array into hash. Assume that all old disks were
+      # local, as DRBD was not supported in pre-version 1 configurations
+      config['hard_disks'] = {}
+      for disk_id in config['disks']:
+        config['hard_disks'][disk_id] = {}
+      del(config['disks'])
+
+      # Set storage type for the VM to local
+      config['storage_type'] = 'Local'
+
+      # Set the current node and available nodes to the local machine, as the VM
+      # will be local
+      from mcvirt.cluster.cluster import Cluster
+      config['node'] = Cluster.getHostname()
+      config['available_nodes'] = [Cluster.getHostname()]
+
+      # Obtain details about the VM and add to configuration file
+      vm_libvirt_config = self.vm_object.getLibvirtConfig()
+      config['memory_allocation'] = vm_libvirt_config.find('./memory').text
+      config['cpu_cores'] = vm_libvirt_config.find('./vcpu').text
+
+      # Move network interface configurations into configuration file
+      config['network_interfaces'] = {}
+      interfaces_xml = vm_libvirt_config.findall('./devices/interface[@type="network"]')
+      for interface_xml in interfaces_xml:
+        mac_address = interface_xml.find('./mac').get('address')
+        connected_network = interface_xml.find('./source').get('network')
+        config['network_interfaces'][mac_address] = connected_network

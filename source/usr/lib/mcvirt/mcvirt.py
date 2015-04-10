@@ -8,6 +8,8 @@ import os
 from lockfile import FileLock
 from texttable import Texttable
 
+from mcvirt_config import McVirtConfig
+
 class McVirt:
   """Provides general McVirt functions"""
 
@@ -20,6 +22,11 @@ class McVirt:
 
   def __init__(self, uri = None, initialise_nodes=True, username=None):
     """Checks lock file and performs initial connection to libvirt"""
+    self.libvirt_uri = uri
+    self.connection = None
+    # Create an McVirt config instance and force an upgrade
+    config_instance = McVirtConfig(perform_upgrade=True, mcvirt_instance=self)
+
     # Configure custom username - used for unittests
     self.ignore_drbd = False
     self.username = username
@@ -48,7 +55,7 @@ class McVirt:
     Cluster(self)
 
     # Connect to LibVirt
-    self._connect(uri)
+    self.getLibvirtConnection()
 
   def __del__(self):
     """Removes McVirt lock file on object destruction"""
@@ -60,24 +67,21 @@ class McVirt:
     if (self.obtained_filelock):
       self.lockfile_object.release()
 
-  def _connect(self, uri):
+  def getLibvirtConnection(self):
     """
-    Connect to libvirt and store the connection as an object variable.
+    Obtains a libvirt connection. If one does not exist,
+    connect to libvirt and store the connection as an object variable.
     Exit if an error occurs whilst connecting.
     """
-    connection = libvirt.open(uri)
-    if (connection == None):
-      raise McVirtException('Failed to open connection to the hypervisor')
-    else:
-      self.connection = connection
+    if (self.connection == None):
+      self.connection = libvirt.open(self.libvirt_uri)
+      if (self.connection == None):
+        raise McVirtException('Failed to open connection to the hypervisor')
+    return self.connection
 
   def initialiseNodes(self):
     """Returns the status of the McVirt 'initialise_nodes' flag"""
     return self.initialise_nodes
-
-  def getLibvirtConnection(self):
-    """Obtains a connection to libvirt"""
-    return self.connection
 
   def getAuthObject(self):
     """Returns an instance of the Auth class"""
