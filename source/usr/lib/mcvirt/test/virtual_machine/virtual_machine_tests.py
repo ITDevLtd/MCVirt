@@ -130,23 +130,9 @@ class VirtualMachineTests(unittest.TestCase):
     """Attempt to create a VM with DRBD storage on a node that doesn't have DRBD enabled"""
     # Attempt to create VM and ensure exception is thrown
     with self.assertRaises(DRBDNotEnabledOnNode):
-      self.parser.parse_arguments('create "%s"' % invalid_vm_name +
+      self.parser.parse_arguments('create "%s"' % self.test_vm_name +
                                   ' --cpu-count %s --disk-size %s --memory %s --network %s --storage-type %s' %
                                   (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name, 'DRBD'),
-                                  mcvirt_instance=self.mcvirt)
-
-  @unittest.skipIf(NodeDRBD.isEnabled(),
-                   'DRBD is enabled on this node')
-  def test_add_hard_drive_drbd_not_enabled(self):
-    """Attempt to add a HDD to a VM with DRBD storage on a node that doesn't have DRBD enabled"""
-    # Create a VM with no storage
-    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm_name, self.cpu_count, self.memory_allocation,
-                                           [], [self.network_name])
-
-    # Attempt to create VM and ensure exception is thrown
-    with self.assertRaises(DRBDNotEnabledOnNode):
-      self.parser.parse_arguments('update "%s" --add-disk %s --storage-type %s' % 
-                                  (self.test_vm_name, self.disk_size, 'DRBD'),
                                   mcvirt_instance=self.mcvirt)
 
   def test_delete_local(self):

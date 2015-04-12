@@ -548,6 +548,15 @@ class VirtualMachine:
     if (VirtualMachine._checkExists(mcvirt_instance, name)):
       raise VmAlreadyExistsException('Error: VM already exists')
 
+    # If a node has not been specified, assume the local node
+    if (node == None):
+      node = Cluster.getHostname()
+
+    # If DRBD has been chosen as a storage type, ensure it is enabled on the node
+    from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
+    if (storage_type == 'DRBD' and not NodeDRBD.isEnabled()):
+      raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
+
     # Create directory for VM on the local and remote nodes
     if (not os.path.exists(VirtualMachine.getVMDir(name))):
       os.makedirs(VirtualMachine.getVMDir(name))
@@ -558,15 +567,6 @@ class VirtualMachine:
     def updateMcVirtConfig(config):
       config['virtual_machines'].append(name)
     McVirtConfig().updateConfig(updateMcVirtConfig)
-
-    # If a node has not been specified, assume the local node
-    if (node == None):
-      node = Cluster.getHostname()
-
-    # If DRBD has been chosen as a storage type, ensure it is enabled on the node
-    from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
-    if (storage_type == 'DRBD' and not NodeDRBD.isEnabled()):
-      raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
 
     # If available nodes has not been passed, assume the local machine is the only
     # available node if local storage is being used. Use the machines in the cluster
