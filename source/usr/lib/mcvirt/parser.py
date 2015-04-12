@@ -194,10 +194,14 @@ class Parser:
         self.printStatus('Successfully stopped VM')
 
       elif (action == 'create'):
-        if (NodeDRBD.isEnabled()):
+        if (args.storage_type):
           storage_type = args.storage_type
         else:
-          storage_type = None
+          if (NodeDRBd.isEnabled()):
+            self.parser.error('The VM must be configured with a storage type')
+          else:
+            storage_type = None
+
         # Convert memory allocation from MiB to KiB
         memory_allocation = int(args.memory) * 1024
         VirtualMachine.create(mcvirt_instance=mcvirt_instance, name=args.vm_name, cpu_cores=args.cpu_count,
