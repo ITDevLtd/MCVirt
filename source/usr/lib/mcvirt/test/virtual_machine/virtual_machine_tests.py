@@ -64,7 +64,6 @@ class VirtualMachineTests(unittest.TestCase):
     suite.addTest(VirtualMachineTests('test_start_drbd'))
     suite.addTest(VirtualMachineTests('test_stop_drbd'))
     suite.addTest(VirtualMachineTests('test_create_drbd_not_enabled'))
-    suite.addTest(VirtualMachineTests('test_add_hard_drive_drbd_not_enabled'))
     suite.addTest(VirtualMachineTests('test_offline_migrate'))
 
     return suite
