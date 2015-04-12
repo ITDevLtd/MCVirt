@@ -129,7 +129,7 @@ class VirtualMachineTests(unittest.TestCase):
     """Attempt to create a VM with DRBD storage on a node that doesn't have DRBD enabled"""
     # Attempt to create VM and ensure exception is thrown
     with self.assertRaises(DRBDNotEnabledOnNode):
-      self.parser.parse_arguments('create "%s"' % self.test_vm_name +
+      self.parser.parse_arguments('create %s' % self.test_vm_name +
                                   ' --cpu-count %s --disk-size %s --memory %s --network %s --storage-type %s' %
                                   (self.cpu_count, self.disk_size, self.memory_allocation, self.network_name, 'DRBD'),
                                   mcvirt_instance=self.mcvirt)
