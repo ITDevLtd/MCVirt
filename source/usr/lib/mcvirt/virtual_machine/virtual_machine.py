@@ -565,7 +565,7 @@ class VirtualMachine:
 
     # If DRBD has been chosen as a storage type, ensure it is enabled on the node
     from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
-    if (not NodeDRBD.isEnabled()):
+    if (storage_type == 'DRBD' and not NodeDRBD.isEnabled()):
       raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
 
     # If available nodes has not been passed, assume the local machine is the only
