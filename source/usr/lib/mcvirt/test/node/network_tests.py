@@ -43,7 +43,7 @@ class NetworkTests(unittest.TestCase):
   def setUp(self):
     """Creates various objects"""
     # Create McVirt parser object
-    self.parser = Parser()
+    self.parser = Parser(print_status=False)
 
     # Get an McVirt instance
     self.mcvirt = McVirt()

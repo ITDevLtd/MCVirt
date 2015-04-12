@@ -31,7 +31,7 @@ class AuthTests(unittest.TestCase):
   def setUp(self):
     """Creates various objects and deletes any test VMs"""
     # Create McVirt parser object
-    self.parser = Parser()
+    self.parser = Parser(print_status=False)
 
     # Get an McVirt instance
     self.mcvirt = McVirt()

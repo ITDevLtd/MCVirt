@@ -111,7 +111,6 @@ class VirtualMachine:
     if (self.getState()):
       # Stop the VM
       self._getLibvirtDomainObject().destroy()
-      print 'Successfully stopped VM'
     else:
       raise VmAlreadyStoppedException('The VM is already shutdown')
 
@@ -241,7 +240,7 @@ class VirtualMachine:
         + 'User must have MODIFY_VM permission or be the owner of the cloned VM')
 
     # Ensure the VM is not being removed from a machine that the VM is not being run on
-    if not (self.isRegisteredLocally() or self.getNode() is None or not self.mcvirt_object.initialiseNodes()):
+    if (self.isRegisteredRemotely() and self.mcvirt_object.initialiseNodes()):
       remote_node = self.getConfigObject().getConfig()['node']
       raise VmRegisteredElsewhereException('The VM \'%s\' is registered on the remote node: %s' %
                                            (self.getName(), remote_node))
@@ -563,6 +562,11 @@ class VirtualMachine:
     # If a node has not been specified, assume the local node
     if (node == None):
       node = Cluster.getHostname()
+
+    # If DRBD has been chosen as a storage type, ensure it is enabled on the node
+    from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
+    if (not NodeDRBD.isEnabled()):
+      raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
 
     # If available nodes has not been passed, assume the local machine is the only
     # available node if local storage is being used. Use the machines in the cluster

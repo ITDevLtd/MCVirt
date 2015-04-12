@@ -26,8 +26,9 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 class Parser:
   """Provides an argument parser for McVirt"""
 
-  def __init__(self):
+  def __init__(self, print_status=True):
     """Configures the argument parser object"""
+    self.print_status = print_status
     self.parent_parser = ThrowingArgumentParser(add_help=False)
 
     # Create an argument parser object
@@ -153,6 +154,11 @@ class Parser:
     self.drbd_parser.add_argument('--enable', dest='enable', help='Enable DRBD support on the cluster',
       action='store_true')
 
+  def printStatus(self, status):
+    """Prints if the user has specified that the parser should
+       print statuses"""
+    if (self.print_status):
+      print status
 
   def parse_arguments(self, script_args = None, mcvirt_instance=None):
     """Parses arguments and performs actions based on the arguments"""
@@ -180,11 +186,12 @@ class Parser:
 
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         vm_object.start(args.iso if args.iso else None)
-        print 'Successfully started VM'
+        self.printStatus('Successfully started VM')
 
       elif (action == 'stop'):
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         vm_object.stop()
+        self.printStatus('Successfully stopped VM')
 
       elif (action == 'create'):
         if (NodeDRBD.isEnabled()):
@@ -205,12 +212,12 @@ class Parser:
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         if (args.memory):
           old_ram_allocation = int(vm_object.getRAM()) / 1024
-          print 'RAM allocation will be changed from %sMiB to %sMiB.' % (old_ram_allocation, args.memory)
+          self.printStatus('RAM allocation will be changed from %sMiB to %sMiB.' % (old_ram_allocation, args.memory))
           new_ram_allocation = int(args.memory) * 1024
           vm_object.updateRAM(new_ram_allocation)
         if (args.cpu_count):
           old_cpu_count = vm_object.getCPU()
-          print 'Number of virtual cores will be changed from %s to %s.' % (old_cpu_count, args.cpu_count)
+          self.printStatus('Number of virtual cores will be changed from %s to %s.' % (old_cpu_count, args.cpu_count))
           vm_object.updateCPU(args.cpu_count)
         if (args.remove_network):
           network_adapter_object = NetworkAdapter(args.remove_network, vm_object)
@@ -248,24 +255,24 @@ class Parser:
         auth_object = mcvirt_instance.getAuthObject()
         if (args.add_user):
           auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, permission_group='user', username=args.add_user, vm_object=vm_object)
-          print 'Successfully added \'%s\' as \'user\' to VM \'%s\'' % (args.add_user, vm_object.getName())
+          self.printStatus('Successfully added \'%s\' as \'user\' to VM \'%s\'' % (args.add_user, vm_object.getName()))
         if (args.delete_user):
           auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, permission_group='user', username=args.delete_user, vm_object=vm_object)
-          print 'Successfully removed \'%s\' as \'user\' from VM \'%s\'' % (args.delete_user, vm_object.getName())
+          self.printStatus('Successfully removed \'%s\' as \'user\' from VM \'%s\'' % (args.delete_user, vm_object.getName()))
         if (args.add_owner):
           auth_object.addUserPermissionGroup(mcvirt_object=mcvirt_instance, permission_group='owner', username=args.add_owner, vm_object=vm_object)
-          print 'Successfully added \'%s\' as \'owner\' to VM \'%s\'' % (args.add_owner, vm_object.getName())
+          self.printStatus('Successfully added \'%s\' as \'owner\' to VM \'%s\'' % (args.add_owner, vm_object.getName()))
         if (args.delete_owner):
           auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance, permission_group='owner', username=args.delete_owner, vm_object=vm_object)
-          print 'Successfully added \'%s\' as \'owner\' from VM \'%s\'' % (args.delete_owner, vm_object.getName())
+          self.printStatus('Successfully added \'%s\' as \'owner\' from VM \'%s\'' % (args.delete_owner, vm_object.getName()))
 
       elif (action == 'info'):
         if (args.vm_name):
           vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
           if (args.vnc_port):
-            print vm_object.getVncPort()
+            self.printStatus(vm_object.getVncPort())
           else:
-            print vm_object.getInfo()
+            self.printStatus(vm_object.getInfo())
         else:
           mcvirt_instance = McVirt(initialise_nodes=False)
           mcvirt_instance.printInfo()
@@ -287,11 +294,11 @@ class Parser:
           password = System.getUserInput('Enter \'%s\' root password: ' % args.node, True)
           cluster_object = Cluster(mcvirt_instance)
           cluster_object.addNode(args.node, args.ip_address, password)
-          print 'Successfully added node %s' % args.node
+          self.printStatus('Successfully added node %s' % args.node)
         if (args.cluster_action == 'remove-node'):
           cluster_object = Cluster(mcvirt_instance)
           cluster_object.removeNode(args.node)
-          print 'Successfully removed node %s' % args.node
+          self.printStatus('Successfully removed node %s' % args.node)
 
       elif (action == 'drbd'):
         if (args.enable):

@@ -202,7 +202,7 @@ class DRBD(Base):
 
     # Ensure DRBD is enabled on the host
     if (not NodeDRBD.isEnabled()):
-      raise NodeDRBD.DRBDNotEnabledOnNode('DRBD is not enabled on this node')
+      raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
 
     # Obtain disk ID, DRBD minor and DRBD port if one has not been specified
     config_object = ConfigDRBD(vm_object=vm_object, disk_id=disk_id, drbd_minor=drbd_minor, drbd_port=drbd_port)
@@ -411,7 +411,13 @@ class DRBD(Base):
   @staticmethod
   def _drbdDown(config_object):
     """Performs a DRBD 'down' on the hard drive DRBD resource"""
-    System.runCommand([NodeDRBD.DRBDADM, 'down', config_object._getResourceName()])
+    try:
+      System.runCommand([NodeDRBD.DRBDADM, 'down', config_object._getResourceName()])
+    except McVirtCommandException:
+      import time
+      # If the DRBD down fails, attempt to wait 5 seconds and try again
+      time.sleep(5)
+      System.runCommand([NodeDRBD.DRBDADM, 'down', config_object._getResourceName()])
 
   def _drbdConnect(self):
     """Performs a DRBD 'connect' on the hard drive DRBD resource"""
