@@ -44,13 +44,28 @@ class VmAlreadyStartedException(McVirtException):
   pass
 
 
-class VmAlreadyRegistered(McVirtException):
+class VmAlreadyRegisteredException(McVirtException):
   """VM is already registered on a node"""
   pass
 
 
-class VmRegisteredElsewhere(McVirtException):
+class VmRegisteredElsewhereException(McVirtException):
   """Attempt to perform an action on a VM registered on another node"""
+  pass
+
+
+class VmRunningException(McVirtException):
+  """An offline migration can only be powered on a powered off VM"""
+  pass
+
+
+class UnsuitableRemoteNodeException(McVirtException):
+  """The remote node is unsuitable to run the VM"""
+  pass
+
+
+class VmNotRegistered(McVirtException):
+  """The virtual machine is not currently registered on a node"""
   pass
 
 
@@ -151,8 +166,17 @@ class VirtualMachine:
     """Returns the running state of the VM in text format"""
     return 'Running' if (self.getState()) else 'Stopped'
 
-  def printInfo(self):
-    """Prints information about the current VM"""
+  def getInfo(self):
+    """Gets information about the current VM"""
+    if (self.isRegisteredRemotely()):
+      from mcvirt.cluster.cluster import Cluster
+      cluster_instance = Cluster(self.mcvirt_object)
+      remote_object = cluster_instance.getRemoteNode(self.getNode())
+      return remote_object.runRemoteCommand('virtual_machine-getInfo',
+                                            {'vm_name': self.getName()})
+    elif (not self.isRegisteredLocally()):
+      raise VmNotRegistered('The VM %s is registered on a node' % self.getName())
+
     table = Texttable()
     warnings = ''
     table.set_deco(Texttable.HEADER | Texttable.VLINES)
@@ -202,8 +226,7 @@ class VirtualMachine:
       users_string = ','.join(users)
       table.add_row((permission_group, users_string))
 
-    print table.draw() + "\n"
-    print warnings
+    return table.draw() + "\n" + warnings
 
   def delete(self, remove_data = False):
     """Delete the VM - removing it from LibVirt and from the filesystem"""
@@ -220,8 +243,8 @@ class VirtualMachine:
     # Ensure the VM is not being removed from a machine that the VM is not being run on
     if not (self.isRegisteredLocally() or self.getNode() is None or not self.mcvirt_object.initialiseNodes()):
       remote_node = self.getConfigObject().getConfig()['node']
-      raise VmRegisteredElsewhere('The VM \'%s\' is registered on the remote node: %s' %
-                                  (self.getName(), remote_node))
+      raise VmRegisteredElsewhereException('The VM \'%s\' is registered on the remote node: %s' %
+                                           (self.getName(), remote_node))
     # Determine if VM is running
     if (self.isRegisteredLocally() and self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
       raise McVirtException('Error: Can\'t delete running VM')
@@ -237,7 +260,7 @@ class VirtualMachine:
         disk_object.delete()
 
     # 'Undefine' object from LibVirt
-    if (self.mcvirt_object.initialiseNodes()):
+    if (self.isRegisteredLocally()):
       try:
         self._getLibvirtDomainObject().undefine()
       except:
@@ -393,6 +416,73 @@ class VirtualMachine:
     """Returns the VMs that have been cloned from the VM"""
     return self.getConfigObject().getConfig()['clone_children']
 
+  def offlineMigrate(self, destination_node_name, start_after_migration=False, wait_for_vm_shutdown=False):
+    """Performs an offline migration of a VM to another node in the cluster"""
+    import time
+    from mcvirt.cluster.cluster import Cluster
+    # Ensure the VM is locally registered
+
+    self.ensureRegisteredLocally()
+    # Ensure VM is using a DRBD storage type
+    self._offlineMigratePreMigrateChecks(destination_node_name)
+
+    # Check if VM is running
+    while (self.getState()):
+      # Unless the user has specified to wait for the VM to shutdown, throw an exception
+      # if the VM is running
+      if (not wait_for_vm_shutdown):
+        raise VmRunningException('An offline migration can only be performed on a powered off VM. ' +
+                                 'Use --wait-for-shutdown to wait until the VM is powered off before migrating.')
+
+      # Wait for 5 seconds before checking the VM state again
+      time.sleep(5)
+
+    # Unregister the VM on the local node
+    self.unregister()
+
+    # Register on remote node
+    cluster_instance = Cluster(self.mcvirt_object)
+    remote_object = cluster_instance.getRemoteNode(destination_node_name)
+    remote_object.runRemoteCommand('virtual_machine-register',
+                                   {'vm_name': self.getName()})
+
+    # Set the node of the VM
+    self._setNode(destination_node_name)
+
+    # If the user has specified to start the VM after migration, start it on
+    # the remote node
+    if (start_after_migration):
+      remote_object.runRemoteCommand('virtual_machine-start',
+                                     {'vm_name': self.getName()})
+
+  def _offlineMigratePreMigrateChecks(self, destination_node_name):
+    """Performs checks on the state of the VM to determine if is it suitable to
+       be migrated"""
+    # Ensure node is in the available nodes that the VM can be run on
+    if (destination_node_name not in self.getAvailableNodes()):
+      raise UnsuitableRemoteNodeException('The remote node %s is not marked as being able to host the VM %s' %
+                                          (destination_node_name, self.getName()))
+
+    # Obtain remote object for destination node
+    from mcvirt.cluster.cluster import Cluster
+    cluster_instance = Cluster(self.mcvirt_object)
+    remote_node = cluster_instance.getRemoteNode(destination_node_name)
+
+    # Checks the DRBD state of the disks and ensure that they are
+    # in a suitable state to be migrated
+    for disk_object in self.getDiskObjects():
+      disk_object.offlineMigrateCheckState()
+
+    # Check the remote node to ensure that the networks, that the VM is connected to,
+    # exist on the remote node
+    for network_object in self.getNetworkObjects():
+      connected_network = network_object.getConnectedNetwork()
+      exists_on_remote_node = remote_node.runRemoteCommand('node-network-checkExists',
+                                                           {'network_name': connected_network})
+      if (not exists_on_remote_node):
+        raise UnsuitableRemoteNodeException('The network %s does not exist on the remote node: %s' %
+                                            (connected_network, destination_node_name))
+
   def clone(self, mcvirt_instance, clone_vm_name):
     """Clones a VM, creating an identical machine, using
     LVM snapshotting to duplicate the Hard disk"""
@@ -470,8 +560,9 @@ class VirtualMachine:
       config['virtual_machines'].append(name)
     McVirtConfig().updateConfig(updateMcVirtConfig)
 
-    if (storage_type is None):
-        storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
+    # If a node has not been specified, assume the local node
+    if (node == None):
+      node = Cluster.getHostname()
 
     # If available nodes has not been passed, assume the local machine is the only
     # available node if local storage is being used. Use the machines in the cluster
@@ -485,22 +576,32 @@ class VirtualMachine:
         available_nodes = [Cluster.getHostname()]
 
     # Create VM configuration file
-    VirtualMachineConfig.create(name, node, available_nodes, cpu_cores, memory_allocation)
-
-    # Obtain an object for the new VM, to use to create disks/network interfaces
-    vm_object = VirtualMachine(mcvirt_instance, name)
-
-    if (node == None or node == Cluster.getHostname()):
-      # Register VM with LibVirt
-      vm_object.register()
+    VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation)
 
     # Add VM to remote nodes
     if (mcvirt_instance.initialiseNodes()):
       cluster_object = Cluster(mcvirt_instance)
       cluster_object.runRemoteCommand('virtual_machine-create',
                                       {'vm_name': name, 'memory_allocation': memory_allocation,
-                                       'cpu_cores': cpu_cores, 'node': Cluster.getHostname(),
+                                       'cpu_cores': cpu_cores, 'node': node,
                                        'available_nodes': available_nodes})
+
+    # Obtain an object for the new VM, to use to create disks/network interfaces
+    vm_object = VirtualMachine(mcvirt_instance, name)
+
+    if (node == Cluster.getHostname()):
+      # Register VM with LibVirt. If McVirt has not been initialised on this node,
+      # do not set the node in the VM configuration, as the change can't be
+      # replicated to remote nodes
+      vm_object.register(set_node=mcvirt_instance.initialiseNodes())
+    elif (mcvirt_instance.initialiseNodes()):
+      # If McVirthas been initialised on this node and the local machine is
+      # not the node that the VM will be registered on, set the node on the VM
+      vm_object._setNode(node)
+
+    # If a storage type has not been specified, assume the default
+    if (storage_type is None):
+        storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
 
     # Create disk images
     for hard_drive_size in hard_drives:
@@ -514,22 +615,40 @@ class VirtualMachine:
 
     return vm_object
 
-  def register(self):
+  def register(self, set_node=True):
     """Registers a VM with LibVirt"""
     from mcvirt.cluster.cluster import Cluster
     # Import domain XML template
-    current_node = self.getConfigObject().getConfig()['node']
-    if (current_node != None):
-      raise VmAlreadyRegistered('VM \'%s\' already registered on node: %s' % (self.name, current_node))
+    current_node = self.getNode()
+    if (current_node is not None):
+      raise VmAlreadyRegisteredException('VM \'%s\' already registered on node: %s' % (self.name, current_node))
 
     if (Cluster.getHostname() not in self.getAvailableNodes()):
       raise NodeNotSuitableForVm('VM \'%s\' cannot be registered on node: %s' % (self.name, Cluster.getHostname()))
+
+    # Activate hard disks
+    for disk_object in self.getDiskObjects():
+      disk_object.activateDisk()
+
+    # Obtain domain XML
     domain_xml = ET.parse(McVirt.TEMPLATE_DIR + '/domain.xml')
 
     # Add Name, RAM and CPU variables to XML
     domain_xml.find('./name').text = self.getName()
     domain_xml.find('./memory').text = self.getRAM()
     domain_xml.find('./vcpu').text = self.getCPU()
+
+    device_xml = domain_xml.find('./devices')
+
+    # Add hard drive configurations
+    for hard_drive_object in self.getDiskObjects():
+      drive_xml = hard_drive_object.getConfigObject()._generateLibvirtXml()
+      device_xml.append(drive_xml)
+
+    # Add network adapter configurations
+    for network_adapter_object in self.getNetworkObjects():
+      network_interface_xml = network_adapter_object._generateLibvirtXml()
+      device_xml.append(network_interface_xml)
 
     domain_xml_string = ET.tostring(domain_xml.getroot(), encoding = 'utf8', method = 'xml')
 
@@ -538,15 +657,58 @@ class VirtualMachine:
     except:
       raise McVirtException('Error: An error occurred whilst registering VM')
 
-    # Mark VM as being hosted on this machine
+    if (set_node):
+      # Mark VM as being hosted on this machine
+      self._setNode(Cluster.getHostname())
+
+  def unregister(self):
+    """Unregisters the VM from the local node"""
+    # Remove VM from LibVirt
+    try:
+      self._getLibvirtDomainObject().undefine()
+    except:
+      raise McVirtException('Failed to delete VM from libvirt')
+
+    # De-activate the disk objects
+    for disk_object in self.getDiskObjects():
+      disk_object.deactivateDisk()
+
+    # Remove node from VM configuration
+    self._setNode(None)
+
+  def _setNode(self, node):
+    from mcvirt.cluster.cluster import Cluster
+    if (self.mcvirt_object.initialiseNodes()):
+      cluster_instance = Cluster(self.mcvirt_object)
+      cluster_instance.runRemoteCommand('virtual_machine-setNode',
+                                        {'vm_name': self.getName(),
+                                         'node': node},
+                                        nodes=self._getRemoteNodes())
+
+    # Update the node in the VM configuration
     def updateVmConfig(config):
-      config['node'] = Cluster.getHostname()
+      config['node'] = node
     self.getConfigObject().updateConfig(updateVmConfig)
+
+  def _getRemoteNodes(self):
+    """Returns a list of remote available nodes"""
+    from mcvirt.cluster.cluster import Cluster
+    # Obtain list of available nodes
+    nodes = self.getAvailableNodes()
+
+    # Remove the local node from the list
+    nodes.remove(Cluster.getHostname())
+    return nodes
 
   def isRegisteredLocally(self):
     """Returns true if the VM is registered on the local node"""
     from mcvirt.cluster.cluster import Cluster
     return (self.getNode() == Cluster.getHostname())
+
+  def isRegisteredRemotely(self):
+    """Returns true if the VM is registered on a remote node"""
+    from mcvirt.cluster.cluster import Cluster
+    return (not (self.getNode() == Cluster.getHostname() or self.getNode() is None))
 
   def getNode(self):
     """Returns the node that the VM is registered on"""
@@ -559,8 +721,8 @@ class VirtualMachine:
   def ensureRegisteredLocally(self):
     """Ensures that the VM is registered locally, otherwise an exception is thrown"""
     if (not self.isRegisteredLocally()):
-      raise VmRegisteredElsewhere('The VM \'%s\' is registered on the remote node: %s' %
-                                  (self.getName(), self.getNode()))
+      raise VmRegisteredElsewhereException('The VM \'%s\' is registered on the remote node: %s' %
+                                           (self.getName(), self.getNode()))
 
   def getVncPort(self):
     """Returns the port used by the VNC display for the VM"""

@@ -103,6 +103,14 @@ class Remote:
       vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
       vm_object.delete(remove_data=arguments['remove_data'])
 
+    elif (action == 'virtual_machine-register'):
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      vm_object.register(set_node=False)
+
+    elif (action == 'virtual_machine-start'):
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      vm_object.start()  
+
     elif (action == 'network_adapter-create'):
       from mcvirt.virtual_machine.network_adapter import NetworkAdapter
       vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
@@ -112,9 +120,18 @@ class Remote:
       vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
       return_data = vm_object.getState()
 
+    elif (action == 'virtual_machine-getInfo'):
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      return_data = vm_object.getInfo()
+
     elif (action == 'virtual_machine-getAllVms'):
       from mcvirt.virtual_machine.virtual_machine import VirtualMachine
       return_data = VirtualMachine.getAllVms(mcvirt_instance)
+
+    elif (action == 'virtual_machine-setNode'):
+      from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      vm_object._setNode(arguments['node'])
 
     elif (action == 'virtual_machine-hard_drive-createLogicalVolume'):
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
@@ -127,7 +144,8 @@ class Remote:
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
       hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
       HardDriveFactory.getClass(hard_drive_config_object._getType())._removeLogicalVolume(hard_drive_config_object,
-                                                                                          name=arguments['name'])
+                                                                                          name=arguments['name'],
+                                                                                          ignore_non_existent=arguments['ignore_non_existent'])
 
     elif (action == 'virtual_machine-hard_drive-activateLogicalVolume'):
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
@@ -160,8 +178,7 @@ class Remote:
     elif (action == 'virtual_machine-hard_drive-addToVirtualMachine'):
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
       hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
-      HardDriveFactory.getClass(hard_drive_config_object._getType())._addToVirtualMachine(hard_drive_config_object,
-                                                                                          activate=False)
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._addToVirtualMachine(hard_drive_config_object)
 
     elif (action == 'virtual_machine-hard_drive-removeFromVirtualMachine'):
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
@@ -170,21 +187,25 @@ class Remote:
 
     elif (action == 'virtual_machine-hard_drive-drbd-drbdUp'):
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-      hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
-      hard_drive_object._drbdUp()
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._drbdUp(hard_drive_config_object)
 
     elif (action == 'virtual_machine-hard_drive-drbd-drbdDown'):
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-      hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
-      hard_drive_object._drbdDown()
+      hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance, arguments['config'])
+      HardDriveFactory.getClass(hard_drive_config_object._getType())._drbdDown(hard_drive_config_object)
 
     elif (action == 'virtual_machine-hard_drive-drbd-drbdSetSecondary'):
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
       vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
       hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
       hard_drive_object._drbdSetSecondary()
+
+    elif (action == 'virtual_machine-hard_drive-drbd-drbdConnect'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+      hard_drive_object._drbdConnect()
 
     elif (action == 'virtual_machine-hard_drive-drbd-drbdDisconnect'):
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
@@ -200,6 +221,10 @@ class Remote:
       from mcvirt.node.network import Network
       network_object = Network(mcvirt_instance, arguments['network_name'])
       network_object.delete()
+
+    elif (action == 'node-network-checkExists'):
+      from mcvirt.node.network import Network
+      return_data = Network._checkExists(arguments['network_name'])
 
     elif (action == 'node-network-getConfig'):
       from mcvirt.node.network import Network

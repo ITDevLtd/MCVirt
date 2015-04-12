@@ -15,8 +15,7 @@ class NetworkAdapter:
     self.vm_object = vm_object
     self.mac_address = mac_address
 
-  @staticmethod
-  def createXML(mac_address, network):
+  def _generateLibvirtXml(self):
     """Creates a basic XML configuration for a network interface,
     encorporating the name of the network"""
     interface_xml = ET.Element('interface')
@@ -24,14 +23,14 @@ class NetworkAdapter:
 
     # Create 'source'
     interface_source_xml = ET.SubElement(interface_xml, 'source')
-    interface_source_xml.set('network', network)
+    interface_source_xml.set('network', self.getConnectedNetwork())
 
     # Create 'model'
     interface_model_xml = ET.SubElement(interface_xml, 'model')
     interface_model_xml.set('type', 'virtio')
 
     mac_address_xml = ET.SubElement(interface_xml, 'mac')
-    mac_address_xml.set('address', mac_address)
+    mac_address_xml.set('address', self.getMacAddress())
 
     return interface_xml
 
@@ -91,15 +90,6 @@ class NetworkAdapter:
     # Obtain an instance of McVirt from the vm_object
     mcvirt_object = vm_object.mcvirt_object
 
-    # Only update the LibVirt configuration if the command is being run on this machine
-    if (mcvirt_object.initialiseNodes()):
-      def updateXML(domain_xml):
-        network_xml = NetworkAdapter.createXML(mac_address, network)
-        device_xml = domain_xml.find('./devices')
-        device_xml.append(network_xml)
-
-      vm_object.editConfig(updateXML)
-
     # Add network interface to VM configuration
     def updateVmConfig(config):
       config['network_interfaces'][mac_address] = network
@@ -109,6 +99,19 @@ class NetworkAdapter:
       cluster_object = Cluster(mcvirt_object)
       cluster_object.runRemoteCommand('network_adapter-create', {'vm_name': vm_object.getName(),
                                       'network_name': network, 'mac_address': mac_address})
+
+    network_adapter_object = NetworkAdapter(mac_address, vm_object)
+
+    # Only update the LibVirt configuration if VM is registered on this node
+    if (vm_object.isRegisteredLocally()):
+      def updateXML(domain_xml):
+        network_xml = network_adapter_object._generateLibvirtXml()
+        device_xml = domain_xml.find('./devices')
+        device_xml.append(network_xml)
+
+      vm_object.editConfig(updateXML)
+
+    return network_adapter_object
 
   def delete(self):
     """Remove the given interface from the VM, based on the given MAC address"""

@@ -241,9 +241,14 @@ class Cluster:
     cluster_config = self.getClusterConfig()
     return cluster_config['nodes'].keys()
 
-  def runRemoteCommand(self, action, arguments):
+  def runRemoteCommand(self, action, arguments, nodes=None):
+    """Runs a remote command on all (or a given list of) remote nodes"""
     return_data = {}
-    for node in self.getNodes():
+
+    # If the user has not specified a list of nodes, obtain all remote nodes
+    if (nodes is None):
+      nodes = self.getNodes()
+    for node in nodes:
       node_object = self.getRemoteNode(node)
       return_data[node] = node_object.runRemoteCommand(action, arguments)
     return return_data

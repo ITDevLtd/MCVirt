@@ -133,7 +133,8 @@ class DRBD(Base):
   """Provides operations to manage DRBD-backed hard drives, used by VMs"""
 
   CREATE_PROGRESS = Enum('CREATE_PROGRESS', ['START', 'CREATE_RAW_LV', 'CREATE_META_LV', 'CREATE_DRBD_CONFIG',
-                                             'CREATE_DRBD_CONFIG_R', 'ADD_TO_VM', 'DRBD_UP', 'DRBD_UP_R'])
+                                             'CREATE_DRBD_CONFIG_R', 'DRBD_UP', 'DRBD_UP_R', 'ADD_TO_VM', 'DRBD_CONNECT',
+                                             'DRBD_CONNECT_R'])
 
   DRBD_STATES = \
     {
@@ -180,7 +181,17 @@ class DRBD(Base):
     DRBD._ensureLogicalVolumeActive(self.getConfigObject(), raw_lv)
     DRBD._ensureLogicalVolumeActive(self.getConfigObject(), meta_lv)
     self._checkDrbdStatus()
+    self._drbdSetPrimary()
     self._ensureBlockDeviceExists()
+
+  def deactivateDisk(self):
+    """Marks DRBD volume as secondary"""
+    self._drbdSetSecondary()
+
+  def getSize(self):
+    """Gets the size of the disk (in MB)"""
+    return DRBD._getLogicalVolumeSize(self.getConfigObject(),
+                                      self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_RAW_SUFFIX))
 
   @staticmethod
   def create(vm_object, size, disk_id=None, drbd_minor=None, drbd_port=None):
@@ -198,6 +209,8 @@ class DRBD(Base):
 
     # Create cluster object for running on remote nodes
     cluster_instance = Cluster(vm_object.mcvirt_object)
+
+    remote_nodes = vm_object._getRemoteNodes()
 
     # Keep track of progress, so the storage stack can be torn down if something goes wrong
     progress = DRBD.CREATE_PROGRESS.START
@@ -225,13 +238,27 @@ class DRBD(Base):
       config_object._generateDrbdConfig()
       progress = DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG
       cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-generateDrbdConfig',
-                                        {'config': config_object._dumpConfig()})
+                                        {'config': config_object._dumpConfig()},
+                                        nodes=remote_nodes)
       progress = DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R
 
       # Setup meta data on DRBD volume
       DRBD._initialiseMetaData(config_object._getResourceName())
       cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-initialiseMetaData',
-                                        {'config': config_object._dumpConfig()})
+                                        {'config': config_object._dumpConfig()},
+                                        nodes=remote_nodes)
+
+      # Bring up DRBD resource
+      DRBD._drbdUp(config_object)
+      progress = DRBD.CREATE_PROGRESS.DRBD_UP
+      cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdUp',
+                                        {'config': config_object._dumpConfig()},
+                                        nodes=remote_nodes)
+      progress = DRBD.CREATE_PROGRESS.DRBD_UP_R
+
+      # Wait for 5 seconds to let DRBD connect
+      import time
+      time.sleep(10)
 
       # Add to virtual machine
       DRBD._addToVirtualMachine(config_object)
@@ -240,53 +267,60 @@ class DRBD(Base):
       # Create disk object
       hard_drive_object = DRBD(vm_object, config_object.getId())
 
-      # Bring up DRBD resource
-      hard_drive_object._drbdUp()
-      progress = DRBD.CREATE_PROGRESS.DRBD_UP
-      cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdUp',
-                                        {'vm_name': vm_object.getName(),
-                                         'disk_id': hard_drive_object.getConfigObject().getId()})
-      progress = DRBD.CREATE_PROGRESS.DRBD_UP_R
-
       # Overwrite data on peer
       hard_drive_object._drbdOverwritePeer()
+
+      # Ensure the DRBD resource is connected
+      hard_drive_object._drbdConnect()
+      progress = DRBD.CREATE_PROGRESS.DRBD_CONNECT
+      cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdConnect',
+                                        {'vm_name': vm_object.getName(),
+                                         'disk_id': hard_drive_object.getConfigObject().getId()})
+      progress = DRBD.CREATE_PROGRESS.DRBD_CONNECT_R
 
       # Mark volume as primary on local node
       hard_drive_object._drbdSetPrimary()
       cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdSetSecondary',
                                         {'vm_name': vm_object.getName(),
-                                         'disk_id': hard_drive_object.getConfigObject().getId()})
+                                         'disk_id': hard_drive_object.getConfigObject().getId()},
+                                        nodes=remote_nodes)
 
       return hard_drive_object
 
     except Exception, e:
+      raise
       # If the creation fails, tear down based on the progress of the creation
-      if (progress.index >= DRBD.CREATE_PROGRESS.DRBD_UP_R.index):
+      if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_CONNECT_R.value):
         cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDisconnect',
                                           {'vm_name': vm_object.getName(),
-                                           'disk_id': hard_drive_object.getId()})
-        cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDown',
-                                          {'vm_name': vm_object.getName(),
-                                           'disk_id': hard_drive_object.getId()})
+                                           'disk_id': hard_drive_object.getConfigObject().getId()})
 
-      if (progress.index >= DRBD.CREATE_PROGRESS.DRBD_UP.index):
+      if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_CONNECT.value):
         hard_drive_object._drbdDisconnect()
-        hard_drive_object._drbdDown()
 
-      if (progress.index >= DRBD.CREATE_PROGRESS.ADD_TO_VM.index):
+      if (progress.value >= DRBD.CREATE_PROGRESS.ADD_TO_VM.value):
         DRBD._removeFromVirtualMachine(config_object)
 
-      if (progress.index >= DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R.index):
-        cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-removeDrbdConfig',
-                                          {'config': config_object._dumpConfig()})
+      if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_UP_R.value):
+        cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDown',
+                                          {'config': config_object._dumpConfig()},
+                                          nodes=remote_nodes)
 
-      if (progress.index >= DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG.index):
+      if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_UP.value):
+        DRBD._drbdDown(config_object)
+
+      if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R.value):
+        cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-removeDrbdConfig',
+                                          {'config': config_object._dumpConfig()},
+                                          nodes=remote_nodes)
+
+      if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG.value):
         config_object._removeDrbdConfig()
 
-      if (progress.index >= DRBD.CREATE_PROGRESS.CREATE_META_LV.index):
+      if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_META_LV.value):
         DRBD._removeLogicalVolume(config_object, meta_logical_volume_name, perform_on_nodes=True)
 
-      if (progress.index >= DRBD.CREATE_PROGRESS.CREATE_RAW_LV.index):
+      if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_RAW_LV.value):
         DRBD._removeLogicalVolume(config_object, raw_logical_volume_name, perform_on_nodes=True)
 
       raise
@@ -294,16 +328,18 @@ class DRBD(Base):
   def _removeStorage(self):
     """Removes the backing storage for the DRBD hard drive"""
     cluster_instance = Cluster(self.getVmObject().mcvirt_object)
+    remote_nodes = self.getVmObject()._getRemoteNodes()
 
     # Disconnect and perform a 'down' on the DRBD volume on all nodes
     cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDisconnect',
                                       {'vm_name': self.getVmObject().getName(),
-                                       'disk_id': self.getConfigObject().getId()})
-    cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDown',
-                                      {'vm_name': self.getVmObject().getName(),
-                                       'disk_id': self.getConfigObject().getId()})
+                                       'disk_id': self.getConfigObject().getId()},
+                                      nodes=remote_nodes)
     self._drbdDisconnect()
-    self._drbdDown()
+    cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDown',
+                                      {'config': self.getConfigObject()._dumpConfig()},
+                                      nodes=remote_nodes)
+    DRBD._drbdDown(self.getConfigObject())
 
     # Remove the DRBD configuration from all nodes
     cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-removeDrbdConfig',
@@ -319,7 +355,7 @@ class DRBD(Base):
                               perform_on_nodes=True)
 
   @staticmethod
-  def _addToVirtualMachine(config_object, activate=True):
+  def _addToVirtualMachine(config_object):
     """Overrides the base function to add the hard drive to the virtual machine,
        and performs the base function on all nodes in the cluster"""
     # Create list of nodes that the hard drive was successfully added to
@@ -327,19 +363,16 @@ class DRBD(Base):
     cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
 
     # Add to local VM
-    Base._addToVirtualMachine(config_object, activate)
+    Base._addToVirtualMachine(config_object)
 
     # If the node cluster is initialised, update all remote node configurations
     if (config_object.vm_object.mcvirt_object.initialiseNodes()):
       try:
-        for node in config_object.vm_object.getAvailableNodes():
-          # Since the VM configuration contains the local node, catch it, so that there is no attempt to
-          # perform a remote command to the local node
-          if (node != Cluster.getHostname()):
-            remote_object = cluster_instance.getRemoteNode(node)
-            remote_object.runRemoteCommand('virtual_machine-hard_drive-addToVirtualMachine',
-                                           {'config': config_object._dumpConfig()})
-            successful_nodes.append(node)
+        for node in config_object.vm_object._getRemoteNodes():
+          remote_object = cluster_instance.getRemoteNode(node)
+          remote_object.runRemoteCommand('virtual_machine-hard_drive-addToVirtualMachine',
+                                         {'config': config_object._dumpConfig()})
+          successful_nodes.append(node)
       except Exception:
         # If the hard drive fails to be added to a node, remove it from all successful nodes
         # and remove from the local node
@@ -347,27 +380,22 @@ class DRBD(Base):
           remote_object = cluster_instance.getRemoteNode(node)
           remote_object.runRemoteCommand('virtual_machine-hard_drive-removeFromVirtualMachine',
                                          {'config': config_object._dumpConfig()})
-        Base._removeFromVirtualMachine(config_object)
+        DRBD._removeFromVirtualMachine(config_object)
         raise
 
   @staticmethod
-  def _removeFromVirtualMachine(config_object):
+  def _removeFromVirtualMachine(config_object, unregister=False):
     """Overrides the base method to remove the hard drive from a VM configuration and
        performs the base function on all nodes in the cluster"""
     # Perform removal on local node
-    Base._removeFromVirtualMachine(config_object)
+    Base._removeFromVirtualMachine(config_object, unregister=False)
 
     # If the cluster is initialised, run on all nodes that the VM is available on
     if (config_object.vm_object.mcvirt_object.initialiseNodes()):
       cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
-      for node in config_object.vm_object.getAvailableNodes():
-          # Since the VM configuration contains the local node, catch it, so that there is no attempt to
-          # perform a remote command to the local node
-        if (node != Cluster.getHostname()):
-          # Since the VM configuration contains the local node, catch it, so that there is no attempt to
-          # perform a remote command to the local node
-          remote_object = cluster_instance.getRemoteNode(node)
-          remote_object.runRemoteCommand('virtual_machine-hard_drive-removeFromVirtualMachine',
+      for node in config_object.vm_object._getRemoteNodes():
+        remote_object = cluster_instance.getRemoteNode(node)
+        remote_object.runRemoteCommand('virtual_machine-hard_drive-removeFromVirtualMachine',
                                          {'config': config_object._dumpConfig()})
 
   @staticmethod
@@ -375,17 +403,20 @@ class DRBD(Base):
     """Performs an initialisation of the meta data, using drbdadm"""
     System.runCommand([NodeDRBD.DRBDADM, 'create-md', resource_name])
 
-  def _drbdUp(self):
+  @staticmethod
+  def _drbdUp(config_object):
     """Performs a DRBD 'up' on the hard drive DRBD resource"""
-    System.runCommand([NodeDRBD.DRBDADM, 'up', self.getConfigObject()._getResourceName()])
+    System.runCommand([NodeDRBD.DRBDADM, 'up', config_object._getResourceName()])
 
-  def _drbdDown(self):
+  @staticmethod
+  def _drbdDown(config_object):
     """Performs a DRBD 'down' on the hard drive DRBD resource"""
-    System.runCommand([NodeDRBD.DRBDADM, 'down', self.getConfigObject()._getResourceName()])
+    System.runCommand([NodeDRBD.DRBDADM, 'down', config_object._getResourceName()])
 
   def _drbdConnect(self):
     """Performs a DRBD 'connect' on the hard drive DRBD resource"""
-    System.runCommand([NodeDRBD.DRBDADM, 'connect', self.getConfigObject()._getResourceName()])
+    if (self._drbdGetConnectionState() is not DrbdConnectionState.CONNECTED):
+      System.runCommand([NodeDRBD.DRBDADM, 'connect', self.getConfigObject()._getResourceName()])
 
   def _drbdDisconnect(self):
     """Performs a DRBD 'disconnect' on the hard drive DRBD resource"""
@@ -393,6 +424,21 @@ class DRBD(Base):
 
   def _drbdSetPrimary(self):
     """Performs a DRBD 'primary' on the hard drive DRBD resource"""
+    local_role_state, remote_role_state = self._drbdGetRole()
+
+    # Check DRBD status
+    self._checkDrbdStatus()
+
+    # Ensure that role states are not unknown
+    if (local_role_state is DrbdRoleState.UNKNOWN or remote_role_state is DrbdRoleState.UNKNOWN):
+      raise DrbdStateException('DRBD role is unknown for resource %s' % self.getConfigObject()._getResourceName())
+
+    # Ensure remote role is secondary
+    if (remote_role_state is not DrbdRoleState.SECONDARY):
+      raise DrbdStateException('Cannot make local DRBD primary if remote DRBD is not secondary: %s' %
+                               self.getConfigObject()._getResourceName())
+
+    # Set DRBD resource to primary
     System.runCommand([NodeDRBD.DRBDADM, 'primary', self.getConfigObject()._getResourceName()])
 
   def _drbdSetSecondary(self):
@@ -406,18 +452,17 @@ class DRBD(Base):
   def _checkDrbdStatus(self):
     """Checks the status of the DRBD volume and returns the states"""
     # Check the disk state
-    disk_state, remote_disk_state = self._drbdGetDiskState()
-    self._checkStateType('DISK', disk_state)
+    local_disk_state, remote_disk_state = self._drbdGetDiskState()
+    self._checkStateType('DISK', local_disk_state)
 
     # Check connection state
     connection_state = self._drbdGetConnectionState()
     self._checkStateType('CONNECTION', connection_state)
 
     # Check DRBD role
-    role_state, remote_role_state = self._drbdGetRole()
-    self._checkStateType('ROLE', role_state)
+    local_role_state, remote_role_state = self._drbdGetRole()
 
-    return ((disk_state, remote_disk_state), connection_state, (role_state, remote_role_statedf ))
+    return ((local_disk_state, remote_disk_state), connection_state, (local_role_state, remote_role_state))
 
   def _checkStateType(self, state_name, state):
     """Determines if the given type of state is OK or not. An exception
@@ -454,6 +499,18 @@ class DRBD(Base):
     states = stdout.strip()
     (local_state, remote_state) = states.split('/')
     return (DrbdRoleState(local_state), DrbdRoleState(remote_state))
+
+  def offlineMigrateCheckState(self):
+    """Ensures that the DRBD state of the disk is in a state suitable for offline migration"""
+    # Ensure disk state is up-to-date on both local and remote nodes
+    local_disk_state, remote_disk_state = self._drbdGetDiskState()
+    connection_state = self._drbdGetConnectionState()
+    if ((local_disk_state is not DrbdDiskState.UP_TO_DATE) or
+        (remote_disk_state is not DrbdDiskState.UP_TO_DATE) or
+        (connection_state is not DrbdConnectionState.CONNECTED)):
+      raise DrbdStateException('DRBD resource %s is not in a suitable state to be migrated. '
+                               % self.getConfigObject()._getResourceName() +
+                               'Both nodes must be up-to-date and connected')
 
   def _ensureBlockDeviceExists(self):
     """Ensures that the DRBD block device exists"""

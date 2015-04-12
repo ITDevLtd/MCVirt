@@ -100,7 +100,7 @@ class Parser:
     self.permission_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     # Create subparser for network-related commands
-    self.network_parser = self.subparsers.add_parser('network', help='Manage the virtual networks on the McVirt host')
+    self.network_parser = self.subparsers.add_parser('network', help='Manage the virtual networks on the McVirt host', parents=[self.parent_parser])
     self.network_subparser = self.network_parser.add_subparsers(dest='network_action', metavar='Action', help='Action to perform on the network')
     self.network_create_parser = self.network_subparser.add_parser('create', help='Create a network on the McVirt host')
     self.network_create_parser.add_argument('--interface', dest='interface', metavar='Interface', type=str, required=True,
@@ -126,8 +126,18 @@ class Parser:
       help='The name of the VM to clone from')
     self.clone_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
+    # Get arguments for migrating a VM
+    self.migrate_parser = self.subparsers.add_parser('migrate', help='Perform migrations of virtual machines', parents=[self.parent_parser])
+    self.migrate_parser.add_argument('--node', dest='destination_node', metavar='Destination Node', type=str, required=True,
+      help='The name of the destination node for the VM to be migrated to')
+    self.migrate_parser.add_argument('--start-after-migration', dest='start_after_migration',
+      help='Causes the VM to be booted after the migration', action='store_true')
+    self.migrate_parser.add_argument('--wait-for-shutdown', dest='wait_for_shutdown',
+      help='Waits for the VM to shutdown before performing the migration', action='store_true')
+    self.migrate_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+
     # Create subparser for cluster-related commands
-    self.cluster_parser = self.subparsers.add_parser('cluster', help='Manage an McVirt cluster and the connected nodes')
+    self.cluster_parser = self.subparsers.add_parser('cluster', help='Manage an McVirt cluster and the connected nodes', parents=[self.parent_parser])
     self.cluster_subparser = self.cluster_parser.add_subparsers(dest='cluster_action', metavar='Action', help='Action to perform on the cluster')
     self.node_add_parser = self.cluster_subparser.add_parser('add-node', help='Adds a node to the McVirt cluster')
     self.node_add_parser.add_argument('--node', dest='node', metavar='node', type=str, required=True,
@@ -255,7 +265,7 @@ class Parser:
           if (args.vnc_port):
             print vm_object.getVncPort()
           else:
-            vm_object.printInfo()
+            print vm_object.getInfo()
         else:
           mcvirt_instance = McVirt(initialise_nodes=False)
           mcvirt_instance.printInfo()
@@ -266,6 +276,11 @@ class Parser:
         elif (args.network_action == 'delete'):
           network_object = Network(mcvirt_instance, args.network)
           network_object.delete()
+
+      elif (action == 'migrate'):
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        vm_object.offlineMigrate(args.destination_node, wait_for_vm_shutdown=args.wait_for_shutdown,
+                                 start_after_migration=args.start_after_migration)
 
       elif (action == 'cluster'):
         if (args.cluster_action == 'add-node'):

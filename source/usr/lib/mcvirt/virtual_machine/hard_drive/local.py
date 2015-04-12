@@ -48,15 +48,7 @@ class Local(Base):
 
   def getSize(self):
     """Gets the size of the disk (in MB)"""
-    # Use 'lvs' to obtain the size of the disk
-    command_args = ('lvs', '--nosuffix', '--noheadings', '--units', 'm', '--options', 'lv_size', self.getConfigObject()._getDiskPath())
-    try:
-      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-    except McVirtCommandException, e:
-      raise McVirtException("Error whilst obtaining the size of the logical volume:\n" + str(e))
-
-    lv_size = command_output.strip().split('.')[0]
-    return int(lv_size)
+    return Local._getLogicalVolumeSize(self.getConfigObject(), self.getConfigObject()._getDiskName())
 
   def clone(self, destination_vm_object):
     """Clone a VM, using snapshotting, attaching it to the new VM object"""
