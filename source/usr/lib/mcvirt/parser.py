@@ -197,7 +197,7 @@ class Parser:
         if (args.storage_type):
           storage_type = args.storage_type
         else:
-          if (NodeDRBd.isEnabled()):
+          if (NodeDRBD.isEnabled()):
             self.parser.error('The VM must be configured with a storage type')
           else:
             storage_type = None

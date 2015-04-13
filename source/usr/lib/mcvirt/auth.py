@@ -49,7 +49,7 @@ class Auth:
     if (os.geteuid() == 0):
 
       # If SUDO_USER has been set, then it must have been run
-      # as root, and this variable can be used to obtain the username
+      # using sudo, and this variable can be used to obtain the username
       if (os.getenv('SUDO_USER')):
         return os.getenv('SUDO_USER')
 

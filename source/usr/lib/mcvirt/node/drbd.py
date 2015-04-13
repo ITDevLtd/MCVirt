@@ -157,7 +157,7 @@ class DRBD:
       all_hard_drive_objects = vm_object.getDiskObjects()
 
       for hard_drive_object in all_hard_drive_objects:
-        if (hard_drive_object.getType() is DRBD.Type):
+        if (hard_drive_object.getType() is 'DRBD'):
           hard_drive_objects.append(hard_drive_object)
 
     return hard_drive_objects
@@ -167,7 +167,7 @@ class DRBD:
     used_ports = []
 
     for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object):
-      used_ports.append(hard_drive_object.getConfig()._getDrbdPort())
+      used_ports.append(hard_drive_object.getConfigObject()._getDrbdPort())
 
     return used_ports
 
@@ -176,6 +176,6 @@ class DRBD:
     used_minors = []
 
     for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object):
-      used_minors.append(hard_drive_object.getConfig()._getMinorId())
+      used_minors.append(hard_drive_object.getConfigObject()._getDrbdMinor())
 
     return used_minors
