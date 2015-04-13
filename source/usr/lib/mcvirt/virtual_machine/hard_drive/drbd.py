@@ -141,7 +141,7 @@ class DRBD(Base):
       'CONNECTION':
       {
         'OK': [DrbdConnectionState.CONNECTED, DrbdConnectionState.VERIFY_S, DrbdConnectionState.VERIFY_T,
-               DrbdConnectionState.PAUSED_SYNC_S, DrbdConnectionState.PAUSED_SYNC_T, DrbdConnectionState.STARTING_SYNC_S,
+               DrbdConnectionState.PAUSED_SYNC_S, DrbdConnectionState.STARTING_SYNC_S,
                DrbdConnectionState.SYNC_SOURCE, DrbdConnectionState.WF_BIT_MAP_S],
 
         'WARNING': [DrbdConnectionState.STAND_ALONE, DrbdConnectionState.DISCONNECTING, DrbdConnectionState.UNCONNECTED,
