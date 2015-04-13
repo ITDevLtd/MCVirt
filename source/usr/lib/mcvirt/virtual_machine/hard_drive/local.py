@@ -65,6 +65,7 @@ class Local(Base):
 
     new_disk_object = Local(destination_vm_object, self.getConfigObject().getId())
     new_disk_object._addToVirtualMachine()
+    return new_disk_object
 
   @staticmethod
   def create(vm_object, size):

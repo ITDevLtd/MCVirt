@@ -508,7 +508,9 @@ class VirtualMachine:
     for network_object in network_objects:
       networks.append(network_object.getConnectedNetwork())
     new_vm_object = VirtualMachine.create(mcvirt_instance, clone_vm_name, self.getCPU(),
-                                          self.getRAM(), [], networks, auth_check=False)
+                                          self.getRAM(), [], networks, auth_check=False,
+                                          available_nodes=self.getAvailableNodes(),
+                                          node=self.getNode())
 
     # Set current user as an owner of the new VM, so that they have permission
     # to perform functions on the VM

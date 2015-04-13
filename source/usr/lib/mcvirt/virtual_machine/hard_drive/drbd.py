@@ -258,7 +258,7 @@ class DRBD(Base):
 
       # Wait for 5 seconds to let DRBD connect
       import time
-      time.sleep(10)
+      time.sleep(5)
 
       # Add to virtual machine
       DRBD._addToVirtualMachine(config_object)
@@ -288,7 +288,6 @@ class DRBD(Base):
       return hard_drive_object
 
     except Exception, e:
-      raise
       # If the creation fails, tear down based on the progress of the creation
       if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_CONNECT_R.value):
         cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDisconnect',
@@ -324,6 +323,25 @@ class DRBD(Base):
         DRBD._removeLogicalVolume(config_object, raw_logical_volume_name, perform_on_nodes=True)
 
       raise
+
+  def clone(self, destination_vm_object):
+    """Clone the DRBD hard drive and attach it to the new VM object"""
+    disk_size = self.getSize()
+
+    new_disk_object = DRBD.create(destination_vm_object, disk_size, disk_id=self.getConfigObject().getId())
+
+    source_drbd_block_device = self.getConfigObject()._getDrbdDevice()
+    destination_drbd_block_device = new_disk_object.getConfigObject()._getDrbdDevice()
+
+    # Use dd to duplicate the old disk to the new disk
+    command_args = ('dd', 'if=%s' % source_drbd_block_device, 'of=%s' % destination_drbd_block_device, 'bs=1M')
+    try:
+      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+    except McVirtCommandException, e:
+      new_disk_object.delete()
+      raise McVirtException("Error whilst cloning disk logical volume:\n" + str(e))
+
+    return new_disk_object
 
   def _removeStorage(self):
     """Removes the backing storage for the DRBD hard drive"""
