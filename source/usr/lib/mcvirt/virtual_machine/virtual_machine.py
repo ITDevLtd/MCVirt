@@ -419,9 +419,12 @@ class VirtualMachine:
     """Performs an offline migration of a VM to another node in the cluster"""
     import time
     from mcvirt.cluster.cluster import Cluster
-    # Ensure the VM is locally registered
+    # Ensure user has permission to migrate VM
+    self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MIGRATE_VM, self)
 
+    # Ensure the VM is locally registered
     self.ensureRegisteredLocally()
+
     # Ensure VM is using a DRBD storage type
     self._offlineMigratePreMigrateChecks(destination_node_name)
 
