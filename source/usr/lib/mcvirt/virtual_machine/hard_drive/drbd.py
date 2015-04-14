@@ -324,25 +324,6 @@ class DRBD(Base):
 
       raise
 
-  def clone(self, destination_vm_object):
-    """Clone the DRBD hard drive and attach it to the new VM object"""
-    disk_size = self.getSize()
-
-    new_disk_object = DRBD.create(destination_vm_object, disk_size, disk_id=self.getConfigObject().getId())
-
-    source_drbd_block_device = self.getConfigObject()._getDrbdDevice()
-    destination_drbd_block_device = new_disk_object.getConfigObject()._getDrbdDevice()
-
-    # Use dd to duplicate the old disk to the new disk
-    command_args = ('dd', 'if=%s' % source_drbd_block_device, 'of=%s' % destination_drbd_block_device, 'bs=1M')
-    try:
-      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-    except McVirtCommandException, e:
-      new_disk_object.delete()
-      raise McVirtException("Error whilst cloning disk logical volume:\n" + str(e))
-
-    return new_disk_object
-
   def _removeStorage(self):
     """Removes the backing storage for the DRBD hard drive"""
     cluster_instance = Cluster(self.getVmObject().mcvirt_object)
@@ -414,7 +395,7 @@ class DRBD(Base):
       for node in config_object.vm_object._getRemoteNodes():
         remote_object = cluster_instance.getRemoteNode(node)
         remote_object.runRemoteCommand('virtual_machine-hard_drive-removeFromVirtualMachine',
-                                         {'config': config_object._dumpConfig()})
+                                       {'config': config_object._dumpConfig()})
 
   @staticmethod
   def _initialiseMetaData(resource_name):

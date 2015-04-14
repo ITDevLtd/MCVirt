@@ -63,15 +63,16 @@ class Local(Base):
     except McVirtCommandException, e:
       raise McVirtException("Error whilst cloning disk logical volume:\n" + str(e))
 
+    Local._addToVirtualMachine(new_disk_config)
+
     new_disk_object = Local(destination_vm_object, self.getConfigObject().getId())
-    new_disk_object._addToVirtualMachine()
     return new_disk_object
 
   @staticmethod
-  def create(vm_object, size):
+  def create(vm_object, size, disk_id=None,):
     """Creates a new disk image, attaches the disk to the VM and records the disk
     in the VM configuration"""
-    disk_config_object = ConfigLocal(vm_object=vm_object)
+    disk_config_object = ConfigLocal(vm_object=vm_object, disk_id=disk_id)
     disk_path = disk_config_object._getDiskPath()
     logical_volume_name = disk_config_object._getDiskName()
 

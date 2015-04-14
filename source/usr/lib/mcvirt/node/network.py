@@ -146,12 +146,6 @@ class Network:
     except:
       raise McVirtException('An error occurred whilst registering network with LibVirt')
 
-    # Update McVirt config
-    def updateConfig(config):
-      config['networks'][name] = physical_interface
-    from mcvirt.mcvirt_config import McVirtConfig
-    McVirtConfig().updateConfig(updateConfig)
-
     if (mcvirt_object.initialiseNodes()):
       # Update nodes
       from mcvirt.cluster.cluster import Cluster
@@ -159,3 +153,9 @@ class Network:
       cluster.runRemoteCommand('node-network-create',
                                {'network_name': name,
                                 'physical_interface': physical_interface})
+
+    # Update McVirt config
+    def updateConfig(config):
+      config['networks'][name] = physical_interface
+    from mcvirt.mcvirt_config import McVirtConfig
+    McVirtConfig().updateConfig(updateConfig)

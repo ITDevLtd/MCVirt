@@ -12,7 +12,7 @@ class Auth:
 
   PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS',
                                      'VIEW_VNC_CONSOLE', 'CLONE_VM', 'DELETE_CLONE', 'MANAGE_HOST_NETWORKS',
-                                     'MANAGE_CLUSTER', 'MANAGE_DRBD', 'CAN_IGNORE_DRBD', 'MIGRATE_VM'])
+                                     'MANAGE_CLUSTER', 'MANAGE_DRBD', 'CAN_IGNORE_DRBD', 'MIGRATE_VM', 'DUPLICATE_VM'])
 
   # Set the permissions for the permissions groups
   PERMISSION_GROUPS = \
@@ -28,7 +28,8 @@ class Auth:
         PERMISSIONS.MANAGE_VM_USERS,
         PERMISSIONS.VIEW_VNC_CONSOLE,
         PERMISSIONS.CLONE_VM,
-        PERMISSIONS.DELETE_CLONE
+        PERMISSIONS.DELETE_CLONE,
+        PERMISSIONS.DUPLICATE_VM
       ]
     }
 

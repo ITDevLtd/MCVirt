@@ -11,6 +11,7 @@ from mcvirt.parser import Parser
 from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine, InvalidVirtualMachineNameException, VmAlreadyExistsException, VmDirectoryAlreadyExistsException, VmAlreadyStartedException, VmAlreadyStoppedException
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
+from mcvirt.system import System
 
 def stopAndDelete(mcvirt_instance, vm_name):
   """Stops and removes VMs"""
@@ -96,14 +97,14 @@ class VirtualMachineTests(unittest.TestCase):
     ]
 
     # Ensure any test VM is stopped and removed from the machine
-    stopAndDelete(self.mcvirt, self.test_vms[0]['name'])
     stopAndDelete(self.mcvirt, self.test_vms[1]['name'])
+    stopAndDelete(self.mcvirt, self.test_vms[0]['name'])
 
   def tearDown(self):
     """Stops and tears down any test VMs"""
     # Ensure any test VM is stopped and removed from the machine
-    stopAndDelete(self.mcvirt, self.test_vms[0]['name'])
     stopAndDelete(self.mcvirt, self.test_vms[1]['name'])
+    stopAndDelete(self.mcvirt, self.test_vms[0]['name'])
     self.mcvirt = None
 
   def test_create_local(self):
@@ -189,6 +190,53 @@ class VirtualMachineTests(unittest.TestCase):
 
     # Ensure VM has been deleted
     self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vms[0]['name']))
+
+  def test_clone_local(self):
+    self.test_clone('Local')
+
+  def test_clone_drbd(self):
+    self.test_clone('DRBD')
+
+  def test_clone(self, storage_type):
+    """Tests the VM cloning in McVirt using the argument parser"""
+    # Create Virtual machine
+    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vms[0]['name'], self.test_vms[0]['cpu_count'], self.test_vms[0]['memory_allocation'],
+                                           self.test_vms[0]['disk_size'], self.test_vms[0]['networks'], storage_type=storage_type)
+
+    test_data = os.urandom(8)
+
+    # Obtain the disk path for the VM and write random data to it
+    for disk_object in test_vm_object.getDiskObjects():
+      fh = open(disk_object.getConfigObject()._getDiskPath(), 'w')
+      fh.write(test_data)
+      fh.close()
+
+    # Clone VM
+    self.parser.parse_arguments('clone --template %s %s' % (self.test_vms[0]['name'], self.test_vms[1]['name']),
+                                mcvirt_instance=self.mcvirt)
+    test_vm_clone = VirtualMachine(self.mcvirt, self.test_vms[1]['name'])
+
+    # Check data is present on target VM
+    for disk_object in test_vm_clone.getDiskObjects():
+      fh = open(disk_object.getConfigObject()._getDiskPath(), 'r')
+      self.assertEqual(fh.read(8), test_data)
+      fh.close()
+
+
+    # Attempt to start clone
+    test_vm_clone.stat()
+
+    # Attempt to stop clone
+    test_vm_clone.stop()
+
+    # Attempt to start parent
+    with self.assertRa
+
+    # Attempt to delete parent
+
+    # Remove clone
+
+    # Remove parent
 
 
   def test_invalid_name(self):

@@ -127,6 +127,12 @@ class Parser:
       help='The name of the VM to clone from')
     self.clone_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
+    # Get arguments for cloning a VM
+    self.duplicate_parser = self.subparsers.add_parser('duplicate', help='Duplicate a VM permissions help', parents=[self.parent_parser])
+    self.duplicate_parser.add_argument('--template', dest='template', metavar='Parent VM', type=str, required=True,
+      help='The name of the VM to duplicate')
+    self.duplicate_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of duplicate VM')
+
     # Get arguments for migrating a VM
     self.migrate_parser = self.subparsers.add_parser('migrate', help='Perform migrations of virtual machines', parents=[self.parent_parser])
     self.migrate_parser.add_argument('--node', dest='destination_node', metavar='Destination Node', type=str, required=True,
@@ -311,6 +317,10 @@ class Parser:
       elif (action == 'clone'):
         vm_object = VirtualMachine(mcvirt_instance, args.template)
         vm_object.clone(mcvirt_instance, args.vm_name)
+
+      elif (action == 'duplicate'):
+        vm_object = VirtualMachine(mcvirt_instance, args.template)
+        vm_object.duplicate(mcvirt_instance, args.vm_name)
 
       elif (action == 'list'):
         mcvirt_instance.listVms()

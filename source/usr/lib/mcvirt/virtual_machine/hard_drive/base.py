@@ -56,6 +56,29 @@ class Base(object):
     # Remove the hard drive from the McVirt VM configuration
     Factory.getClass(self.getType())._removeFromVirtualMachine(self.getConfigObject(), unregister=False)
 
+  def duplicate(self, destination_vm_object):
+    """Clone the hard drive and attach it to the new VM object"""
+    from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+    disk_size = self.getSize()
+
+    # Create new disk object, using the same type, size and disk_id
+    new_disk_object = HardDriveFactory.getClass(self.getType()).create(destination_vm_object,
+                                                                       disk_size,
+                                                                       disk_id=self.getConfigObject().getId())
+
+    source_drbd_block_device = self.getConfigObject()._getDiskPath()
+    destination_drbd_block_device = new_disk_object.getConfigObject()._getDiskPath()
+
+    # Use dd to duplicate the old disk to the new disk
+    command_args = ('dd', 'if=%s' % source_drbd_block_device, 'of=%s' % destination_drbd_block_device, 'bs=1M')
+    try:
+      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+    except McVirtCommandException, e:
+      new_disk_object.delete()
+      raise McVirtException("Error whilst duplicating disk logical volume:\n" + str(e))
+
+    return new_disk_object
+
   @staticmethod
   def _removeFromVirtualMachine(config_object, unregister=False):
     """Removes the hard drive configuration from the McVirt VM configuration"""

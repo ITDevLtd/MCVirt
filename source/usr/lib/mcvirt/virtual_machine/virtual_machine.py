@@ -69,6 +69,16 @@ class VmNotRegistered(McVirtException):
   pass
 
 
+class CannotStartClonedVmException(McVirtException):
+  """Cloned VMs cannot be started"""
+  pass
+
+
+class CannotCloneDrbdBasedVmsException(McVirtException):
+  """Cannot clone DRBD-based VMs"""
+  pass
+
+
 class VirtualMachine:
   """Provides operations to manage a LibVirt virtual machine"""
 
@@ -124,7 +134,7 @@ class VirtualMachine:
 
     # Ensure VM hasn't been cloned
     if (self.getCloneChildren()):
-      raise McVirtException('Cloned VMs cannot be started')
+      raise CannotStartClonedVmException('Cloned VMs cannot be started')
 
     # Determine if VM is stopped
     if (self.getState()):
@@ -487,9 +497,15 @@ class VirtualMachine:
 
   def clone(self, mcvirt_instance, clone_vm_name):
     """Clones a VM, creating an identical machine, using
-    LVM snapshotting to duplicate the Hard disk"""
+       LVM snapshotting to duplicate the Hard disk. DRBD is not
+       currently supported"""
     # Check the user has permission to create VMs
     self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.CLONE_VM, self)
+
+    # Ensure the storage type for the VM is not DRBD, as DRBD-based VMs cannot be cloned
+    if (self.getConfigObject().getConfig()['storage_type'] == 'DRBD'):
+      raise CannotCloneDrbdBasedVmsException('Cannot clone VM that uses DRBD-based storage: %s' %
+                                             self.getName())
 
     # Determine if VM is running
     if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
@@ -512,15 +528,6 @@ class VirtualMachine:
                                           available_nodes=self.getAvailableNodes(),
                                           node=self.getNode())
 
-    # Set current user as an owner of the new VM, so that they have permission
-    # to perform functions on the VM
-    self.mcvirt_object.getAuthObject().copyPermissions(self, new_vm_object)
-
-    # Clone the hard drives of the VM
-    disk_objects = self.getDiskObjects()
-    for disk_object in disk_objects:
-      disk_object.clone(new_vm_object)
-
     # Mark VM as being a clone and mark parent as being a clone
     def setCloneParent(vm_config):
       vm_config['clone_parent'] = self.getName()
@@ -531,6 +538,49 @@ class VirtualMachine:
       vm_config['clone_children'].append(new_vm_object.getName())
 
     self.getConfigObject().updateConfig(setCloneChild)
+
+    # Set current user as an owner of the new VM, so that they have permission
+    # to perform functions on the VM
+    self.mcvirt_object.getAuthObject().copyPermissions(self, new_vm_object)
+
+    # Clone the hard drives of the VM
+    disk_objects = self.getDiskObjects()
+    for disk_object in disk_objects:
+      disk_object.clone(new_vm_object)
+
+    return new_vm_object
+
+  def duplicate(self, mcvirt_instance, duplicate_vm_name):
+    """Duplicates a VM, creating an identical machine, making a
+       copy of the storage"""
+    # Check the user has permission to create VMs
+    self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.DUPLICATE_VM, self)
+
+    # Determine if VM is running
+    if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
+      raise McVirtException('Can\'t duplicate running VM')
+
+    # Ensure new VM name doesn't already exist
+    VirtualMachine._checkExists(self.mcvirt_object, duplicate_vm_name)
+
+    # Create new VM for clone, without hard disks
+    network_objects = self.getNetworkObjects()
+    networks = []
+    for network_object in network_objects:
+      networks.append(network_object.getConnectedNetwork())
+    new_vm_object = VirtualMachine.create(mcvirt_instance, duplicate_vm_name, self.getCPU(),
+                                          self.getRAM(), [], networks, auth_check=False,
+                                          available_nodes=self.getAvailableNodes(),
+                                          node=self.getNode())
+
+    # Set current user as an owner of the new VM, so that they have permission
+    # to perform functions on the VM
+    self.mcvirt_object.getAuthObject().copyPermissions(self, new_vm_object)
+
+    # Clone the hard drives of the VM
+    disk_objects = self.getDiskObjects()
+    for disk_object in disk_objects:
+      disk_object.duplicate(new_vm_object)
 
     return new_vm_object
 
@@ -604,7 +654,7 @@ class VirtualMachine:
       # replicated to remote nodes
       vm_object.register(set_node=mcvirt_instance.initialiseNodes())
     elif (mcvirt_instance.initialiseNodes()):
-      # If McVirthas been initialised on this node and the local machine is
+      # If McVirt has been initialised on this node and the local machine is
       # not the node that the VM will be registered on, set the node on the VM
       vm_object._setNode(node)
 
