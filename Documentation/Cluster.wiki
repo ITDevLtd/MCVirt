@@ -6,7 +6,7 @@ Nodes running McVirt can be joined together in a cluster - this allows the synch
 
 To view the status of the cluster, run the following on an McVirt node:
 {{{
-mcvirt info
+sudo mcvirt info
 }}}
 
 This will show the cluster nodes, IP addresses, and status.
@@ -29,7 +29,7 @@ The IP address for this network must be stored in the McVirt configuration file 
 
 1. From the source node, run:
 {{{
-mcvirt cluster --add-node --node <Remote Node Name> --ip-address <Remote Cluster IP Address>
+sudo mcvirt cluster --add-node --node <Remote Node Name> --ip-address <Remote Cluster IP Address>
 }}}
 1. A prompt for the root password of the remote node will be presented.
 1. The local node will connect to the remote node, ensure it is suitable as a remote node, setup authentication between the nodes and copy the local permissions/network/virtual machine configurations to the remote node.
@@ -40,5 +40,5 @@ mcvirt cluster --add-node --node <Remote Node Name> --ip-address <Remote Cluster
 
 To the remove a node from the cluster, run:
 {{{
-mcvirt cluster remove-node --node <Remote Node Name>
+sudo mcvirt cluster remove-node --node <Remote Node Name>
 }}}
