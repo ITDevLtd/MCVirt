@@ -90,8 +90,4 @@ class Local(Base):
 
   def activateDisk(self):
     """Starts the disk logical volume"""
-    command_args = ('lvchange', '-a', 'y', self.getConfigObject()._getDiskPath())
-    try:
-      (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-    except McVirtCommandException, e:
-      raise McVirtException("Error whilst activating disk logical volume:\n" + str(e))
+    Local._activateLogicalVolume(self.getConfigObject(), self.getConfigObject()._getDiskName())

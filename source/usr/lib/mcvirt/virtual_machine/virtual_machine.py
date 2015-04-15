@@ -79,6 +79,11 @@ class CannotCloneDrbdBasedVmsException(McVirtException):
   pass
 
 
+class CannotDeleteClonedVmException(McVirtException):
+  """Cannot delete a cloned VM"""
+  pass
+
+
 class VirtualMachine:
   """Provides operations to manage a LibVirt virtual machine"""
 
@@ -260,7 +265,7 @@ class VirtualMachine:
 
     # Ensure that VM has not been cloned
     if (self.getCloneChildren()):
-      raise McVirtException('Can\'t delete cloned VM')
+      raise CannotDeleteClonedVmException('Can\'t delete cloned VM')
 
     # If 'remove_data' has been passed as True, delete disks associated
     # with VM

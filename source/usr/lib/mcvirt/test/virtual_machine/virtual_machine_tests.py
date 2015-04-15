@@ -9,7 +9,10 @@ import shutil
 
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import McVirt, McVirtException
-from mcvirt.virtual_machine.virtual_machine import VirtualMachine, InvalidVirtualMachineNameException, VmAlreadyExistsException, VmDirectoryAlreadyExistsException, VmAlreadyStartedException, VmAlreadyStoppedException
+from mcvirt.virtual_machine.virtual_machine import (VirtualMachine, InvalidVirtualMachineNameException, VmAlreadyExistsException,
+                                                    VmDirectoryAlreadyExistsException, VmAlreadyStartedException,
+                                                    VmAlreadyStoppedException, CannotStartClonedVmException, CannotDeleteClonedVmException,
+                                                    CannotCloneDrbdBasedVmsException)
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 from mcvirt.system import System
 
@@ -28,7 +31,7 @@ def stopAndDelete(mcvirt_instance, vm_name):
                                      {'vm_name': test_vm_object.getName()})
       # Remove VM from remote node
       remote_node.runRemoteCommand('virtual_machine-unregister',
-                                 {'vm_name': test_vm_object.getName()})
+                                   {'vm_name': test_vm_object.getName()})
       vm_object._setNode()
 
       # Manually register VM on local node
@@ -58,6 +61,8 @@ class VirtualMachineTests(unittest.TestCase):
     suite.addTest(VirtualMachineTests('test_start_running_vm'))
     suite.addTest(VirtualMachineTests('test_stop_local'))
     suite.addTest(VirtualMachineTests('test_stop_stopped_vm'))
+    suite.addTest(VirtualMachineTests('test_clone_local'))
+    suite.addTest(VirtualMachineTests('test_duplicate_local'))
 
     # Add tests for DRBD
     suite.addTest(VirtualMachineTests('test_create_drbd'))
@@ -66,6 +71,8 @@ class VirtualMachineTests(unittest.TestCase):
     suite.addTest(VirtualMachineTests('test_stop_drbd'))
     suite.addTest(VirtualMachineTests('test_create_drbd_not_enabled'))
     suite.addTest(VirtualMachineTests('test_offline_migrate'))
+    suite.addTest(VirtualMachineTests('test_clone_drbd'))
+    suite.addTest(VirtualMachineTests('test_duplicate_drbd'))
 
     return suite
 
@@ -192,21 +199,15 @@ class VirtualMachineTests(unittest.TestCase):
     self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vms[0]['name']))
 
   def test_clone_local(self):
-    self.test_clone('Local')
-
-  def test_clone_drbd(self):
-    self.test_clone('DRBD')
-
-  def test_clone(self, storage_type):
     """Tests the VM cloning in McVirt using the argument parser"""
     # Create Virtual machine
-    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vms[0]['name'], self.test_vms[0]['cpu_count'], self.test_vms[0]['memory_allocation'],
-                                           self.test_vms[0]['disk_size'], self.test_vms[0]['networks'], storage_type=storage_type)
+    test_vm_parent = VirtualMachine.create(self.mcvirt, self.test_vms[0]['name'], self.test_vms[0]['cpu_count'], self.test_vms[0]['memory_allocation'],
+                                           self.test_vms[0]['disk_size'], self.test_vms[0]['networks'], storage_type='Local')
 
     test_data = os.urandom(8)
 
     # Obtain the disk path for the VM and write random data to it
-    for disk_object in test_vm_object.getDiskObjects():
+    for disk_object in test_vm_parent.getDiskObjects():
       fh = open(disk_object.getConfigObject()._getDiskPath(), 'w')
       fh.write(test_data)
       fh.close()
@@ -222,22 +223,87 @@ class VirtualMachineTests(unittest.TestCase):
       self.assertEqual(fh.read(8), test_data)
       fh.close()
 
-
     # Attempt to start clone
-    test_vm_clone.stat()
+    test_vm_clone.start()
 
     # Attempt to stop clone
     test_vm_clone.stop()
 
     # Attempt to start parent
-    with self.assertRa
+    with self.assertRaises(CannotStartClonedVmException):
+      test_vm_parent.start()
 
     # Attempt to delete parent
+    with self.assertRaises(CannotDeleteClonedVmException):
+      test_vm_parent.delete(True)
 
     # Remove clone
+    test_vm_clone.delete(True)
 
     # Remove parent
+    test_vm_parent.delete(True)
 
+  def test_clone_drbd(self):
+    """Attempts to clone a DRBD-based VM"""
+    # Create parent VM
+    test_vm_parent = VirtualMachine.create(self.mcvirt, self.test_vms[0]['name'], self.test_vms[0]['cpu_count'],
+                                           self.test_vms[0]['memory_allocation'], self.test_vms[0]['disk_size'],
+                                           self.test_vms[0]['networks'], storage_type='DRBD')
+
+    # Attempt to clone VM
+    with self.assertRaises(CannotCloneDrbdBasedVmsException):
+      self.parser.parse_arguments('clone --template %s %s' % (self.test_vms[0]['name'], self.test_vms[1]['name']),
+                                  mcvirt_instance=self.mcvirt)
+
+    test_vm_parent.delete(True)
+
+  def test_duplicate_local(self):
+    self.test_duplicate('Local')
+
+  def test_duplicate_drbd(self):
+    self.test_duplicate('DRBD')
+
+  def test_duplicate(self, storage_type):
+    # Create Virtual machine
+    test_vm_parent = VirtualMachine.create(self.mcvirt, self.test_vms[0]['name'], self.test_vms[0]['cpu_count'], self.test_vms[0]['memory_allocation'],
+                                           self.test_vms[0]['disk_size'], self.test_vms[0]['networks'], storage_type='Local')
+
+    test_data = os.urandom(8)
+
+    # Obtain the disk path for the VM and write random data to it
+    for disk_object in test_vm_parent.getDiskObjects():
+      fh = open(disk_object.getConfigObject()._getDiskPath(), 'w')
+      fh.write(test_data)
+      fh.close()
+
+    # Clone VM
+    self.parser.parse_arguments('duplicate --template %s %s' % (self.test_vms[0]['name'], self.test_vms[1]['name']),
+                                mcvirt_instance=self.mcvirt)
+    test_vm_duplicate = VirtualMachine(self.mcvirt, self.test_vms[1]['name'])
+
+    # Check data is present on target VM
+    for disk_object in test_vm_duplicate.getDiskObjects():
+      fh = open(disk_object.getConfigObject()._getDiskPath(), 'r')
+      self.assertEqual(fh.read(8), test_data)
+      fh.close()
+
+    # Attempt to start clone
+    test_vm_duplicate.start()
+
+    # Attempt to stop clone
+    test_vm_duplicate.stop()
+
+    # Start parent
+    test_vm_parent.start()
+
+    # Stop parent
+    test_vm_parent.stop()
+
+    # Remove parent
+    test_vm_parent.delete(True)
+
+    # Remove duplicate
+    test_vm_duplicate.delete(True)
 
   def test_invalid_name(self):
     """Attempts to create a virtual machine with an invalid name"""

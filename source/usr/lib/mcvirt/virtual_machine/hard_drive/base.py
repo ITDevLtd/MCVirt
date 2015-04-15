@@ -275,7 +275,7 @@ class Base(object):
     lv_path = config_object._getLogicalVolumePath(name)
 
     # Create command arguments
-    command_args = ['lvchange', '-a', 'y', lv_path]
+    command_args = ['lvchange', '-a', 'y', '--yes', lv_path]
     try:
       # Run on the local node
       (exit_code, command_output, command_stderr) = System.runCommand(command_args)
