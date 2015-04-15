@@ -243,6 +243,8 @@ class VirtualMachineTests(unittest.TestCase):
     # Remove parent
     test_vm_parent.delete(True)
 
+  @unittest.skipIf(not NodeDRBD.isEnabled(),
+                   'DRBD is not enabled on this node')
   def test_clone_drbd(self):
     """Attempts to clone a DRBD-based VM"""
     # Create parent VM
@@ -258,12 +260,18 @@ class VirtualMachineTests(unittest.TestCase):
     test_vm_parent.delete(True)
 
   def test_duplicate_local(self):
+    """Performs test_duplicate test with Local storage"""
     self.test_duplicate('Local')
 
+  @unittest.skipIf(not NodeDRBD.isEnabled(),
+                   'DRBD is not enabled on this node')
   def test_duplicate_drbd(self):
+    """Performs the test_duplicate test with DRBD storage"""
     self.test_duplicate('DRBD')
 
   def test_duplicate(self, storage_type):
+    """Attempts to duplicate a VM using the argument parser and perform tests
+       on the parent and duplicate VM"""
     # Create Virtual machine
     test_vm_parent = VirtualMachine.create(self.mcvirt, self.test_vms[0]['name'], self.test_vms[0]['cpu_count'], self.test_vms[0]['memory_allocation'],
                                            self.test_vms[0]['disk_size'], self.test_vms[0]['networks'], storage_type='Local')
