@@ -103,7 +103,7 @@ class VirtualMachineTests(unittest.TestCase):
         'disk_size': [100],
         'networks': ['Production']
       }
-    ]
+    }
 
     # Ensure any test VM is stopped and removed from the machine
     stopAndDelete(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
