@@ -40,6 +40,10 @@ def stopAndDelete(mcvirt_instance, vm_name):
       # Delete VM
       vm_object.delete(True)
     else:
+      if (not vm_object.isRegisteredLocally()):
+        print 'Warning: VM not registered'
+        vm_object.register()
+
       if (vm_object.getState()):
         vm_object.stop()
       vm_object.delete(True)

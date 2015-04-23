@@ -182,14 +182,14 @@ class VirtualMachine:
 
   def getInfo(self):
     """Gets information about the current VM"""
+    self.ensureRegistered()
+
     if (self.isRegisteredRemotely()):
       from mcvirt.cluster.cluster import Cluster
       cluster_instance = Cluster(self.mcvirt_object)
       remote_object = cluster_instance.getRemoteNode(self.getNode())
       return remote_object.runRemoteCommand('virtual_machine-getInfo',
                                             {'vm_name': self.getName()})
-    elif (not self.isRegisteredLocally()):
-      raise VmNotRegistered('The VM %s is registered on a node' % self.getName())
 
     table = Texttable()
     warnings = ''
@@ -259,6 +259,7 @@ class VirtualMachine:
       remote_node = self.getConfigObject().getConfig()['node']
       raise VmRegisteredElsewhereException('The VM \'%s\' is registered on the remote node: %s' %
                                            (self.getName(), remote_node))
+
     # Determine if VM is running
     if (self.isRegisteredLocally() and self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
       raise McVirtException('Error: Can\'t delete running VM')
@@ -773,6 +774,15 @@ class VirtualMachine:
     """Returns true if the VM is registered on a remote node"""
     from mcvirt.cluster.cluster import Cluster
     return (not (self.getNode() == Cluster.getHostname() or self.getNode() is None))
+
+  def isRegistered(self):
+    """Returns true if the VM is registered on a node"""
+    return (self.getNode() is not None)
+
+  def ensureRegistered(self):
+    """Ensures that the VM is registered"""
+    if (not self.isRegistered()):
+      raise VmNotRegistered('The VM %s is not registered on a node' % self.getName())
 
   def getNode(self):
     """Returns the node that the VM is registered on"""
