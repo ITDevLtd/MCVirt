@@ -13,6 +13,7 @@ from mcvirt.virtual_machine.virtual_machine import (VirtualMachine, InvalidVirtu
                                                     VmDirectoryAlreadyExistsException, VmAlreadyStartedException,
                                                     VmAlreadyStoppedException, CannotStartClonedVmException, CannotDeleteClonedVmException,
                                                     CannotCloneDrbdBasedVmsException)
+from mcvirt.virtual_machine.hard_drive.drbd import DrbdStateException
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 from mcvirt.system import System
 
@@ -472,7 +473,12 @@ class VirtualMachineTests(unittest.TestCase):
         time.sleep(5)
 
     # Migrate VM to remote node
-    test_vm_object.offlineMigrate(node_name)
+    try:
+      test_vm_object.offlineMigrate(node_name)
+    except DrbdStateException, e:
+      # If the migration fails, attempt to manually register locally before failing
+      test_vm_object.register()
+      raise
 
     # Ensure the VM node matches the destination node
     self.assertEqual(test_vm_object.getNode(), node_name)

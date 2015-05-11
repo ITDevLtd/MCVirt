@@ -8,6 +8,7 @@ from mcvirt import McVirt, McVirtException
 from virtual_machine.virtual_machine import VirtualMachine
 from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from virtual_machine.disk_drive import DiskDrive
+from virtual_machine.hard_drive.drbd import DrbdVolumeNotInSyncException
 from virtual_machine.network_adapter import NetworkAdapter
 from node.network import Network
 from cluster.cluster import Cluster
@@ -154,6 +155,12 @@ class Parser:
     self.node_remove_parser = self.cluster_subparser.add_parser('remove-node', help='Removes a node to the McVirt cluster')
     self.node_remove_parser.add_argument('--node', dest='node', metavar='node', type=str, required=True,
       help='Hostname of the remote node to remove from the cluster')
+
+    # Create subparser for VM verification
+    self.verify_parser = self.subparsers.add_parser('verify', help='Perform verification of VMs')
+    self.verify_parser.add_argument('--all', dest='all', help='Verifies all of the VMs',
+      action='store_true')
+    self.verify_parser.add_argument('--vm', dest='vm_name', help='Specify a single VM to verify')
 
     # Create subparser for drbd-related commands
     self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering')
@@ -309,6 +316,35 @@ class Parser:
           cluster_object = Cluster(mcvirt_instance)
           cluster_object.removeNode(args.node)
           self.printStatus('Successfully removed node %s' % args.node)
+
+      elif (action == 'verify'):
+        if (bool(args.vm_name) == bool(args.all)):
+          self.parser.error('Must specify either --all or --vm <VM Name>')
+
+        if (args.vm_name):
+          vm_objects = [VirtualMachine(mcvirt_instance, args.vm_name)]
+        elif (args.all):
+          vm_objects = mcvirt_instance.getAllVirtualMachineObjects()
+
+        # Iterate over the VMs and check each disk
+        failures = []
+        for vm_object in vm_objects:
+          for disk_object in vm_object.getDiskObjects():
+            if (disk_object.getType() == 'DRBD'):
+              # Catch any exceptions due to the DRBD volume not being in-sync
+              try:
+                disk_object.verify()
+                printStatus('DRBD verification for %s (%s) completed without out-of-sync blocks' %
+                            (disk_object.getConfigObject()._getResourceName(), vm_object.getName()))
+              except DrbdVolumeNotInSyncException, e:
+                # Append the not-in-sync exception message to an array, so the rest of the
+                # disks can continue to be checked
+                failures.append(e.message)
+
+        # If there were any failures during the verification, raise the exception and print
+        # all exception messages
+        if (failures):
+          raise DrbdVolumeNotInSyncException("\n".join(failures))
 
       elif (action == 'drbd'):
         if (args.enable):

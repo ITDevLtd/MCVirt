@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, '/usr/lib')
 
-from mcvirt.mcvirt import McVirt, McVirt
+from mcvirt.mcvirt import McVirt
 from cluster.remote import Remote
 
 mcvirt_instance = McVirt(None, initialise_nodes=False)

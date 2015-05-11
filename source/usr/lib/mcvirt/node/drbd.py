@@ -3,6 +3,9 @@
 # http://www.itdev.co.uk
 #
 from Cheetah.Template import Template
+import os
+import socket
+import thread
 
 from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.mcvirt_config import McVirtConfig
@@ -179,3 +182,51 @@ class DRBD:
       used_minors.append(hard_drive_object.getConfigObject()._getDrbdMinor())
 
     return used_minors
+
+class DRBDSocket():
+  """Creates a unix socket to communicate with the DRBD out-of-sync hook script"""
+
+  SOCKET_PATH = '/var/run/lock/mcvirt/mcvirt-drbd.sock'
+
+  def __init__(self, mcvirt_instance):
+    """Stores member variables and creates thread for the socket server"""
+    self.connection = None
+    self.mcvirt_instance = mcvirt_instance
+    self.thread = thread.start_new_thread(DRBDSocket.server, (self,))
+
+  def __del__(self):
+    """Stops the thread and tears down on object deletion"""
+    self.stop()
+
+  def stop(self):
+    """Deletes the socket connection object, removes the socket file and
+       the McVirt instance"""
+    self.connection = None
+    try:
+        os.remove(self.SOCKET_PATH)
+    except OSError:
+        pass
+    self.mcvirt_instance = None
+
+  def server(self):
+    """Listens on the socket and marks any resources as out-of-sync"""
+    self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        os.remove(self.SOCKET_PATH)
+    except OSError:
+        pass
+
+    self.socket.bind(self.SOCKET_PATH)
+    self.socket.listen(1)
+    self.connection, _ = self.socket.accept()
+    drbd_resource = self.connection.recv(1024)
+    if (drbd_resource):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(self.mcvirt_instance, drbd_resource)
+      hard_drive_object.setSyncState(False)
+    self.connection.close()
+
+    try:
+        os.remove(self.SOCKET_PATH)
+    except OSError:
+        pass

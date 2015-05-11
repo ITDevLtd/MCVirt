@@ -24,7 +24,8 @@ class DRBD(Base):
     self.config = \
       {
         'drbd_minor': drbd_minor,
-        'drbd_port': drbd_port
+        'drbd_port': drbd_port,
+        'sync_state': True
       }
 
     Base.__init__(self, vm_object=vm_object, disk_id=disk_id, config=config, registered=registered)
@@ -178,6 +179,7 @@ class DRBD(Base):
     mcvirt_config = \
     {
       'drbd_port': self.config['drbd_port'],
-      'drbd_minor': self.config['drbd_minor']
+      'drbd_minor': self.config['drbd_minor'],
+      'sync_state': self.config['sync_state']
     }
     return mcvirt_config

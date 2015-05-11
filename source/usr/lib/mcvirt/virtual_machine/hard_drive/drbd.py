@@ -7,7 +7,7 @@ import os
 
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
-from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
+from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode, DRBDSocket
 from mcvirt.auth import Auth
 from mcvirt.system import System, McVirtCommandException
 from mcvirt.cluster.cluster import Cluster
@@ -20,6 +20,11 @@ class DrbdStateException(McVirtException):
 
 class DrbdBlockDeviceDoesNotExistException(McVirtException):
   """DRBD block device does not exist"""
+  pass
+
+
+class DrbdVolumeNotInSyncException(McVirtException):
+  """The last DRBD verification of the volume failed"""
   pass
 
 
@@ -467,6 +472,9 @@ class DRBD(Base):
     # Check DRBD role
     local_role_state, remote_role_state = self._drbdGetRole()
 
+    # Ensure the disk is in-sync
+    self._ensureInSync()
+
     return ((local_disk_state, remote_disk_state), connection_state, (local_role_state, remote_role_state))
 
   def _checkStateType(self, state_name, state):
@@ -522,4 +530,88 @@ class DRBD(Base):
     drbd_block_device = self.getConfigObject()._getDrbdDevice()
     if (not os.path.exists(drbd_block_device)):
       raise DrbdBlockDeviceDoesNotExistException('DRBD block device %s for resource %s does not exist' %
-                                                 (drbd_block_device, self.getConfigObject()._getResourceName()))
+                                                 (drbd_block_device,
+                                                  self.getConfigObject()._getResourceName()))
+
+  def _ensureInSync(self):
+    """Ensures that the DRBD volume was marked as in sync during the last verification"""
+    if (not self._isInSync() and not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object)):
+      raise DrbdVolumeNotInSyncException('The last DRBD verification of the DRBD volume failed: %s. ' %
+                                         self.getConfigObject()._getResourceName() +
+                                         'Run McVirt as a superuser with --ignore-drbd to ignore this issue')
+
+  def _isInSync(self):
+    """Returns whether the last DRBD verification reported the
+       DRBD volume as in-sync"""
+    vm_config = self.getVmObject().getConfigObject().getConfig()
+
+    # If the hard drive configuration exists, read the currently state of the disk
+    if (self.getConfigObject().getId() in vm_config['hard_disks']):
+      return vm_config['hard_disks'][self.getConfigObject().getId()]['sync_state']
+    else:
+      # Otherwise, if the hard drive configuration does not exist in the VM configuration,
+      # assume the disk is being created and is in-sync
+      return True
+
+  def setSyncState(self, sync_state):
+    """Updates the hard drive config, marking the disk as out of sync"""
+    def updateConfig(config):
+      config['hard_disks'][self.getConfigObject().getId()]['sync_state'] = sync_state
+    self.getVmObject().getConfigObject().updateConfig(updateConfig)
+
+    # Update remote nodes
+    if (self.getConfigObject().vm_object.mcvirt_object.initialiseNodes()):
+      cluster_instance = Cluster(self.getConfigObject().vm_object.mcvirt_object)
+      for node in self.getConfigObject().vm_object._getRemoteNodes():
+        remote_object = cluster_instance.getRemoteNode(node)
+        remote_object.runRemoteCommand('virtual_machine-hard_drive-drbd-setSyncState',
+                                       {'vm_name': self.getVmObject().getName(),
+                                        'disk_id': self.getConfigObject().getId(),
+                                        'sync_state': sync_state})
+
+  def verify(self):
+    """Performs a verification of a DRBD hard drive"""
+    import time
+
+    # Check DRBD state of disk
+    if (self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
+      raise DrbdStateException('DRBD resource must be connected before performing a verification: %s' %
+                               self.getConfigObject()._getResourceName())
+
+    # Reset the disk to be marked in a consistent state
+    self.setSyncState(True)
+
+    try:
+      # Create a socket, to receive errors from DRBD about out-of-sync blocks
+      drbd_socket = DRBDSocket(self.getVmObject().mcvirt_object)
+
+      # Perform a drbdadm verification
+      exit_code, stdout, stderr = System.runCommand([NodeDRBD.DRBDADM, 'verify', self.getConfigObject()._getResourceName()])
+
+      # Monitor the DRBD status, until the VM has started syncing
+      while True:
+        if (self._drbdGetConnectionState() == DrbdConnectionState.VERIFY_S):
+          break
+        time.sleep(5)
+
+      # Monitor the DRBD status, until the VM has finished syncing
+      while True:
+        if (self._drbdGetConnectionState() != DrbdConnectionState.VERIFY_S):
+          break
+        time.sleep(5)
+
+      drbd_socket.stop()
+      drbd_socket.mcvirt_instance = None
+      drbd_socket = None
+
+    except Exception, e:
+      # If an exception is thrown during the verify, mark the VM as
+      # not in-sync
+      self.setSyncState(False)
+      raise
+
+    if (self._isInSync()):
+      return True
+    else:
+      raise DrbdVolumeNotInSyncException('The DRBD verification for \'%s\' failed' %
+                                         self.getConfigObject()._getResourceName())

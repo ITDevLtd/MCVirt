@@ -60,3 +60,14 @@ class Factory():
       if (storage_type == hard_drive_class.__name__):
         return hard_drive_class
     raise UnknownStorageTypeException('Attempted to initialise an unknown storage type: %s' % (storage_type))
+
+  @staticmethod
+  def getDrbdObjectByResourceName(mcvirt_instance, resource_name):
+    """Obtains a hard drive object for a DRBD drive, based on the resource name"""
+    from mcvirt.node.drbd import DRBD as NodeDRBD
+    for hard_drive_object in NodeDRBD.getAllDrbdHardDriveObjects(mcvirt_instance):
+      if (hard_drive_object.getConfigObject()._getResourceName() == resource_name):
+        return hard_drive_object
+    from mcvirt.virtual_machine.hard_drive.base import HardDriveDoesNotExistException
+    raise HardDriveDoesNotExistException('DRBD hard drive with resource name \'%s\' does not exist' %
+                                         resource_name)

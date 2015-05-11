@@ -242,6 +242,12 @@ class Remote:
       from mcvirt.node.drbd import DRBD
       DRBD.enable(mcvirt_instance, arguments['secret'])
 
+    elif (action == 'virtual_machine-hard_drive-drbd-setSyncState'):
+      from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+      vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+      hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+      hard_drive_object.setSyncState(arguments['sync_state'])
+
     elif (action == 'close'):
       # Delete McVirt instance, which removes the lock and force mcvirt-remote
       # to close
