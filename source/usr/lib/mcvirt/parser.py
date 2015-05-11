@@ -334,8 +334,8 @@ class Parser:
               # Catch any exceptions due to the DRBD volume not being in-sync
               try:
                 disk_object.verify()
-                printStatus('DRBD verification for %s (%s) completed without out-of-sync blocks' %
-                            (disk_object.getConfigObject()._getResourceName(), vm_object.getName()))
+                self.printStatus('DRBD verification for %s (%s) completed without out-of-sync blocks' %
+                                 (disk_object.getConfigObject()._getResourceName(), vm_object.getName()))
               except DrbdVolumeNotInSyncException, e:
                 # Append the not-in-sync exception message to an array, so the rest of the
                 # disks can continue to be checked
