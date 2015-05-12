@@ -87,7 +87,7 @@ class DRBD:
     def updateConfig(config):
       config['drbd']['enabled'] = 1
     mcvirt_config = McVirtConfig()
-    mcvirt_config.updateConfig(updateConfig)
+    mcvirt_config.updateConfig(updateConfig, 'Enabled DRBD')
 
   @staticmethod
   def getConfig():
@@ -141,7 +141,7 @@ class DRBD:
       config['drbd']['secret'] = secret
 
     mcvirt_config = McVirtConfig()
-    mcvirt_config.updateConfig(updateConfig)
+    mcvirt_config.updateConfig(updateConfig, 'Set DRBD secret')
 
   @staticmethod
   def adjustDRBDConfig(mcvirt_instance, resource='all'):

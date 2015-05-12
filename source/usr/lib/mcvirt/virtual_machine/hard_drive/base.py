@@ -91,7 +91,9 @@ class Base(object):
     def removeDiskFromConfig(vm_config):
       del(vm_config['hard_disks'][str(config_object.getId())])
 
-    config_object.vm_object.getConfigObject().updateConfig(removeDiskFromConfig)
+    config_object.vm_object.getConfigObject().updateConfig(removeDiskFromConfig,
+                                                           'Removed disk \'%s\' from \'%s\'' %
+                                                           (config_object.getId(), config_object.vm_object.getName()))
 
   @staticmethod
   def _unregisterLibvirt(config_object):
@@ -122,7 +124,9 @@ class Base(object):
     def addDiskToConfig(vm_config):
       vm_config['hard_disks'][str(config_object.getId())] = config_object._getMcVirtConfig()
 
-    config_object.vm_object.getConfigObject().updateConfig(addDiskToConfig)
+    config_object.vm_object.getConfigObject().updateConfig(addDiskToConfig,
+                                                           'Added disk \'%s\' to \'%s\'' %
+                                                           (config_object.getId(), config_object.vm_object.getName()))
 
   @staticmethod
   def _registerLibvirt(config_object):
@@ -151,7 +155,9 @@ class Base(object):
 
       def updateStorageTypeConfig(config):
         config['storage_type'] = config_object._getType()
-      config_object.vm_object.getConfigObject().updateConfig(updateStorageTypeConfig)
+      config_object.vm_object.getConfigObject().updateConfig(updateStorageTypeConfig,
+                                                             'Updated storage type for \'%s\' to \'%s\'' %
+                                                             (config_object.vm_object.getName(), config_object._getType()))
 
   @staticmethod
   def _createLogicalVolume(config_object, name, size, perform_on_nodes=False):

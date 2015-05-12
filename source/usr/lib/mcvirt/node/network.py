@@ -69,7 +69,7 @@ class Network:
     def updateConfig(config):
       del config['networks'][self.getName()]
     from mcvirt.mcvirt_config import McVirtConfig
-    McVirtConfig().updateConfig(updateConfig)
+    McVirtConfig().updateConfig(updateConfig, 'Deleted network \'%s\'' % self.getName())
 
   def _checkConnectedVirtualMachines(self):
     """Returns an array of VM objects that have an interface connected to the network"""
@@ -158,4 +158,4 @@ class Network:
     def updateConfig(config):
       config['networks'][name] = physical_interface
     from mcvirt.mcvirt_config import McVirtConfig
-    McVirtConfig().updateConfig(updateConfig)
+    McVirtConfig().updateConfig(updateConfig, 'Created network \'%s\'' % name)

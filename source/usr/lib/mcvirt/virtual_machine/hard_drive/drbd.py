@@ -557,7 +557,9 @@ class DRBD(Base):
     """Updates the hard drive config, marking the disk as out of sync"""
     def updateConfig(config):
       config['hard_disks'][self.getConfigObject().getId()]['sync_state'] = sync_state
-    self.getVmObject().getConfigObject().updateConfig(updateConfig)
+    self.getVmObject().getConfigObject().updateConfig(updateConfig, 'Updated sync state of disk \'%s\' of \'%s\' to \'%s\'' %
+                                                                    (self.getConfigObject().getId(), self.vm_object.getName(),
+                                                                     sync_state))
 
     # Update remote nodes
     if (self.getConfigObject().vm_object.mcvirt_object.initialiseNodes()):

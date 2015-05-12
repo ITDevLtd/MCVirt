@@ -13,6 +13,7 @@ class VirtualMachineConfig(ConfigFile):
 
   def __init__(self, vm_object):
     """Sets member variables and obtains libvirt domain object"""
+    self.git_object = None
     self.vm_object = vm_object
     self.config_file = VirtualMachineConfig.getConfigPath(self.vm_object.name)
     if (not os.path.isfile(self.config_file)):

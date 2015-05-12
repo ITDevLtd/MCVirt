@@ -7,6 +7,7 @@ import sys
 import os
 from lockfile import FileLock
 from texttable import Texttable
+import socket
 
 from mcvirt_config import McVirtConfig
 
@@ -15,8 +16,9 @@ class McVirt:
 
   TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
   BASE_STORAGE_DIR = '/var/lib/mcvirt'
-  BASE_VM_STORAGE_DIR = BASE_STORAGE_DIR + '/vm'
-  ISO_STORAGE_DIR = BASE_STORAGE_DIR + '/iso'
+  NODE_STORAGE_DIR = BASE_STORAGE_DIR + '/' + socket.gethostname()
+  BASE_VM_STORAGE_DIR = NODE_STORAGE_DIR + '/vm'
+  ISO_STORAGE_DIR = NODE_STORAGE_DIR + '/iso'
   LOCK_FILE_DIR = '/var/run/lock/mcvirt'
   LOCK_FILE = LOCK_FILE_DIR + '/lock'
 

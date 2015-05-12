@@ -284,23 +284,25 @@ class VirtualMachine:
     # If VM is a clone of another VM, remove it from the configuration
     # of the parent
     if (self.getCloneParent()):
-
       def removeCloneChildConfig(vm_config):
         """Remove a given child VM from a parent VM configuration"""
         vm_config['clone_children'].remove(self.getName())
 
       parent_vm_object = VirtualMachine(self.mcvirt_object, self.getCloneParent())
-      parent_vm_object.getConfigObject().updateConfig(removeCloneChildConfig)
+      parent_vm_object.getConfigObject().updateConfig(removeCloneChildConfig, 'Removed clone child \'%s\' from \'%s\'' %
+                                                                              (self.getName(), self.getCloneParent()))
 
     # If 'remove_data' has been passed as True, delete directory
     # from VM storage
     if (remove_data):
+      # Remove VM configuration file
+      self.getConfigObject().gitRemove('VM \'%s\' has been removed' % self.name)
       shutil.rmtree(VirtualMachine.getVMDir(self.name))
 
     # Remove VM from McVirt configuration
     def updateMcVirtConfig(config):
       config['virtual_machines'].remove(self.name)
-    McVirtConfig().updateConfig(updateMcVirtConfig)
+    McVirtConfig().updateConfig(updateMcVirtConfig, 'Removed VM \'%s\' from global McVirt config' % self.name)
 
     if (self.mcvirt_object.initialiseNodes()):
       cluster_object = Cluster(self.mcvirt_object)
@@ -331,7 +333,7 @@ class VirtualMachine:
     # Update the McVirt configuration
     def updateConfig(config):
       config['memory_allocation'] = memory_allocation
-    self.getConfigObject().updateConfig(updateConfig)
+    self.getConfigObject().updateConfig(updateConfig, 'RAM allocation has been changed to %s' % memory_allocation)
 
   def getCPU(self):
     """Returns the number of CPU cores attached to the VM"""
@@ -353,7 +355,7 @@ class VirtualMachine:
     # Update the McVirt configuration
     def updateConfig(config):
       config['cpu_cores'] = cpu_count
-    self.getConfigObject().updateConfig(updateConfig)
+    self.getConfigObject().updateConfig(updateConfig, 'CPU count has been changed to %s' % cpu_count)
 
   def getNetworkObjects(self):
     """Returns an array of network interface objects for each of the
@@ -538,12 +540,12 @@ class VirtualMachine:
     def setCloneParent(vm_config):
       vm_config['clone_parent'] = self.getName()
 
-    new_vm_object.getConfigObject().updateConfig(setCloneParent)
+    new_vm_object.getConfigObject().updateConfig(setCloneParent, 'Set VM clone parent after initial clone')
 
     def setCloneChild(vm_config):
       vm_config['clone_children'].append(new_vm_object.getName())
 
-    self.getConfigObject().updateConfig(setCloneChild)
+    self.getConfigObject().updateConfig(setCloneChild, 'Added new clone \'%s\' to VM configuration' % self.getName())
 
     # Set current user as an owner of the new VM, so that they have permission
     # to perform functions on the VM
@@ -627,7 +629,7 @@ class VirtualMachine:
     # Add VM to McVirt configuration
     def updateMcVirtConfig(config):
       config['virtual_machines'].append(name)
-    McVirtConfig().updateConfig(updateMcVirtConfig)
+    McVirtConfig().updateConfig(updateMcVirtConfig, 'Adding new VM \'%s\' to global McVirt configuration' % name)
 
     # If available nodes has not been passed, assume the local machine is the only
     # available node if local storage is being used. Use the machines in the cluster
@@ -753,7 +755,7 @@ class VirtualMachine:
     # Update the node in the VM configuration
     def updateVmConfig(config):
       config['node'] = node
-    self.getConfigObject().updateConfig(updateVmConfig)
+    self.getConfigObject().updateConfig(updateVmConfig, 'Changing node for VM \'%s\' to \'%s\'' % (self.getName(), node))
 
   def _getRemoteNodes(self):
     """Returns a list of remote available nodes"""

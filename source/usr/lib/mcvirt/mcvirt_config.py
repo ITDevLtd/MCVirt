@@ -13,7 +13,12 @@ class McVirtConfig(ConfigFile):
   def __init__(self, mcvirt_instance=None, perform_upgrade=False):
     """Sets member variables and obtains libvirt domain object"""
     from mcvirt import McVirt
-    self.config_file = McVirt.BASE_STORAGE_DIR + '/config.json'
+
+    self.config_file = McVirt.NODE_STORAGE_DIR + '/config.json'
+
+    if (not os.path.isdir(McVirt.NODE_STORAGE_DIR)):
+      self._createConfigDirectories()
+
     if (not os.path.isfile(self.config_file)):
       self.create()
 
@@ -21,9 +26,24 @@ class McVirtConfig(ConfigFile):
     if (perform_upgrade and mcvirt_instance):
       self.upgrade(mcvirt_instance)
 
+  def _createConfigDirectories(self):
+    """Creates the configuration directories for the node"""
+    # Initialise the git repository
+    from mcvirt import McVirt
+    import pwd
+
+    os.mkdir(McVirt.NODE_STORAGE_DIR)
+    os.mkdir(McVirt.BASE_VM_STORAGE_DIR)
+    os.mkdir(McVirt.ISO_STORAGE_DIR)
+
+    # Set permission on McVirt directory
+    os.chmod(McVirt.BASE_STORAGE_DIR, 0600)
+    os.chown(McVirt.BASE_STORAGE_DIR, pwd.getpwnam('libvirt-qemu').pw_uid, 0)
+
   def create(self):
     """Creates a basic VM configuration for new VMs"""
     from node.drbd import DRBD as NodeDRBD
+
     # Create basic config
     json_data = \
     {
@@ -42,7 +62,17 @@ class McVirtConfig(ConfigFile):
       },
       'virtual_machines': [],
       'networks': [],
-      'drbd': NodeDRBD.getDefaultConfig()
+      'drbd': NodeDRBD.getDefaultConfig(),
+      'git':
+      {
+        'repo_domain': '',
+        'repo_path': '',
+        'repo_protocol': '',
+        'username': '',
+        'password': '',
+        'commit_name': '',
+        'commit_email': ''
+      }
     }
 
     # Write the configuration to disk
@@ -82,4 +112,16 @@ class McVirtConfig(ConfigFile):
         'secret': '',
         'sync_rate': '10M',
         'protocol': 'C'
+      }
+
+      # Create git configuration
+      config['git'] = \
+      {
+        'repo_domain': '',
+        'repo_path': '',
+        'repo_protocol': '',
+        'username': '',
+        'password': '',
+        'commit_name': '',
+        'commit_email': ''
       }

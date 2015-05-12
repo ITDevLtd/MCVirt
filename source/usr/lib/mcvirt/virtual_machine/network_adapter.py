@@ -93,7 +93,8 @@ class NetworkAdapter:
     # Add network interface to VM configuration
     def updateVmConfig(config):
       config['network_interfaces'][mac_address] = network
-    vm_object.getConfigObject().updateConfig(updateVmConfig)
+    vm_object.getConfigObject().updateConfig(updateVmConfig, 'Added network adapter to \'%s\' on \'%s\' network' %
+                                                             (vm_object.getName(), network))
 
     if (mcvirt_object.initialiseNodes()):
       cluster_object = Cluster(mcvirt_object)
@@ -125,3 +126,9 @@ class NetworkAdapter:
       device_xml.remove(interface_xml)
 
     self.vm_object.editConfig(updateXML)
+
+    # Update the VM configuration
+    def updateVmConfig(config):
+      del config['network_interfaces'][self.getMacAddress()]
+    vm_object.getConfigObject().updateConfig(updateVmConfig, 'Removed network adapter from \'%s\' on \'%s\' network' %
+                                                             (vm_object.getName(), network))
