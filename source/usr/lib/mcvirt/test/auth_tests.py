@@ -77,7 +77,7 @@ class AuthTests(unittest.TestCase):
     self.assertTrue(self.test_user in auth_object.getUsersInPermissionGroup('user', test_vm_object))
 
   def test_remove_user(self):
-    """Removes a user to a virtual machine, using the argument parser"""
+    """Removes a user from a virtual machine, using the argument parser"""
     # Ensure VM does not exist
     test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm['name'], self.test_vm['cpu_count'],
                                            self.test_vm['memory_allocation'], self.test_vm['disks'],

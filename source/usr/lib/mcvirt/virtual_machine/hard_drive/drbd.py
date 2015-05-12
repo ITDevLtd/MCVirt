@@ -545,7 +545,7 @@ class DRBD(Base):
        DRBD volume as in-sync"""
     vm_config = self.getVmObject().getConfigObject().getConfig()
 
-    # If the hard drive configuration exists, read the currently state of the disk
+    # If the hard drive configuration exists, read the current state of the disk
     if (self.getConfigObject().getId() in vm_config['hard_disks']):
       return vm_config['hard_disks'][self.getConfigObject().getId()]['sync_state']
     else:
@@ -558,7 +558,8 @@ class DRBD(Base):
     def updateConfig(config):
       config['hard_disks'][self.getConfigObject().getId()]['sync_state'] = sync_state
     self.getVmObject().getConfigObject().updateConfig(updateConfig, 'Updated sync state of disk \'%s\' of \'%s\' to \'%s\'' %
-                                                                    (self.getConfigObject().getId(), self.vm_object.getName(),
+                                                                    (self.getConfigObject().getId(),
+                                                                     self.getConfigObject().vm_object.getName(),
                                                                      sync_state))
 
     # Update remote nodes

@@ -67,8 +67,14 @@ class DrbdTests(unittest.TestCase):
 
     # Wait until the DRBD resource is synced
     for disk_object in test_vm_object.getDiskObjects():
+      wait_timeout = 6
       while (disk_object._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
+        # If the DRBD volume has not connected within 1 minute, throw an exception
+        if (not wait_timeout):
+          raise DrbdVolumeNotInSyncException('Wait for DRBD connection timed out')
+
         time.sleep(10)
+        wait_timeout -= 1
 
     # Perform verification on VM, using the argument parser
     self.parser.parse_arguments('verify --vm %s' % self.test_vms['TEST_VM_1']['name'], mcvirt_instance=self.mcvirt)

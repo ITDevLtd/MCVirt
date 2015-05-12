@@ -151,7 +151,7 @@ class Auth:
     if (username not in self.getSuperusers()):
       def updateConfig(config):
         config['superusers'].append(username)
-      mcvirt_config.updateConfig(updateConfig)
+      mcvirt_config.updateConfig(updateConfig, 'Added superuser \'%s\'' % username)
     elif (not ignore_duplicate):
       raise McVirtException('User \'%s\' is already a superuser' % username)
 
@@ -179,7 +179,8 @@ class Auth:
       def addUserToConfig(config):
         config['permissions'][permission_group].append(username)
 
-      config_object.updateConfig(addUserToConfig)
+      config_object.updateConfig(addUserToConfig, 'Added user \'%s\' to group \'%s\'' %
+                                                  (username, permission_group))
 
       if (mcvirt_object.initialiseNodes()):
         cluster_object = Cluster(mcvirt_object)
@@ -215,7 +216,8 @@ class Auth:
           user_index = vm_config['permissions'][permission_group].index(username)
           del(vm_config['permissions'][permission_group][user_index])
 
-        vm_object.getConfigObject().updateConfig(addUserToConfig)
+        vm_object.getConfigObject().updateConfig(addUserToConfig, 'Removed user \'%s\' from group \'%s\'' %
+                                                                  (username, permission_group))
 
         if (mcvirt_object.initialiseNodes()):
           cluster_object = Cluster(mcvirt_object)
@@ -241,7 +243,8 @@ class Auth:
     def addUserToConfig(vm_config):
       vm_config['permissions'] = permission_config
 
-    dest_vm.getConfigObject().updateConfig(addUserToConfig)
+    dest_vm.getConfigObject().updateConfig(addUserToConfig, 'Copied permission from \'%s\' to \'%s\'' %
+                                                            (source_vm.getName(), dest_vm.getName()))
 
   def getUsersInPermissionGroup(self, permission_group, vm_object = None):
     """Obtains a list of users in a given group, either in the global permissions or

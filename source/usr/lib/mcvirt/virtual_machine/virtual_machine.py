@@ -655,6 +655,7 @@ class VirtualMachine:
 
     # Obtain an object for the new VM, to use to create disks/network interfaces
     vm_object = VirtualMachine(mcvirt_instance, name)
+    vm_object.getConfigObject().gitAdd('Created VM \'%s\'' % vm_object.getName())
 
     if (node == Cluster.getHostname()):
       # Register VM with LibVirt. If McVirt has not been initialised on this node,
