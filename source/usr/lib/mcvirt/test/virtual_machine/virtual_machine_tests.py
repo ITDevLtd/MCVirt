@@ -522,7 +522,7 @@ class VirtualMachineTests(unittest.TestCase):
     # Create a test VM
     test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vms['TEST_VM_1']['name'], self.test_vms['TEST_VM_1']['cpu_count'],
                                            self.test_vms['TEST_VM_1']['memory_allocation'], self.test_vms['TEST_VM_1']['disk_size'],
-                                           self.test_vms['TEST_VM_1']['networks'], storage_type='DRBD')
+                                           self.test_vms['TEST_VM_1']['networks'], storage_type='Local')
 
     # Ensure the VM is initially unlocked
     self.assertEqual(test_vm_object.getLockState(), LockStates.UNLOCKED)
