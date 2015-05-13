@@ -31,7 +31,7 @@ class VirtualMachineConfig(ConfigFile):
   @staticmethod
   def create(vm_name, available_nodes, cpu_cores, memory_allocation):
     """Creates a basic VM configuration for new VMs"""
-    from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+    from mcvirt.virtual_machine.virtual_machine import VirtualMachine, LockStates
     from mcvirt.cluster.cluster import Cluster
 
     # Create basic config
@@ -51,7 +51,8 @@ class VirtualMachineConfig(ConfigFile):
         'clone_children': [],
         'network_interfaces': {},
         'node': None,
-        'available_nodes': available_nodes
+        'available_nodes': available_nodes,
+        'lock': LockStates.UNLOCKED.value
       }
 
     # Write the configuration to disk
@@ -88,3 +89,7 @@ class VirtualMachineConfig(ConfigFile):
         mac_address = interface_xml.find('./mac').get('address')
         connected_network = interface_xml.find('./source').get('network')
         config['network_interfaces'][mac_address] = connected_network
+
+      from mcvirt.virtual_machine.virtual_machine import LockStates
+      # Add 'lock' to configuration
+      config['lock'] = LockStates.UNLOCKED.value

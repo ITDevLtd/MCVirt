@@ -5,7 +5,7 @@
 import argparse
 import sys
 from mcvirt import McVirt, McVirtException
-from virtual_machine.virtual_machine import VirtualMachine
+from virtual_machine.virtual_machine import VirtualMachine, LockStates
 from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from virtual_machine.disk_drive import DiskDrive
 from virtual_machine.hard_drive.drbd import DrbdVolumeNotInSyncException
@@ -157,15 +157,28 @@ class Parser:
       help='Hostname of the remote node to remove from the cluster')
 
     # Create subparser for VM verification
-    self.verify_parser = self.subparsers.add_parser('verify', help='Perform verification of VMs')
-    self.verify_parser.add_argument('--all', dest='all', help='Verifies all of the VMs',
-      action='store_true')
-    self.verify_parser.add_argument('--vm', dest='vm_name', help='Specify a single VM to verify')
+    self.verify_parser = self.subparsers.add_parser('verify', help='Perform verification of VMs', parents=[self.parent_parser])
+    self.verify_mutual_exclusive_group = self.verify_parser.add_mutually_exclusive_group(required=True)
+    self.verify_mutual_exclusive_group.add_argument('--all', dest='all', help='Verifies all of the VMs',
+                                                    action='store_true')
+    self.verify_mutual_exclusive_group.add_argument('--vm', dest='vm_name', metavar='VM Name',
+                                                    help='Specify a single VM to verify')
 
     # Create subparser for drbd-related commands
-    self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering')
+    self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering', parents=[self.parent_parser])
     self.drbd_parser.add_argument('--enable', dest='enable', help='Enable DRBD support on the cluster',
       action='store_true')
+
+    # Create subparser for managing VM locks
+    self.lock_parser = self.subparsers.add_parser('lock', help='Perform verification of VMs', parents=[self.parent_parser])
+    self.lock_mutual_exclusive_group = self.lock_parser.add_mutually_exclusive_group(required=True)
+    self.lock_mutual_exclusive_group.add_argument('--check-lock', dest='check_lock', help='Checks the lock status of a VM',
+                                                  action='store_true')
+    self.lock_mutual_exclusive_group.add_argument('--lock', dest='lock', help='Locks a VM', action='store_true')
+    self.lock_mutual_exclusive_group.add_argument('--unlock', dest='unlock', help='Unlocks a VM', action='store_true')
+    self.lock_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+
+    self.exit_parser = self.subparsers.add_parser('exit', help='Exits the McVirt shell', parents=[self.parent_parser])
 
   def printStatus(self, status):
     """Prints if the user has specified that the parser should
@@ -229,13 +242,13 @@ class Parser:
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
         if (args.memory):
           old_ram_allocation = int(vm_object.getRAM()) / 1024
-          self.printStatus('RAM allocation will be changed from %sMiB to %sMiB.' % (old_ram_allocation, args.memory))
           new_ram_allocation = int(args.memory) * 1024
           vm_object.updateRAM(new_ram_allocation)
+          self.printStatus('RAM allocation will be changed from %sMiB to %sMiB.' % (old_ram_allocation, args.memory))
         if (args.cpu_count):
           old_cpu_count = vm_object.getCPU()
-          self.printStatus('Number of virtual cores will be changed from %s to %s.' % (old_cpu_count, args.cpu_count))
           vm_object.updateCPU(args.cpu_count)
+          self.printStatus('Number of virtual cores will be changed from %s to %s.' % (old_cpu_count, args.cpu_count))
         if (args.remove_network):
           network_adapter_object = NetworkAdapter(args.remove_network, vm_object)
           network_adapter_object.delete()
@@ -318,9 +331,6 @@ class Parser:
           self.printStatus('Successfully removed node %s' % args.node)
 
       elif (action == 'verify'):
-        if (bool(args.vm_name) == bool(args.all)):
-          self.parser.error('Must specify either --all or --vm <VM Name>')
-
         if (args.vm_name):
           vm_objects = [VirtualMachine(mcvirt_instance, args.vm_name)]
         elif (args.all):
@@ -349,6 +359,15 @@ class Parser:
       elif (action == 'drbd'):
         if (args.enable):
           DRBD.enable(mcvirt_instance)
+
+      elif (action == 'lock'):
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        if (args.lock):
+          vm_object.setLockState(LockStates(LockStates.LOCKED))
+        if (args.unlock):
+          vm_object.setLockState(LockStates(LockStates.UNLOCKED))
+        if (args.check_lock):
+          self.printStatus(LockStates(vm_object.getLockState()).name)
 
       elif (action == 'clone'):
         vm_object = VirtualMachine(mcvirt_instance, args.template)

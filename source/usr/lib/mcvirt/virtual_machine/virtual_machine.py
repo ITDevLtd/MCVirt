@@ -9,6 +9,7 @@ from subprocess import call
 import os
 import shutil
 from texttable import Texttable
+from enum import Enum
 
 from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.mcvirt_config import McVirtConfig
@@ -84,6 +85,17 @@ class CannotDeleteClonedVmException(McVirtException):
   pass
 
 
+class VirtualMachineLockException(McVirtException):
+  """Lock cannot be set to the current lock state"""
+  pass
+
+
+class LockStates(Enum):
+  """Library of virtual machine lock states"""
+  UNLOCKED = 0
+  LOCKED = 1
+
+
 class VirtualMachine:
   """Provides operations to manage a LibVirt virtual machine"""
 
@@ -133,6 +145,9 @@ class VirtualMachine:
     """Starts the VM"""
     # Check the user has permission to start/stop VMs
     self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.CHANGE_VM_POWER_STATE, self)
+
+    # Ensure VM is unlocked
+    self.ensureUnlocked()
 
     # Ensure VM is registered locally
     self.ensureRegisteredLocally()
@@ -264,6 +279,9 @@ class VirtualMachine:
     if (self.isRegisteredLocally() and self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
       raise McVirtException('Error: Can\'t delete running VM')
 
+    # Ensure VM is unlocked
+    self.ensureUnlocked()
+
     # Ensure that VM has not been cloned
     if (self.getCloneChildren()):
       raise CannotDeleteClonedVmException('Can\'t delete cloned VM')
@@ -318,6 +336,9 @@ class VirtualMachine:
     # Check the user has permission to modify VMs
     self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
 
+    # Ensure VM is unlocked
+    self.ensureUnlocked()
+
     # Ensure the VM is registered locally
     self.ensureRegisteredLocally()
 
@@ -343,6 +364,9 @@ class VirtualMachine:
     """Updates the number of CPU cores attached to a VM"""
     # Check the user has permission to modify VMs
     self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
+
+    # Ensure VM is unlocked
+    self.ensureUnlocked()
 
     # Determine if VM is registered on the local machine
     self.ensureRegisteredLocally()
@@ -443,6 +467,9 @@ class VirtualMachine:
     # Ensure the VM is locally registered
     self.ensureRegisteredLocally()
 
+    # Ensure VM is unlocked
+    self.ensureUnlocked()
+
     # Ensure VM is using a DRBD storage type
     self._offlineMigratePreMigrateChecks(destination_node_name)
 
@@ -519,6 +546,9 @@ class VirtualMachine:
     if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
       raise McVirtException('Can\'t clone running VM')
 
+    # Ensure VM is unlocked
+    self.ensureUnlocked()
+
     # Ensure new VM name doesn't already exist
     VirtualMachine._checkExists(self.mcvirt_object, clone_vm_name)
 
@@ -563,6 +593,9 @@ class VirtualMachine:
        copy of the storage"""
     # Check the user has permission to create VMs
     self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.DUPLICATE_VM, self)
+
+    # Ensure VM is unlocked
+    self.ensureUnlocked()
 
     # Determine if VM is running
     if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
@@ -694,6 +727,9 @@ class VirtualMachine:
     if (Cluster.getHostname() not in self.getAvailableNodes()):
       raise NodeNotSuitableForVm('VM \'%s\' cannot be registered on node: %s' % (self.name, Cluster.getHostname()))
 
+    # Ensure VM is unlocked
+    self.ensureUnlocked()
+
     # Activate hard disks
     for disk_object in self.getDiskObjects():
       disk_object.activateDisk()
@@ -731,6 +767,9 @@ class VirtualMachine:
 
   def unregister(self):
     """Unregisters the VM from the local node"""
+    # Ensure VM is unlocked
+    self.ensureUnlocked()
+
     # Remove VM from LibVirt
     try:
       self._getLibvirtDomainObject().undefine()
@@ -814,6 +853,30 @@ class VirtualMachine:
       raise McVirtException('VNC is not enabled on the VM')
     else:
       return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
+
+  def ensureUnlocked(self):
+    """Ensures that the VM is in an unlocked state"""
+    if (self.getLockState() is LockStates.LOCKED):
+      raise VirtualMachineLockException('VM \'%s\' is locked' % self.getName())
+
+  def getLockState(self):
+    """Returns the lock status of a VM"""
+    return LockStates(self.getConfigObject().getConfig()['lock'])
+
+  def setLockState(self, lock_status):
+    """Sets the lock status of the VM"""
+    # Ensure the user has permission to set VM locks
+    self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.SET_VM_LOCK, self)
+
+    # Check if the lock is already set to this state
+    if (self.getLockState() == lock_status):
+      raise VirtualMachineLockException('Lock for \'%s\' is already set to \'%s\'' %
+                                        (self.getName(), self.getLockState().name))
+
+    def updateLock(config):
+      config['lock'] = lock_status.value
+    self.getConfigObject().updateConfig(updateLock, 'Setting lock state of \'%s\' to \'%s\'' %
+                                                    (self.getName(), lock_status.name))
 
   def setBootOrder(self, boot_devices):
     """Sets the boot devices and the order in which devices are booted from"""

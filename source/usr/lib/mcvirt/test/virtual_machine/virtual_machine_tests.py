@@ -12,7 +12,7 @@ from mcvirt.mcvirt import McVirt, McVirtException
 from mcvirt.virtual_machine.virtual_machine import (VirtualMachine, InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                                     VmDirectoryAlreadyExistsException, VmAlreadyStartedException,
                                                     VmAlreadyStoppedException, CannotStartClonedVmException, CannotDeleteClonedVmException,
-                                                    CannotCloneDrbdBasedVmsException)
+                                                    CannotCloneDrbdBasedVmsException, VirtualMachineLockException)
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdStateException
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 from mcvirt.system import System
@@ -64,6 +64,7 @@ class VirtualMachineTests(unittest.TestCase):
     suite.addTest(VirtualMachineTests('test_vm_directory_already_exists'))
     suite.addTest(VirtualMachineTests('test_start_local'))
     suite.addTest(VirtualMachineTests('test_start_running_vm'))
+    suite.addTest(VirtualMachineTests('test_lock'))
     suite.addTest(VirtualMachineTests('test_stop_local'))
     suite.addTest(VirtualMachineTests('test_stop_stopped_vm'))
     suite.addTest(VirtualMachineTests('test_clone_local'))
@@ -474,7 +475,7 @@ class VirtualMachineTests(unittest.TestCase):
 
     # Migrate VM to remote node
     try:
-      test_vm_object.offlineMigrate(node_name)
+      self.parser.parse_arguments('migrate --node %s %s' % (node_name, test_vm_object.getName()), mcvirt_instance=self.mcvirt)
     except DrbdStateException, e:
       # If the migration fails, attempt to manually register locally before failing
       test_vm_object.register()
@@ -513,3 +514,36 @@ class VirtualMachineTests(unittest.TestCase):
 
     # Ensure VM no longer exists
     self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vms['TEST_VM_1']['name']))
+
+
+  def test_lock(self):
+    """Exercise VM locking"""
+    from mcvirt.virtual_machine.virtual_machine import LockStates
+    # Create a test VM
+    test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vms['TEST_VM_1']['name'], self.test_vms['TEST_VM_1']['cpu_count'],
+                                           self.test_vms['TEST_VM_1']['memory_allocation'], self.test_vms['TEST_VM_1']['disk_size'],
+                                           self.test_vms['TEST_VM_1']['networks'], storage_type='DRBD')
+
+    # Ensure the VM is initially unlocked
+    self.assertEqual(test_vm_object.getLockState(), LockStates.UNLOCKED)
+
+    # Lock the VM, using the argument parser
+    self.parser.parse_arguments('lock --lock %s' % test_vm_object.getName(), mcvirt_instance=self.mcvirt)
+
+    # Ensure the VM is reported as locked
+    self.assertEqual(test_vm_object.getLockState(), LockStates.LOCKED)
+
+    # Attempt to start the VM
+    with self.assertRaises(VirtualMachineLockException):
+      test_vm_object.start()
+
+    # Attempt to unlock using the argument parser
+    self.parser.parse_arguments('lock --unlock %s' % test_vm_object.getName(), mcvirt_instance=self.mcvirt)
+
+    # Ensure the VM can be started
+    test_vm_object.start()
+    test_vm_object.stop()
+
+    # Attempt to unlock the VM again, ensuring an exception is thrown
+    with self.assertRaises(VirtualMachineLockException):
+      self.parser.parse_arguments('lock --unlock %s' % test_vm_object.getName(), mcvirt_instance=self.mcvirt)
