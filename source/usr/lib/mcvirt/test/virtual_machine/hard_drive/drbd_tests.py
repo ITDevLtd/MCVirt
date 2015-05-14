@@ -77,7 +77,7 @@ class DrbdTests(unittest.TestCase):
         wait_timeout -= 1
 
     # Perform verification on VM, using the argument parser
-    self.parser.parse_arguments('verify --vm %s' % self.test_vms['TEST_VM_1']['name'], mcvirt_instance=self.mcvirt)
+    self.parser.parse_arguments('verify %s' % self.test_vms['TEST_VM_1']['name'], mcvirt_instance=self.mcvirt)
 
     # Ensure the disks are in-sync
     for disk_object in test_vm_object.getDiskObjects():
@@ -92,7 +92,7 @@ class DrbdTests(unittest.TestCase):
 
     # Perform another verification and ensure that an exception is raised
     with self.assertRaises(DrbdVolumeNotInSyncException):
-      self.parser.parse_arguments('verify --vm %s' % self.test_vms['TEST_VM_1']['name'], mcvirt_instance=self.mcvirt)
+      self.parser.parse_arguments('verify %s' % self.test_vms['TEST_VM_1']['name'], mcvirt_instance=self.mcvirt)
 
     # Attempt to start the VM, ensuring an exception is raised
     with self.assertRaises(DrbdVolumeNotInSyncException):
