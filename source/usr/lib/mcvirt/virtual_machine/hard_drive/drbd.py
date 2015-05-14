@@ -203,7 +203,7 @@ class DRBD(Base):
     """Creates a new hard drive, attaches the disk to the VM and records the disk
     in the VM configuration"""
     # Ensure user has privileges to create a DRBD volume
-    vm_object.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_DRBD)
+    vm_object.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_DRBD, vm_object)
 
     # Ensure DRBD is enabled on the host
     if (not NodeDRBD.isEnabled()):

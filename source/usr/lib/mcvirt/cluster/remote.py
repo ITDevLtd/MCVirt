@@ -248,6 +248,13 @@ class Remote:
       hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
       hard_drive_object.setSyncState(arguments['sync_state'])
 
+    elif (action == 'mcvirt-obtainLock'):
+      timeout = arguments['timeout']
+      mcvirt_instance.obtainLock(timeout)
+
+    elif (action == 'mcvirt-releaseLock'):
+      mcvirt_instance.releaseLock()
+
     elif (action == 'close'):
       # Delete McVirt instance, which removes the lock and force mcvirt-remote
       # to close

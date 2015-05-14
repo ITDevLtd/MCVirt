@@ -23,6 +23,16 @@ class LogicalVolumeDoesNotExistException(McVirtException):
   pass
 
 
+class BackupSnapshotAlreadyExistsException(McVirtException):
+  """The backup snapshot for the logical volume already exists"""
+  pass
+
+
+class BackupSnapshotDoesNotExistException(McVirtException):
+  """The backup snapshot for the logical volume does not exist"""
+  pass
+
+
 class Base(object):
   """Provides base operations to manage all hard drives, used by VMs"""
 
@@ -297,6 +307,58 @@ class Base(object):
                                  nodes=nodes)
     except McVirtCommandException, e:
       raise McVirtException("Error whilst activating logical volume:\n" + str(e))
+
+  def createBackupSnapshot(self):
+    """Creates a snapshot of the logical volume for backing up and locks the VM"""
+    from mcvirt.auth import Auth
+    from mcvirt.virtual_machine.virtual_machine import LockStates
+    # Ensure the user has permission to delete snapshot backups
+    self.getConfigObject().vm_object.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.BACKUP_VM,
+                                                                                    self.getConfigObject().vm_object)
+
+    # Ensure VM is registered locally
+    self.getConfigObject().vm_object.ensureRegisteredLocally()
+
+    # Obtain logical volume names/paths
+    backup_volume_path = self.getConfigObject()._getLogicalVolumePath(self.getConfigObject()._getBackupLogicalVolume())
+    snapshot_logical_volume = self.getConfigObject()._getBackupSnapshotLogicalVolume()
+
+    # Determine if logical volume already exists
+    if (Base._checkLogicalVolumeActive(self.getConfigObject(),
+                                       self.getConfigObject()._getBackupSnapshotLogicalVolume())):
+      raise BackupSnapshotAlreadyExistsException('The backup snapshot for \'%s\' already exists: %s' %
+                                                 (backup_volume_path, snapshot_logical_volume))
+
+    # Lock the VM
+    self.getConfigObject().vm_object.setLockState(LockStates.LOCKED)
+
+    try:
+      System.runCommand(['lvcreate', '--snapshot', backup_volume_path,
+                         '--name', self.getConfigObject()._getBackupSnapshotLogicalVolume(),
+                         '--size', self.getConfigObject().SNAPSHOT_SIZE])
+      return self.getConfigObject()._getLogicalVolumePath(snapshot_logical_volume)
+    except:
+      self.getConfigObject().vm_object.setLockState(LockStates.UNLOCKED)
+      raise
+
+  def deleteBackupSnapshot(self):
+    """Deletes the backup snapshot for the disk and unlocks the VM"""
+    from mcvirt.auth import Auth
+    from mcvirt.virtual_machine.virtual_machine import LockStates
+    # Ensure the user has permission to delete snapshot backups
+    self.getConfigObject().vm_object.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.BACKUP_VM,
+                                                                                    self.getConfigObject().vm_object)
+
+    # Ensure the snapshot logical volume exists
+    if (not Base._checkLogicalVolumeActive(self.getConfigObject(),
+                                           self.getConfigObject()._getBackupSnapshotLogicalVolume())):
+      raise BackupSnapshotDoesNotExistException('The backup snapshot for \'%s\' does not exist' %
+                                                self.getConfigObject()._getLogicalVolumePath(self.getConfigObject()._getBackupLogicalVolume()))
+
+    System.runCommand(['lvremove', '-f', self.getConfigObject()._getLogicalVolumePath(self.getConfigObject()._getBackupSnapshotLogicalVolume())])
+
+    # Unlock the VM
+    self.getConfigObject().vm_object.setLockState(LockStates.UNLOCKED)
 
   def increaseSize(self, increase_size):
     """Increases the size of a VM hard drive, given the size to increase the drive by"""

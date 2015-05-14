@@ -29,3 +29,11 @@ class Local(Base):
     """Returns the McVirt hard drive configuration for the Local hard drive"""
     # There are no configurations for the disk stored by McVirt
     return {}
+
+  def _getBackupLogicalVolume(self):
+    """Returns the storage device for the backup"""
+    return self._getDiskName()
+
+  def _getBackupSnapshotLogicalVolume(self):
+    """Returns the logical volume name for the backup snapshot"""
+    return self._getDiskName + self.SNAPSHOT_SUFFIX

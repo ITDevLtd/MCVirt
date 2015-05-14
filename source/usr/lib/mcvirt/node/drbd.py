@@ -201,6 +201,11 @@ class DRBDSocket():
   def stop(self):
     """Deletes the socket connection object, removes the socket file and
        the McVirt instance"""
+    # If the McVirt lock has not yet been re-instated, do so
+    if (not self.mcvirt_instance.obtained_filelock):
+      self.mcvirt_instance.obtainLock(timeout=10)
+
+    # Destroy the socket connection
     self.connection = None
     try:
         os.remove(self.SOCKET_PATH)
@@ -210,6 +215,8 @@ class DRBDSocket():
 
   def server(self):
     """Listens on the socket and marks any resources as out-of-sync"""
+    # Remove McVirt lock, so that other commands can run whilst the verify is taking place
+    self.mcvirt_instance.releaseLock()
     self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
         os.remove(self.SOCKET_PATH)
@@ -221,6 +228,8 @@ class DRBDSocket():
     self.connection, _ = self.socket.accept()
     drbd_resource = self.connection.recv(1024)
     if (drbd_resource):
+      # Re-instate McVirt lock
+      self.mcvirt_instance.obtainLock(timeout=10)
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
       hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(self.mcvirt_instance, drbd_resource)
       hard_drive_object.setSyncState(False)

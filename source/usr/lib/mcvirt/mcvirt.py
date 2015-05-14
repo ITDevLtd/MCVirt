@@ -37,20 +37,9 @@ class McVirt:
     self.initialise_nodes = initialise_nodes
     self.remote_nodes = {}
 
-    # Create lock file, if it does not exist
-    if (not os.path.isfile(self.LOCK_FILE)):
-      if (not os.path.isdir(self.LOCK_FILE_DIR)):
-        os.mkdir(self.LOCK_FILE_DIR)
-      open(self.LOCK_FILE, 'a').close()
-
-    # Attempt to lock lockfile
-    self.lockfile_object = FileLock(self.LOCK_FILE)
     self.obtained_filelock = False
-    try:
-      self.lockfile_object.acquire(timeout=1)
-      self.obtained_filelock = True
-    except:
-      raise McVirtException('An instance of McVirt is already running')
+    self.lockfile_object = None
+    self.obtainLock()
 
     # Create cluster instance, which will initialise the nodes
     from cluster.cluster import Cluster
@@ -64,10 +53,47 @@ class McVirt:
     # Disconnect from each of the nodes
     for connection in self.remote_nodes:
       self.remote_nodes[connection] = None
+    self.remote_nodes = {}
 
     # Remove lock file
+    self.releaseLock()
+
+  def obtainLock(self, timeout=2):
+    """Obtains the McVirt lock file"""
+    # Create lock file, if it does not exist
+    if (not os.path.isfile(self.LOCK_FILE)):
+      if (not os.path.isdir(self.LOCK_FILE_DIR)):
+        os.mkdir(self.LOCK_FILE_DIR)
+      open(self.LOCK_FILE, 'a').close()
+
+    # Attempt to lock lockfile
+    if (not self.obtained_filelock and not self.lockfile_object):
+      self.lockfile_object = FileLock(self.LOCK_FILE)
+
+    # Check if lockfile object is already locked
+    if (self.obtained_filelock or self.lockfile_object.is_locked()):
+      raise McVirtException('An instance of McVirt is already running')
+
+    try:
+      self.lockfile_object.acquire(timeout=timeout)
+      if (self.initialise_nodes):
+        for remote_node in self.remote_nodes:
+          self.remote_nodes[remote_node].runRemoteCommand('mcvirt-obtainLock',
+                                                            {'timeout': timeout})
+
+      self.obtained_filelock = True
+    except:
+      raise McVirtException('An instance of McVirt is already running')
+
+  def releaseLock(self):
+    """Releases the McVirt lock file"""
     if (self.obtained_filelock):
+      if (self.initialise_nodes):
+        for remote_node in self.remote_nodes:
+          self.remote_nodes[remote_node].runRemoteCommand('mcvirt-releaseLock', {})
       self.lockfile_object.release()
+      self.lockfile_object = None
+      self.obtained_filelock = False
 
   def getLibvirtConnection(self):
     """

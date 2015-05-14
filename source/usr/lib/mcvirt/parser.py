@@ -115,7 +115,10 @@ class Parser:
 
     # Get arguments for getting VM information
     self.info_parser = self.subparsers.add_parser('info', help='View VM info help', parents=[self.parent_parser])
-    self.info_parser.add_argument('--vnc-port', dest='vnc_port', help='Displays the port that VNC is being hosted from',
+    self.info_mutually_exclusive_group = self.info_parser.add_mutually_exclusive_group(required=False)
+    self.info_mutually_exclusive_group.add_argument('--vnc-port', dest='vnc_port', help='Displays the port that VNC is being hosted from',
+      action='store_true')
+    self.info_mutually_exclusive_group.add_argument('--node', dest='node', help='Displays to node that the VM is currently registered on',
       action='store_true')
     self.info_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM', nargs='?', default=None)
 
@@ -161,13 +164,24 @@ class Parser:
     self.verify_mutual_exclusive_group = self.verify_parser.add_mutually_exclusive_group(required=True)
     self.verify_mutual_exclusive_group.add_argument('--all', dest='all', help='Verifies all of the VMs',
                                                     action='store_true')
-    self.verify_mutual_exclusive_group.add_argument('--vm', dest='vm_name', metavar='VM Name',
+    self.verify_mutual_exclusive_group.add_argument('vm_name', metavar='VM Name', nargs='?',
                                                     help='Specify a single VM to verify')
 
     # Create subparser for drbd-related commands
     self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering', parents=[self.parent_parser])
     self.drbd_parser.add_argument('--enable', dest='enable', help='Enable DRBD support on the cluster',
       action='store_true')
+
+    # Create subparser for backup commands
+    self.backup_parser = self.subparsers.add_parser('backup', help='Performs backup-related tasks', parents=[self.parent_parser])
+    self.backup_mutual_exclusive_group = self.backup_parser.add_mutually_exclusive_group(required=True)
+    self.backup_mutual_exclusive_group.add_argument('--create-snapshot', dest='create_snapshot', help='Enable DRBD support on the cluster',
+      action='store_true')
+    self.backup_mutual_exclusive_group.add_argument('--delete-snapshot', dest='delete_snapshot', help='Enable DRBD support on the cluster',
+      action='store_true')
+    self.backup_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int, required=True,
+      help='The ID of the disk to manage the backup snapshot of')
+    self.backup_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     # Create subparser for managing VM locks
     self.lock_parser = self.subparsers.add_parser('lock', help='Perform verification of VMs', parents=[self.parent_parser])
@@ -297,10 +311,14 @@ class Parser:
           self.printStatus('Successfully added \'%s\' as \'owner\' from VM \'%s\'' % (args.delete_owner, vm_object.getName()))
 
       elif (action == 'info'):
+        if (not args.vm_name and (args.vnc_port or args.node)):
+          self.parser.error('Must provide a VM Name')
         if (args.vm_name):
           vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
           if (args.vnc_port):
             self.printStatus(vm_object.getVncPort())
+          elif (args.node):
+            self.printStatus(vm_object.getNode())
           else:
             self.printStatus(vm_object.getInfo())
         else:
@@ -359,6 +377,14 @@ class Parser:
       elif (action == 'drbd'):
         if (args.enable):
           DRBD.enable(mcvirt_instance)
+
+      elif (action == 'backup'):
+        vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        hard_drive_object = HardDriveFactory.getObject(vm_object, args.disk_id)
+        if (args.create_snapshot):
+          self.printStatus(hard_drive_object.createBackupSnapshot())
+        elif (args.delete_snapshot):
+          hard_drive_object.deleteBackupSnapshot()
 
       elif (action == 'lock'):
         vm_object = VirtualMachine(mcvirt_instance, args.vm_name)

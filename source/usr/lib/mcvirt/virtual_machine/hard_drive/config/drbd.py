@@ -183,3 +183,11 @@ class DRBD(Base):
       'sync_state': self.config['sync_state']
     }
     return mcvirt_config
+
+  def _getBackupLogicalVolume(self):
+    """Returns the storage device for the backup"""
+    return self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX)
+
+  def _getBackupSnapshotLogicalVolume(self):
+    """Returns the logical volume name for the backup snapshot"""
+    return self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX) + self.SNAPSHOT_SUFFIX

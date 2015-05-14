@@ -16,6 +16,9 @@ class ReachedMaximumStorageDevicesException(McVirtException):
 class Base(object):
   """Provides a base for storage configurations"""
 
+  SNAPSHOT_SUFFIX = '_snapshot'
+  SNAPSHOT_SIZE = '500M'
+
   def __init__(self, vm_object, disk_id=None, config=None, registered=False):
     """Set member variables and obtains the stored configuration"""
     self.config['disk_id'] = disk_id
@@ -127,4 +130,12 @@ class Base(object):
 
   def _getMcVirtConfig(self):
     """Returns the McVirt configuration for the hard drive object"""
+    raise NotImplementedError
+
+  def _getBackupLogicalVolume(self):
+    """Returns the storage device for the backup"""
+    raise NotImplementedError
+
+  def _getBackupSnapshotLogicalVolume(self):
+    """Returns the logical volume name for the backup snapshot"""
     raise NotImplementedError
