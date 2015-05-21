@@ -165,6 +165,6 @@ class ConfigFile():
 
     else:
       # Update repository
-      System.runCommand([self.GIT, 'pull'], raise_exception_on_failure=True, cwd=McVirt.BASE_STORAGE_DIR)
+      System.runCommand([self.GIT, 'pull'], raise_exception_on_failure=False, cwd=McVirt.BASE_STORAGE_DIR)
 
     return True
