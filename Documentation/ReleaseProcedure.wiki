@@ -1,4 +1,7 @@
-= McVirt Release Procedure =
+=========================
+McVirt Release Procedure
+=========================
+
 
 * Merge the branch to be released to the trunk
 * Ensure that Jenkins build for the trunk succeeds

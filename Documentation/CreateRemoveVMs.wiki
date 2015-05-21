@@ -1,66 +1,117 @@
-== Create/Remove VMs ==
-
- * All commands must be performed on the McVirt host, which can be accessed via SSH using LDAP credentials.
-
-=== Create VM ===
-
- * Use the McVirt utility to create VMs:
-{{{
-sudo mcvirt create '<VM Name>'
-}}}
- * The following parameters are available:
-   * '''--memory''' - Amount of memory to allocate to the VM (MB) (required)
-   * '''--disk-size''' - Size of initial disk to be added to the VM (MB) (required)
-   * '''--cpu-count''' - Number of vCPUs to be allocated to the VM (required)
-   * '''--network''' - Provide the name of a network to be attached to the VM. (optional)
-     * This can be called as multiple times.
-     * A separate network interface is added to the VM for each network.
-     * A network can be specified multiple times to create multiple adapters connected to the same network.
 
 
-=== Cloning a VM ===
+Create/Remove VMs
+------------------
+
+
+* All commands must be performed on the McVirt host, which can be accessed via SSH using LDAP credentials.
+
+
+
+Create VM
+`````````````````
+
+
+* Use the McVirt utility to create VMs:
+
+  ::
+    
+    sudo mcvirt create '<VM Name>'
+    
+
+* The following parameters are available:
+
+  * **--memory** - Amount of memory to allocate to the VM (MB) (required)
+
+  * **--disk-size** - Size of initial disk to be added to the VM (MB) (required)
+
+  * **--cpu-count** - Number of vCPUs to be allocated to the VM (required)
+
+  * **--network** - Provide the name of a network to be attached to the VM. (optional)
+
+    * This can be called as multiple times.
+
+    * A separate network interface is added to the VM for each network.
+
+    * A network can be specified multiple times to create multiple adapters connected to the same network.
+
+
+
+
+Cloning a VM
+````````````````````````
+
 
 Cloning/duplicating a VM will create an identical replica of the VM.
 
 Although both cloning and duplicating initially may appear to provide the same functionality, there are core differences, based on how they work, which should be noted to decide which function to use.
 
-Both cloning and duplicating a VM can be performed by an '''owner''' of a VM.
+Both cloning and duplicating a VM can be performed by an **owner** of a VM.
 
-=== Cloning ===
 
- * The hard disk for the VM is '''snapshotted''', which means the VM is cloned very quickly
- * Cloning VMs is not support for DRBD-backed VMs
- * Some restricictions are imposed on both the parent and clone, due to the way that the storage is cloned:
-   * Parent VMs cannot be:
-     * Started
-     * Resize (HDDs)
-     * Deleted
-   * VM Clones cannot be:
-     * Resized
-     * Cloned
-   * '''Note:''' All restrictions are lifted once all VM clones have been removed.
+
+Cloning
+`````````````
+
+
+* The hard disk for the VM is **snapshotted**, which means the VM is cloned very quickly
+* Cloning VMs is not support for DRBD-backed VMs
+* Some restricictions are imposed on both the parent and clone, due to the way that the storage is cloned:
+
+  * Parent VMs cannot be:
+
+    * Started
+
+    * Resize (HDDs)
+
+    * Deleted
+
+  * VM Clones cannot be:
+
+    * Resized
+
+    * Cloned
+
+  * **Note:** All restrictions are lifted once all VM clones have been removed.
 
 A VM can be cloned by performing the following:
-{{{
-sudo mcvirt clone --parent <Source VM Name> <Target VM Name>
-}}}
 
-=== Duplicating ===
+  ::
+    
+    sudo mcvirt clone --parent <Source VM Name> <Target VM Name>
+    
 
- * Duplicating produces a new VM that is a completely separate entity to the source, meaning that no restrictions are imposed on either VM
- * Duplicating a VM will copy the entire VM hard drive, which takes longer than cloning a VM
+
+
+
+Duplicating
+`````````````````````
+
+
+* Duplicating produces a new VM that is a completely separate entity to the source, meaning that no restrictions are imposed on either VM
+* Duplicating a VM will copy the entire VM hard drive, which takes longer than cloning a VM
 
 A VM can be duplicated by performing the following:
-{{{
-sudo mcvirt duplicate --parent <Source VM Name> <Target VM Name>
-}}}
 
-=== Removing VM ===
+  ::
+    
+    sudo mcvirt duplicate --parent <Source VM Name> <Target VM Name>
+    
 
- * Ensure that the VM is stopped.
- * Use the McVirt utility to remove the VM:
-{{{
-sudo mcvirt delete <VM Name>
-}}}
- * Without any parameters, the VM will simply be 'unregistered' from the host.
- * To remove all data associated with the VM, supply the parameter '''--remove-data'''
+
+
+
+Removing VM
+`````````````````````
+
+
+* Ensure that the VM is stopped.
+* Use the McVirt utility to remove the VM:
+
+  ::
+    
+    sudo mcvirt delete <VM Name>
+    
+
+* Without any parameters, the VM will simply be 'unregistered' from the host.
+* To remove all data associated with the VM, supply the parameter **--remove-data**
