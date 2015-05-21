@@ -3,7 +3,7 @@ Controlling VMs
 ===============
 
 
-* All commands must be performed on the MCVirt host, which can be accessed via SSH using LDAP credentials.
+* All commands must be performed on the MCVirt node, which can be accessed via SSH.
 
 
 
@@ -65,7 +65,7 @@ Get VM information
 
   ::
     
-    <Username>@host:~# mcvirt info test-vm
+    <Username>@node:~# mcvirt info test-vm
     Name              | test-vm
     CPU Cores         | 1
     Memory Allocation | 512MB
@@ -87,7 +87,7 @@ Listing virtual machines
 ------------------------
 
 
-* In order to list the virtual machines on a host, run the following:
+* In order to list the virtual machines on a node, run the following:
 
   ::
     
@@ -103,7 +103,7 @@ Connect to VNC
 
 
 * By default, VMs are started with a VNC console, for which the port is automatically generated.
-* The default listening IP address is 127.0.0.1, meaning that it can only be accessed from the host itself.
+* The default listening IP address is 127.0.0.1, meaning that it can only be accessed from the node itself.
 * To access VNC, using the connect_vnc.pl script:
 
   ::
@@ -113,7 +113,7 @@ Connect to VNC
     Password:
     
 
-* To manually gain access to a VNC console, ssh to the host, forwarding the port:
+* To manually gain access to a VNC console, ssh to the node, forwarding the port:
 
   1. Determine the port that the VM is listening on:
 
@@ -123,7 +123,7 @@ Connect to VNC
       5904
     
 
-  2. SSH onto the host, forwarding the port provided in the previous step (5904 in this case)
+  2. SSH onto the node, forwarding the port provided in the previous step (5904 in this case)
 
      * The local port can be any available port. In this example, 1232 is used:
 

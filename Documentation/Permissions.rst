@@ -4,7 +4,7 @@ Permissions
 -----------
 
 
-* All commands must be performed on the MCVirt host, which can be accessed via SSH using LDAP credentials.
+* All commands must be performed on the MCVirt node, which can be accessed via SSH using LDAP credentials.
 
 
 

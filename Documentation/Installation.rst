@@ -63,7 +63,7 @@ Creating/Removing Network
 
 
 * Networks provide bridges between physical interfaces and virtual machines.
-* To create a network on the host, as a superuser perform the following:
+* To create a network on the node, perform the following as a superuser:
 
   ::
     

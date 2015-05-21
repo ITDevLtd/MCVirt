@@ -4,7 +4,7 @@ Create/Remove VMs
 ------------------
 
 
-* All commands must be performed on the MCVirt host, which can be accessed via SSH using LDAP credentials.
+* All commands must be performed on the MCVirt node, which can be accessed via SSH using LDAP credentials.
 
 
 
@@ -113,5 +113,5 @@ Removing VM
     sudo mcvirt delete <VM Name>
     
 
-* Without any parameters, the VM will simply be 'unregistered' from the host.
+* Without any parameters, the VM will simply be 'unregistered' from the node.
 * To remove all data associated with the VM, supply the parameter **--remove-data**
