@@ -10,7 +10,7 @@ Building the package
 
 
 * Ensure that 'dpkg' and 'svn' packages are installed on the machine
-* Check out the root of the branch/tag/branch of McVirt
+* Check out the root of the branch/tag/branch of MCVirt
 * From within the root of the working copy, run `build.sh <../build.sh>`_
 
 
@@ -19,10 +19,10 @@ Install Operating System
 ------------------------
 
 
-* McVirt is currently build to support Ubuntu 14.04 with native version of dependencies.
+* MCVirt is currently build to support Ubuntu 14.04 with native version of dependencies.
 * When installing the operating system create the following logical volumes:
 
-  * Root - Create a 50GB partition using ext4. This is used for the operating system, McVirt configurations and ISO images
+  * Root - Create a 50GB partition using ext4. This is used for the operating system, MCVirt configurations and ISO images
 
   * SWAP - leave the suggested SWAP volume unaltered
 
@@ -32,8 +32,8 @@ Installing Package
 ------------------
 
 
-* Puppet is used install the McVirt package and other tools used on the system. To install puppet, please see wiki:Puppet#Installation
-* The McVirt package is retrieved from the Ubuntu repository on orion.
+* Puppet is used install the MCVirt package and other tools used on the system. To install puppet, please see wiki:Puppet#Installation
+* The MCVirt package is retrieved from the Ubuntu repository on orion.
 
 
 
@@ -80,9 +80,9 @@ Creating/Removing Network
 
 
 
-Configure McVirt
+Configure MCVirt
 -----------------
 
 
-* The first time McVirt is run, it creates a configuration file for itself, found in **/var/lib/mcvirt/config.json**.
+* The first time MCVirt is run, it creates a configuration file for itself, found in **/var/lib/mcvirt/config.json**.
 * Set the volume group for the VMs to be stored in, within the configuration file.

@@ -6,7 +6,7 @@ import libvirt
 import xml.etree.ElementTree as ET
 import os
 
-from mcvirt.mcvirt import McVirtException, McVirt
+from mcvirt.mcvirt import MCVirtException, MCVirt
 
 class DiskDrive:
   """Provides operations to manage the disk drive attached to a VM"""
@@ -19,12 +19,12 @@ class DiskDrive:
     """Attaches an ISO image to the disk drive of the VM"""
 
     # Ensure that the ISO image exists
-    full_path = McVirt.ISO_STORAGE_DIR + '/' + iso_file
+    full_path = MCVirt.ISO_STORAGE_DIR + '/' + iso_file
     if (not os.path.isfile(full_path)):
-      raise McVirtException('ISO image not found: %s' % iso_file)
+      raise MCVirtException('ISO image not found: %s' % iso_file)
 
     # Import cdrom XML template
-    cdrom_xml = ET.parse(McVirt.TEMPLATE_DIR + '/cdrom.xml')
+    cdrom_xml = ET.parse(MCVirt.TEMPLATE_DIR + '/cdrom.xml')
 
     # Add iso image path to cdrom XML
     cdrom_xml.find('source').set('file', full_path)
@@ -34,13 +34,13 @@ class DiskDrive:
     if (not self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):
       print 'Attached ISO %s' % iso_file
     else:
-      raise McVirtException('An error occurred whilst attaching ISO')
+      raise MCVirtException('An error occurred whilst attaching ISO')
 
   def removeISO(self):
     """Removes ISO attached to the disk drive of a VM"""
 
     # Import cdrom XML template
-    cdrom_xml = ET.parse(McVirt.TEMPLATE_DIR + '/cdrom.xml')
+    cdrom_xml = ET.parse(MCVirt.TEMPLATE_DIR + '/cdrom.xml')
 
     # Add iso image path to cdrom XML
     cdrom_xml = cdrom_xml.getroot()
@@ -52,7 +52,7 @@ class DiskDrive:
 
       # Update the libvirt cdrom device
       if (self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):
-        raise McVirtException('An error occurred whilst detaching ISO')
+        raise MCVirtException('An error occurred whilst detaching ISO')
 
   def getCurrentDisk(self):
     """Returns the path of the disk currently attached to the VM"""

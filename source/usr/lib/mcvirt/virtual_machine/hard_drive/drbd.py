@@ -9,21 +9,21 @@ from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode, DRBDSocket
 from mcvirt.auth import Auth
-from mcvirt.system import System, McVirtCommandException
+from mcvirt.system import System, MCVirtCommandException
 from mcvirt.cluster.cluster import Cluster
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import MCVirtException
 
-class DrbdStateException(McVirtException):
+class DrbdStateException(MCVirtException):
   """The DRBD state is not OK"""
   pass
 
 
-class DrbdBlockDeviceDoesNotExistException(McVirtException):
+class DrbdBlockDeviceDoesNotExistException(MCVirtException):
   """DRBD block device does not exist"""
   pass
 
 
-class DrbdVolumeNotInSyncException(McVirtException):
+class DrbdVolumeNotInSyncException(MCVirtException):
   """The last DRBD verification of the volume failed"""
   pass
 
@@ -417,7 +417,7 @@ class DRBD(Base):
     """Performs a DRBD 'down' on the hard drive DRBD resource"""
     try:
       System.runCommand([NodeDRBD.DRBDADM, 'down', config_object._getResourceName()])
-    except McVirtCommandException:
+    except MCVirtCommandException:
       import time
       # If the DRBD down fails, attempt to wait 5 seconds and try again
       time.sleep(5)
@@ -488,7 +488,7 @@ class DRBD(Base):
         if (not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object)):
           raise DrbdStateException('DRBD connection state for the DRBD resource %s is %s so cannot continue. ' %
                                    (self.getConfigObject()._getResourceName(), state.value) +
-                                   'Run McVirt as a superuser with --ignore-drbd to ignore this issue')
+                                   'Run MCVirt as a superuser with --ignore-drbd to ignore this issue')
       else:
         raise DrbdStateException('DRBD connection state for the DRBD resource %s is %s so cannot continue. ' %
                                  (self.getConfigObject()._getResourceName(), state.value))
@@ -538,7 +538,7 @@ class DRBD(Base):
     if (not self._isInSync() and not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object)):
       raise DrbdVolumeNotInSyncException('The last DRBD verification of the DRBD volume failed: %s. ' %
                                          self.getConfigObject()._getResourceName() +
-                                         'Run McVirt as a superuser with --ignore-drbd to ignore this issue')
+                                         'Run MCVirt as a superuser with --ignore-drbd to ignore this issue')
 
   def _isInSync(self):
     """Returns whether the last DRBD verification reported the

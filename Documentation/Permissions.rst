@@ -4,7 +4,7 @@ Permissions
 -----------
 
 
-* All commands must be performed on the McVirt host, which can be accessed via SSH using LDAP credentials.
+* All commands must be performed on the MCVirt host, which can be accessed via SSH using LDAP credentials.
 
 
 
@@ -12,7 +12,7 @@ Managing users
 ````````````````````````````
 
 
-* In McVirt, 'users' are able to start/stop VMs
+* In MCVirt, 'users' are able to start/stop VMs
 * To view the current permissions on a VM, including users and owners of a VM, run:
 
   ::

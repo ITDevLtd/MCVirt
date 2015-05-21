@@ -11,8 +11,8 @@ import shutil
 from texttable import Texttable
 from enum import Enum
 
-from mcvirt.mcvirt import McVirt, McVirtException
-from mcvirt.mcvirt_config import McVirtConfig
+from mcvirt.mcvirt import MCVirt, MCVirtException
+from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
@@ -20,72 +20,72 @@ from mcvirt.auth import Auth
 from mcvirt.virtual_machine.hard_drive.local import Local as HardDriveLocal
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 
-class InvalidVirtualMachineNameException(McVirtException):
+class InvalidVirtualMachineNameException(MCVirtException):
   """VM is being created with an invalid name"""
   pass
 
 
-class VmAlreadyExistsException(McVirtException):
+class VmAlreadyExistsException(MCVirtException):
   """VM is being created with a duplicate name"""
   pass
 
 
-class VmDirectoryAlreadyExistsException(McVirtException):
+class VmDirectoryAlreadyExistsException(MCVirtException):
   """Directory for a VM already exists"""
   pass
 
 
-class VmAlreadyStoppedException(McVirtException):
+class VmAlreadyStoppedException(MCVirtException):
   """VM is already stopped when attempting to stop it"""
   pass
 
 
-class VmAlreadyStartedException(McVirtException):
+class VmAlreadyStartedException(MCVirtException):
   """VM is already started when attempting to start it"""
   pass
 
 
-class VmAlreadyRegisteredException(McVirtException):
+class VmAlreadyRegisteredException(MCVirtException):
   """VM is already registered on a node"""
   pass
 
 
-class VmRegisteredElsewhereException(McVirtException):
+class VmRegisteredElsewhereException(MCVirtException):
   """Attempt to perform an action on a VM registered on another node"""
   pass
 
 
-class VmRunningException(McVirtException):
+class VmRunningException(MCVirtException):
   """An offline migration can only be powered on a powered off VM"""
   pass
 
 
-class UnsuitableRemoteNodeException(McVirtException):
+class UnsuitableRemoteNodeException(MCVirtException):
   """The remote node is unsuitable to run the VM"""
   pass
 
 
-class VmNotRegistered(McVirtException):
+class VmNotRegistered(MCVirtException):
   """The virtual machine is not currently registered on a node"""
   pass
 
 
-class CannotStartClonedVmException(McVirtException):
+class CannotStartClonedVmException(MCVirtException):
   """Cloned VMs cannot be started"""
   pass
 
 
-class CannotCloneDrbdBasedVmsException(McVirtException):
+class CannotCloneDrbdBasedVmsException(MCVirtException):
   """Cannot clone DRBD-based VMs"""
   pass
 
 
-class CannotDeleteClonedVmException(McVirtException):
+class CannotDeleteClonedVmException(MCVirtException):
   """Cannot delete a cloned VM"""
   pass
 
 
-class VirtualMachineLockException(McVirtException):
+class VirtualMachineLockException(MCVirtException):
   """Lock cannot be set to the current lock state"""
   pass
 
@@ -106,11 +106,11 @@ class VirtualMachine:
 
     # Ensure that the connection is alive
     if (not self.mcvirt_object.getLibvirtConnection().isAlive()):
-      raise McVirtException('Error: LibVirt connection not alive')
+      raise MCVirtException('Error: LibVirt connection not alive')
 
     # Check that the domain exists
     if (not VirtualMachine._checkExists(self.mcvirt_object, self.name)):
-      raise McVirtException('Error: Virtual Machine does not exist: %s' % self.name)
+      raise MCVirtException('Error: Virtual Machine does not exist: %s' % self.name)
 
   def getConfigObject(self):
     """Returns the configuration object for the VM"""
@@ -189,7 +189,7 @@ class VirtualMachine:
       remote = cluster_object.getRemoteNode(self.getNode())
       return remote.runRemoteCommand('virtual_machine-getState', {'vm_name': self.getName()})
     else:
-      raise McVirtException('Attempted to obtain status from incorrect node')
+      raise MCVirtException('Attempted to obtain status from incorrect node')
 
   def getStateText(self):
     """Returns the running state of the VM in text format"""
@@ -266,7 +266,7 @@ class VirtualMachine:
       self.mcvirt_object.getAuthObject().checkPermission(Auth.PERMISSIONS.MODIFY_VM, self)
       or (self.getCloneParent() and self.mcvirt_object.getAuthObject().checkPermission(Auth.PERMISSIONS.DELETE_CLONE, self))
     ):
-      raise McVirtException('User does not have the required permission - '
+      raise MCVirtException('User does not have the required permission - '
         + 'User must have MODIFY_VM permission or be the owner of the cloned VM')
 
     # Ensure the VM is not being removed from a machine that the VM is not being run on
@@ -277,7 +277,7 @@ class VirtualMachine:
 
     # Determine if VM is running
     if (self.isRegisteredLocally() and self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
-      raise McVirtException('Error: Can\'t delete running VM')
+      raise MCVirtException('Error: Can\'t delete running VM')
 
     # Ensure VM is unlocked
     self.ensureUnlocked()
@@ -297,7 +297,7 @@ class VirtualMachine:
       try:
         self._getLibvirtDomainObject().undefine()
       except:
-        raise McVirtException('Failed to delete VM from libvirt')
+        raise MCVirtException('Failed to delete VM from libvirt')
 
     # If VM is a clone of another VM, remove it from the configuration
     # of the parent
@@ -317,10 +317,10 @@ class VirtualMachine:
       self.getConfigObject().gitRemove('VM \'%s\' has been removed' % self.name)
       shutil.rmtree(VirtualMachine.getVMDir(self.name))
 
-    # Remove VM from McVirt configuration
-    def updateMcVirtConfig(config):
+    # Remove VM from MCVirt configuration
+    def updateMCVirtConfig(config):
       config['virtual_machines'].remove(self.name)
-    McVirtConfig().updateConfig(updateMcVirtConfig, 'Removed VM \'%s\' from global McVirt config' % self.name)
+    MCVirtConfig().updateConfig(updateMCVirtConfig, 'Removed VM \'%s\' from global MCVirt config' % self.name)
 
     if (self.mcvirt_object.initialiseNodes()):
       cluster_object = Cluster(self.mcvirt_object)
@@ -351,7 +351,7 @@ class VirtualMachine:
 
     self.editConfig(updateXML)
 
-    # Update the McVirt configuration
+    # Update the MCVirt configuration
     def updateConfig(config):
       config['memory_allocation'] = memory_allocation
     self.getConfigObject().updateConfig(updateConfig, 'RAM allocation has been changed to %s' % memory_allocation)
@@ -376,7 +376,7 @@ class VirtualMachine:
       domain_xml.find('./vcpu').text = str(cpu_count)
     self.editConfig(updateXML)
 
-    # Update the McVirt configuration
+    # Update the MCVirt configuration
     def updateConfig(config):
       config['cpu_cores'] = cpu_count
     self.getConfigObject().updateConfig(updateConfig, 'CPU count has been changed to %s' % cpu_count)
@@ -404,7 +404,7 @@ class VirtualMachine:
     from mcvirt.cluster.cluster import Cluster
     # If no node was defined, check the local configuration for all VMs
     if (node == None):
-      return McVirtConfig().getConfig()['virtual_machines']
+      return MCVirtConfig().getConfig()['virtual_machines']
     elif (node == Cluster.getHostname()):
       # Obtain array of all domains from libvirt
       all_domains = mcvirt_object.getLibvirtConnection().listAllDomains()
@@ -421,7 +421,7 @@ class VirtualMachine:
   @staticmethod
   def getVMDir(name):
     """Returns the storage directory for a given VM"""
-    return McVirt.BASE_VM_STORAGE_DIR + '/' + name
+    return MCVirt.BASE_VM_STORAGE_DIR + '/' + name
 
   def getLibvirtConfig(self):
     """Returns an XML object of the libvirt configuration
@@ -447,7 +447,7 @@ class VirtualMachine:
     try:
       self.mcvirt_object.getLibvirtConnection().defineXML(domain_xml_string)
     except:
-      raise McVirtException('Error: An error occurred whilst updating the VM')
+      raise MCVirtException('Error: An error occurred whilst updating the VM')
 
   def getCloneParent(self):
     """Determines if a VM is a clone of another VM"""
@@ -544,7 +544,7 @@ class VirtualMachine:
 
     # Determine if VM is running
     if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
-      raise McVirtException('Can\'t clone running VM')
+      raise MCVirtException('Can\'t clone running VM')
 
     # Ensure VM is unlocked
     self.ensureUnlocked()
@@ -554,7 +554,7 @@ class VirtualMachine:
 
     # Ensure VM is not a clone, as cloning a cloned VM will cause issues
     if (self.getCloneParent()):
-      raise McVirtException('Cannot clone from a clone VM')
+      raise MCVirtException('Cannot clone from a clone VM')
 
     # Create new VM for clone, without hard disks
     network_objects = self.getNetworkObjects()
@@ -599,7 +599,7 @@ class VirtualMachine:
 
     # Determine if VM is running
     if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
-      raise McVirtException('Can\'t duplicate running VM')
+      raise MCVirtException('Can\'t duplicate running VM')
 
     # Ensure new VM name doesn't already exist
     VirtualMachine._checkExists(self.mcvirt_object, duplicate_vm_name)
@@ -659,10 +659,10 @@ class VirtualMachine:
     else:
       raise VmDirectoryAlreadyExistsException('Error: VM directory already exists')
 
-    # Add VM to McVirt configuration
-    def updateMcVirtConfig(config):
+    # Add VM to MCVirt configuration
+    def updateMCVirtConfig(config):
       config['virtual_machines'].append(name)
-    McVirtConfig().updateConfig(updateMcVirtConfig, 'Adding new VM \'%s\' to global McVirt configuration' % name)
+    MCVirtConfig().updateConfig(updateMCVirtConfig, 'Adding new VM \'%s\' to global MCVirt configuration' % name)
 
     # If available nodes has not been passed, assume the local machine is the only
     # available node if local storage is being used. Use the machines in the cluster
@@ -691,12 +691,12 @@ class VirtualMachine:
     vm_object.getConfigObject().gitAdd('Created VM \'%s\'' % vm_object.getName())
 
     if (node == Cluster.getHostname()):
-      # Register VM with LibVirt. If McVirt has not been initialised on this node,
+      # Register VM with LibVirt. If MCVirt has not been initialised on this node,
       # do not set the node in the VM configuration, as the change can't be
       # replicated to remote nodes
       vm_object.register(set_node=mcvirt_instance.initialiseNodes())
     elif (mcvirt_instance.initialiseNodes()):
-      # If McVirt has been initialised on this node and the local machine is
+      # If MCVirt has been initialised on this node and the local machine is
       # not the node that the VM will be registered on, set the node on the VM
       vm_object._setNode(node)
 
@@ -735,7 +735,7 @@ class VirtualMachine:
       disk_object.activateDisk()
 
     # Obtain domain XML
-    domain_xml = ET.parse(McVirt.TEMPLATE_DIR + '/domain.xml')
+    domain_xml = ET.parse(MCVirt.TEMPLATE_DIR + '/domain.xml')
 
     # Add Name, RAM and CPU variables to XML
     domain_xml.find('./name').text = self.getName()
@@ -759,7 +759,7 @@ class VirtualMachine:
     try:
       self.mcvirt_object.getLibvirtConnection().defineXML(domain_xml_string)
     except:
-      raise McVirtException('Error: An error occurred whilst registering VM')
+      raise MCVirtException('Error: An error occurred whilst registering VM')
 
     if (set_node):
       # Mark VM as being hosted on this machine
@@ -774,7 +774,7 @@ class VirtualMachine:
     try:
       self._getLibvirtDomainObject().undefine()
     except:
-      raise McVirtException('Failed to delete VM from libvirt')
+      raise MCVirtException('Failed to delete VM from libvirt')
 
     # De-activate the disk objects
     for disk_object in self.getDiskObjects():
@@ -846,11 +846,11 @@ class VirtualMachine:
     self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.VIEW_VNC_CONSOLE, self)
 
     if (not self.getState()):
-      raise McVirtException('The VM is not running')
+      raise MCVirtException('The VM is not running')
     domain_xml = ET.fromstring(self._getLibvirtDomainObject().XMLDesc(libvirt.VIR_DOMAIN_XML_SECURE))
 
     if (domain_xml.find('./devices/graphics[@type="vnc"]') == None):
-      raise McVirtException('VNC is not enabled on the VM')
+      raise MCVirtException('VNC is not enabled on the VM')
     else:
       return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
 

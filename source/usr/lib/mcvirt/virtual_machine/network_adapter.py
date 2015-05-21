@@ -5,7 +5,7 @@
 import libvirt
 import xml.etree.ElementTree as ET
 
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import MCVirtException
 
 class NetworkAdapter:
   """Provides operations to network interfaces attached to a VM"""
@@ -40,12 +40,12 @@ class NetworkAdapter:
     interface_config = domain_config.find('./devices/interface[@type="network"]/mac[@address="%s"]/..' % self.mac_address)
 
     if (interface_config == None):
-      raise McVirtException('Interface does not exist: %s' % self.mac_address)
+      raise MCVirtException('Interface does not exist: %s' % self.mac_address)
 
     return interface_config
 
   def getConfig(self):
-    """Returns a dict of the McVirt configuration for the network interface"""
+    """Returns a dict of the MCVirt configuration for the network interface"""
     vm_config = self.vm_object.getConfigObject().getConfig()
     network_config = \
       {
@@ -87,7 +87,7 @@ class NetworkAdapter:
     if (mac_address == None):
       mac_address = NetworkAdapter.generateMacAddress()
 
-    # Obtain an instance of McVirt from the vm_object
+    # Obtain an instance of MCVirt from the vm_object
     mcvirt_object = vm_object.mcvirt_object
 
     # Add network interface to VM configuration
@@ -121,7 +121,7 @@ class NetworkAdapter:
       interface_xml = device_xml.find('./interface[@type="network"]/mac[@address="%s"]/..' % self.getMacAddress())
 
       if (interface_xml == None):
-        raise McVirtException('Not interface with MAC address \'%s\' attached to VM' % self.getMacAddress())
+        raise MCVirtException('Not interface with MAC address \'%s\' attached to VM' % self.getMacAddress())
 
       device_xml.remove(interface_xml)
 

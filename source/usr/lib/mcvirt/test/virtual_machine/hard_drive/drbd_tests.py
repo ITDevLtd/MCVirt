@@ -11,7 +11,7 @@ from mcvirt.node.drbd import DRBD as NodeDRBD
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdConnectionState, DrbdVolumeNotInSyncException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import McVirt
+from mcvirt.mcvirt import MCVirt
 from mcvirt.system import System
 
 class DrbdTests(unittest.TestCase):
@@ -27,11 +27,11 @@ class DrbdTests(unittest.TestCase):
 
   def setUp(self):
     """Creates various objects and deletes any test VMs"""
-    # Create McVirt parser object
+    # Create MCVirt parser object
     self.parser = Parser(print_status=False)
 
-    # Get an McVirt instance
-    self.mcvirt = McVirt()
+    # Get an MCVirt instance
+    self.mcvirt = MCVirt()
 
     # Setup variable for test VM
     self.test_vms = \

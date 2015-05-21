@@ -6,7 +6,7 @@ import unittest
 import sys
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import McVirt, McVirtException
+from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.node.network import Network, NetworkDoesNotExistException, NetworkAlreadyExistsException, NetworkUtilizedException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 
@@ -42,11 +42,11 @@ class NetworkTests(unittest.TestCase):
 
   def setUp(self):
     """Creates various objects"""
-    # Create McVirt parser object
+    # Create MCVirt parser object
     self.parser = Parser(print_status=False)
 
-    # Get an McVirt instance
-    self.mcvirt = McVirt()
+    # Get an MCVirt instance
+    self.mcvirt = MCVirt()
     self.test_network_name = 'test_network'
     self.test_physical_interface = 'vmbr99'
 

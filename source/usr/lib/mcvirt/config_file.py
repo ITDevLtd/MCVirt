@@ -6,7 +6,7 @@ import json
 import os
 
 class ConfigFile():
-  """Provides operations to obtain and set the McVirt configuration for a VM"""
+  """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
   CURRENT_VERSION = 1
   GIT = '/usr/bin/git'
@@ -90,59 +90,59 @@ class ConfigFile():
   def gitAdd(self, message=''):
     """Commits changes to an added or modified configuration file"""
     from system import System
-    from mcvirt import McVirt
+    from mcvirt import MCVirt
     from auth import Auth
     from cluster.cluster import Cluster
     if (self._checkGitRepo()):
       message += "\nUser: %s\nNode: %s" % (Auth.getUsername(), Cluster.getHostname())
       try:
-        System.runCommand([self.GIT, 'add', self.config_file], cwd=McVirt.BASE_STORAGE_DIR)
-        System.runCommand([self.GIT, 'commit', '-m', message, self.config_file], cwd=McVirt.BASE_STORAGE_DIR)
-        System.runCommand([self.GIT, 'push'], raise_exception_on_failure=False, cwd=McVirt.BASE_STORAGE_DIR)
+        System.runCommand([self.GIT, 'add', self.config_file], cwd=MCVirt.BASE_STORAGE_DIR)
+        System.runCommand([self.GIT, 'commit', '-m', message, self.config_file], cwd=MCVirt.BASE_STORAGE_DIR)
+        System.runCommand([self.GIT, 'push'], raise_exception_on_failure=False, cwd=MCVirt.BASE_STORAGE_DIR)
       except:
         pass
 
   def gitRemove(self, message=''):
     """Removes and commits a configuration file"""
     from system import System
-    from mcvirt import McVirt
+    from mcvirt import MCVirt
     from auth import Auth
     from cluster.cluster import Cluster
     if (self._checkGitRepo()):
       message +=  "\nUser: %s\nNode: %s" % (Auth.getUsername(), Cluster.getHostname())
       try:
-        System.runCommand([self.GIT, 'rm', '--cached', self.config_file], cwd=McVirt.BASE_STORAGE_DIR)
-        System.runCommand([self.GIT, 'commit', '-m', message], cwd=McVirt.BASE_STORAGE_DIR)
-        System.runCommand([self.GIT, 'push'], raise_exception_on_failure=False, cwd=McVirt.BASE_STORAGE_DIR)
+        System.runCommand([self.GIT, 'rm', '--cached', self.config_file], cwd=MCVirt.BASE_STORAGE_DIR)
+        System.runCommand([self.GIT, 'commit', '-m', message], cwd=MCVirt.BASE_STORAGE_DIR)
+        System.runCommand([self.GIT, 'push'], raise_exception_on_failure=False, cwd=MCVirt.BASE_STORAGE_DIR)
       except:
         pass
 
   def _checkGitRepo(self):
     """Clones the configuration repo, if necessary, and updates the repo"""
-    from mcvirt import McVirt
-    from mcvirt_config import McVirtConfig
+    from mcvirt import MCVirt
+    from mcvirt_config import MCVirtConfig
     from system import System
 
     # Only attempt to create a git repository if the git
-    # URL has been set in the McVirt configuration
-    mcvirt_config = McVirtConfig().getConfig()
+    # URL has been set in the MCVirt configuration
+    mcvirt_config = MCVirtConfig().getConfig()
     if (mcvirt_config['git']['repo_domain'] == ''):
       return False
 
     # Attempt to create git object, if it does not already exist
-    if (not os.path.isdir(McVirt.BASE_STORAGE_DIR + '/.git')):
+    if (not os.path.isdir(MCVirt.BASE_STORAGE_DIR + '/.git')):
 
       # Initialise git repository
-      System.runCommand([self.GIT, 'init'], cwd=McVirt.BASE_STORAGE_DIR)
+      System.runCommand([self.GIT, 'init'], cwd=MCVirt.BASE_STORAGE_DIR)
 
       # Set git name and email address
-      System.runCommand([self.GIT, 'config', '--file=%s' % McVirt.BASE_STORAGE_DIR + '/.git/config',
+      System.runCommand([self.GIT, 'config', '--file=%s' % MCVirt.BASE_STORAGE_DIR + '/.git/config',
                          'user.name', mcvirt_config['git']['commit_name']])
-      System.runCommand([self.GIT, 'config', '--file=%s' % McVirt.BASE_STORAGE_DIR + '/.git/config',
+      System.runCommand([self.GIT, 'config', '--file=%s' % MCVirt.BASE_STORAGE_DIR + '/.git/config',
                          'user.email', mcvirt_config['git']['commit_email']])
 
       # Create git-credentials store
-      System.runCommand([self.GIT, 'config', '--file=%s' % McVirt.BASE_STORAGE_DIR + '/.git/config',
+      System.runCommand([self.GIT, 'config', '--file=%s' % MCVirt.BASE_STORAGE_DIR + '/.git/config',
                          'credential.helper', 'store --file /root/.git-credentials'])
       git_credentials = '%s://%s:%s@%s' % (mcvirt_config['git']['repo_protocol'], mcvirt_config['git']['username'],
                                            mcvirt_config['git']['password'], mcvirt_config['git']['repo_domain'])
@@ -154,18 +154,18 @@ class ConfigFile():
       System.runCommand([self.GIT, 'remote', 'add', 'origin', mcvirt_config['git']['repo_protocol'] + '://'
                                                               + mcvirt_config['git']['repo_domain'] + '/'
                                                               + mcvirt_config['git']['repo_path']],
-                        cwd=McVirt.BASE_STORAGE_DIR)
+                        cwd=MCVirt.BASE_STORAGE_DIR)
 
       # Update the repo
-      System.runCommand([self.GIT, 'fetch'], cwd=McVirt.BASE_STORAGE_DIR)
-      System.runCommand([self.GIT, 'checkout', 'master'], cwd=McVirt.BASE_STORAGE_DIR)
-      System.runCommand([self.GIT, 'branch', '--set-upstream-to', 'origin/master', 'master'], cwd=McVirt.BASE_STORAGE_DIR)
+      System.runCommand([self.GIT, 'fetch'], cwd=MCVirt.BASE_STORAGE_DIR)
+      System.runCommand([self.GIT, 'checkout', 'master'], cwd=MCVirt.BASE_STORAGE_DIR)
+      System.runCommand([self.GIT, 'branch', '--set-upstream-to', 'origin/master', 'master'], cwd=MCVirt.BASE_STORAGE_DIR)
 
       # Perform an initial commit of the configuration file
       self.gitAdd('Initial commit of configuration file.')
 
     else:
       # Update repository
-      System.runCommand([self.GIT, 'pull'], raise_exception_on_failure=False, cwd=McVirt.BASE_STORAGE_DIR)
+      System.runCommand([self.GIT, 'pull'], raise_exception_on_failure=False, cwd=MCVirt.BASE_STORAGE_DIR)
 
     return True

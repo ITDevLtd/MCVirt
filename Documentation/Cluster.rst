@@ -3,7 +3,7 @@ Clustering
 ==========
 
 
-Nodes running McVirt can be joined together in a cluster - this allows the synchronization of VM/global configurations.
+Nodes running MCVirt can be joined together in a cluster - this allows the synchronization of VM/global configurations.
 
 
 
@@ -11,7 +11,7 @@ Viewing the status of a cluster
 -------------------------------
 
 
-To view the status of the cluster, run the following on an McVirt node:
+To view the status of the cluster, run the following on an MCVirt node:
 
   ::
     
@@ -33,9 +33,9 @@ When a machine is connected to a cluster, it receives the permission/network/vir
 
 **Note:** Always run the mcvirt cluster add command from the source machine, containing VMs, connecting to a remote node that is blank.
 
-The new node must be configured on separate network/VLAN for McVirt cluster communication.
+The new node must be configured on separate network/VLAN for MCVirt cluster communication.
 
-The IP address for this network must be stored in the McVirt configuration file and can be retrieved from the machine, by running ``mcvirt info``.
+The IP address for this network must be stored in the MCVirt configuration file and can be retrieved from the machine, by running ``mcvirt info``.
 
 
 

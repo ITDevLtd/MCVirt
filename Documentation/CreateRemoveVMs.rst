@@ -4,7 +4,7 @@ Create/Remove VMs
 ------------------
 
 
-* All commands must be performed on the McVirt host, which can be accessed via SSH using LDAP credentials.
+* All commands must be performed on the MCVirt host, which can be accessed via SSH using LDAP credentials.
 
 
 
@@ -12,7 +12,7 @@ Create VM
 `````````````````
 
 
-* Use the McVirt utility to create VMs:
+* Use the MCVirt utility to create VMs:
 
   ::
     
@@ -106,7 +106,7 @@ Removing VM
 
 
 * Ensure that the VM is stopped.
-* Use the McVirt utility to remove the VM:
+* Use the MCVirt utility to remove the VM:
 
   ::
     

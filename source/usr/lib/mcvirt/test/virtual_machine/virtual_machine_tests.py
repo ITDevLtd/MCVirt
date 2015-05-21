@@ -8,7 +8,7 @@ import os
 import shutil
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import McVirt, McVirtException
+from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.virtual_machine.virtual_machine import (VirtualMachine, InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                                     VmDirectoryAlreadyExistsException, VmAlreadyStartedException,
                                                     VmAlreadyStoppedException, CannotStartClonedVmException, CannotDeleteClonedVmException,
@@ -84,11 +84,11 @@ class VirtualMachineTests(unittest.TestCase):
 
   def setUp(self):
     """Creates various objects and deletes any test VMs"""
-    # Create McVirt parser object
+    # Create MCVirt parser object
     self.parser = Parser(print_status=False)
 
-    # Get an McVirt instance
-    self.mcvirt = McVirt()
+    # Get an MCVirt instance
+    self.mcvirt = MCVirt()
 
     # Setup variable for test VM
     self.test_vms = \
@@ -207,7 +207,7 @@ class VirtualMachineTests(unittest.TestCase):
     self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vms['TEST_VM_1']['name']))
 
   def test_clone_local(self):
-    """Tests the VM cloning in McVirt using the argument parser"""
+    """Tests the VM cloning in MCVirt using the argument parser"""
     # Create Virtual machine
     test_vm_parent = VirtualMachine.create(self.mcvirt, self.test_vms['TEST_VM_1']['name'], self.test_vms['TEST_VM_1']['cpu_count'], self.test_vms['TEST_VM_1']['memory_allocation'],
                                            self.test_vms['TEST_VM_1']['disk_size'], self.test_vms['TEST_VM_1']['networks'], storage_type='Local')

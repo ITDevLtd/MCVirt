@@ -4,11 +4,11 @@
 #
 import xml.etree.ElementTree as ET
 
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import MCVirtException
 from mcvirt.virtual_machine.hard_drive.base import Base as HardDriveBase
-from mcvirt.mcvirt_config import McVirtConfig
+from mcvirt.mcvirt_config import MCVirtConfig
 
-class ReachedMaximumStorageDevicesException(McVirtException):
+class ReachedMaximumStorageDevicesException(MCVirtException):
   """Reached the limit to number of hard disks attached to VM"""
   pass
 
@@ -56,8 +56,8 @@ class Base(object):
     return self.MAXIMUM_DEVICES
 
   def _getVolumeGroup(self):
-    """Returns the node McVirt volume group"""
-    return McVirtConfig().getConfig()['vm_storage_vg']
+    """Returns the node MCVirt volume group"""
+    return MCVirtConfig().getConfig()['vm_storage_vg']
 
   def getDiskConfig(self):
     """Returns the disk configuration for the hard drive"""
@@ -128,8 +128,8 @@ class Base(object):
     """Returns the path of the raw disk image"""
     raise NotImplementedError
 
-  def _getMcVirtConfig(self):
-    """Returns the McVirt configuration for the hard drive object"""
+  def _getMCVirtConfig(self):
+    """Returns the MCVirt configuration for the hard drive object"""
     raise NotImplementedError
 
   def _getBackupLogicalVolume(self):

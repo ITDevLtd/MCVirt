@@ -6,28 +6,28 @@ import json
 from paramiko.client import SSHClient, AutoAddPolicy
 from paramiko.ssh_exception import AuthenticationException
 
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import MCVirtException
 from cluster import Cluster
 from mcvirt.auth import Auth
 
-class RemoteCommandExecutionFailedException(McVirtException):
+class RemoteCommandExecutionFailedException(MCVirtException):
   """A remote command execution fails"""
   pass
 
-class UnknownRemoteCommandException(McVirtException):
+class UnknownRemoteCommandException(MCVirtException):
   """An unknown command was passed to the remote machine"""
   pass
 
-class NodeAuthenticationException(McVirtException):
+class NodeAuthenticationException(MCVirtException):
   """Incorrect password supplied for remote node"""
   pass
 
-class CouldNotConnectToNodeException(McVirtException):
+class CouldNotConnectToNodeException(MCVirtException):
   """Could not connect to remove cluster node"""
   pass
 
 class Remote:
-  """A class to perform remote commands on McVirt nodes"""
+  """A class to perform remote commands on MCVirt nodes"""
 
   REMOTE_MCVIRT_COMMAND = '/usr/lib/mcvirt/mcvirt-remote.py'
 
@@ -55,7 +55,7 @@ class Remote:
       remote = None
 
     elif (action == 'cluster-cluster-removeNodeConfiguration'):
-      # Removes a remove McVirt node from the local configuration
+      # Removes a remove MCVirt node from the local configuration
       cluster_instance = Cluster(mcvirt_instance)
       cluster_instance.removeNodeConfiguration(arguments['node'])
 
@@ -256,7 +256,7 @@ class Remote:
       mcvirt_instance.releaseLock()
 
     elif (action == 'close'):
-      # Delete McVirt instance, which removes the lock and force mcvirt-remote
+      # Delete MCVirt instance, which removes the lock and force mcvirt-remote
       # to close
       end_connection = True
 
@@ -329,12 +329,12 @@ class Remote:
       self.connection = ssh_client
 
       if (self.initialise_node):
-        # Run McVirt command
+        # Run MCVirt command
         (self.stdin, self.stdout, self.stderr) = self.connection.exec_command(self.REMOTE_MCVIRT_COMMAND)
 
         # Check the remote lock
         if (self.runRemoteCommand('checkStatus', None) != ['0']):
-          raise McVirtException('Remote node locked: %s' % self.name)
+          raise MCVirtException('Remote node locked: %s' % self.name)
 
   def runRemoteCommand(self, action, arguments):
     """Prepare and run a remote command on a cluster node"""

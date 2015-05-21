@@ -5,11 +5,11 @@
 import json
 import os
 
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import MCVirtException
 from mcvirt.config_file import ConfigFile
 
 class VirtualMachineConfig(ConfigFile):
-  """Provides operations to obtain and set the McVirt configuration for a VM"""
+  """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
   def __init__(self, vm_object):
     """Sets member variables and obtains libvirt domain object"""
@@ -17,7 +17,7 @@ class VirtualMachineConfig(ConfigFile):
     self.vm_object = vm_object
     self.config_file = VirtualMachineConfig.getConfigPath(self.vm_object.name)
     if (not os.path.isfile(self.config_file)):
-      raise McVirtException('Could not find config file for %s' % vm_object.name)
+      raise MCVirtException('Could not find config file for %s' % vm_object.name)
 
     # Perform upgrade of configuration
     self.upgrade(vm_object.mcvirt_object)

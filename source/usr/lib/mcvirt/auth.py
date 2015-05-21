@@ -5,10 +5,10 @@
 import os
 from enum import Enum
 from texttable import Texttable
-from mcvirt_config import McVirtConfig
+from mcvirt_config import MCVirtConfig
 
 class Auth:
-  """Provides authentication and permissions for performing functions within McVirt"""
+  """Provides authentication and permissions for performing functions within MCVirt"""
 
   PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM', 'MANAGE_VM_USERS',
                                      'VIEW_VNC_CONSOLE', 'CLONE_VM', 'DELETE_CLONE', 'MANAGE_HOST_NETWORKS',
@@ -45,9 +45,9 @@ class Auth:
   @staticmethod
   def getUsername():
     """Obtains the username of the current user"""
-    from mcvirt import McVirtException
+    from mcvirt import MCVirtException
 
-    # Ensure that McVirt is effectively running as root
+    # Ensure that MCVirt is effectively running as root
     if (os.geteuid() == 0):
 
       # If SUDO_USER has been set, then it must have been run
@@ -68,35 +68,35 @@ class Auth:
   def checkRootPrivileges():
     """Ensures that the user is either running as root
     or using sudo"""
-    from mcvirt import McVirtException
+    from mcvirt import MCVirtException
     if (not Auth.getUsername()):
-      raise McVirtException('McVirt must be run using sudo')
+      raise MCVirtException('MCVirt must be run using sudo')
     else:
       return True
 
   def assertPermission(self, permission_enum, vm_object = None):
     """Uses checkPermission function to determine if a user has a given permission
     and throws an exception if the permission is not present"""
-    from mcvirt import McVirtException
+    from mcvirt import MCVirtException
 
     if (self.checkPermission(permission_enum, vm_object)):
       return True
     else:
       # If the permission has not been found, throw an exception explaining that
       # the user does not have permission
-      raise McVirtException('User does not have the required permission: %s' % permission_enum.name)
+      raise MCVirtException('User does not have the required permission: %s' % permission_enum.name)
 
   def checkPermission(self, permission_enum, vm_object = None):
-    """Checks if the user has a given permission, either globally through McVirt or for a
+    """Checks if the user has a given permission, either globally through MCVirt or for a
     given VM"""
-    from mcvirt import McVirtException
+    from mcvirt import MCVirtException
 
     # If the user is a superuser, all permissions are attached to the user
     if (self.isSuperuser()):
       return True
 
     # Check the global permissions configuration to determine if the user has been granted the permission
-    mcvirt_config = McVirtConfig()
+    mcvirt_config = MCVirtConfig()
     mcvirt_permissions = mcvirt_config.getPermissionConfig()
     if (self.checkPermissionInConfig(mcvirt_permissions, Auth.getUsername(), permission_enum)):
       return True
@@ -119,7 +119,7 @@ class Auth:
 
       # Check that the group, defined in the VM, is defined in this class
       if (permission_group not in Auth.PERMISSION_GROUPS.keys()):
-        raise McVirtException('Permissions group, defined in %s, %s, does not exist' % (vm_object.getName(), permission_group))
+        raise MCVirtException('Permissions group, defined in %s, %s, does not exist' % (vm_object.getName(), permission_group))
 
       # Check if user is part of the group and the group contains
       # the required permission
@@ -130,23 +130,23 @@ class Auth:
     return False
 
   def isSuperuser(self):
-    """Determines if the current user is a superuser of McVirt"""
+    """Determines if the current user is a superuser of MCVirt"""
     superusers = self.getSuperusers()
     username = Auth.getUsername()
     return ((username in superusers) or (username == 'root'))
 
   def getSuperusers(self):
     """Returns a list of superusers"""
-    mcvirt_config = McVirtConfig()
+    mcvirt_config = MCVirtConfig()
     return mcvirt_config.getConfig()['superusers']
 
   def addSuperuser(self, username, ignore_duplicate=None):
     """Adds a new superuser"""
     # Ensure the user is a superuser
     if (not self.isSuperuser()):
-      raise McVirtException('User must be a superuser to manage superusers')
+      raise MCVirtException('User must be a superuser to manage superusers')
 
-    mcvirt_config = McVirtConfig()
+    mcvirt_config = MCVirtConfig()
 
     # Ensure user is not already a superuser
     if (username not in self.getSuperusers()):
@@ -154,24 +154,24 @@ class Auth:
         config['superusers'].append(username)
       mcvirt_config.updateConfig(updateConfig, 'Added superuser \'%s\'' % username)
     elif (not ignore_duplicate):
-      raise McVirtException('User \'%s\' is already a superuser' % username)
+      raise MCVirtException('User \'%s\' is already a superuser' % username)
 
   def addUserPermissionGroup(self, mcvirt_object, permission_group, username, vm_object=None, ignore_duplicate=False):
     """Adds a user to a permissions group on a VM object"""
-    from mcvirt import McVirtException
+    from mcvirt import MCVirtException
     from cluster.cluster import Cluster
 
     # Check if user running script is able to add users to permission group
     if not (self.isSuperuser() or
             (vm_object and self.assertPermission(Auth.PERMISSIONS.MANAGE_VM_USERS, vm_object) and
              permission_group == 'user')):
-      raise McVirtException('VM owners cannot add manager other owners')
+      raise MCVirtException('VM owners cannot add manager other owners')
 
     # Check if user is already in the group
     if (vm_object):
       config_object = vm_object.getConfigObject()
     else:
-      config_object = McVirtConfig()
+      config_object = MCVirtConfig()
 
     permission_config = config_object.getPermissionConfig()
     if (username not in self.getUsersInPermissionGroup(permission_group, vm_object)):
@@ -197,11 +197,11 @@ class Auth:
                                           })
 
     elif (not ignore_duplicate):
-      raise McVirtException('User \'%s\' already in group \'%s\'' % (username, permission_group))
+      raise MCVirtException('User \'%s\' already in group \'%s\'' % (username, permission_group))
 
   def deleteUserPermissionGroup(self, mcvirt_object, permission_group, username, vm_object):
     """Removes a user from a permissions group on a VM object"""
-    from mcvirt import McVirtException
+    from mcvirt import MCVirtException
     from cluster.cluster import Cluster
 
     # Check if user running script is able to remove users to permission group
@@ -228,7 +228,7 @@ class Auth:
                                            'vm_name': vm_object.getName()
                                           })
       else:
-        raise McVirtException('User \'%s\' not in group \'%s\'' % (username, permission_group))
+        raise MCVirtException('User \'%s\' not in group \'%s\'' % (username, permission_group))
 
   def getPermissionGroups(self):
     """Returns a list of user groups"""
@@ -250,14 +250,14 @@ class Auth:
   def getUsersInPermissionGroup(self, permission_group, vm_object = None):
     """Obtains a list of users in a given group, either in the global permissions or
        for a specific VM"""
-    from mcvirt import McVirtException
+    from mcvirt import MCVirtException
     if (vm_object):
       permission_config = vm_object.getConfigObject().getPermissionConfig()
     else:
-      mcvirt_config = McVirtConfig()
+      mcvirt_config = MCVirtConfig()
       permission_config = mcvirt_config.getPermissionConfig()
 
     if (permission_group in permission_config.keys()):
       return permission_config[permission_group]
     else:
-      raise McVirtException('Permission group \'%s\' does not exist' % permission_group)
+      raise MCVirtException('Permission group \'%s\' does not exist' % permission_group)

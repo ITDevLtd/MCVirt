@@ -10,7 +10,7 @@ Increase Disk Size
 
 
 * Power off the VM
-* Use McVirt to increase the size of the disk - you will need to find the disk ID, which can be found by looking at the VM configuration (in most cases where a VM has one disk attached to it, it should be 1):
+* Use MCVirt to increase the size of the disk - you will need to find the disk ID, which can be found by looking at the VM configuration (in most cases where a VM has one disk attached to it, it should be 1):
 
   ::
     
@@ -41,7 +41,7 @@ Add Additional Disk
 `````````````````````````````````````
 
 
-* Use the following McVirt command to add an additional disk to a VM:
+* Use the following MCVirt command to add an additional disk to a VM:
 
   ::
     
@@ -56,7 +56,7 @@ Add/Remove Network Adapter
 `````````````````````````````````````````````````````
 
 
-* Use the following McVirt command to add/remove network adapters to/from a VM
+* Use the following MCVirt command to add/remove network adapters to/from a VM
 
 * Add an adapter:
 
@@ -84,7 +84,7 @@ Attaching ISO
 
 
 * ISO images can be attached to the cdrom drive of a VM whilst booting the VM
-* Use the McVirt utility to start the VM, using the '--iso' parameter to define the ISO image to be attached to the VM
+* Use the MCVirt utility to start the VM, using the '--iso' parameter to define the ISO image to be attached to the VM
 
   ::
     

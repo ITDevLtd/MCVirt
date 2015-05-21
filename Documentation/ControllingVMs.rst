@@ -3,7 +3,7 @@ Controlling VMs
 ===============
 
 
-* All commands must be performed on the McVirt host, which can be accessed via SSH using LDAP credentials.
+* All commands must be performed on the MCVirt host, which can be accessed via SSH using LDAP credentials.
 
 
 
@@ -11,7 +11,7 @@ Start VM
 --------
 
 
-* Use the McVirt utility to start VMs:
+* Use the MCVirt utility to start VMs:
 
   ::
     
@@ -25,7 +25,7 @@ Stop VM
 -------
 
 
-* Use the McVirt utility to stop VMs:
+* Use the MCVirt utility to stop VMs:
 
   ::
     
@@ -54,7 +54,7 @@ Get VM information
 ------------------
 
 
-* In order to view information about a VM, use the 'info' parameter for McVirt:
+* In order to view information about a VM, use the 'info' parameter for MCVirt:
 
   ::
     

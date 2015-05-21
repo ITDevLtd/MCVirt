@@ -5,5 +5,5 @@ Maintainer: I.T. Dev Ltd <admin@itdev.co.uk>
 Architecture: all
 Depends: python, python-libvirt, qemu
 Description: Virtualization host management utility.
- McVirt is a tool for controlling VMs built around
+ MCVirt is a tool for controlling VMs built around
  libvirt, using kvn backed virtualisation.

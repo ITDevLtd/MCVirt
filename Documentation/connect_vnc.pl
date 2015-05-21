@@ -19,7 +19,7 @@ sub port_available
   bind($sock, $name) and return 1;
 }
 
-# Script to connect to VNC display of a VM hosted on an McVirt host.
+# Script to connect to VNC display of a VM hosted on an MCVirt host.
 #  * Two SSH connections are created:
 #    * One to determine the port on which the VNC session is being hosted.
 #    * The second forwards a local port to connect to the VNC server,
@@ -27,7 +27,7 @@ sub port_available
 #  * Whilst the second SSH sessoin is open, a vncviewer is started to
 #    connect to the VNC console of the VM
 
-# Obtain the VM name from the first argument and, optionally, McVirt host from second
+# Obtain the VM name from the first argument and, optionally, MCVirt host from second
 my $vm_name = shift || die 'Must provide VM name as first parameter';
 my $mcvirt_host = shift || die 'Must specify MCVirt node as second parameter';
 

@@ -7,16 +7,16 @@ import os
 
 from config_file import ConfigFile
 
-class McVirtConfig(ConfigFile):
-  """Provides operations to obtain and set the McVirt configuration for a VM"""
+class MCVirtConfig(ConfigFile):
+  """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
   def __init__(self, mcvirt_instance=None, perform_upgrade=False):
     """Sets member variables and obtains libvirt domain object"""
-    from mcvirt import McVirt
+    from mcvirt import MCVirt
 
-    self.config_file = McVirt.NODE_STORAGE_DIR + '/config.json'
+    self.config_file = MCVirt.NODE_STORAGE_DIR + '/config.json'
 
-    if (not os.path.isdir(McVirt.NODE_STORAGE_DIR)):
+    if (not os.path.isdir(MCVirt.NODE_STORAGE_DIR)):
       self._createConfigDirectories()
 
     if (not os.path.isfile(self.config_file)):
@@ -29,16 +29,16 @@ class McVirtConfig(ConfigFile):
   def _createConfigDirectories(self):
     """Creates the configuration directories for the node"""
     # Initialise the git repository
-    from mcvirt import McVirt
+    from mcvirt import MCVirt
     import pwd
 
-    os.mkdir(McVirt.NODE_STORAGE_DIR)
-    os.mkdir(McVirt.BASE_VM_STORAGE_DIR)
-    os.mkdir(McVirt.ISO_STORAGE_DIR)
+    os.mkdir(MCVirt.NODE_STORAGE_DIR)
+    os.mkdir(MCVirt.BASE_VM_STORAGE_DIR)
+    os.mkdir(MCVirt.ISO_STORAGE_DIR)
 
-    # Set permission on McVirt directory
-    os.chmod(McVirt.BASE_STORAGE_DIR, 0600)
-    os.chown(McVirt.BASE_STORAGE_DIR, pwd.getpwnam('libvirt-qemu').pw_uid, 0)
+    # Set permission on MCVirt directory
+    os.chmod(MCVirt.BASE_STORAGE_DIR, 0600)
+    os.chown(MCVirt.BASE_STORAGE_DIR, pwd.getpwnam('libvirt-qemu').pw_uid, 0)
 
   def create(self):
     """Creates a basic VM configuration for new VMs"""
@@ -76,7 +76,7 @@ class McVirtConfig(ConfigFile):
     }
 
     # Write the configuration to disk
-    McVirtConfig._writeJSON(json_data, self.config_file)
+    MCVirtConfig._writeJSON(json_data, self.config_file)
 
   def _upgrade(self, mcvirt_instance, config):
     """Perform an upgrade of the configuration file"""

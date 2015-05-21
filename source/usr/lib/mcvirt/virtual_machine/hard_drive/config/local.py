@@ -25,9 +25,9 @@ class Local(Base):
       disk_id = self.getId()
     return 'mcvirt_vm-%s-disk-%s' % (vm_name, disk_id)
 
-  def _getMcVirtConfig(self):
-    """Returns the McVirt hard drive configuration for the Local hard drive"""
-    # There are no configurations for the disk stored by McVirt
+  def _getMCVirtConfig(self):
+    """Returns the MCVirt hard drive configuration for the Local hard drive"""
+    # There are no configurations for the disk stored by MCVirt
     return {}
 
   def _getBackupLogicalVolume(self):

@@ -2,7 +2,7 @@
 # Copyright I.T. Dev Ltd 2014
 # http://www.itdev.co.uk
 #
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import MCVirtException
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import DRBD
@@ -10,7 +10,7 @@ from mcvirt.virtual_machine.hard_drive.config.base import Base as ConfigBase
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 
-class UnknownStorageTypeException(McVirtException):
+class UnknownStorageTypeException(MCVirtException):
   """An hard drive object with an unknown disk type has been initialised"""
   pass
 
@@ -50,7 +50,7 @@ class Factory():
 
   @staticmethod
   def getStorageTypes():
-    """Returns the available storage types that McVirt provides"""
+    """Returns the available storage types that MCVirt provides"""
     return Factory.STORAGE_TYPES
 
   @staticmethod

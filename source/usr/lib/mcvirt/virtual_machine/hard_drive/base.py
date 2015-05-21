@@ -2,33 +2,33 @@
 # Copyright I.T. Dev Ltd 2014
 # http://www.itdev.co.uk
 #
-from mcvirt.mcvirt_config import McVirtConfig
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.mcvirt import MCVirtException
 import xml.etree.ElementTree as ET
 import os
-from mcvirt.system import System, McVirtCommandException
+from mcvirt.system import System, MCVirtCommandException
 
-class HardDriveDoesNotExistException(McVirtException):
+class HardDriveDoesNotExistException(MCVirtException):
   """The given hard drive does not exist"""
   pass
 
 
-class StorageTypesCannotBeMixedException(McVirtException):
+class StorageTypesCannotBeMixedException(MCVirtException):
   """Storage types cannot be mixed within a single VM"""
   pass
 
 
-class LogicalVolumeDoesNotExistException(McVirtException):
+class LogicalVolumeDoesNotExistException(MCVirtException):
   """A required logical volume does not exist"""
   pass
 
 
-class BackupSnapshotAlreadyExistsException(McVirtException):
+class BackupSnapshotAlreadyExistsException(MCVirtException):
   """The backup snapshot for the logical volume already exists"""
   pass
 
 
-class BackupSnapshotDoesNotExistException(McVirtException):
+class BackupSnapshotDoesNotExistException(MCVirtException):
   """The backup snapshot for the logical volume does not exist"""
   pass
 
@@ -63,7 +63,7 @@ class Base(object):
     # Remove backing storage
     self._removeStorage()
 
-    # Remove the hard drive from the McVirt VM configuration
+    # Remove the hard drive from the MCVirt VM configuration
     Factory.getClass(self.getType())._removeFromVirtualMachine(self.getConfigObject(), unregister=False)
 
   def duplicate(self, destination_vm_object):
@@ -83,15 +83,15 @@ class Base(object):
     command_args = ('dd', 'if=%s' % source_drbd_block_device, 'of=%s' % destination_drbd_block_device, 'bs=1M')
     try:
       (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-    except McVirtCommandException, e:
+    except MCVirtCommandException, e:
       new_disk_object.delete()
-      raise McVirtException("Error whilst duplicating disk logical volume:\n" + str(e))
+      raise MCVirtException("Error whilst duplicating disk logical volume:\n" + str(e))
 
     return new_disk_object
 
   @staticmethod
   def _removeFromVirtualMachine(config_object, unregister=False):
-    """Removes the hard drive configuration from the McVirt VM configuration"""
+    """Removes the hard drive configuration from the MCVirt VM configuration"""
     # If the VM that the hard drive is attached to is registered on the local
     # node, remove the hard drive from the LibVirt configuration
     if (unregister and config_object.vm_object.isRegisteredLocally()):
@@ -132,7 +132,7 @@ class Base(object):
 
     # Update VM config file
     def addDiskToConfig(vm_config):
-      vm_config['hard_disks'][str(config_object.getId())] = config_object._getMcVirtConfig()
+      vm_config['hard_disks'][str(config_object.getId())] = config_object._getMCVirtConfig()
 
     config_object.vm_object.getConfigObject().updateConfig(addDiskToConfig,
                                                            'Added disk \'%s\' to \'%s\'' %
@@ -190,10 +190,10 @@ class Base(object):
                                   'name': name,
                                   'size': size})
 
-    except McVirtCommandException, e:
+    except MCVirtCommandException, e:
       # Remove any logical volumes that had been created if one of them fails
       Base._removeLogicalVolume(config_object, name, ignore_non_existent=True, perform_on_nodes=perform_on_nodes)
-      raise McVirtException("Error whilst creating disk logical volume:\n" + str(e))
+      raise MCVirtException("Error whilst creating disk logical volume:\n" + str(e))
 
   @staticmethod
   def _removeLogicalVolume(config_object, name, ignore_non_existent=False, perform_on_nodes=False):
@@ -216,8 +216,8 @@ class Base(object):
                                  {'config': config_object._dumpConfig(),
                                   'name': name, 'ignore_non_existent': ignore_non_existent},
                                  nodes=nodes)
-    except McVirtCommandException, e:
-      raise McVirtException("Error whilst removing disk logical volume:\n" + str(e))
+    except MCVirtCommandException, e:
+      raise MCVirtException("Error whilst removing disk logical volume:\n" + str(e))
 
   @staticmethod
   def _getLogicalVolumeSize(config_object, name):
@@ -226,8 +226,8 @@ class Base(object):
     command_args = ('lvs', '--nosuffix', '--noheadings', '--units', 'm', '--options', 'lv_size', config_object._getLogicalVolumePath(name))
     try:
       (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-    except McVirtCommandException, e:
-      raise McVirtException("Error whilst obtaining the size of the logical volume:\n" + str(e))
+    except MCVirtCommandException, e:
+      raise MCVirtException("Error whilst obtaining the size of the logical volume:\n" + str(e))
 
     lv_size = command_output.strip().split('.')[0]
     return int(lv_size)
@@ -255,8 +255,8 @@ class Base(object):
                                  {'config': config_object._dumpConfig(),
                                   'name': name, 'size': size},
                                  nodes=nodes)
-    except McVirtCommandException, e:
-      raise McVirtException("Error whilst zeroing logical volume:\n" + str(e))
+    except MCVirtCommandException, e:
+      raise MCVirtException("Error whilst zeroing logical volume:\n" + str(e))
 
   @staticmethod
   def _ensureLogicalVolumeExists(config_object, name):
@@ -305,8 +305,8 @@ class Base(object):
                                  {'config': config_object._dumpConfig(),
                                   'name': name},
                                  nodes=nodes)
-    except McVirtCommandException, e:
-      raise McVirtException("Error whilst activating logical volume:\n" + str(e))
+    except MCVirtCommandException, e:
+      raise MCVirtException("Error whilst activating logical volume:\n" + str(e))
 
   def createBackupSnapshot(self):
     """Creates a snapshot of the logical volume for backing up and locks the VM"""

@@ -9,10 +9,10 @@ from lockfile import FileLock
 from texttable import Texttable
 import socket
 
-from mcvirt_config import McVirtConfig
+from mcvirt_config import MCVirtConfig
 
-class McVirt:
-  """Provides general McVirt functions"""
+class MCVirt:
+  """Provides general MCVirt functions"""
 
   TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
   BASE_STORAGE_DIR = '/var/lib/mcvirt'
@@ -26,8 +26,8 @@ class McVirt:
     """Checks lock file and performs initial connection to libvirt"""
     self.libvirt_uri = uri
     self.connection = None
-    # Create an McVirt config instance and force an upgrade
-    config_instance = McVirtConfig(perform_upgrade=True, mcvirt_instance=self)
+    # Create an MCVirt config instance and force an upgrade
+    config_instance = MCVirtConfig(perform_upgrade=True, mcvirt_instance=self)
 
     # Configure custom username - used for unittests
     self.ignore_drbd = False
@@ -49,7 +49,7 @@ class McVirt:
     self.getLibvirtConnection()
 
   def __del__(self):
-    """Removes McVirt lock file on object destruction"""
+    """Removes MCVirt lock file on object destruction"""
     # Disconnect from each of the nodes
     for connection in self.remote_nodes:
       self.remote_nodes[connection] = None
@@ -59,7 +59,7 @@ class McVirt:
     self.releaseLock()
 
   def obtainLock(self, timeout=2):
-    """Obtains the McVirt lock file"""
+    """Obtains the MCVirt lock file"""
     # Create lock file, if it does not exist
     if (not os.path.isfile(self.LOCK_FILE)):
       if (not os.path.isdir(self.LOCK_FILE_DIR)):
@@ -72,7 +72,7 @@ class McVirt:
 
     # Check if lockfile object is already locked
     if (self.obtained_filelock or self.lockfile_object.is_locked()):
-      raise McVirtException('An instance of McVirt is already running')
+      raise MCVirtException('An instance of MCVirt is already running')
 
     try:
       self.lockfile_object.acquire(timeout=timeout)
@@ -83,10 +83,10 @@ class McVirt:
 
       self.obtained_filelock = True
     except:
-      raise McVirtException('An instance of McVirt is already running')
+      raise MCVirtException('An instance of MCVirt is already running')
 
   def releaseLock(self):
-    """Releases the McVirt lock file"""
+    """Releases the MCVirt lock file"""
     if (self.obtained_filelock):
       if (self.initialise_nodes):
         for remote_node in self.remote_nodes:
@@ -104,11 +104,11 @@ class McVirt:
     if (self.connection == None):
       self.connection = libvirt.open(self.libvirt_uri)
       if (self.connection == None):
-        raise McVirtException('Failed to open connection to the hypervisor')
+        raise MCVirtException('Failed to open connection to the hypervisor')
     return self.connection
 
   def initialiseNodes(self):
-    """Returns the status of the McVirt 'initialise_nodes' flag"""
+    """Returns the status of the MCVirt 'initialise_nodes' flag"""
     return self.initialise_nodes
 
   def getAuthObject(self):
@@ -161,6 +161,6 @@ class McVirt:
                      node_status))
     print table.draw()
 
-class McVirtException(Exception):
-  """Provides an exception to be thrown for errors in McVirt"""
+class MCVirtException(Exception):
+  """Provides an exception to be thrown for errors in MCVirt"""
   pass

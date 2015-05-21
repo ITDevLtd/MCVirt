@@ -6,7 +6,7 @@ import os
 
 from mcvirt.virtual_machine.hard_drive.config.base import Base
 from mcvirt.node.drbd import DRBD as NodeDRBD
-from mcvirt.mcvirt import McVirt
+from mcvirt.mcvirt import MCVirt
 from mcvirt.system import System
 
 class DRBD(Base):
@@ -17,7 +17,7 @@ class DRBD(Base):
   INITIAL_MINOR = 1
   DRBD_RAW_SUFFIX = 'raw'
   DRBD_META_SUFFIX = 'meta'
-  DRBD_CONFIG_TEMPLATE = McVirt.TEMPLATE_DIR + '/drbd_resource.conf'
+  DRBD_CONFIG_TEMPLATE = MCVirt.TEMPLATE_DIR + '/drbd_resource.conf'
 
   def __init__(self, vm_object, disk_id=None, drbd_minor=None, drbd_port=None, config=None, registered=False):
     """Set member variables and run the base init method"""
@@ -174,8 +174,8 @@ class DRBD(Base):
     # Convert from float to int and return
     return int(meta_size_mebibytes)
 
-  def _getMcVirtConfig(self):
-    """Returns the McVirt hard drive configuration for the DRBD hard drive"""
+  def _getMCVirtConfig(self):
+    """Returns the MCVirt hard drive configuration for the DRBD hard drive"""
     mcvirt_config = \
     {
       'drbd_port': self.config['drbd_port'],

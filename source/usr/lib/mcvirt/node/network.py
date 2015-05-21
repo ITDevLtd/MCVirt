@@ -2,22 +2,22 @@
 # Copyright I.T. Dev Ltd 2014
 # http://www.itdev.co.uk
 #
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import MCVirtException
 from mcvirt.auth import Auth
 
 import xml.etree.ElementTree as ET
 
-class NetworkDoesNotExistException(McVirtException):
+class NetworkDoesNotExistException(MCVirtException):
   """Network does not exist"""
   pass
 
 
-class NetworkAlreadyExistsException(McVirtException):
+class NetworkAlreadyExistsException(MCVirtException):
   """Network already exists with the same name"""
   pass
 
 
-class NetworkUtilizedException(McVirtException):
+class NetworkUtilizedException(MCVirtException):
   """Network is utilized by virtual machines"""
   pass
 
@@ -37,8 +37,8 @@ class Network:
   @staticmethod
   def getConfig():
     """Returns the network configuration for the node"""
-    from mcvirt.mcvirt_config import McVirtConfig
-    mcvirt_config = McVirtConfig().getConfig()
+    from mcvirt.mcvirt_config import MCVirtConfig
+    mcvirt_config = MCVirtConfig().getConfig()
     return mcvirt_config['networks']
 
   def delete(self):
@@ -57,7 +57,7 @@ class Network:
     try:
       self._getLibVirtObject().undefine()
     except:
-      raise McVirtException('Failed to delete network from libvirt')
+      raise MCVirtException('Failed to delete network from libvirt')
 
     if (self.mcvirt_object.initialiseNodes()):
       # Update nodes
@@ -65,11 +65,11 @@ class Network:
       cluster = Cluster(self.mcvirt_object)
       cluster.runRemoteCommand('node-network-delete', {'network_name': self.getName()})
 
-    # Update McVirt config
+    # Update MCVirt config
     def updateConfig(config):
       del config['networks'][self.getName()]
-    from mcvirt.mcvirt_config import McVirtConfig
-    McVirtConfig().updateConfig(updateConfig, 'Deleted network \'%s\'' % self.getName())
+    from mcvirt.mcvirt_config import MCVirtConfig
+    MCVirtConfig().updateConfig(updateConfig, 'Deleted network \'%s\'' % self.getName())
 
   def _checkConnectedVirtualMachines(self):
     """Returns an array of VM objects that have an interface connected to the network"""
@@ -144,7 +144,7 @@ class Network:
     try:
       mcvirt_object.getLibvirtConnection().networkDefineXML(network_xml_string)
     except:
-      raise McVirtException('An error occurred whilst registering network with LibVirt')
+      raise MCVirtException('An error occurred whilst registering network with LibVirt')
 
     if (mcvirt_object.initialiseNodes()):
       # Update nodes
@@ -154,8 +154,8 @@ class Network:
                                {'network_name': name,
                                 'physical_interface': physical_interface})
 
-    # Update McVirt config
+    # Update MCVirt config
     def updateConfig(config):
       config['networks'][name] = physical_interface
-    from mcvirt.mcvirt_config import McVirtConfig
-    McVirtConfig().updateConfig(updateConfig, 'Created network \'%s\'' % name)
+    from mcvirt.mcvirt_config import MCVirtConfig
+    MCVirtConfig().updateConfig(updateConfig, 'Created network \'%s\'' % name)

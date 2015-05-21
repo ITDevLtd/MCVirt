@@ -10,7 +10,7 @@ import argparse
 import socket
 
 sys.path.insert(0, '/usr/lib')
-from mcvirt.mcvirt import McVirtException
+from mcvirt.mcvirt import MCVirtException
 from mcvirt.parser import Parser
 from mcvirt.auth import Auth
 
@@ -19,16 +19,16 @@ if __name__ == "__main__":
   parser_object = Parser()
 
   try:
-    # Ensure that the user is running McVirt as root/sudo
+    # Ensure that the user is running MCVirt as root/sudo
     Auth.checkRootPrivileges()
-  except McVirtException, e:
+  except MCVirtException, e:
     print e.message
     sys.exit(1)
 
   if (len(sys.argv) > 1):
     try:
       parser_object.parse_arguments()
-    except McVirtException, e:
+    except MCVirtException, e:
       print e.message
       sys.exit(1)
   else:
@@ -40,6 +40,6 @@ if __name__ == "__main__":
       else:
         try:
           parser_object.parse_arguments(command)
-        except McVirtException, e:
+        except MCVirtException, e:
           print e.message
       sys.stdout.flush()

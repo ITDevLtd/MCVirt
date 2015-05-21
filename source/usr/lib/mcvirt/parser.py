@@ -4,7 +4,7 @@
 #
 import argparse
 import sys
-from mcvirt import McVirt, McVirtException
+from mcvirt import MCVirt, MCVirtException
 from virtual_machine.virtual_machine import VirtualMachine, LockStates
 from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from virtual_machine.disk_drive import DiskDrive
@@ -20,12 +20,12 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
   """Overrides the ArgumentParser class, in order to change the handling of errors"""
 
   def error(self, message):
-    """Overrides the error function - forcing the argument parser to thrown an McVirt exception on error"""
-    raise McVirtException(message)
+    """Overrides the error function - forcing the argument parser to thrown an MCVirt exception on error"""
+    raise MCVirtException(message)
 
 
 class Parser:
-  """Provides an argument parser for McVirt"""
+  """Provides an argument parser for MCVirt"""
 
   def __init__(self, print_status=True):
     """Configures the argument parser object"""
@@ -33,7 +33,7 @@ class Parser:
     self.parent_parser = ThrowingArgumentParser(add_help=False)
 
     # Create an argument parser object
-    self.parser = ThrowingArgumentParser(description='Manage the McVirt host')
+    self.parser = ThrowingArgumentParser(description='Manage the MCVirt host')
     self.subparsers = self.parser.add_subparsers(dest='action', metavar='Action', help='Action to perform')
 
     # Add arguments for starting a VM
@@ -102,14 +102,14 @@ class Parser:
     self.permission_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     # Create subparser for network-related commands
-    self.network_parser = self.subparsers.add_parser('network', help='Manage the virtual networks on the McVirt host', parents=[self.parent_parser])
+    self.network_parser = self.subparsers.add_parser('network', help='Manage the virtual networks on the MCVirt host', parents=[self.parent_parser])
     self.network_subparser = self.network_parser.add_subparsers(dest='network_action', metavar='Action', help='Action to perform on the network')
-    self.network_create_parser = self.network_subparser.add_parser('create', help='Create a network on the McVirt host')
+    self.network_create_parser = self.network_subparser.add_parser('create', help='Create a network on the MCVirt host')
     self.network_create_parser.add_argument('--interface', dest='interface', metavar='Interface', type=str, required=True,
       help='Physical interface on the system to bridge to the virtual network')
     self.network_create_parser.add_argument('network', metavar='Network Name', type=str,
       help='Name of the virtual network to be created')
-    self.network_delete_parser = self.network_subparser.add_parser('delete', help='Delete a network on the McVirt host')
+    self.network_delete_parser = self.network_subparser.add_parser('delete', help='Delete a network on the MCVirt host')
     self.network_delete_parser.add_argument('network', metavar='Network Name', type=str,
       help='Name of the virtual network to be removed')
 
@@ -148,14 +148,14 @@ class Parser:
     self.migrate_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     # Create subparser for cluster-related commands
-    self.cluster_parser = self.subparsers.add_parser('cluster', help='Manage an McVirt cluster and the connected nodes', parents=[self.parent_parser])
+    self.cluster_parser = self.subparsers.add_parser('cluster', help='Manage an MCVirt cluster and the connected nodes', parents=[self.parent_parser])
     self.cluster_subparser = self.cluster_parser.add_subparsers(dest='cluster_action', metavar='Action', help='Action to perform on the cluster')
-    self.node_add_parser = self.cluster_subparser.add_parser('add-node', help='Adds a node to the McVirt cluster')
+    self.node_add_parser = self.cluster_subparser.add_parser('add-node', help='Adds a node to the MCVirt cluster')
     self.node_add_parser.add_argument('--node', dest='node', metavar='node', type=str, required=True,
       help='Hostname of the remote node to add to the cluster')
     self.node_add_parser.add_argument('--ip-address', dest='ip_address', metavar='IP Address', type=str, required=True,
       help='Management IP address of the remote node')
-    self.node_remove_parser = self.cluster_subparser.add_parser('remove-node', help='Removes a node to the McVirt cluster')
+    self.node_remove_parser = self.cluster_subparser.add_parser('remove-node', help='Removes a node to the MCVirt cluster')
     self.node_remove_parser.add_argument('--node', dest='node', metavar='node', type=str, required=True,
       help='Hostname of the remote node to remove from the cluster')
 
@@ -192,7 +192,7 @@ class Parser:
     self.lock_mutual_exclusive_group.add_argument('--unlock', dest='unlock', help='Unlocks a VM', action='store_true')
     self.lock_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
-    self.exit_parser = self.subparsers.add_parser('exit', help='Exits the McVirt shell', parents=[self.parent_parser])
+    self.exit_parser = self.subparsers.add_parser('exit', help='Exits the MCVirt shell', parents=[self.parent_parser])
 
   def printStatus(self, status):
     """Prints if the user has specified that the parser should
@@ -210,12 +210,12 @@ class Parser:
     args = self.parser.parse_args(script_args)
     action = args.action
 
-    # Get an instance of McVirt
+    # Get an instance of MCVirt
     if (mcvirt_instance == None):
       # Add corner-case to allow host info command to not start
-      # the McVirt object, so that it can view the status of nodes in the cluster
+      # the MCVirt object, so that it can view the status of nodes in the cluster
       if not (action == 'info' and args.vm_name is None):
-        mcvirt_instance = McVirt()
+        mcvirt_instance = MCVirt()
 
     try:
       # Perform functions on the VM based on the action passed to the script
@@ -322,7 +322,7 @@ class Parser:
           else:
             self.printStatus(vm_object.getInfo())
         else:
-          mcvirt_instance = McVirt(initialise_nodes=False)
+          mcvirt_instance = MCVirt(initialise_nodes=False)
           mcvirt_instance.printInfo()
 
       elif (action == 'network'):

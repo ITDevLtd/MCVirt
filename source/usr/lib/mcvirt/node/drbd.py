@@ -7,22 +7,22 @@ import os
 import socket
 import thread
 
-from mcvirt.mcvirt import McVirt, McVirtException
-from mcvirt.mcvirt_config import McVirtConfig
+from mcvirt.mcvirt import MCVirt, MCVirtException
+from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth import Auth
 
-class DRBDNotInstalledException(McVirtException):
+class DRBDNotInstalledException(MCVirtException):
   """DRBD is not installed"""
   pass
 
 
-class DRBDAlreadyEnabled(McVirtException):
+class DRBDAlreadyEnabled(MCVirtException):
   """DRBD has already been enabled on this node"""
   pass
 
 
-class DRBDNotEnabledOnNode(McVirtException):
+class DRBDNotEnabledOnNode(MCVirtException):
   """DRBD volumes cannot be created on a node that has not been configured to use DRBD"""
   pass
 
@@ -32,7 +32,7 @@ class DRBD:
 
   CONFIG_DIRECTORY = '/etc/drbd.d'
   GLOBAL_CONFIG = CONFIG_DIRECTORY + '/global_common.conf'
-  GLOBAL_CONFIG_TEMPLATE = McVirt.TEMPLATE_DIR + '/drbd_global.conf'
+  GLOBAL_CONFIG_TEMPLATE = MCVirt.TEMPLATE_DIR + '/drbd_global.conf'
   DRBDADM = '/sbin/drbdadm'
   INITIAL_PORT = 7789
   INITIAL_MINOR_ID = 1
@@ -86,13 +86,13 @@ class DRBD:
     # Update the local configuration
     def updateConfig(config):
       config['drbd']['enabled'] = 1
-    mcvirt_config = McVirtConfig()
+    mcvirt_config = MCVirtConfig()
     mcvirt_config.updateConfig(updateConfig, 'Enabled DRBD')
 
   @staticmethod
   def getConfig():
     """Returns the global DRBD configuration"""
-    mcvirt_config = McVirtConfig()
+    mcvirt_config = MCVirtConfig()
     if ('drbd' in mcvirt_config.getConfig().keys()):
       return mcvirt_config.getConfig()['drbd']
     else:
@@ -112,7 +112,7 @@ class DRBD:
   @staticmethod
   def generateConfig(mcvirt_instance):
     """Generates the DRBD configuration"""
-    # Obtain the McVirt DRBD config
+    # Obtain the MCVirt DRBD config
     drbd_config = DRBD.getConfig()
 
     # Replace the variables in the template with the local DRBD configuration
@@ -136,11 +136,11 @@ class DRBD:
 
   @staticmethod
   def setSecret(secret):
-    """Sets the DRBD configuration in the global McVirt config file"""
+    """Sets the DRBD configuration in the global MCVirt config file"""
     def updateConfig(config):
       config['drbd']['secret'] = secret
 
-    mcvirt_config = McVirtConfig()
+    mcvirt_config = MCVirtConfig()
     mcvirt_config.updateConfig(updateConfig, 'Set DRBD secret')
 
   @staticmethod
@@ -200,8 +200,8 @@ class DRBDSocket():
 
   def stop(self):
     """Deletes the socket connection object, removes the socket file and
-       the McVirt instance"""
-    # If the McVirt lock has not yet been re-instated, do so
+       the MCVirt instance"""
+    # If the MCVirt lock has not yet been re-instated, do so
     if (not self.mcvirt_instance.obtained_filelock):
       self.mcvirt_instance.obtainLock(timeout=10)
 
@@ -215,7 +215,7 @@ class DRBDSocket():
 
   def server(self):
     """Listens on the socket and marks any resources as out-of-sync"""
-    # Remove McVirt lock, so that other commands can run whilst the verify is taking place
+    # Remove MCVirt lock, so that other commands can run whilst the verify is taking place
     self.mcvirt_instance.releaseLock()
     self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
@@ -228,7 +228,7 @@ class DRBDSocket():
     self.connection, _ = self.socket.accept()
     drbd_resource = self.connection.recv(1024)
     if (drbd_resource):
-      # Re-instate McVirt lock
+      # Re-instate MCVirt lock
       self.mcvirt_instance.obtainLock(timeout=10)
       from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
       hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(self.mcvirt_instance, drbd_resource)
