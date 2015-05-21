@@ -67,7 +67,8 @@ class ConfigFile():
   def upgrade(self, mcvirt_instance):
     """Performs an upgrade of the config file"""
     # Check the version of the configuration file
-    if (self._getVersion() < self.CURRENT_VERSION):
+    current_version = self._getVersion()
+    if (current_version < self.CURRENT_VERSION):
       def upgradeConfig(config):
         # Perform the configuration sub-class specific upgrade
         # tasks
@@ -75,8 +76,8 @@ class ConfigFile():
         # Update the version number of the configuration file to
         # the current version
         config['version'] = self.CURRENT_VERSION
-      self.updateConfig(upgradeConfig, 'Updated configuration file \'%s\' from version \'%s\' to \'%s\''
-                                       (self.getConfig))
+      self.updateConfig(upgradeConfig, 'Updated configuration file \'%s\' from version \'%s\' to \'%s\'' %
+                                       (self.config_file, current_version, self.CURRENT_VERSION))
 
   def _getVersion(self):
     """Returns the version number of the configuration file"""
