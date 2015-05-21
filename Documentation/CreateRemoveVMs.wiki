@@ -6,7 +6,7 @@
 
  * Use the McVirt utility to create VMs:
 {{{
-mcvirt create '<VM Name>'
+sudo mcvirt create '<VM Name>'
 }}}
  * The following parameters are available:
    * '''--memory''' - Amount of memory to allocate to the VM (MB) (required)
@@ -20,11 +20,17 @@ mcvirt create '<VM Name>'
 
 === Cloning a VM ===
 
- * Use the McVirt utility to clone VMs:
-{{{
-mcvirt clone '<New VM Name>' --template '<Template VM Name>'
-}}}
- * '''Note:''' cloning a VM imposes the following restrictions:
+Cloning/duplicating a VM will create an identical replica of the VM.
+
+Although both cloning and duplicating initially may appear to provide the same functionality, there are core differences, based on how they work, which should be noted to decide which function to use.
+
+Both cloning and duplicating a VM can be performed by an '''owner''' of a VM.
+
+=== Cloning ===
+
+ * The hard disk for the VM is '''snapshotted''', which means the VM is cloned very quickly
+ * Cloning VMs is not support for DRBD-backed VMs
+ * Some restricictions are imposed on both the parent and clone, due to the way that the storage is cloned:
    * Parent VMs cannot be:
      * Started
      * Resize (HDDs)
@@ -32,14 +38,29 @@ mcvirt clone '<New VM Name>' --template '<Template VM Name>'
    * VM Clones cannot be:
      * Resized
      * Cloned
-   * All restrictions are lifted once all VM clones have been removed.
+   * '''Note:''' All restrictions are lifted once all VM clones have been removed.
+
+A VM can be cloned by performing the following:
+{{{
+sudo mcvirt clone --parent <Source VM Name> <Target VM Name>
+}}}
+
+=== Duplicating ===
+
+ * Duplicating produces a new VM that is a completely separate entity to the source, meaning that no restrictions are imposed on either VM
+ * Duplicating a VM will copy the entire VM hard drive, which takes longer than cloning a VM
+
+A VM can be duplicated by performing the following:
+{{{
+sudo mcvirt duplicate --parent <Source VM Name> <Target VM Name>
+}}}
 
 === Removing VM ===
 
  * Ensure that the VM is stopped.
  * Use the McVirt utility to remove the VM:
 {{{
-mcvirt delete <VM Name>
+sudo mcvirt delete <VM Name>
 }}}
  * Without any parameters, the VM will simply be 'unregistered' from the host.
  * To remove all data associated with the VM, supply the parameter '''--remove-data'''

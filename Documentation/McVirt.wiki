@@ -2,13 +2,13 @@
 
 == User Guides ==
 
- * [source:/mcvirt/trunk/Documentation/Installation.wiki Installation] - Procedure for building McVirt package, setting up a host with McVirt and performing initial configuration
- * [source:/mcvirt/trunk/Documentation/CreateRemoveVMs.wiki Create/Remove VMs] - Procedures for creating and deleting virtual machines
- * [source:/mcvirt/trunk/Documentation/ControllingVMs.wiki Controlling VMs] - Instructions for using the McVirt script and controlling virtual machines
- * [source:/mcvirt/trunk/Documentation/ModifyingVMs.wiki Modifying VMs] - Procedures for making changes to virtual machine configurations
- * [source:/mcvirt/trunk/Documentation/Permissions.wiki Permissions] - Procedures for configuring permissions within McVirt
-
+ * [source:./Installation.wiki Installation] - Procedure for building McVirt package, setting up a host with McVirt and performing initial configuration
+ * [source:./CreateRemoveVMs.wiki Create/Remove VMs] - Procedures for creating and deleting virtual machines
+ * [source:./ControllingVMs.wiki Controlling VMs] - Instructions for using the McVirt script and controlling virtual machines
+ * [source:./ModifyingVMs.wiki Modifying VMs] - Procedures for making changes to virtual machine configurations
+ * [source:./Permissions.wiki Permissions] - Procedures for configuring permissions within McVirt
+ * [source:./Cluster.wiki Cluster] - Procedures for configuring an McVirt Cluster
 
 == Development Guides ==
 
- * [source:/mcvirt/trunk/Documentation/ReleaseProcedure.wiki Release Procedure] - Procedure for performing an McVirt release
+ * [source:./ReleaseProcedure.wiki Release Procedure] - Procedure for performing an McVirt release

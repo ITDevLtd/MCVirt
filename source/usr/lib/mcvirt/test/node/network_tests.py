@@ -15,12 +15,12 @@ def stopAndDelete(test_object):
   # Determine if the test VM is present and remove it if it is
   if (VirtualMachine._checkExists(test_object.mcvirt.getLibvirtConnection(), test_object.test_vm_name)):
     vm_object = VirtualMachine(test_object.mcvirt, test_object.test_vm_name)
-    if (vm_object.isRunning()):
+    if (vm_object.getState()):
       vm_object.stop()
     vm_object.delete(True)
 
   # Remove any test networks
-  if (Network._checkExists(test_object.mcvirt.getLibvirtConnection(), test_object.test_network_name)):
+  if (Network._checkExists(test_object.test_network_name)):
     network_object = Network(test_object.mcvirt, test_object.test_network_name)
     network_object.delete()
 
@@ -43,7 +43,7 @@ class NetworkTests(unittest.TestCase):
   def setUp(self):
     """Creates various objects"""
     # Create McVirt parser object
-    self.parser = Parser()
+    self.parser = Parser(print_status=False)
 
     # Get an McVirt instance
     self.mcvirt = McVirt()
@@ -59,17 +59,18 @@ class NetworkTests(unittest.TestCase):
     """Stops and tears down any test VMs"""
     # Ensure any test VM is stopped and removed from the machine
     stopAndDelete(self)
+    self.mcvirt = None
 
   def test_create(self):
     """Tests the creation of network through the argument parser"""
     # Ensure network does not exist
-    self.assertFalse(Network._checkExists(self.mcvirt.getLibvirtConnection(), self.test_network_name))
+    self.assertFalse(Network._checkExists(self.test_network_name))
 
     # Create network using parser
-    self.parser.parse_arguments('network create %s --interface=%s' % (self.test_network_name, self.test_physical_interface))
+    self.parser.parse_arguments('network create %s --interface=%s' % (self.test_network_name, self.test_physical_interface), mcvirt_instance=self.mcvirt)
 
     # Ensure network exists
-    self.assertTrue(Network._checkExists(self.mcvirt.getLibvirtConnection(), self.test_network_name))
+    self.assertTrue(Network._checkExists(self.test_network_name))
 
     # Obtain network object
     network_object = Network(self.mcvirt, self.test_network_name)
@@ -87,7 +88,7 @@ class NetworkTests(unittest.TestCase):
 
     # Attempt to create a network with the same name
     with self.assertRaises(NetworkAlreadyExistsException):
-      self.parser.parse_arguments('network create %s --interface=%s' % (self.test_network_name, self.test_physical_interface))
+      self.parser.parse_arguments('network create %s --interface=%s' % (self.test_network_name, self.test_physical_interface), mcvirt_instance=self.mcvirt)
 
     # Delete test network
     network_object = Network(self.mcvirt, self.test_network_name)
@@ -99,19 +100,19 @@ class NetworkTests(unittest.TestCase):
     Network.create(self.mcvirt, self.test_network_name, self.test_physical_interface)
 
     # Remove the network through the argument parser
-    self.parser.parse_arguments('network delete %s' % self.test_network_name)
+    self.parser.parse_arguments('network delete %s' % self.test_network_name, mcvirt_instance=self.mcvirt)
 
     # Ensure the network no longer exists
-    self.assertFalse(Network._checkExists(self.mcvirt.getLibvirtConnection(), self.test_network_name))
+    self.assertFalse(Network._checkExists(self.test_network_name))
 
   def test_delete_non_existent(self):
     """Attempt to delete a non-existent network"""
     # Ensure the network does not exist
-    self.assertFalse(Network._checkExists(self.mcvirt.getLibvirtConnection(), self.test_network_name))
+    self.assertFalse(Network._checkExists(self.test_network_name))
 
     # Attempt to remove the network using the argument parser
     with self.assertRaises(NetworkDoesNotExistException):
-      self.parser.parse_arguments('network delete %s' % self.test_network_name)
+      self.parser.parse_arguments('network delete %s' % self.test_network_name, mcvirt_instance=self.mcvirt)
 
   def test_delete_utilized(self):
     """Attempt to remove a network that is in use by a VM"""
@@ -121,4 +122,4 @@ class NetworkTests(unittest.TestCase):
 
     # Attempt to remove the network
     with self.assertRaises(NetworkUtilizedException):
-      self.parser.parse_arguments('network delete %s' % self.test_network_name)
+      self.parser.parse_arguments('network delete %s' % self.test_network_name, mcvirt_instance=self.mcvirt)

@@ -6,28 +6,60 @@ import libvirt
 import sys
 import os
 from lockfile import FileLock
-import subprocess
 from texttable import Texttable
+import socket
 
 from mcvirt_config import McVirtConfig
-from auth import Auth
 
 class McVirt:
   """Provides general McVirt functions"""
 
   TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
   BASE_STORAGE_DIR = '/var/lib/mcvirt'
-  BASE_VM_STORAGE_DIR = BASE_STORAGE_DIR + '/vm'
-  ISO_STORAGE_DIR = BASE_STORAGE_DIR + '/iso'
+  NODE_STORAGE_DIR = BASE_STORAGE_DIR + '/' + socket.gethostname()
+  BASE_VM_STORAGE_DIR = NODE_STORAGE_DIR + '/vm'
+  ISO_STORAGE_DIR = NODE_STORAGE_DIR + '/iso'
   LOCK_FILE_DIR = '/var/run/lock/mcvirt'
   LOCK_FILE = LOCK_FILE_DIR + '/lock'
 
-  def __init__(self, uri = None):
+  def __init__(self, uri=None, initialise_nodes=True, username=None):
     """Checks lock file and performs initial connection to libvirt"""
-    self.obtained_filelock = False
-    self.config = McVirtConfig()
-    self.auth = Auth(self.getConfigObject())
+    self.libvirt_uri = uri
+    self.connection = None
+    # Create an McVirt config instance and force an upgrade
+    config_instance = McVirtConfig(perform_upgrade=True, mcvirt_instance=self)
 
+    # Configure custom username - used for unittests
+    self.ignore_drbd = False
+    self.username = username
+
+    # Cluster configuration
+    self.initialise_nodes = initialise_nodes
+    self.remote_nodes = {}
+
+    self.obtained_filelock = False
+    self.lockfile_object = None
+    self.obtainLock()
+
+    # Create cluster instance, which will initialise the nodes
+    from cluster.cluster import Cluster
+    Cluster(self)
+
+    # Connect to LibVirt
+    self.getLibvirtConnection()
+
+  def __del__(self):
+    """Removes McVirt lock file on object destruction"""
+    # Disconnect from each of the nodes
+    for connection in self.remote_nodes:
+      self.remote_nodes[connection] = None
+    self.remote_nodes = {}
+
+    # Remove lock file
+    self.releaseLock()
+
+  def obtainLock(self, timeout=2):
+    """Obtains the McVirt lock file"""
     # Create lock file, if it does not exist
     if (not os.path.isfile(self.LOCK_FILE)):
       if (not os.path.isdir(self.LOCK_FILE_DIR)):
@@ -35,50 +67,62 @@ class McVirt:
       open(self.LOCK_FILE, 'a').close()
 
     # Attempt to lock lockfile
-    self.lockfile_object = FileLock(self.LOCK_FILE)
+    if (not self.obtained_filelock and not self.lockfile_object):
+      self.lockfile_object = FileLock(self.LOCK_FILE)
+
+    # Check if lockfile object is already locked
+    if (self.obtained_filelock or self.lockfile_object.is_locked()):
+      raise McVirtException('An instance of McVirt is already running')
+
     try:
-      self.lockfile_object.acquire()
+      self.lockfile_object.acquire(timeout=timeout)
+      if (self.initialise_nodes):
+        for remote_node in self.remote_nodes:
+          self.remote_nodes[remote_node].runRemoteCommand('mcvirt-obtainLock',
+                                                            {'timeout': timeout})
+
       self.obtained_filelock = True
     except:
       raise McVirtException('An instance of McVirt is already running')
 
-    self._connect(uri)
-
-  def __del__(self):
-    """Removes McVirt lock file on object destruction"""
-    if (self.obtained_filelock and self.lockfile_object.is_locked()):
+  def releaseLock(self):
+    """Releases the McVirt lock file"""
+    if (self.obtained_filelock):
+      if (self.initialise_nodes):
+        for remote_node in self.remote_nodes:
+          self.remote_nodes[remote_node].runRemoteCommand('mcvirt-releaseLock', {})
       self.lockfile_object.release()
-
-  def _connect(self, uri):
-    """
-    Connect to libvirt and store the connection as an object variable.
-    Exit if an error occurs whilst connecting.
-    """
-    connection = libvirt.open(uri)
-    if (connection == None):
-      raise McVirtException('Failed to open connection to the hypervisor')
-    else:
-      self.connection = connection
+      self.lockfile_object = None
+      self.obtained_filelock = False
 
   def getLibvirtConnection(self):
-    """Obtains a connection to libvirt"""
+    """
+    Obtains a libvirt connection. If one does not exist,
+    connect to libvirt and store the connection as an object variable.
+    Exit if an error occurs whilst connecting.
+    """
+    if (self.connection == None):
+      self.connection = libvirt.open(self.libvirt_uri)
+      if (self.connection == None):
+        raise McVirtException('Failed to open connection to the hypervisor')
     return self.connection
 
-  def getConfigObject(self):
-    """Obtains the instance of McVirt permissions"""
-    return self.config
+  def initialiseNodes(self):
+    """Returns the status of the McVirt 'initialise_nodes' flag"""
+    return self.initialise_nodes
 
   def getAuthObject(self):
-    """Returns an instance of the auth class"""
-    return self.auth
+    """Returns an instance of the Auth class"""
+    from auth import Auth
+    return Auth(self.username)
 
   def getAllVirtualMachineObjects(self):
     """Obtain array of all domains from libvirt"""
     from virtual_machine.virtual_machine import VirtualMachine
-    all_domains = self.getLibvirtConnection().listAllDomains()
+    all_vms = VirtualMachine.getAllVms(self)
     vm_objects = []
-    for domain in all_domains:
-      vm_objects.append(VirtualMachine(self, domain.name()))
+    for vm_name in all_vms:
+      vm_objects.append(VirtualMachine(self, vm_name))
 
     return vm_objects
 
@@ -86,27 +130,37 @@ class McVirt:
     """Lists the VMs that are currently on the host"""
     table = Texttable()
     table.set_deco(Texttable.HEADER | Texttable.VLINES)
-    table.header(('VM Name', 'State'))
+    table.header(('VM Name', 'State', 'Node'))
 
     for vm_object in self.getAllVirtualMachineObjects():
-      table.add_row((vm_object.getName(), 'Running' if (vm_object.isRunning()) else 'Stopped'))
+      table.add_row((vm_object.getName(), vm_object.getStateText(),
+                     vm_object.getNode()))
     print table.draw()
 
-  @staticmethod
-  def runCommand(command_args):
-    """Runs system command, throwing an exception if the exit code is not 0"""
-    command_process = subprocess.Popen(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if (command_process.wait()):
-      raise McVirtCommandException("Command: %s\nExit code: %s\nOutput:\n%s" %
-        (' '.join(command_args), command_process.returncode, command_process.stdout.read() + command_process.stderr.read()))
-    return (command_process.returncode, command_process.stdout.read(), command_process.stderr.read())
+  def printInfo(self):
+    """Prints information about the nodes in the cluster"""
+    from cluster.cluster import Cluster
+    table = Texttable()
+    table.set_deco(Texttable.HEADER | Texttable.VLINES)
+    table.header(('Node', 'IP Address', 'Status'))
+    cluster_object = Cluster(self)
+    # Add this node to the table
+    table.add_row((Cluster.getHostname(), cluster_object.getClusterIpAddress(),
+                   'Local'))
 
+    # Add remote nodes
+    for node in cluster_object.getNodes():
+      node_config = cluster_object.getNodeConfig(node)
+      node_status = 'Unreachable'
+      try:
+        cluster_object.getRemoteNode(node)
+        node_status = 'Connected'
+      except:
+        pass
+      table.add_row((node, node_config['ip_address'],
+                     node_status))
+    print table.draw()
 
 class McVirtException(Exception):
   """Provides an exception to be thrown for errors in McVirt"""
-  pass
-
-
-class McVirtCommandException(McVirtException):
-  """Provides an exception to be thrown after errors whilst calling external commands"""
   pass
