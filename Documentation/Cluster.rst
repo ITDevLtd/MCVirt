@@ -75,9 +75,7 @@ To the remove a node from the cluster, run:
 Get Cluster information
 -----------------------
 
-* In order to view status information about the cluster, use the 'info' parameter for MCVirt, without specifying a VM name:
-
-  ::
+* In order to view status information about the cluster, use the 'info' parameter for MCVirt, without specifying a VM name::
 
     sudo mcvirt info
 
@@ -85,9 +83,7 @@ Get Cluster information
 Off-line migration
 ------------------
 
-* VMs can be migrated to the other node in the cluster, whilst the VM is powered off, using:
-
-  ::
+* VMs can be migrated to the other node in the cluster, whilst the VM is powered off, using::
 
     sudo mcvirt migrate --node <Destination node> <VM Name>
 
@@ -110,9 +106,7 @@ Configuring DRBD
 
 1. Ensure the package ``drbd8-utils`` is installed on both of the nodes in the cluster
 2. Ensure that the IP to be used for DRBD traffic is configured in global MCVirt configuration, ``/var/lib/mcvirt/`hostname`/config.json``
-3. Perform the following MCVirt command to configure DRBD:
-
-  ::
+3. Perform the following MCVirt command to configure DRBD::
 
     sudo mcvirt drbd --enable
 
@@ -122,9 +116,7 @@ DRBD verification
 
 MCVirt has the ability to start/monitor DRBD verifications (See the `DRBD documentation <https://drbd.linbit.com/users-guide/s-use-online-verify.html>`_.
 
-The verification can be performed by using:
-
-  ::
+The verification can be performed by using::
 
     sudo mcvirt verify <--all>|<VM Name>
 

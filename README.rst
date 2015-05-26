@@ -23,8 +23,8 @@ Getting started
 Installation
 ------------
 
-MCVirt must currently be built from source into a deb package, using the build script. The package and dependencies can then be installed:
-::
+MCVirt must currently be built from source into a deb package, using the build script. The package and dependencies can then be installed::
+
   $ ./build.sh
   $ sudo dpkg -i mcvirt_0.10_all.deb
   $ sudo apt-get -f install
@@ -34,12 +34,12 @@ See the `installation guide <Documentation/Installation.rst>`_ for other depende
 Configuration
 -------------
 
-Perform an initial run of MCVirt, which will create a template configuration:
-::
+Perform an initial run of MCVirt, which will create a template configuration::
+
   $ sudo mcvirt
 
-Add the volume group to be used for VM disks in the global MCVirt configuration:
-::
+Add the volume group to be used for VM disks in the global MCVirt configuration::
+
   $ vim /var/lib/mcvirt/`hostname`/config.json
 
 
@@ -48,14 +48,14 @@ See the `installation guide <Documentation/Installation.rst>`_ for further node 
 Usage
 -------
 
-Create a VM:
-::
+Create a VM::
+
   $ sudo mcvirt create --cpu-count 1 --memory 512 --disk-size 8000 test_vm
 
 See the `create/remove VMs <Documentation/CreateRemoveVMs.rst>`_, `cluster <Documentation/Cluster.rst>`_, `permissions <Documentation/Permissions.rst>`_ and `modifying VMs <Documentation/ModifyingVMs.rst>`_ guides for further administrative instructions.
 
-Start the VM:
-::
+Start the VM::
+
   $ sudo mcvirt start test_vm
 
 See the `controlling VMs guide <Documentation/ControllingVMs.rst>`_ for further user instructions.
