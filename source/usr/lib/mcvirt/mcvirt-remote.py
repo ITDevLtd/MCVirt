@@ -16,17 +16,17 @@ mcvirt_instance = MCVirt(None, initialise_nodes=False)
 
 end_conection = False
 try:
-  while True:
-    data = str.strip(sys.stdin.readline())
-    (output, end_conection) = Remote.receiveRemoteCommand(mcvirt_instance, data)
+    while True:
+        data = str.strip(sys.stdin.readline())
+        (output, end_conection) = Remote.receiveRemoteCommand(mcvirt_instance, data)
 
-    sys.stdout.write("%s\n" % output)
-    sys.stdout.flush()
+        sys.stdout.write("%s\n" % output)
+        sys.stdout.flush()
 
-    if (end_conection):
-      break
+        if (end_conection):
+            break
 except Exception, e:
-  mcvirt_instance = None
-  raise Exception, e, sys.exc_info()[2]
+    mcvirt_instance = None
+    raise Exception, e, sys.exc_info()[2]
 
 mcvirt_instance = None
