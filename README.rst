@@ -46,7 +46,7 @@ Add the volume group to be used for VM disks in the global MCVirt configuration:
 See the `installation guide <Documentation/Installation.rst>`_ for further node configuration steps.
 
 Usage
--------
+-----
 
 Create a VM:
 ::
@@ -59,6 +59,12 @@ Start the VM:
   $ sudo mcvirt start test_vm
 
 See the `controlling VMs guide <Documentation/ControllingVMs.rst>`_ for further user instructions.
+
+Development
+-----------
+
+For information on developing on MCVirt, see the `development documentation <Documentation/Development.rst>`_.
+
 
 LICENSE
 =======
