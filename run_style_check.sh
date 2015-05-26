@@ -25,3 +25,5 @@ then
 fi
 
 pep8 --max-line-length=100 ./ ./source/usr/bin/mcvirt ./source/usr/bin/mcvirt_sudo
+
+exit $?
