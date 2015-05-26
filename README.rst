@@ -52,7 +52,7 @@ Create a VM:
 ::
   $ sudo mcvirt create --cpu-count 1 --memory 512 --disk-size 8000 test_vm
 
-See the `create/remove VMs <Documentation/CreateRemoveVMs.rst>`_, `cluster <Documentation/Configuration.rst>`_, `permissions <Documentation/Permissions.rst>`_ and `modifying VMs <Documentation/ModifyingVMs.rst>`_ guides for further administrative instructions.
+See the `create/remove VMs <Documentation/CreateRemoveVMs.rst>`_, `cluster <Documentation/Cluster.rst>`_, `permissions <Documentation/Permissions.rst>`_ and `modifying VMs <Documentation/ModifyingVMs.rst>`_ guides for further administrative instructions.
 
 Start the VM:
 ::
