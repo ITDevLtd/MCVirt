@@ -34,7 +34,7 @@ See the `installation guide <Documentation/Installation.rst>`_ for other depende
 Configuration
 -------------
 
-Perform an initial run of McVirt, which will create a template configuration:
+Perform an initial run of MCVirt, which will create a template configuration:
 ::
   $ sudo mcvirt
 
@@ -63,7 +63,7 @@ See the `controlling VMs guide <Documentation/ControllingVMs.rst>`_ for further 
 LICENSE
 =======
 
-MCVirt is licensed under GPL v2. For more information, please see `LICENSE.txt <LICENSE.txt>`_
+MCVirt is licensed under GPL v2. For more information, please see `LICENSE <LICENSE>`_
 
 COPYRIGHT
 =========
