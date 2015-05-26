@@ -170,23 +170,26 @@ Monitoring Resources
   * iotop - monitor disk usages
 
 
-
 Back up VM
 ----------
 
-* If the VM can be powered off:
+MCVirt can provide access to snapshots of the raw volumes of VM disks, allowing a superuser to backup the data
 
-  * Power off the VM
-
-  * Login to <Node> as root
-
-  * Ensure the LV of the HDD is active
-
-  * Perform a dd of the HDD to a backup location:
+1. To create a snapshot, perform the following:
 
   ::
-    
-    dd if=/dev/<Node>-vg/mcvirt_vm-test-vm5-disk-1 of=/path/to/backup/location.raw bs=1M
-    
+
+    sudo mcvirt backup --create-snapshot --disk-id <Disk ID> <VM Name>
+
+2. The returned path provides access to the disk at the time that the snapshot was created
+
+**Warning:** The snapshot is 500MB in size, meaning that once the VM has changed 500MB of space on the disk, the VM will no longer be able to write to it's disk
+
+3. Once the data has been backed up, the snapshot can be removed by performing:
+
+  ::
+
+    sudo mcvirt backup --delete-snapshot --disk-id <Disk ID> <VM Name>
+
 
 * This can only be performed by a superuser

@@ -56,7 +56,7 @@ Cloning
 
 * The hard disk for the VM is **snapshotted**, which means the VM is cloned very quickly
 * Cloning VMs is not support for DRBD-backed VMs
-* Some restricictions are imposed on both the parent and clone, due to the way that the storage is cloned:
+* Some restrictions are imposed on both the parent and clone, due to the way that the storage is cloned:
 
   * Parent VMs cannot be:
 
