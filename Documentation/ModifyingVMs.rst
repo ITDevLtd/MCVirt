@@ -87,7 +87,7 @@ Attaching ISO
 
     sudo mcvirt start <VM Name> --iso <Name of ISO file>
 
-* The ISO file must be stored within /var/lib/mcvirt/iso and specifying just the filename in the above command.
+* The ISO file must be stored within /var/lib/mcvirt/iso.
 
 
 VM Locking

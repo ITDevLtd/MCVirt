@@ -183,7 +183,7 @@ MCVirt can provide access to snapshots of the raw volumes of VM disks, allowing 
 
 2. The returned path provides access to the disk at the time that the snapshot was created
 
-**Warning:** The snapshot is 500MB in size, meaning that once the VM has changed 500MB of space on the disk, the VM will no longer be able to write to it's disk
+**Warning:** The snapshot is 500MB in size, meaning that once the VM has changed 500MB of space on the disk, the VM will no longer be able to write to its disk
 
 3. Once the data has been backed up, the snapshot can be removed by performing:
 
