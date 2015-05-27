@@ -9,8 +9,8 @@ Building the package
 --------------------
 
 
-* Ensure that 'dpkg' and 'svn' packages are installed on the machine
-* Check out the root of the branch/tag/branch of MCVirt
+* Ensure the build dependancies are installed: ``dpkg, python-docutils``
+* Clone the repository with: ``git clone https://github.com/ITDevLtd/MCVirt``
 * From within the root of the working copy, run `build.sh <../build.sh>`_
 
 

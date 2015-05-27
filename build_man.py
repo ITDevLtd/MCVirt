@@ -19,32 +19,25 @@
 Script to build the man page for MCVirt.
 """
 import os
+import sys
 
 from docutils.core import publish_doctree, publish_from_doctree
 from docutils.nodes import Text, version
 from docutils.writers import manpage
 
 MANPAGE = 'manpage.rst'
-VERSION = 'VERSION'
-OUT_DIR = 'man1'
-
-
-def get_version():
-    """Get the version from the version
-    file.
-    """
-    with open(VERSION, 'r') as v_file:
-        return v_file.read()
+OUT_DIR = 'source/usr/share/man/man1'
 
 
 if __name__ == "__main__":
+    version_str = sys.argv[1]
     with open(MANPAGE, 'r') as man_file:
         doctree = publish_doctree(man_file.read())
     for field in doctree.traverse(condition=version):
-        field += Text(' %s' % get_version())
+        field += Text(' %s' % version_str)
     # Create the man1 dir if not exists
     if not os.path.exists(OUT_DIR):
-        os.mkdir(OUT_DIR)
+        os.makedirs(OUT_DIR)
     output = publish_from_doctree(doctree, writer=manpage.Writer())
     with open(os.path.join(OUT_DIR, 'mcvirt.1'), 'w') as out_file:
         out_file.write(output)
