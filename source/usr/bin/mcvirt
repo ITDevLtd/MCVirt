@@ -16,30 +16,30 @@ from mcvirt.auth import Auth
 
 if __name__ == "__main__":
 
-  parser_object = Parser()
+    parser_object = Parser()
 
-  try:
-    # Ensure that the user is running MCVirt as root/sudo
-    Auth.checkRootPrivileges()
-  except MCVirtException, e:
-    print e.message
-    sys.exit(1)
-
-  if (len(sys.argv) > 1):
     try:
-      parser_object.parse_arguments()
+        # Ensure that the user is running MCVirt as root/sudo
+        Auth.checkRootPrivileges()
     except MCVirtException, e:
-      print e.message
-      sys.exit(1)
-  else:
-    while (1):
-      sys.stdout.write('mcvirt@%s> ' % socket.gethostname())
-      command = sys.stdin.readline().rstrip().lstrip()
-      if (command == 'exit'):
-        sys.exit()
-      else:
+        print e.message
+        sys.exit(1)
+
+    if (len(sys.argv) > 1):
         try:
-          parser_object.parse_arguments(command)
+            parser_object.parse_arguments()
         except MCVirtException, e:
-          print e.message
-      sys.stdout.flush()
+            print e.message
+            sys.exit(1)
+    else:
+        while (1):
+            sys.stdout.write('mcvirt@%s> ' % socket.gethostname())
+            command = sys.stdin.readline().rstrip().lstrip()
+            if (command == 'exit'):
+                sys.exit()
+            else:
+                try:
+                    parser_object.parse_arguments(command)
+                except MCVirtException, e:
+                    print e.message
+            sys.stdout.flush()
