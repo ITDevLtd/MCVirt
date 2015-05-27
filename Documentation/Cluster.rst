@@ -120,7 +120,7 @@ The verification can be performed by using::
 
     sudo mcvirt verify <--all>|<VM Name>
 
-This will perform a verification of the specified (or all of the DRBD-backed VMs, if the '--all' is specified). Once the verification is complete, an exception is thrown if any of the verifications fail.
+This will perform a verification of the specified VM (or all of the DRBD-backed VMs, if the '--all' argument is specified). Once the verification is complete, an exception is thrown if any of the verifications fail.
 
 The status of the latest verification is captured and will stop users from starting/migrating the VM.
 

@@ -93,7 +93,7 @@ Attaching ISO
 VM Locking
 ----------
 
-VMs can be locked by superusers, which stops them from being started, stopped and migrated
+VMs can be locked by superusers, which stops them from being started, stopped or migrated
 
 * To lock a VM::
 
