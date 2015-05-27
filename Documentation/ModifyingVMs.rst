@@ -82,13 +82,28 @@ Add/Remove Network Adapter
 Attaching ISO
 `````````````````````````
 
-
 * ISO images can be attached to the cdrom drive of a VM whilst booting the VM
-* Use the MCVirt utility to start the VM, using the '--iso' parameter to define the ISO image to be attached to the VM
+* Use the MCVirt utility to start the VM, using the '--iso' parameter to define the ISO image to be attached to the VM::
 
-  ::
-    
     sudo mcvirt start <VM Name> --iso <Name of ISO file>
-    
 
-* The VM must be stored within /var/lib/mcvirt/iso and specifying just the filename in the above command.
+* The ISO file must be stored within /var/lib/mcvirt/iso.
+
+
+VM Locking
+----------
+
+VMs can be locked by superusers, which stops them from being started, stopped or migrated
+
+* To lock a VM::
+
+    sudo mcvirt lock --lock <VM Name>
+
+* To unlock a VM::
+  
+    sudo mcvirt lock --unlock <VM Name>
+
+* Users can check the lock status of a VM by running::
+
+    sudo mcvirt lock --check-lock <VM Name>
+
