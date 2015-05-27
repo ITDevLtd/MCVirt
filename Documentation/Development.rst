@@ -9,4 +9,11 @@ We are currently trying to update our code to comply with `python PEP 8 coding s
 
 Any modified and newly written code should comply with this coding standard
 
-The PEP 8 code checker can be run using the `run_style_check </run_style_check.sh>`_ script.
+The PEP 8 code checker can be installed using::
+
+  sudo apt-get install pep8
+
+Run the checks using::
+
+  pep8
+
