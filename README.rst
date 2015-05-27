@@ -1,5 +1,3 @@
-.. |copy|   unicode:: U+000A9 .. COPYRIGHT SIGN
-
 ======
 MCVirt - Managed Consistent Virtualisation
 ======
@@ -67,6 +65,8 @@ MCVirt is licensed under GPL v2. For more information, please see `LICENSE <LICE
 
 COPYRIGHT
 =========
+
+.. |copy|   unicode:: U+000A9 .. COPYRIGHT SIGN
 
 Copyright |copy| 2015 - `I.T. Dev Ltd <http://www.itdev.co.uk>`_
 
