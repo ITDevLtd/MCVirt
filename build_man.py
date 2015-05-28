@@ -30,6 +30,9 @@ OUT_DIR = 'source/usr/share/man/man1'
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print >> sys.stderr, "Usage: %s VERSION_STRING" % sys.argv[0]
+        sys.exit(1)
     version_str = sys.argv[1]
     with open(MANPAGE, 'r') as man_file:
         doctree = publish_doctree(man_file.read())

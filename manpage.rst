@@ -17,7 +17,7 @@ Managed Consistent Virtualisation
 SYNOPSIS
 ========
 
-  mcvirt [COMMAND] [OPTIONS]
+  sudo mcvirt [COMMAND] [OPTIONS]
 
 DESCRIPTION
 ===========
@@ -27,4 +27,4 @@ MCVirt is a utility for managing virtual machines.
 Run 'mcvirt --help' for a list of commands, or run 'mcvirt COMMAND --help'
 for detailed command help.
 
-For more information, see the project homepage: <https://github.com/ITDevLtd/MCVirt>
+For more information, see the project homepage: <http://mcvirt.itdev.co.uk>

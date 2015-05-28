@@ -9,7 +9,7 @@ Building the package
 --------------------
 
 
-* Ensure the build dependancies are installed: ``dpkg, python-docutils``
+* Ensure the build dependencies are installed: ``dpkg, python-docutils``
 * Clone the repository with: ``git clone https://github.com/ITDevLtd/MCVirt``
 * From within the root of the working copy, run `build.sh <../build.sh>`_
 
@@ -51,9 +51,9 @@ Remove default network
 * This should be removed by performing the following:
 
   ::
-    
+
     sudo mcvirt network delete default
-    
+
 
 
 
@@ -66,16 +66,16 @@ Creating/Removing Network
 * To create a network on the node, perform the following as a superuser:
 
   ::
-    
+
     sudo mcvirt network create <Network name> --interface <Physical interface>
-    
+
 
 * Assuming that there are not any VMs connected to a network, they can be removed using:
 
   ::
-    
+
     sudo mcvirt network delete <Network name>
-    
+
 
 
 
