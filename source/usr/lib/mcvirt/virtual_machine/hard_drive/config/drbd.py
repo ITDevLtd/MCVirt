@@ -24,7 +24,6 @@ from mcvirt.system import System
 
 
 class DRBD(Base):
-
     """Provides a configuration interface for DRBD-based hard drive objects"""
 
     MAXIMUM_DEVICES = 1

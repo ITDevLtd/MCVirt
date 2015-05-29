@@ -22,17 +22,16 @@ import shutil
 
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt, MCVirtException
-from mcvirt.virtual_machine.virtual_machine import (
-    VirtualMachine,
-    InvalidVirtualMachineNameException,
-    VmAlreadyExistsException,
-    VmDirectoryAlreadyExistsException,
-    VmAlreadyStartedException,
-    VmAlreadyStoppedException,
-    CannotStartClonedVmException,
-    CannotDeleteClonedVmException,
-    CannotCloneDrbdBasedVmsException,
-    VirtualMachineLockException)
+from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
+                                                    InvalidVirtualMachineNameException,
+                                                    VmAlreadyExistsException,
+                                                    VmDirectoryAlreadyExistsException,
+                                                    VmAlreadyStartedException,
+                                                    VmAlreadyStoppedException,
+                                                    CannotStartClonedVmException,
+                                                    CannotDeleteClonedVmException,
+                                                    CannotCloneDrbdBasedVmsException,
+                                                    VirtualMachineLockException)
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdStateException
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 from mcvirt.system import System
@@ -72,7 +71,6 @@ def stopAndDelete(mcvirt_instance, vm_name):
 
 
 class VirtualMachineTests(unittest.TestCase):
-
     """Provides unit tests for the VirtualMachine class"""
 
     @staticmethod
@@ -158,27 +156,23 @@ class VirtualMachineTests(unittest.TestCase):
         """Tests the creation of VMs through the argument parser"""
         # Ensure VM does not exist
         self.assertFalse(
-            VirtualMachine._checkExists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vms['TEST_VM_1']['name']))
+            VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+                                        self.test_vms['TEST_VM_1']['name']))
 
         # Create virtual machine using parser
-        self.parser.parse_arguments(
-            'create %s' %
-            self.test_vms['TEST_VM_1']['name'] +
-            ' --cpu-count %s --disk-size %s --memory %s --network %s --storage-type %s' %
-            (self.test_vms['TEST_VM_1']['cpu_count'],
-             self.test_vms['TEST_VM_1']['disk_size'][0],
-             self.test_vms['TEST_VM_1']['memory_allocation'],
-             self.test_vms['TEST_VM_1']['networks'][0],
-             storage_type),
-            mcvirt_instance=self.mcvirt)
+        self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
+                                    ' --cpu-count %s --disk-size %s --memory %s' %
+                                    (self.test_vms['TEST_VM_1']['cpu_count'],
+                                     self.test_vms['TEST_VM_1']['disk_size'][0],
+                                     self.test_vms['TEST_VM_1']['memory_allocation']) +
+                                    ' --network %s --storage-type %s' %
+                                    (self.test_vms['TEST_VM_1']['networks'][0],
+                                     storage_type),
+                                    mcvirt_instance=self.mcvirt)
 
         # Ensure VM exists
-        self.assertTrue(
-            VirtualMachine._checkExists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+                                                    self.test_vms['TEST_VM_1']['name']))
 
         # Obtain VM object
         vm_object = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
@@ -189,28 +183,23 @@ class VirtualMachineTests(unittest.TestCase):
         self.assertEqual(vm_object.getCPU(), str(self.test_vms['TEST_VM_1']['cpu_count']))
 
         # Ensure second VM does not exist
-        self.assertFalse(
-            VirtualMachine._checkExists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vms['TEST_VM_2']['name']))
+        self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+                                                     self.test_vms['TEST_VM_2']['name']))
 
         # Create second VM
-        self.parser.parse_arguments(
-            'create %s' %
-            self.test_vms['TEST_VM_2']['name'] +
-            ' --cpu-count %s --disk-size %s --memory %s --network %s --storage-type %s' %
-            (self.test_vms['TEST_VM_2']['cpu_count'],
-             self.test_vms['TEST_VM_2']['disk_size'][0],
-             self.test_vms['TEST_VM_2']['memory_allocation'],
-             self.test_vms['TEST_VM_2']['networks'][0],
-             storage_type),
-            mcvirt_instance=self.mcvirt)
+        self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_2']['name'] +
+                                    ' --cpu-count %s --disk-size %s --memory %s' %
+                                    (self.test_vms['TEST_VM_2']['cpu_count'],
+                                     self.test_vms['TEST_VM_2']['disk_size'][0],
+                                     self.test_vms['TEST_VM_2']['memory_allocation']) +
+                                    ' --network %s --storage-type %s' %
+                                    (self.test_vms['TEST_VM_2']['networks'][0],
+                                     storage_type),
+                                    mcvirt_instance=self.mcvirt)
 
         # Ensure VM exists
-        self.assertTrue(
-            VirtualMachine._checkExists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vms['TEST_VM_2']['name']))
+        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+                                                    self.test_vms['TEST_VM_2']['name']))
 
         # Obtain VM object
         vm_object_2 = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
@@ -222,16 +211,14 @@ class VirtualMachineTests(unittest.TestCase):
         """Attempt to create a VM with DRBD storage on a node that doesn't have DRBD enabled"""
         # Attempt to create VM and ensure exception is thrown
         with self.assertRaises(DRBDNotEnabledOnNode):
-            self.parser.parse_arguments(
-                'create %s' %
-                self.test_vms['TEST_VM_1']['name'] +
-                ' --cpu-count %s --disk-size %s --memory %s --network %s --storage-type %s' %
-                (self.test_vms['TEST_VM_1']['cpu_count'],
-                 self.test_vms['TEST_VM_1']['disk_size'][0],
-                 self.test_vms['TEST_VM_1']['memory_allocation'],
-                 self.test_vms['TEST_VM_1']['networks'][0],
-                 'DRBD'),
-                mcvirt_instance=self.mcvirt)
+            self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
+                                        ' --cpu-count %s --disk-size %s --memory %s' %
+                                        (self.test_vms['TEST_VM_1']['cpu_count'],
+                                         self.test_vms['TEST_VM_1']['disk_size'][0],
+                                         self.test_vms['TEST_VM_1']['memory_allocation']) +
+                                        ' --network %s --storage-type %s' %
+                                        (self.test_vms['TEST_VM_1']['networks'][0], 'DRBD'),
+                                        mcvirt_instance=self.mcvirt)
 
     def test_delete_local(self):
         """Perform the test_delete test with Local storage"""
@@ -246,30 +233,22 @@ class VirtualMachineTests(unittest.TestCase):
     def test_delete(self, storage_type):
         """Tests the deletion of a VM through the argument parser"""
         # Create Virtual machine
-        test_vm_object = VirtualMachine.create(
-            self.mcvirt,
-            self.test_vms['TEST_VM_1']['name'],
-            self.test_vms['TEST_VM_1']['cpu_count'],
-            self.test_vms['TEST_VM_1']['memory_allocation'],
-            self.test_vms['TEST_VM_1']['disk_size'],
-            self.test_vms['TEST_VM_1']['networks'],
-            storage_type=storage_type)
-        self.assertTrue(
-            VirtualMachine._checkExists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vms['TEST_VM_1']['name']))
+        test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vms['TEST_VM_1']['name'],
+                                               self.test_vms['TEST_VM_1']['cpu_count'],
+                                               self.test_vms['TEST_VM_1']['memory_allocation'],
+                                               self.test_vms['TEST_VM_1']['disk_size'],
+                                               self.test_vms['TEST_VM_1']['networks'],
+                                               storage_type=storage_type)
+        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+                                                    self.test_vms['TEST_VM_1']['name']))
 
         # Remove VM using parser
-        self.parser.parse_arguments(
-            'delete %s --remove-data' %
-            self.test_vms['TEST_VM_1']['name'],
-            mcvirt_instance=self.mcvirt)
+        self.parser.parse_arguments('delete %s --remove-data' % self.test_vms['TEST_VM_1']['name'],
+                                    mcvirt_instance=self.mcvirt)
 
         # Ensure VM has been deleted
-        self.assertFalse(
-            VirtualMachine._checkExists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vms['TEST_VM_1']['name']))
+        self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+                                                     self.test_vms['TEST_VM_1']['name']))
 
     def test_clone_local(self):
         """Tests the VM cloning in MCVirt using the argument parser"""
@@ -643,7 +622,7 @@ class VirtualMachineTests(unittest.TestCase):
                 (node_name,
                  test_vm_object.getName()),
                 mcvirt_instance=self.mcvirt)
-        except DrbdStateException as e:
+        except DrbdStateException, e:
             # If the migration fails, attempt to manually register locally before failing
             test_vm_object.register()
             raise

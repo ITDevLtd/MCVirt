@@ -23,13 +23,11 @@ from mcvirt.mcvirt_config import MCVirtConfig
 
 
 class ReachedMaximumStorageDevicesException(MCVirtException):
-
     """Reached the limit to number of hard disks attached to VM"""
     pass
 
 
 class Base(object):
-
     """Provides a base for storage configurations"""
 
     SNAPSHOT_SUFFIX = '_snapshot'

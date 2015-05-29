@@ -22,7 +22,6 @@ from mcvirt_config import MCVirtConfig
 
 
 class Auth:
-
     """Provides authentication and permissions for performing functions within MCVirt"""
 
     PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM',

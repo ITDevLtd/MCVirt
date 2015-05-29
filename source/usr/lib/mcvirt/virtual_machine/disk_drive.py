@@ -23,7 +23,6 @@ from mcvirt.mcvirt import MCVirtException, MCVirt
 
 
 class DiskDrive:
-
     """Provides operations to manage the disk drive attached to a VM"""
 
     def __init__(self, vm_object):

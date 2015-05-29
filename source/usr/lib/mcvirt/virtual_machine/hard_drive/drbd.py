@@ -28,25 +28,21 @@ from mcvirt.mcvirt import MCVirtException
 
 
 class DrbdStateException(MCVirtException):
-
     """The DRBD state is not OK"""
     pass
 
 
 class DrbdBlockDeviceDoesNotExistException(MCVirtException):
-
     """DRBD block device does not exist"""
     pass
 
 
 class DrbdVolumeNotInSyncException(MCVirtException):
-
     """The last DRBD verification of the volume failed"""
     pass
 
 
 class DrbdConnectionState(Enum):
-
     """Library of DRBD connection states"""
 
     # No network configuration available. The resource has not yet been connected,
@@ -116,7 +112,6 @@ class DrbdConnectionState(Enum):
 
 
 class DrbdRoleState(Enum):
-
     """Library of DRBD role states"""
 
     # The resource is currently in the primary role, and may be read from and written to.
@@ -132,7 +127,6 @@ class DrbdRoleState(Enum):
 
 
 class DrbdDiskState(Enum):
-
     """Library of DRBD disk states"""
 
     # No local block device has been assigned to the DRBD driver. This may mean that the resource has
@@ -162,7 +156,6 @@ class DrbdDiskState(Enum):
 
 
 class DRBD(Base):
-
     """Provides operations to manage DRBD-backed hard drives, used by VMs"""
 
     CREATE_PROGRESS = Enum('CREATE_PROGRESS',
@@ -373,7 +366,7 @@ class DRBD(Base):
 
             return hard_drive_object
 
-        except Exception as e:
+        except Exception, e:
             # If the creation fails, tear down based on the progress of the creation
             if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_CONNECT_R.value):
                 cluster_instance.runRemoteCommand(
@@ -724,7 +717,7 @@ class DRBD(Base):
             drbd_socket.mcvirt_instance = None
             drbd_socket = None
 
-        except Exception as e:
+        except Exception, e:
             # If an exception is thrown during the verify, mark the VM as
             # not in-sync
             self.setSyncState(False)

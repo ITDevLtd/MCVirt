@@ -27,7 +27,6 @@ from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 
 
 class Local(Base):
-
     """Provides operations to manage local hard drives, used by VMs"""
 
     def __init__(self, vm_object, disk_id):
@@ -53,7 +52,7 @@ class Local(Base):
             self.getConfigObject()._getDiskPath())
         try:
             (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-        except MCVirtCommandException as e:
+        except MCVirtCommandException, e:
             raise MCVirtException("Error whilst extending logical volume:\n" + str(e))
 
     def _checkExists(self):
@@ -94,7 +93,7 @@ class Local(Base):
             self.getConfigObject()._getDiskPath())
         try:
             (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-        except MCVirtCommandException as e:
+        except MCVirtCommandException, e:
             raise MCVirtException("Error whilst cloning disk logical volume:\n" + str(e))
 
         Local._addToVirtualMachine(new_disk_config)

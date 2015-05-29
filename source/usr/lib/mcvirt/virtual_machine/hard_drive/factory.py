@@ -25,13 +25,11 @@ from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 
 
 class UnknownStorageTypeException(MCVirtException):
-
     """An hard drive object with an unknown disk type has been initialised"""
     pass
 
 
 class Factory():
-
     """Provides a factory for creating hard drive/hard drive config objects"""
 
     STORAGE_TYPES = [Local, DRBD]

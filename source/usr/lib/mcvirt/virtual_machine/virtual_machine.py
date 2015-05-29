@@ -35,98 +35,82 @@ from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactor
 
 
 class InvalidVirtualMachineNameException(MCVirtException):
-
     """VM is being created with an invalid name"""
     pass
 
 
 class VmAlreadyExistsException(MCVirtException):
-
     """VM is being created with a duplicate name"""
     pass
 
 
 class VmDirectoryAlreadyExistsException(MCVirtException):
-
     """Directory for a VM already exists"""
     pass
 
 
 class VmAlreadyStoppedException(MCVirtException):
-
     """VM is already stopped when attempting to stop it"""
     pass
 
 
 class VmAlreadyStartedException(MCVirtException):
-
     """VM is already started when attempting to start it"""
     pass
 
 
 class VmAlreadyRegisteredException(MCVirtException):
-
     """VM is already registered on a node"""
     pass
 
 
 class VmRegisteredElsewhereException(MCVirtException):
-
     """Attempt to perform an action on a VM registered on another node"""
     pass
 
 
 class VmRunningException(MCVirtException):
-
     """An offline migration can only be powered on a powered off VM"""
     pass
 
 
 class UnsuitableRemoteNodeException(MCVirtException):
-
     """The remote node is unsuitable to run the VM"""
     pass
 
 
 class VmNotRegistered(MCVirtException):
-
     """The virtual machine is not currently registered on a node"""
     pass
 
 
 class CannotStartClonedVmException(MCVirtException):
-
     """Cloned VMs cannot be started"""
     pass
 
 
 class CannotCloneDrbdBasedVmsException(MCVirtException):
-
     """Cannot clone DRBD-based VMs"""
     pass
 
 
 class CannotDeleteClonedVmException(MCVirtException):
-
     """Cannot delete a cloned VM"""
     pass
 
 
 class VirtualMachineLockException(MCVirtException):
-
     """Lock cannot be set to the current lock state"""
     pass
 
 
 class LockStates(Enum):
-
     """Library of virtual machine lock states"""
     UNLOCKED = 0
     LOCKED = 1
 
 
 class VirtualMachine:
-
     """Provides operations to manage a LibVirt virtual machine"""
 
     def __init__(self, mcvirt_object, name):

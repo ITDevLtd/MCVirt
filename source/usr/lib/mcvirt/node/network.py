@@ -22,25 +22,21 @@ import xml.etree.ElementTree as ET
 
 
 class NetworkDoesNotExistException(MCVirtException):
-
     """Network does not exist"""
     pass
 
 
 class NetworkAlreadyExistsException(MCVirtException):
-
     """Network already exists with the same name"""
     pass
 
 
 class NetworkUtilizedException(MCVirtException):
-
     """Network is utilized by virtual machines"""
     pass
 
 
 class Network:
-
     """Provides an interface to LibVirt networks"""
 
     def __init__(self, mcvirt_object, name):

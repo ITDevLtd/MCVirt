@@ -29,7 +29,6 @@ from mcvirt.system import System
 
 
 class DrbdTests(unittest.TestCase):
-
     """Provides unit tests for the DRBD hard drive class"""
 
     @staticmethod
@@ -75,18 +74,14 @@ class DrbdTests(unittest.TestCase):
     def test_verify(self):
         """Test the DRBD verification for both in-sync and out-of-sync DRBD volumes"""
         # Create Virtual machine
-        test_vm_object = VirtualMachine.create(
-            self.mcvirt,
-            self.test_vms['TEST_VM_1']['name'],
-            self.test_vms['TEST_VM_1']['cpu_count'],
-            self.test_vms['TEST_VM_1']['memory_allocation'],
-            self.test_vms['TEST_VM_1']['disk_size'],
-            self.test_vms['TEST_VM_1']['networks'],
-            storage_type='DRBD')
-        self.assertTrue(
-            VirtualMachine._checkExists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vms['TEST_VM_1']['name']))
+        test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vms['TEST_VM_1']['name'],
+                                               self.test_vms['TEST_VM_1']['cpu_count'],
+                                               self.test_vms['TEST_VM_1']['memory_allocation'],
+                                               self.test_vms['TEST_VM_1']['disk_size'],
+                                               self.test_vms['TEST_VM_1']['networks'],
+                                               storage_type='DRBD')
+        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+                                                    self.test_vms['TEST_VM_1']['name']))
 
         # Wait until the DRBD resource is synced
         for disk_object in test_vm_object.getDiskObjects():
@@ -100,10 +95,8 @@ class DrbdTests(unittest.TestCase):
                 wait_timeout -= 1
 
         # Perform verification on VM, using the argument parser
-        self.parser.parse_arguments(
-            'verify %s' %
-            self.test_vms['TEST_VM_1']['name'],
-            mcvirt_instance=self.mcvirt)
+        self.parser.parse_arguments('verify %s' % self.test_vms['TEST_VM_1']['name'],
+                                    mcvirt_instance=self.mcvirt)
 
         # Ensure the disks are in-sync
         for disk_object in test_vm_object.getDiskObjects():
@@ -111,24 +104,19 @@ class DrbdTests(unittest.TestCase):
 
         # Obtain the DRBD raw volume for the VM and write random data to it
         for disk_object in test_vm_object.getDiskObjects():
-            raw_logical_volume_name = disk_object.getConfigObject()._getLogicalVolumeName(
-                disk_object.getConfigObject().DRBD_RAW_SUFFIX)
-            System.runCommand(
-                [
-                    'dd',
-                    'if=/dev/urandom',
-                    'of=%s' %
-                    disk_object.getConfigObject()._getLogicalVolumePath(raw_logical_volume_name),
-                    'bs=1M',
-                    'count=8'])
+            config_object = disk_object.getConfigObject()
+            drbd_raw_suffix = config_object.DRBD_RAW_SUFFIX
+            raw_logical_volume_name = config_object._getLogicalVolumeName(drbd_raw_suffix)
+            raw_logical_volume_path = config_object._getLogicalVolumePath(raw_logical_volume_name)
+            System.runCommand(['dd', 'if=/dev/urandom',
+                               'of=%s' % raw_logical_volume_path,
+                               'bs=1M', 'count=8'])
             System.runCommand(['sync'])
 
         # Perform another verification and ensure that an exception is raised
         with self.assertRaises(DrbdVolumeNotInSyncException):
-            self.parser.parse_arguments(
-                'verify %s' %
-                self.test_vms['TEST_VM_1']['name'],
-                mcvirt_instance=self.mcvirt)
+            self.parser.parse_arguments('verify %s' % self.test_vms['TEST_VM_1']['name'],
+                                        mcvirt_instance=self.mcvirt)
 
         # Attempt to start the VM, ensuring an exception is raised
         with self.assertRaises(DrbdVolumeNotInSyncException):

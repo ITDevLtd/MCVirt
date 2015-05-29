@@ -22,7 +22,6 @@ from mcvirt.mcvirt import MCVirtException
 
 
 class NetworkAdapter:
-
     """Provides operations to network interfaces attached to a VM"""
 
     def __init__(self, mac_address, vm_object):

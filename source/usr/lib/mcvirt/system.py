@@ -23,7 +23,6 @@ from mcvirt import MCVirtException
 
 
 class MCVirtCommandException(MCVirtException):
-
     """Provides an exception to be thrown after errors whilst calling external commands"""
     pass
 

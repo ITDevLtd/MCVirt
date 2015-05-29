@@ -20,7 +20,6 @@ import os
 
 
 class ConfigFile():
-
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     CURRENT_VERSION = 1

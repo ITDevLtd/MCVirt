@@ -27,25 +27,21 @@ from mcvirt.auth import Auth
 
 
 class DRBDNotInstalledException(MCVirtException):
-
     """DRBD is not installed"""
     pass
 
 
 class DRBDAlreadyEnabled(MCVirtException):
-
     """DRBD has already been enabled on this node"""
     pass
 
 
 class DRBDNotEnabledOnNode(MCVirtException):
-
     """DRBD volumes cannot be created on a node that has not been configured to use DRBD"""
     pass
 
 
 class DRBD:
-
     """Performs configuration of DRBD on the node"""
 
     CONFIG_DIRECTORY = '/etc/drbd.d'
@@ -82,8 +78,8 @@ class DRBD:
 
         # Ensure DRBD is installed
         if (not os.path.isfile(DRBD.DRBDADM)):
-            raise DRBDNotInstalledException(
-                'drbdadm not found (Is the drbd8-utils package installed?)')
+            raise DRBDNotInstalledException('drbdadm not found' +
+                                            ' (Is the drbd8-utils package installed?)')
 
         if (DRBD.isEnabled() and mcvirt_instance.initialiseNodes()):
             raise DRBDAlreadyEnabled('DRBD has already been enabled on this node')
@@ -204,7 +200,6 @@ class DRBD:
 
 
 class DRBDSocket():
-
     """Creates a unix socket to communicate with the DRBD out-of-sync hook script"""
 
     SOCKET_PATH = '/var/run/lock/mcvirt/mcvirt-drbd.sock'
@@ -252,9 +247,8 @@ class DRBDSocket():
             # Re-instate MCVirt lock
             self.mcvirt_instance.obtainLock(timeout=10)
             from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-            hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(
-                self.mcvirt_instance,
-                drbd_resource)
+            hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(self.mcvirt_instance,
+                                                                             drbd_resource)
             hard_drive_object.setSyncState(False)
         self.connection.close()
 

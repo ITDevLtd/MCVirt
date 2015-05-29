@@ -31,7 +31,6 @@ from auth import Auth
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
-
     """Overrides the ArgumentParser class, in order to change the handling of errors"""
 
     def error(self, message):
@@ -40,7 +39,6 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 
 
 class Parser:
-
     """Provides an argument parser for MCVirt"""
 
     def __init__(self, print_status=True):
@@ -678,7 +676,7 @@ class Parser:
                                 self.printStatus(
                                     'DRBD verification for %s (%s) completed without out-of-sync blocks' %
                                     (disk_object.getConfigObject()._getResourceName(), vm_object.getName()))
-                            except DrbdVolumeNotInSyncException as e:
+                            except DrbdVolumeNotInSyncException, e:
                                 # Append the not-in-sync exception message to an array, so the rest of the
                                 # disks can continue to be checked
                                 failures.append(e.message)
@@ -719,6 +717,6 @@ class Parser:
 
             elif (action == 'list'):
                 mcvirt_instance.listVms()
-        except Exception as e:
+        except Exception, e:
             # Unset mcvirt instance - forcing the object to be destroyed
             raise Exception, e, sys.exc_info()[2]

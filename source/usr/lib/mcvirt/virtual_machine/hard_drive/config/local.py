@@ -19,7 +19,6 @@ from mcvirt.virtual_machine.hard_drive.config.base import Base
 
 
 class Local(Base):
-
     """Provides a configuration interface for local hard drive objects"""
 
     MAXIMUM_DEVICES = 4

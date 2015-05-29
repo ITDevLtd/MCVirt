@@ -23,37 +23,31 @@ from mcvirt.system import System, MCVirtCommandException
 
 
 class HardDriveDoesNotExistException(MCVirtException):
-
     """The given hard drive does not exist"""
     pass
 
 
 class StorageTypesCannotBeMixedException(MCVirtException):
-
     """Storage types cannot be mixed within a single VM"""
     pass
 
 
 class LogicalVolumeDoesNotExistException(MCVirtException):
-
     """A required logical volume does not exist"""
     pass
 
 
 class BackupSnapshotAlreadyExistsException(MCVirtException):
-
     """The backup snapshot for the logical volume already exists"""
     pass
 
 
 class BackupSnapshotDoesNotExistException(MCVirtException):
-
     """The backup snapshot for the logical volume does not exist"""
     pass
 
 
 class Base(object):
-
     """Provides base operations to manage all hard drives, used by VMs"""
 
     def __init__(self, disk_id):
@@ -116,7 +110,7 @@ class Base(object):
             'bs=1M')
         try:
             (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-        except MCVirtCommandException as e:
+        except MCVirtCommandException, e:
             new_disk_object.delete()
             raise MCVirtException("Error whilst duplicating disk logical volume:\n" + str(e))
 
@@ -227,7 +221,7 @@ class Base(object):
                                           'name': name,
                                           'size': size})
 
-        except MCVirtCommandException as e:
+        except MCVirtCommandException, e:
             # Remove any logical volumes that had been created if one of them fails
             Base._removeLogicalVolume(
                 config_object,
@@ -265,7 +259,7 @@ class Base(object):
                         'name': name,
                         'ignore_non_existent': ignore_non_existent},
                     nodes=nodes)
-        except MCVirtCommandException as e:
+        except MCVirtCommandException, e:
             raise MCVirtException("Error whilst removing disk logical volume:\n" + str(e))
 
     @staticmethod
@@ -283,7 +277,7 @@ class Base(object):
             config_object._getLogicalVolumePath(name))
         try:
             (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-        except MCVirtCommandException as e:
+        except MCVirtCommandException, e:
             raise MCVirtException(
                 "Error whilst obtaining the size of the logical volume:\n" +
                 str(e))
@@ -314,7 +308,7 @@ class Base(object):
                                          {'config': config_object._dumpConfig(),
                                           'name': name, 'size': size},
                                          nodes=nodes)
-        except MCVirtCommandException as e:
+        except MCVirtCommandException, e:
             raise MCVirtException("Error whilst zeroing logical volume:\n" + str(e))
 
     @staticmethod
@@ -368,7 +362,7 @@ class Base(object):
                                          {'config': config_object._dumpConfig(),
                                           'name': name},
                                          nodes=nodes)
-        except MCVirtCommandException as e:
+        except MCVirtCommandException, e:
             raise MCVirtException("Error whilst activating logical volume:\n" + str(e))
 
     def createBackupSnapshot(self):

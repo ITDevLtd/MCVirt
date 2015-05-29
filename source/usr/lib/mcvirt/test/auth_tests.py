@@ -32,7 +32,6 @@ def stopAndDelete(mcvirt_connection, vm_name):
 
 
 class AuthTests(unittest.TestCase):
-
     """Provides unit tests for the VirtualMachine class"""
 
     @staticmethod

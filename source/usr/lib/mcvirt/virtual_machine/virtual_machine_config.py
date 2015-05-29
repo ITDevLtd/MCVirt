@@ -23,7 +23,6 @@ from mcvirt.config_file import ConfigFile
 
 
 class VirtualMachineConfig(ConfigFile):
-
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     def __init__(self, vm_object):

@@ -26,7 +26,6 @@ from mcvirt_config import MCVirtConfig
 
 
 class MCVirt:
-
     """Provides general MCVirt functions"""
 
     TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
@@ -178,6 +177,5 @@ class MCVirt:
 
 
 class MCVirtException(Exception):
-
     """Provides an exception to be thrown for errors in MCVirt"""
     pass

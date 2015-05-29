@@ -22,7 +22,6 @@ from config_file import ConfigFile
 
 
 class MCVirtConfig(ConfigFile):
-
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     def __init__(self, mcvirt_instance=None, perform_upgrade=False):
