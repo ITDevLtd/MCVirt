@@ -21,12 +21,15 @@ from mcvirt.mcvirt import MCVirtException
 from mcvirt.virtual_machine.hard_drive.base import Base as HardDriveBase
 from mcvirt.mcvirt_config import MCVirtConfig
 
+
 class ReachedMaximumStorageDevicesException(MCVirtException):
+
     """Reached the limit to number of hard disks attached to VM"""
     pass
 
 
 class Base(object):
+
     """Provides a base for storage configurations"""
 
     SNAPSHOT_SUFFIX = '_snapshot'
@@ -53,11 +56,11 @@ class Base(object):
         """Dumps all required configuration to be able to recreate the
            config object on a remote node"""
         dump_config = \
-          {
-            'config': self.config,
-            'vm_name': self.vm_object.getName(),
-            'storage_type': self._getType()
-          }
+            {
+                'config': self.config,
+                'vm_name': self.vm_object.getName(),
+                'storage_type': self._getType()
+            }
         return dump_config
 
     def _getType(self):
@@ -104,7 +107,9 @@ class Base(object):
 
         # Check that the id is less than 4, as a VM can only have a maximum of 4 disks
         if (int(disk_id) > self.getMaximumDevices()):
-            raise ReachedMaximumStorageDevicesException('A maximum of %s hard drives can be mapped to a VM' % self.getMaximumDevices())
+            raise ReachedMaximumStorageDevicesException(
+                'A maximum of %s hard drives can be mapped to a VM' %
+                self.getMaximumDevices())
 
         return disk_id
 

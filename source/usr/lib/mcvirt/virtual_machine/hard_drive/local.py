@@ -25,7 +25,9 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 
+
 class Local(Base):
+
     """Provides operations to manage local hard drives, used by VMs"""
 
     def __init__(self, vm_object, disk_id):
@@ -43,16 +45,23 @@ class Local(Base):
         if (self.getVmObject().getCloneParent() or self.getVmObject().getCloneChildren()):
             raise MCVirtException('Cannot increase the disk of a cloned VM or a clone.')
 
-        command_args = ('lvextend', '-L', '+%sM' % increase_size, self.getConfigObject()._getDiskPath())
+        command_args = (
+            'lvextend',
+            '-L',
+            '+%sM' %
+            increase_size,
+            self.getConfigObject()._getDiskPath())
         try:
             (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-        except MCVirtCommandException, e:
+        except MCVirtCommandException as e:
             raise MCVirtException("Error whilst extending logical volume:\n" + str(e))
 
     def _checkExists(self):
         """Checks if a disk exists, which is required before any operations
         can be performed on the disk"""
-        Local._ensureLogicalVolumeExists(self.getConfigObject(), self.getConfigObject()._getDiskName())
+        Local._ensureLogicalVolumeExists(
+            self.getConfigObject(),
+            self.getConfigObject()._getDiskName())
         return True
 
     def _removeStorage(self):
@@ -61,19 +70,31 @@ class Local(Base):
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""
-        return Local._getLogicalVolumeSize(self.getConfigObject(), self.getConfigObject()._getDiskName())
+        return Local._getLogicalVolumeSize(
+            self.getConfigObject(),
+            self.getConfigObject()._getDiskName())
 
     def clone(self, destination_vm_object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
-        new_disk_config = ConfigLocal(vm_object=destination_vm_object, disk_id=self.getConfigObject().getId())
+        new_disk_config = ConfigLocal(
+            vm_object=destination_vm_object,
+            disk_id=self.getConfigObject().getId())
         new_logical_volume_name = new_disk_config._getDiskName()
         disk_size = self.getSize()
 
         # Perform a logical volume snapshot
-        command_args = ('lvcreate', '-L', '%sM' % disk_size, '-s', '-n', new_logical_volume_name, self.getConfigObject()._getDiskPath())
+        command_args = (
+            'lvcreate',
+            '-L',
+            '%sM' %
+            disk_size,
+            '-s',
+            '-n',
+            new_logical_volume_name,
+            self.getConfigObject()._getDiskPath())
         try:
             (exit_code, command_output, command_stderr) = System.runCommand(command_args)
-        except MCVirtCommandException, e:
+        except MCVirtCommandException as e:
             raise MCVirtException("Error whilst cloning disk logical volume:\n" + str(e))
 
         Local._addToVirtualMachine(new_disk_config)

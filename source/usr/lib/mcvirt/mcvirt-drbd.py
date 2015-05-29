@@ -43,6 +43,8 @@ else:
 
     # Otherwise, create an MCVirt object and update the VM directly
     mcvirt_instance = MCVirt()
-    hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(mcvirt_instance, drbd_resource)
+    hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(
+        mcvirt_instance,
+        drbd_resource)
     hard_drive_object.setSyncState(False)
     mcvirt_instance = None

@@ -20,7 +20,9 @@ import os
 
 from config_file import ConfigFile
 
+
 class MCVirtConfig(ConfigFile):
+
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     def __init__(self, mcvirt_instance=None, perform_upgrade=False):
@@ -50,7 +52,7 @@ class MCVirtConfig(ConfigFile):
         os.mkdir(MCVirt.ISO_STORAGE_DIR)
 
         # Set permission on MCVirt directory
-        os.chmod(MCVirt.BASE_STORAGE_DIR, 0600)
+        os.chmod(MCVirt.BASE_STORAGE_DIR, 0o600)
         os.chown(MCVirt.BASE_STORAGE_DIR, pwd.getpwnam('libvirt-qemu').pw_uid, 0)
 
     def create(self):
@@ -59,34 +61,34 @@ class MCVirtConfig(ConfigFile):
 
         # Create basic config
         json_data = \
-        {
-          'version': self.CURRENT_VERSION,
-          'superusers': [],
-          'permissions':
-          {
-            'user': [],
-            'owner': [],
-          },
-          'vm_storage_vg': '',
-          'cluster': \
-          {
-            'cluster_ip': '',
-            'nodes': {}
-          },
-          'virtual_machines': [],
-          'networks': {},
-          'drbd': NodeDRBD.getDefaultConfig(),
-          'git':
-          {
-            'repo_domain': '',
-            'repo_path': '',
-            'repo_protocol': '',
-            'username': '',
-            'password': '',
-            'commit_name': '',
-            'commit_email': ''
-          }
-        }
+            {
+                'version': self.CURRENT_VERSION,
+                'superusers': [],
+                'permissions':
+                {
+                    'user': [],
+                    'owner': [],
+                },
+                'vm_storage_vg': '',
+                'cluster':
+                {
+                    'cluster_ip': '',
+                    'nodes': {}
+                },
+                'virtual_machines': [],
+                'networks': {},
+                'drbd': NodeDRBD.getDefaultConfig(),
+                'git':
+                {
+                    'repo_domain': '',
+                    'repo_path': '',
+                    'repo_protocol': '',
+                    'username': '',
+                    'password': '',
+                    'commit_name': '',
+                    'commit_email': ''
+                }
+            }
 
         # Write the configuration to disk
         MCVirtConfig._writeJSON(json_data, self.config_file)
@@ -101,9 +103,9 @@ class MCVirtConfig(ConfigFile):
 
             # Add cluster configuration to config
             config['cluster'] = \
-            {
-              'cluster_ip': '',
-              'nodes': {}
+                {
+                'cluster_ip': '',
+                'nodes': {}
             }
 
             # Obtain list of virtual machines from LibVirt
@@ -120,21 +122,21 @@ class MCVirtConfig(ConfigFile):
 
             # Add default DRBD configuration
             config['drbd'] = \
-            {
-              'enabled': 0,
-              'secret': '',
-              'sync_rate': '10M',
-              'protocol': 'C'
+                {
+                'enabled': 0,
+                'secret': '',
+                'sync_rate': '10M',
+                'protocol': 'C'
             }
 
             # Create git configuration
             config['git'] = \
-            {
-              'repo_domain': '',
-              'repo_path': '',
-              'repo_protocol': '',
-              'username': '',
-              'password': '',
-              'commit_name': '',
-              'commit_email': ''
+                {
+                'repo_domain': '',
+                'repo_path': '',
+                'repo_protocol': '',
+                'username': '',
+                'password': '',
+                'commit_name': '',
+                'commit_email': ''
             }

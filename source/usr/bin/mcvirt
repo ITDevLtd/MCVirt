@@ -32,14 +32,14 @@ if __name__ == "__main__":
     try:
         # Ensure that the user is running MCVirt as root/sudo
         Auth.checkRootPrivileges()
-    except MCVirtException, e:
+    except MCVirtException as e:
         print e.message
         sys.exit(1)
 
     if (len(sys.argv) > 1):
         try:
             parser_object.parse_arguments()
-        except MCVirtException, e:
+        except MCVirtException as e:
             print e.message
             sys.exit(1)
     else:
@@ -51,6 +51,6 @@ if __name__ == "__main__":
             else:
                 try:
                     parser_object.parse_arguments(command)
-                except MCVirtException, e:
+                except MCVirtException as e:
                     print e.message
             sys.stdout.flush()

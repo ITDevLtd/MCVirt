@@ -21,7 +21,9 @@ import os
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.config_file import ConfigFile
 
+
 class VirtualMachineConfig(ConfigFile):
+
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     def __init__(self, vm_object):
@@ -49,24 +51,24 @@ class VirtualMachineConfig(ConfigFile):
 
         # Create basic config
         json_data = \
-          {
-            'version': VirtualMachineConfig.CURRENT_VERSION,
-            'permissions':
             {
-              'user': [],
-              'owner': [],
-            },
-            'hard_disks': {},
-            'storage_type': None,
-            'memory_allocation': str(memory_allocation),
-            'cpu_cores': str(cpu_cores),
-            'clone_parent': False,
-            'clone_children': [],
-            'network_interfaces': {},
-            'node': None,
-            'available_nodes': available_nodes,
-            'lock': LockStates.UNLOCKED.value
-          }
+                'version': VirtualMachineConfig.CURRENT_VERSION,
+                'permissions':
+                {
+                    'user': [],
+                    'owner': [],
+                },
+                'hard_disks': {},
+                'storage_type': None,
+                'memory_allocation': str(memory_allocation),
+                'cpu_cores': str(cpu_cores),
+                'clone_parent': False,
+                'clone_children': [],
+                'network_interfaces': {},
+                'node': None,
+                'available_nodes': available_nodes,
+                'lock': LockStates.UNLOCKED.value
+            }
 
         # Write the configuration to disk
         VirtualMachineConfig._writeJSON(json_data, VirtualMachineConfig.getConfigPath(vm_name))

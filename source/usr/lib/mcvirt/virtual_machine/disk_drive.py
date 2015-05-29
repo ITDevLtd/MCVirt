@@ -21,7 +21,9 @@ import os
 
 from mcvirt.mcvirt import MCVirtException, MCVirt
 
+
 class DiskDrive:
+
     """Provides operations to manage the disk drive attached to a VM"""
 
     def __init__(self, vm_object):
@@ -41,7 +43,7 @@ class DiskDrive:
 
         # Add iso image path to cdrom XML
         cdrom_xml.find('source').set('file', full_path)
-        cdrom_xml_string = ET.tostring(cdrom_xml.getroot(), encoding = 'utf8', method = 'xml')
+        cdrom_xml_string = ET.tostring(cdrom_xml.getroot(), encoding='utf8', method='xml')
 
         # Update the libvirt cdrom device
         if (not self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):
@@ -61,7 +63,7 @@ class DiskDrive:
 
         if (source_xml is not None):
             cdrom_xml.remove(source_xml)
-            cdrom_xml_string = ET.tostring(cdrom_xml, encoding = 'utf8', method = 'xml')
+            cdrom_xml_string = ET.tostring(cdrom_xml, encoding='utf8', method='xml')
 
             # Update the libvirt cdrom device
             if (self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):

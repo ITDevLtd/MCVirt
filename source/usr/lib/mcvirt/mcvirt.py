@@ -24,7 +24,9 @@ import socket
 
 from mcvirt_config import MCVirtConfig
 
+
 class MCVirt:
+
     """Provides general MCVirt functions"""
 
     TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
@@ -92,7 +94,7 @@ class MCVirt:
             if (self.initialise_nodes):
                 for remote_node in self.remote_nodes:
                     self.remote_nodes[remote_node].runRemoteCommand('mcvirt-obtainLock',
-                                                                      {'timeout': timeout})
+                                                                    {'timeout': timeout})
 
             self.obtained_filelock = True
         except:
@@ -114,9 +116,9 @@ class MCVirt:
         connect to libvirt and store the connection as an object variable.
         Exit if an error occurs whilst connecting.
         """
-        if (self.connection == None):
+        if (self.connection is None):
             self.connection = libvirt.open(self.libvirt_uri)
-            if (self.connection == None):
+            if (self.connection is None):
                 raise MCVirtException('Failed to open connection to the hypervisor')
         return self.connection
 
@@ -174,6 +176,8 @@ class MCVirt:
                            node_status))
         print table.draw()
 
+
 class MCVirtException(Exception):
+
     """Provides an exception to be thrown for errors in MCVirt"""
     pass

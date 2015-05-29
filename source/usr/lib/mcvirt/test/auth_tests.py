@@ -21,6 +21,7 @@ from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 
+
 def stopAndDelete(mcvirt_connection, vm_name):
     """Stops and removes VMs"""
     if (VirtualMachine._checkExists(mcvirt_connection.getLibvirtConnection(), vm_name)):
@@ -31,6 +32,7 @@ def stopAndDelete(mcvirt_connection, vm_name):
 
 
 class AuthTests(unittest.TestCase):
+
     """Provides unit tests for the VirtualMachine class"""
 
     @staticmethod
@@ -51,13 +53,13 @@ class AuthTests(unittest.TestCase):
 
         # Setup variable for test VM
         self.test_vm = \
-        {
-          'name': 'mcvirt-unittest-vm',
-          'cpu_count': '1',
-          'disks': ['100'],
-          'memory_allocation': '100',
-          'networks': ['Production']
-        }
+            {
+                'name': 'mcvirt-unittest-vm',
+                'cpu_count': '1',
+                'disks': ['100'],
+                'memory_allocation': '100',
+                'networks': ['Production']
+            }
 
         self.test_user = 'test_user'
 
@@ -73,38 +75,70 @@ class AuthTests(unittest.TestCase):
     def test_add_user(self):
         """Adds a user to a virtual machine, using the argument parser"""
         # Ensure VM does not exist
-        test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm['name'], self.test_vm['cpu_count'],
-                                               self.test_vm['memory_allocation'], self.test_vm['disks'],
-                                               self.test_vm['networks'])
-        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm['name']))
+        test_vm_object = VirtualMachine.create(
+            self.mcvirt,
+            self.test_vm['name'],
+            self.test_vm['cpu_count'],
+            self.test_vm['memory_allocation'],
+            self.test_vm['disks'],
+            self.test_vm['networks'])
+        self.assertTrue(
+            VirtualMachine._checkExists(
+                self.mcvirt.getLibvirtConnection(),
+                self.test_vm['name']))
 
         # Ensure user is not in 'user' group
         auth_object = self.mcvirt.getAuthObject()
-        self.assertFalse(self.test_user in auth_object.getUsersInPermissionGroup('user', test_vm_object))
+        self.assertFalse(
+            self.test_user in auth_object.getUsersInPermissionGroup(
+                'user',
+                test_vm_object))
 
         # Add user to 'user' group using parser
-        self.parser.parse_arguments('permission --add-user %s %s' % (self.test_user, self.test_vm['name']),
-                                    mcvirt_instance=self.mcvirt)
+        self.parser.parse_arguments(
+            'permission --add-user %s %s' %
+            (self.test_user,
+             self.test_vm['name']),
+            mcvirt_instance=self.mcvirt)
 
         # Ensure VM exists
-        self.assertTrue(self.test_user in auth_object.getUsersInPermissionGroup('user', test_vm_object))
+        self.assertTrue(
+            self.test_user in auth_object.getUsersInPermissionGroup(
+                'user',
+                test_vm_object))
 
     def test_remove_user(self):
         """Removes a user from a virtual machine, using the argument parser"""
         # Ensure VM does not exist
-        test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vm['name'], self.test_vm['cpu_count'],
-                                               self.test_vm['memory_allocation'], self.test_vm['disks'],
-                                               self.test_vm['networks'])
-        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(), self.test_vm['name']))
+        test_vm_object = VirtualMachine.create(
+            self.mcvirt,
+            self.test_vm['name'],
+            self.test_vm['cpu_count'],
+            self.test_vm['memory_allocation'],
+            self.test_vm['disks'],
+            self.test_vm['networks'])
+        self.assertTrue(
+            VirtualMachine._checkExists(
+                self.mcvirt.getLibvirtConnection(),
+                self.test_vm['name']))
 
         # Add user to 'user' group and ensure they have been added
         auth_object = self.mcvirt.getAuthObject()
         auth_object.addUserPermissionGroup(self.mcvirt, 'user', self.test_user, test_vm_object)
-        self.assertTrue(self.test_user in auth_object.getUsersInPermissionGroup('user', test_vm_object))
+        self.assertTrue(
+            self.test_user in auth_object.getUsersInPermissionGroup(
+                'user',
+                test_vm_object))
 
         # Remove user from 'user' group using parser
-        self.parser.parse_arguments('permission --delete-user %s %s' % (self.test_user, self.test_vm['name']),
-                                    mcvirt_instance=self.mcvirt)
+        self.parser.parse_arguments(
+            'permission --delete-user %s %s' %
+            (self.test_user,
+             self.test_vm['name']),
+            mcvirt_instance=self.mcvirt)
 
         # Ensure user is no longer in 'user' group
-        self.assertFalse(self.test_user in auth_object.getUsersInPermissionGroup('user', test_vm_object))
+        self.assertFalse(
+            self.test_user in auth_object.getUsersInPermissionGroup(
+                'user',
+                test_vm_object))

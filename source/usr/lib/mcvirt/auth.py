@@ -22,6 +22,7 @@ from mcvirt_config import MCVirtConfig
 
 
 class Auth:
+
     """Provides authentication and permissions for performing functions within MCVirt"""
 
     PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM',
@@ -144,7 +145,7 @@ class Auth:
             # Check if user is part of the group and the group contains
             # the required permission
             if ((user in users) and
-               (permission_enum in Auth.PERMISSION_GROUPS[permission_group])):
+                    (permission_enum in Auth.PERMISSION_GROUPS[permission_group])):
                 return True
 
         return False
