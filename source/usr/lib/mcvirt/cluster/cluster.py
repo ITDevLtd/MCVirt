@@ -20,7 +20,6 @@ from mcvirt.auth import Auth
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.system import System
 from mcvirt.mcvirt_config import MCVirtConfig
-import json
 import socket
 
 
@@ -124,7 +123,6 @@ class Cluster:
 
     def syncPermissions(self, remote_object):
         """Duplicates the global permissions on the local node onto the remote node"""
-        from mcvirt.auth import Auth
         auth_object = Auth()
 
         # Sync superusers
@@ -196,13 +194,11 @@ class Cluster:
 
     def removeNode(self, remote_host):
         """Removes a node from the MCVirt cluster"""
-        from remote import Remote
-
         # Ensure the user has privileges to manage the cluster
         self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_CLUSTER)
         remote = self.getRemoteNode(remote_host)
-        remote.runRemoteCommand(
-            'cluster-cluster-removeNodeConfiguration', {'node': self.getHostname()})
+        remote.runRemoteCommand('cluster-cluster-removeNodeConfiguration',
+                                {'node': self.getHostname()})
         self.removeNodeConfiguration(remote_host)
 
     def getClusterIpAddress(self):
@@ -214,8 +210,8 @@ class Cluster:
         """Generates an SSH key pair for the local user if
         it doesn't already exist"""
         # Generate new ssh key if it doesn't already exist
-        if (not os.path.exists(Cluster.SSH_PUBLIC_KEY)
-                or not os.path.exists(Cluster.SSH_PRIVATE_KEY)):
+        if (not os.path.exists(Cluster.SSH_PUBLIC_KEY) or
+                not os.path.exists(Cluster.SSH_PRIVATE_KEY)):
             System.runCommand(('/usr/bin/ssh-keygen', '-t', 'rsa',
                                '-N', '', '-q', '-f', Cluster.SSH_PRIVATE_KEY))
 

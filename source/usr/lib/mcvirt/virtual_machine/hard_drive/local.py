@@ -16,12 +16,10 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import libvirt
-import subprocess
 import os
 
 from mcvirt.system import System, MCVirtCommandException
-from mcvirt.mcvirt import MCVirt, MCVirtException
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.mcvirt import MCVirtException
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 
@@ -44,14 +42,10 @@ class Local(Base):
         if (self.getVmObject().getCloneParent() or self.getVmObject().getCloneChildren()):
             raise MCVirtException('Cannot increase the disk of a cloned VM or a clone.')
 
-        command_args = (
-            'lvextend',
-            '-L',
-            '+%sM' %
-            increase_size,
-            self.getConfigObject()._getDiskPath())
+        command_args = ('lvextend', '-L', '+%sM' % increase_size,
+                        self.getConfigObject()._getDiskPath())
         try:
-            (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+            System.runCommand(command_args)
         except MCVirtCommandException, e:
             raise MCVirtException("Error whilst extending logical volume:\n" + str(e))
 
@@ -82,17 +76,10 @@ class Local(Base):
         disk_size = self.getSize()
 
         # Perform a logical volume snapshot
-        command_args = (
-            'lvcreate',
-            '-L',
-            '%sM' %
-            disk_size,
-            '-s',
-            '-n',
-            new_logical_volume_name,
-            self.getConfigObject()._getDiskPath())
+        command_args = ('lvcreate', '-L', '%sM' % disk_size, '-s',
+                        '-n', new_logical_volume_name, self.getConfigObject()._getDiskPath())
         try:
-            (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+            System.runCommand(command_args)
         except MCVirtCommandException, e:
             raise MCVirtException("Error whilst cloning disk logical volume:\n" + str(e))
 

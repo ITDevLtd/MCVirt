@@ -18,7 +18,6 @@
 import xml.etree.ElementTree as ET
 
 from mcvirt.mcvirt import MCVirtException
-from mcvirt.virtual_machine.hard_drive.base import Base as HardDriveBase
 from mcvirt.mcvirt_config import MCVirtConfig
 
 

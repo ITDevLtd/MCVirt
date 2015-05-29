@@ -45,6 +45,7 @@ else:
     mcvirt_instance = MCVirt()
     hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(
         mcvirt_instance,
-        drbd_resource)
+        drbd_resource
+    )
     hard_drive_object.setSyncState(False)
     mcvirt_instance = None

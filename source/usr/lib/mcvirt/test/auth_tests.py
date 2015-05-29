@@ -18,7 +18,7 @@
 import unittest
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt, MCVirtException
+from mcvirt.mcvirt import MCVirt
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 
 

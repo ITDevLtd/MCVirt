@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import json
 import os
 
 from mcvirt.mcvirt import MCVirtException
@@ -45,8 +44,7 @@ class VirtualMachineConfig(ConfigFile):
     @staticmethod
     def create(vm_name, available_nodes, cpu_cores, memory_allocation):
         """Creates a basic VM configuration for new VMs"""
-        from mcvirt.virtual_machine.virtual_machine import VirtualMachine, LockStates
-        from mcvirt.cluster.cluster import Cluster
+        from mcvirt.virtual_machine.virtual_machine import LockStates
 
         # Create basic config
         json_data = \

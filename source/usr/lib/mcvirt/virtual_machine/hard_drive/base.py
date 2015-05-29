@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.mcvirt import MCVirtException
-import xml.etree.ElementTree as ET
 import os
 from mcvirt.system import System, MCVirtCommandException
 
@@ -109,7 +107,7 @@ class Base(object):
             destination_drbd_block_device,
             'bs=1M')
         try:
-            (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+            System.runCommand(command_args)
         except MCVirtCommandException, e:
             new_disk_object.delete()
             raise MCVirtException("Error whilst duplicating disk logical volume:\n" + str(e))
@@ -137,7 +135,6 @@ class Base(object):
         """Removes the hard drive from the LibVirt configuration for the VM"""
         # Update the libvirt domain XML configuration
         def updateXML(domain_xml):
-            from mcvirt.virtual_machine.virtual_machine import VirtualMachine
             device_xml = domain_xml.find('./devices')
             disk_xml = device_xml.find(
                 './disk/target[@dev="%s"]/..' %
@@ -172,7 +169,6 @@ class Base(object):
         """Register the hard drive with the Libvirt VM configuration"""
 
         def updateXML(domain_xml):
-            from mcvirt.virtual_machine.virtual_machine import VirtualMachine
             drive_xml = config_object._generateLibvirtXml()
             device_xml = domain_xml.find('./devices')
             device_xml.append(drive_xml)
@@ -210,7 +206,7 @@ class Base(object):
         command_args = ['/sbin/lvcreate', volume_group, '--name', name, '--size', '%sM' % size]
         try:
             # Create on local node
-            (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+            System.runCommand(command_args)
 
             if (perform_on_nodes and config_object.vm_object.mcvirt_object.initialiseNodes()):
                 cluster = Cluster(config_object.vm_object.mcvirt_object)
@@ -243,9 +239,9 @@ class Base(object):
         command_args = ['lvremove', '-f', config_object._getLogicalVolumePath(name)]
         try:
             # Determine if logical volume exists before attempting to remove it
-            if (not (
-                    ignore_non_existent and not Base._checkLogicalVolumeExists(config_object, name))):
-                (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+            if (not (ignore_non_existent and
+                     not Base._checkLogicalVolumeExists(config_object, name))):
+                System.runCommand(command_args)
 
             if (perform_on_nodes and config_object.vm_object.mcvirt_object.initialiseNodes()):
                 cluster = Cluster(config_object.vm_object.mcvirt_object)
@@ -253,12 +249,13 @@ class Base(object):
 
                 # Run on remote nodes
                 cluster.runRemoteCommand(
-                    'virtual_machine-hard_drive-removeLogicalVolume',
-                    {
+                    'virtual_machine-hard_drive-removeLogicalVolume', {
                         'config': config_object._dumpConfig(),
                         'name': name,
-                        'ignore_non_existent': ignore_non_existent},
-                    nodes=nodes)
+                        'ignore_non_existent': ignore_non_existent
+                    },
+                    nodes=nodes
+                )
         except MCVirtCommandException, e:
             raise MCVirtException("Error whilst removing disk logical volume:\n" + str(e))
 
@@ -276,7 +273,7 @@ class Base(object):
             'lv_size',
             config_object._getLogicalVolumePath(name))
         try:
-            (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+            (_, command_output, _) = System.runCommand(command_args)
         except MCVirtCommandException, e:
             raise MCVirtException(
                 "Error whilst obtaining the size of the logical volume:\n" +
@@ -297,7 +294,7 @@ class Base(object):
         command_args = ['dd', 'if=/dev/zero', 'of=%s' % lv_path, 'bs=1M', 'count=%s' % size]
         try:
             # Create logical volume on local node
-            (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+            System.runCommand(command_args)
 
             if (perform_on_nodes and config_object.vm_object.mcvirt_object.initialiseNodes()):
                 cluster = Cluster(config_object.vm_object.mcvirt_object)
@@ -351,7 +348,7 @@ class Base(object):
         command_args = ['lvchange', '-a', 'y', '--yes', lv_path]
         try:
             # Run on the local node
-            (exit_code, command_output, command_stderr) = System.runCommand(command_args)
+            System.runCommand(command_args)
 
             if (perform_on_nodes and config_object.vm_object.mcvirt_object.initialiseNodes()):
                 cluster = Cluster(config_object.vm_object.mcvirt_object)
@@ -383,11 +380,11 @@ class Base(object):
         snapshot_logical_volume = self.getConfigObject()._getBackupSnapshotLogicalVolume()
 
         # Determine if logical volume already exists
-        if (Base._checkLogicalVolumeActive(self.getConfigObject(),
-                                           self.getConfigObject()._getBackupSnapshotLogicalVolume())):
+        if (Base._checkLogicalVolumeActive(self.getConfigObject(), snapshot_logical_volume)):
             raise BackupSnapshotAlreadyExistsException(
                 'The backup snapshot for \'%s\' already exists: %s' %
-                (backup_volume_path, snapshot_logical_volume))
+                (backup_volume_path, snapshot_logical_volume)
+            )
 
         # Lock the VM
         self.getConfigObject().vm_object.setLockState(LockStates.LOCKED)
@@ -408,22 +405,23 @@ class Base(object):
         # Ensure the user has permission to delete snapshot backups
         self.getConfigObject().vm_object.mcvirt_object.getAuthObject().assertPermission(
             Auth.PERMISSIONS.BACKUP_VM,
-            self.getConfigObject().vm_object)
+            self.getConfigObject().vm_object
+        )
 
+        config = self.getConfigObject()
         # Ensure the snapshot logical volume exists
-        if (not Base._checkLogicalVolumeActive(self.getConfigObject(),
-                                               self.getConfigObject()._getBackupSnapshotLogicalVolume())):
+        if (not Base._checkLogicalVolumeActive(config, config._getBackupSnapshotLogicalVolume())):
             raise BackupSnapshotDoesNotExistException(
                 'The backup snapshot for \'%s\' does not exist' %
-                self.getConfigObject()._getLogicalVolumePath(
-                    self.getConfigObject()._getBackupLogicalVolume()))
+                config._getLogicalVolumePath(config._getBackupLogicalVolume())
+            )
 
-        System.runCommand(
-            [
-                'lvremove',
-                '-f',
-                self.getConfigObject()._getLogicalVolumePath(
-                    self.getConfigObject()._getBackupSnapshotLogicalVolume())])
+        System.runCommand([
+            'lvremove', '-f',
+            self.getConfigObject()._getLogicalVolumePath(
+                self.getConfigObject()._getBackupSnapshotLogicalVolume()
+            )
+        ])
 
         # Unlock the VM
         self.getConfigObject().vm_object.setLockState(LockStates.UNLOCKED)

@@ -16,12 +16,11 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import unittest
-import sys
 import os
 import shutil
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt, MCVirtException
+from mcvirt.mcvirt import MCVirt
 from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
                                                     InvalidVirtualMachineNameException,
                                                     VmAlreadyExistsException,
@@ -34,7 +33,6 @@ from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
                                                     VirtualMachineLockException)
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdStateException
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
-from mcvirt.system import System
 
 
 def stopAndDelete(mcvirt_instance, vm_name):
@@ -571,13 +569,14 @@ class VirtualMachineTests(unittest.TestCase):
     def test_stop_stopped_vm(self):
         """Attempts to stop an already stopped VM"""
         # Create Virtual machine
-        test_vm_object = VirtualMachine.create(
+        VirtualMachine.create(
             self.mcvirt,
             self.test_vms['TEST_VM_1']['name'],
             self.test_vms['TEST_VM_1']['cpu_count'],
             self.test_vms['TEST_VM_1']['memory_allocation'],
             self.test_vms['TEST_VM_1']['disk_size'],
-            self.test_vms['TEST_VM_1']['networks'])
+            self.test_vms['TEST_VM_1']['networks']
+        )
 
         # Use argument parser to start the VM
         with self.assertRaises(VmAlreadyStoppedException):
@@ -622,7 +621,7 @@ class VirtualMachineTests(unittest.TestCase):
                 (node_name,
                  test_vm_object.getName()),
                 mcvirt_instance=self.mcvirt)
-        except DrbdStateException, e:
+        except DrbdStateException:
             # If the migration fails, attempt to manually register locally before failing
             test_vm_object.register()
             raise

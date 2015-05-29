@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import json
 import os
 
 from config_file import ConfigFile
@@ -101,8 +100,7 @@ class MCVirtConfig(ConfigFile):
                     config['permissions'][new_permission_goup] = []
 
             # Add cluster configuration to config
-            config['cluster'] = \
-                {
+            config['cluster'] = {
                 'cluster_ip': '',
                 'nodes': {}
             }
@@ -120,8 +118,7 @@ class MCVirtConfig(ConfigFile):
                 config['networks'][network.name()] = network.bridgeName()
 
             # Add default DRBD configuration
-            config['drbd'] = \
-                {
+            config['drbd'] = {
                 'enabled': 0,
                 'secret': '',
                 'sync_rate': '10M',
@@ -129,8 +126,7 @@ class MCVirtConfig(ConfigFile):
             }
 
             # Create git configuration
-            config['git'] = \
-                {
+            config['git'] = {
                 'repo_domain': '',
                 'repo_path': '',
                 'repo_protocol': '',

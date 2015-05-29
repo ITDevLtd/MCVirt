@@ -16,7 +16,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import libvirt
-import sys
 import os
 from lockfile import FileLock
 from texttable import Texttable
@@ -41,7 +40,7 @@ class MCVirt:
         self.libvirt_uri = uri
         self.connection = None
         # Create an MCVirt config instance and force an upgrade
-        config_instance = MCVirtConfig(perform_upgrade=True, mcvirt_instance=self)
+        MCVirtConfig(perform_upgrade=True, mcvirt_instance=self)
 
         # Configure custom username - used for unittests
         self.ignore_drbd = False

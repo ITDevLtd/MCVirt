@@ -16,11 +16,11 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import unittest
-import sys
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt, MCVirtException
-from mcvirt.node.network import Network, NetworkDoesNotExistException, NetworkAlreadyExistsException, NetworkUtilizedException
+from mcvirt.mcvirt import MCVirt
+from mcvirt.node.network import Network, NetworkDoesNotExistException
+from mcvirt.node.network import NetworkAlreadyExistsException, NetworkUtilizedException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 
 
@@ -143,9 +143,8 @@ class NetworkTests(unittest.TestCase):
         """Attempt to remove a network that is in use by a VM"""
         # Create test network and create test VM connected to the network
         Network.create(self.mcvirt, self.test_network_name, self.test_physical_interface)
-        test_vm_object = VirtualMachine.create(
-            self.mcvirt, self.test_vm_name, 1, 100, [100], [
-                self.test_network_name])
+        VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100],
+                              [self.test_network_name])
 
         # Attempt to remove the network
         with self.assertRaises(NetworkUtilizedException):

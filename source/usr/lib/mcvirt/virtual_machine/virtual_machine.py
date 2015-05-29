@@ -18,7 +18,6 @@
 import libvirt
 import xml.etree.ElementTree as ET
 import re
-from subprocess import call
 import os
 import shutil
 from texttable import Texttable
@@ -30,7 +29,6 @@ from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth import Auth
-from mcvirt.virtual_machine.hard_drive.local import Local as HardDriveLocal
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 
 
@@ -202,7 +200,6 @@ class VirtualMachine:
             return (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING)
         elif (self.mcvirt_object.initialiseNodes()):
             from mcvirt.cluster.cluster import Cluster
-            from mcvirt.cluster.remote import Remote
             cluster_object = Cluster(self.mcvirt_object)
             remote = cluster_object.getRemoteNode(self.getNode())
             return remote.runRemoteCommand('virtual_machine-getState', {'vm_name': self.getName()})
@@ -254,7 +251,9 @@ class VirtualMachine:
             table.add_row(('-- Disk ID --', '-- Disk Size --'))
             for disk_object in disk_objects:
                 table.add_row(
-                    (str(disk_object.getConfigObject().getId()), str(int(disk_object.getSize()) / 1000) + 'GB'))
+                    (str(disk_object.getConfigObject().getId()),
+                     str(int(disk_object.getSize()) / 1000) + 'GB')
+                )
         else:
             warnings += "No hard disks present on machine\n"
 
@@ -522,8 +521,10 @@ class VirtualMachine:
             # if the VM is running
             if (not wait_for_vm_shutdown):
                 raise VmRunningException(
-                    'An offline migration can only be performed on a powered off VM. ' +
-                    'Use --wait-for-shutdown to wait until the VM is powered off before migrating.')
+                    'An offline migration can only be performed on a powered off VM. '
+                    'Use --wait-for-shutdown to wait until the '
+                    'VM is powered off before migrating.'
+                )
 
             # Wait for 5 seconds before checking the VM state again
             time.sleep(5)
@@ -574,7 +575,8 @@ class VirtualMachine:
             if (not exists_on_remote_node):
                 raise UnsuitableRemoteNodeException(
                     'The network %s does not exist on the remote node: %s' %
-                    (connected_network, destination_node_name))
+                    (connected_network, destination_node_name)
+                )
 
     def clone(self, mcvirt_instance, clone_vm_name):
         """Clones a VM, creating an identical machine, using
@@ -587,7 +589,8 @@ class VirtualMachine:
         if (self.getConfigObject().getConfig()['storage_type'] == 'DRBD'):
             raise CannotCloneDrbdBasedVmsException(
                 'Cannot clone VM that uses DRBD-based storage: %s' %
-                self.getName())
+                self.getName()
+            )
 
         # Determine if VM is running
         if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
@@ -788,9 +791,10 @@ class VirtualMachine:
                 (self.name, current_node))
 
         if (Cluster.getHostname() not in self.getAvailableNodes()):
-            raise NodeNotSuitableForVm(
+            raise UnsuitableRemoteNodeException(
                 'VM \'%s\' cannot be registered on node: %s' %
-                (self.name, Cluster.getHostname()))
+                (self.name, Cluster.getHostname())
+            )
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -919,9 +923,11 @@ class VirtualMachine:
             raise MCVirtException('The VM is not running')
         domain_xml = ET.fromstring(
             self._getLibvirtDomainObject().XMLDesc(
-                libvirt.VIR_DOMAIN_XML_SECURE))
+                libvirt.VIR_DOMAIN_XML_SECURE
+            )
+        )
 
-        if (domain_xml.find('./devices/graphics[@type="vnc"]') == None):
+        if (domain_xml.find('./devices/graphics[@type="vnc"]') is None):
             raise MCVirtException('VNC is not enabled on the VM')
         else:
             return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')

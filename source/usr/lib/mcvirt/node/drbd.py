@@ -71,7 +71,6 @@ class DRBD:
     def enable(mcvirt_instance, secret=None):
         """Ensures the machine is suitable to run DRBD"""
         import os.path
-        from mcvirt.auth import Auth
         from mcvirt.cluster.cluster import Cluster
         # Ensure user has the ability to manage DRBD
         mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_DRBD)
@@ -147,7 +146,7 @@ class DRBD:
         import random
         import string
 
-        return ''.join([random.choice(string.ascii_letters + string.digits) for n in xrange(16)])
+        return ''.join([random.choice(string.ascii_letters + string.digits) for _ in xrange(16)])
 
     @staticmethod
     def setSecret(secret):

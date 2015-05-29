@@ -21,7 +21,6 @@ from paramiko.ssh_exception import AuthenticationException
 
 from mcvirt.mcvirt import MCVirtException
 from cluster import Cluster
-from mcvirt.auth import Auth
 
 
 class RemoteCommandExecutionFailedException(MCVirtException):
@@ -52,7 +51,6 @@ class Remote:
     @staticmethod
     def receiveRemoteCommand(mcvirt_instance, data):
         """Handles incoming data from the remote host"""
-        from cluster import Cluster
         from mcvirt.virtual_machine.virtual_machine import VirtualMachine
         received_data = json.loads(data)
         action = received_data['action']
@@ -71,9 +69,8 @@ class Remote:
         elif (action == 'cluster-cluster-addHostKey'):
             # Connect to the remote machine, saving the host key
             cluster_instance = Cluster(mcvirt_instance)
-            remote = Remote(cluster_instance, arguments['node'],
-                            save_hostkey=True, initialise_node=False)
-            remote = None
+            Remote(cluster_instance, arguments['node'],
+                   save_hostkey=True, initialise_node=False)
 
         elif (action == 'cluster-cluster-removeNodeConfiguration'):
             # Removes a remove MCVirt node from the local configuration
@@ -154,11 +151,9 @@ class Remote:
             return_data = vm_object.getInfo()
 
         elif (action == 'virtual_machine-getAllVms'):
-            from mcvirt.virtual_machine.virtual_machine import VirtualMachine
             return_data = VirtualMachine.getAllVms(mcvirt_instance)
 
         elif (action == 'virtual_machine-setNode'):
-            from mcvirt.virtual_machine.virtual_machine import VirtualMachine
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
             vm_object._setNode(arguments['node'])
 
@@ -371,7 +366,7 @@ class Remote:
                                        timeout=10)
             except AuthenticationException:
                 raise NodeAuthenticationException('Could not authenticate to node: %s' % self.name)
-            except Exception, e:
+            except Exception:
                 raise CouldNotConnectToNodeException('Could not connect to node: %s' % self.name)
 
             # Save the SSH client object
@@ -405,7 +400,7 @@ class Remote:
         try:
             # Obtains the first line of output and decode JSON
             return json.loads(str.strip(stdout))
-        except ValueError as e:
+        except ValueError:
             # If the exit code was not 0, close the SSH session and throw an exception
             stderr = self.stderr.readlines()
             if (stderr):
@@ -414,4 +409,5 @@ class Remote:
                 self.connection = None
                 raise RemoteCommandExecutionFailedException(
                     "Exit Code: %s\nCommand: %s\nStdout: %s\nStderr: %s" %
-                    (exit_code, command_json, ''.join(stdout), ''.join(stderr)))
+                    (exit_code, command_json, ''.join(stdout), ''.join(stderr))
+                )
