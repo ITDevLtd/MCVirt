@@ -22,6 +22,7 @@ from mcvirt.node.drbd import DRBD as NodeDRBD
 from mcvirt.mcvirt import MCVirt
 from mcvirt.system import System
 
+
 class DRBD(Base):
     """Provides a configuration interface for DRBD-based hard drive objects"""
 
@@ -32,16 +33,28 @@ class DRBD(Base):
     DRBD_META_SUFFIX = 'meta'
     DRBD_CONFIG_TEMPLATE = MCVirt.TEMPLATE_DIR + '/drbd_resource.conf'
 
-    def __init__(self, vm_object, disk_id=None, drbd_minor=None, drbd_port=None, config=None, registered=False):
+    def __init__(
+            self,
+            vm_object,
+            disk_id=None,
+            drbd_minor=None,
+            drbd_port=None,
+            config=None,
+            registered=False):
         """Set member variables and run the base init method"""
         self.config = \
-          {
-            'drbd_minor': drbd_minor,
-            'drbd_port': drbd_port,
-            'sync_state': True
-          }
+            {
+                'drbd_minor': drbd_minor,
+                'drbd_port': drbd_port,
+                'sync_state': True
+            }
 
-        Base.__init__(self, vm_object=vm_object, disk_id=disk_id, config=config, registered=registered)
+        Base.__init__(
+            self,
+            vm_object=vm_object,
+            disk_id=disk_id,
+            config=config,
+            registered=registered)
 
     def _getAvailableDrbdPort(self):
         """Obtains the next available DRBD port"""
@@ -113,35 +126,37 @@ class DRBD(Base):
 
         # Create configuration for use with the template
         raw_lv_path = self._getLogicalVolumePath(self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX))
-        meta_lv_path = self._getLogicalVolumePath(self._getLogicalVolumeName(self.DRBD_META_SUFFIX))
+        meta_lv_path = self._getLogicalVolumePath(
+            self._getLogicalVolumeName(
+                self.DRBD_META_SUFFIX))
         drbd_config = \
-        {
-          'resource_name': self._getResourceName(),
-          'block_device_path': self._getDrbdDevice(),
-          'raw_lv_path': raw_lv_path,
-          'meta_lv_path': meta_lv_path,
-          'drbd_port': self._getDrbdPort(),
-          'nodes': []
-        }
+            {
+                'resource_name': self._getResourceName(),
+                'block_device_path': self._getDrbdDevice(),
+                'raw_lv_path': raw_lv_path,
+                'meta_lv_path': meta_lv_path,
+                'drbd_port': self._getDrbdPort(),
+                'nodes': []
+            }
 
         # Add local node to the DRBD config
         from mcvirt.cluster.cluster import Cluster
         cluster_object = Cluster(self.vm_object.mcvirt_object)
         node_template_conf = \
-        {
-          'name': Cluster.getHostname(),
-          'ip_address': cluster_object.getClusterIpAddress()
-        }
+            {
+                'name': Cluster.getHostname(),
+                'ip_address': cluster_object.getClusterIpAddress()
+            }
         drbd_config['nodes'].append(node_template_conf)
 
         # Add remote nodes to DRBD config
         for node in cluster_object.getNodes():
             node_config = cluster_object.getNodeConfig(node)
             node_template_conf = \
-              {
-                'name': node,
-                'ip_address': node_config['ip_address']
-              }
+                {
+                    'name': node,
+                    'ip_address': node_config['ip_address']
+                }
             drbd_config['nodes'].append(node_template_conf)
 
         # Replace the variables in the template with the local DRBD configuration
@@ -190,11 +205,11 @@ class DRBD(Base):
     def _getMCVirtConfig(self):
         """Returns the MCVirt hard drive configuration for the DRBD hard drive"""
         mcvirt_config = \
-        {
-          'drbd_port': self.config['drbd_port'],
-          'drbd_minor': self.config['drbd_minor'],
-          'sync_state': self.config['sync_state']
-        }
+            {
+                'drbd_port': self.config['drbd_port'],
+                'drbd_minor': self.config['drbd_minor'],
+                'sync_state': self.config['sync_state']
+            }
         return mcvirt_config
 
     def _getBackupLogicalVolume(self):

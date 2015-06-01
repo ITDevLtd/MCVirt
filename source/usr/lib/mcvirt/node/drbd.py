@@ -25,6 +25,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth import Auth
 
+
 class DRBDNotInstalledException(MCVirtException):
     """DRBD is not installed"""
     pass
@@ -70,19 +71,19 @@ class DRBD:
     def enable(mcvirt_instance, secret=None):
         """Ensures the machine is suitable to run DRBD"""
         import os.path
-        from mcvirt.auth import Auth
         from mcvirt.cluster.cluster import Cluster
         # Ensure user has the ability to manage DRBD
         mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_DRBD)
 
         # Ensure DRBD is installed
         if (not os.path.isfile(DRBD.DRBDADM)):
-            raise DRBDNotInstalledException('drbdadm not found (Is the drbd8-utils package installed?)')
+            raise DRBDNotInstalledException('drbdadm not found' +
+                                            ' (Is the drbd8-utils package installed?)')
 
         if (DRBD.isEnabled() and mcvirt_instance.initialiseNodes()):
             raise DRBDAlreadyEnabled('DRBD has already been enabled on this node')
 
-        if (secret == None):
+        if (secret is None):
             secret = DRBD.generateSecret()
 
         # Set the secret in the local configuration
@@ -114,12 +115,12 @@ class DRBD:
     @staticmethod
     def getDefaultConfig():
         default_config = \
-          {
-            'enabled': 0,
-            'secret': '',
-            'sync_rate': '10M',
-            'protocol': 'C'
-          }
+            {
+                'enabled': 0,
+                'secret': '',
+                'sync_rate': '10M',
+                'protocol': 'C'
+            }
         return default_config
 
     @staticmethod
@@ -145,7 +146,7 @@ class DRBD:
         import random
         import string
 
-        return ''.join([random.choice(string.ascii_letters + string.digits) for n in xrange(16)])
+        return ''.join([random.choice(string.ascii_letters + string.digits) for _ in xrange(16)])
 
     @staticmethod
     def setSecret(secret):
@@ -196,6 +197,7 @@ class DRBD:
 
         return used_minors
 
+
 class DRBDSocket():
     """Creates a unix socket to communicate with the DRBD out-of-sync hook script"""
 
@@ -244,7 +246,8 @@ class DRBDSocket():
             # Re-instate MCVirt lock
             self.mcvirt_instance.obtainLock(timeout=10)
             from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-            hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(self.mcvirt_instance, drbd_resource)
+            hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(self.mcvirt_instance,
+                                                                             drbd_resource)
             hard_drive_object.setSyncState(False)
         self.connection.close()
 

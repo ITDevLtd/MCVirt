@@ -36,8 +36,5 @@ try:
 
         if (end_conection):
             break
-except Exception, e:
+finally:
     mcvirt_instance = None
-    raise Exception, e, sys.exc_info()[2]
-
-mcvirt_instance = None

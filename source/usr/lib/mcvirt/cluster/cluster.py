@@ -20,20 +20,23 @@ from mcvirt.auth import Auth
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.system import System
 from mcvirt.mcvirt_config import MCVirtConfig
-import json
 import socket
+
 
 class NodeAlreadyPresent(MCVirtException):
     """Node being added is already connected to cluster"""
     pass
 
+
 class NodeDoesNotExistException(MCVirtException):
     """The node does not exist"""
     pass
 
+
 class RemoteObjectConflict(MCVirtException):
     """The remote node contains an object that will cause conflict when syncing"""
     pass
+
 
 class Cluster:
     """Class to perform node management within the MCVirt cluster"""
@@ -79,13 +82,15 @@ class Cluster:
 
         # Check remote machine, to ensure it can be synced without any
         # conflicts
-        remote = Remote(self, remote_host, remote_ip=remote_ip, password=password, save_hostkey=True)
+        remote = Remote(self, remote_host, remote_ip=remote_ip, password=password,
+                        save_hostkey=True)
         self.checkRemoteMachine(remote)
         remote = None
 
         # Sync SSH keys
         local_public_key = self.getSshPublicKey()
-        remote_public_key = self.configureRemoteMachine(remote_host, remote_ip, password, local_public_key)
+        remote_public_key = self.configureRemoteMachine(remote_host, remote_ip,
+                                                        password, local_public_key)
 
         # Add remote node to configuration
         self.addNodeConfiguration(remote_host, remote_ip, remote_public_key)
@@ -112,12 +117,12 @@ class Cluster:
         from mcvirt.node.network import Network
         local_networks = Network.getConfig()
         for network_name in local_networks.keys():
-            remote_object.runRemoteCommand('node-network-create', {'network_name': network_name,
-                                                                   'physical_interface': local_networks[network_name]})
+            remote_object.runRemoteCommand('node-network-create',
+                                           {'network_name': network_name,
+                                            'physical_interface': local_networks[network_name]})
 
     def syncPermissions(self, remote_object):
         """Duplicates the global permissions on the local node onto the remote node"""
-        from mcvirt.auth import Auth
         auth_object = Auth()
 
         # Sync superusers
@@ -154,7 +159,8 @@ class Cluster:
                 # Add network adapters to VM
                 remote_object.runRemoteCommand('network_adapter-create',
                                                {'vm_name': vm_object.getName(),
-                                                'network_name': network_adapter.getConnectedNetwork(),
+                                                'network_name':
+                                                network_adapter.getConnectedNetwork(),
                                                 'mac_address': network_adapter.getMacAddress()})
 
             # Sync permissions to VM on remote node
@@ -167,7 +173,6 @@ class Cluster:
                                                     'username': user,
                                                     'vm_name': vm_object.getName()})
 
-
     def checkRemoteMachine(self, remote_object):
         """Performs checks on the remote node to ensure that there will be
            no object conflicts when syncing the Network and VM configurations"""
@@ -176,23 +181,24 @@ class Cluster:
         from mcvirt.node.network import Network
         for local_network in Network.getConfig().keys():
             if (local_network in remote_networks.keys()):
-                raise RemoteObjectConflict('Remote node contains duplicate network: %s' % local_network)
+                raise RemoteObjectConflict('Remote node contains duplicate network: %s' %
+                                           local_network)
 
         from mcvirt.virtual_machine.virtual_machine import VirtualMachine
         local_vms = VirtualMachine.getAllVms(self.mcvirt_instance)
         remote_vms = remote_object.runRemoteCommand('virtual_machine-getAllVms', [])
         for local_vm in local_vms:
             if (local_vm in remote_vms):
-                raise RemoteObjectConflict('Remote node contains duplicate Virtual Machine: %s' % local_vm)
+                raise RemoteObjectConflict('Remote node contains duplicate Virtual Machine: %s' %
+                                           local_vm)
 
     def removeNode(self, remote_host):
         """Removes a node from the MCVirt cluster"""
-        from remote import Remote
-
         # Ensure the user has privileges to manage the cluster
         self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_CLUSTER)
         remote = self.getRemoteNode(remote_host)
-        remote.runRemoteCommand('cluster-cluster-removeNodeConfiguration', {'node': self.getHostname()})
+        remote.runRemoteCommand('cluster-cluster-removeNodeConfiguration',
+                                {'node': self.getHostname()})
         self.removeNodeConfiguration(remote_host)
 
     def getClusterIpAddress(self):
@@ -204,8 +210,10 @@ class Cluster:
         """Generates an SSH key pair for the local user if
         it doesn't already exist"""
         # Generate new ssh key if it doesn't already exist
-        if (not os.path.exists(Cluster.SSH_PUBLIC_KEY) or not os.path.exists(Cluster.SSH_PRIVATE_KEY)):
-            System.runCommand(('/usr/bin/ssh-keygen', '-t', 'rsa', '-N', '', '-q', '-f', Cluster.SSH_PRIVATE_KEY))
+        if (not os.path.exists(Cluster.SSH_PUBLIC_KEY) or
+                not os.path.exists(Cluster.SSH_PRIVATE_KEY)):
+            System.runCommand(('/usr/bin/ssh-keygen', '-t', 'rsa',
+                               '-N', '', '-q', '-f', Cluster.SSH_PRIVATE_KEY))
 
         # Get contains of public key file
         with open(Cluster.SSH_PUBLIC_KEY, 'r') as f:
@@ -217,11 +225,15 @@ class Cluster:
         from remote import Remote
 
         # Create a remote object, using the password and ensuring that the hostkey is saved
-        remote_object = Remote(self, remote_host, save_hostkey=True, remote_ip=remote_ip, password=password)
+        remote_object = Remote(self, remote_host, save_hostkey=True,
+                               remote_ip=remote_ip, password=password)
 
         # Run MCVirt on the remote machine to generate a SSH key and add the current host
-        remote_public_key = remote_object.runRemoteCommand('cluster-cluster-addNodeRemote', {'node': self.getHostname(),
-          'ip_address': self.getClusterIpAddress(), 'public_key': local_public_key})
+        remote_public_key = remote_object.runRemoteCommand('cluster-cluster-addNodeRemote',
+                                                           {'node': self.getHostname(),
+                                                            'ip_address':
+                                                            self.getClusterIpAddress(),
+                                                            'public_key': local_public_key})
 
         # Delete the remote object to ensure it disconnects and saves the host key file
         remote_object = None
@@ -236,7 +248,7 @@ class Cluster:
     def getRemoteNode(self, node):
         """Obtains a Remote object for a node, caching the object"""
         from remote import Remote
-        if (not self.mcvirt_instance.remote_nodes.has_key(node)):
+        if (node not in self.mcvirt_instance.remote_nodes):
             self.mcvirt_instance.remote_nodes[node] = Remote(self, node)
         return self.mcvirt_instance.remote_nodes[node]
 
@@ -281,8 +293,8 @@ class Cluster:
         # Add node to configuration file
         def addNode(mcvirt_config):
             mcvirt_config['cluster']['nodes'][node_name] = {
-              'ip_address': ip_address,
-              'public_key': public_key
+                'ip_address': ip_address,
+                'public_key': public_key
             }
         MCVirtConfig().updateConfig(addNode)
         self.buildAuthorizedKeysFile()

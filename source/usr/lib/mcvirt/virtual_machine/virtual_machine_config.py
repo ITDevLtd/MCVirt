@@ -15,11 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import json
 import os
 
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.config_file import ConfigFile
+
 
 class VirtualMachineConfig(ConfigFile):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
@@ -44,29 +44,28 @@ class VirtualMachineConfig(ConfigFile):
     @staticmethod
     def create(vm_name, available_nodes, cpu_cores, memory_allocation):
         """Creates a basic VM configuration for new VMs"""
-        from mcvirt.virtual_machine.virtual_machine import VirtualMachine, LockStates
-        from mcvirt.cluster.cluster import Cluster
+        from mcvirt.virtual_machine.virtual_machine import LockStates
 
         # Create basic config
         json_data = \
-          {
-            'version': VirtualMachineConfig.CURRENT_VERSION,
-            'permissions':
             {
-              'user': [],
-              'owner': [],
-            },
-            'hard_disks': {},
-            'storage_type': None,
-            'memory_allocation': str(memory_allocation),
-            'cpu_cores': str(cpu_cores),
-            'clone_parent': False,
-            'clone_children': [],
-            'network_interfaces': {},
-            'node': None,
-            'available_nodes': available_nodes,
-            'lock': LockStates.UNLOCKED.value
-          }
+                'version': VirtualMachineConfig.CURRENT_VERSION,
+                'permissions':
+                {
+                    'user': [],
+                    'owner': [],
+                },
+                'hard_disks': {},
+                'storage_type': None,
+                'memory_allocation': str(memory_allocation),
+                'cpu_cores': str(cpu_cores),
+                'clone_parent': False,
+                'clone_children': [],
+                'network_interfaces': {},
+                'node': None,
+                'available_nodes': available_nodes,
+                'lock': LockStates.UNLOCKED.value
+            }
 
         # Write the configuration to disk
         VirtualMachineConfig._writeJSON(json_data, VirtualMachineConfig.getConfigPath(vm_name))

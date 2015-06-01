@@ -31,5 +31,6 @@ if __name__ == '__main__':
     virtual_machine_test_suite = VirtualMachineTests.suite()
     network_test_suite = NetworkTests.suite()
     drbd_test_suite = DrbdTests.suite()
-    all_tests = unittest.TestSuite([virtual_machine_test_suite, network_test_suite, auth_test_suite, drbd_test_suite])
+    all_tests = unittest.TestSuite(
+        [virtual_machine_test_suite, network_test_suite, auth_test_suite, drbd_test_suite])
     sys.exit(not runner.run(all_tests).wasSuccessful())

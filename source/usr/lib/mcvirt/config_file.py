@@ -18,6 +18,7 @@
 import json
 import os
 
+
 class ConfigFile():
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
@@ -56,8 +57,8 @@ class ConfigFile():
     @staticmethod
     def _writeJSON(data, file_name):
         """Parses and writes the JSON VM config file"""
-        import pwd
-        json_data = json.dumps(data, indent = 2, separators = (',', ': '))
+        import pwd, stat
+        json_data = json.dumps(data, indent=2, separators=(',', ': '))
 
         # Open the config file and write to contents
         config_file = open(file_name, 'w')
@@ -65,7 +66,7 @@ class ConfigFile():
         config_file.close()
 
         # Check file permissions, only giving read/write access to libvirt-qemu/root
-        os.chmod(file_name, 0600)
+        os.chmod(file_name, stat.S_IWUSR | stat.S_IRUSR)
         os.chown(file_name, pwd.getpwnam('libvirt-qemu').pw_uid, 0)
 
     @staticmethod
@@ -89,8 +90,12 @@ class ConfigFile():
                 # Update the version number of the configuration file to
                 # the current version
                 config['version'] = self.CURRENT_VERSION
-            self.updateConfig(upgradeConfig, 'Updated configuration file \'%s\' from version \'%s\' to \'%s\'' %
-                                             (self.config_file, current_version, self.CURRENT_VERSION))
+            self.updateConfig(
+                upgradeConfig,
+                'Updated configuration file \'%s\' from version \'%s\' to \'%s\'' %
+                (self.config_file,
+                 current_version,
+                 self.CURRENT_VERSION))
 
     def _getVersion(self):
         """Returns the version number of the configuration file"""
@@ -110,8 +115,16 @@ class ConfigFile():
             message += "\nUser: %s\nNode: %s" % (Auth.getUsername(), Cluster.getHostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file], cwd=MCVirt.BASE_STORAGE_DIR)
-                System.runCommand([self.GIT, 'commit', '-m', message, self.config_file], cwd=MCVirt.BASE_STORAGE_DIR)
-                System.runCommand([self.GIT, 'push'], raise_exception_on_failure=False, cwd=MCVirt.BASE_STORAGE_DIR)
+                System.runCommand([self.GIT,
+                                   'commit',
+                                   '-m',
+                                   message,
+                                   self.config_file],
+                                  cwd=MCVirt.BASE_STORAGE_DIR)
+                System.runCommand([self.GIT,
+                                   'push'],
+                                  raise_exception_on_failure=False,
+                                  cwd=MCVirt.BASE_STORAGE_DIR)
             except:
                 pass
 
@@ -122,11 +135,18 @@ class ConfigFile():
         from auth import Auth
         from cluster.cluster import Cluster
         if (self._checkGitRepo()):
-            message +=  "\nUser: %s\nNode: %s" % (Auth.getUsername(), Cluster.getHostname())
+            message += "\nUser: %s\nNode: %s" % (Auth.getUsername(), Cluster.getHostname())
             try:
-                System.runCommand([self.GIT, 'rm', '--cached', self.config_file], cwd=MCVirt.BASE_STORAGE_DIR)
+                System.runCommand([self.GIT,
+                                   'rm',
+                                   '--cached',
+                                   self.config_file],
+                                  cwd=MCVirt.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT, 'commit', '-m', message], cwd=MCVirt.BASE_STORAGE_DIR)
-                System.runCommand([self.GIT, 'push'], raise_exception_on_failure=False, cwd=MCVirt.BASE_STORAGE_DIR)
+                System.runCommand([self.GIT,
+                                   'push'],
+                                  raise_exception_on_failure=False,
+                                  cwd=MCVirt.BASE_STORAGE_DIR)
             except:
                 pass
 
@@ -149,36 +169,59 @@ class ConfigFile():
             System.runCommand([self.GIT, 'init'], cwd=MCVirt.BASE_STORAGE_DIR)
 
             # Set git name and email address
-            System.runCommand([self.GIT, 'config', '--file=%s' % MCVirt.BASE_STORAGE_DIR + '/.git/config',
-                               'user.name', mcvirt_config['git']['commit_name']])
-            System.runCommand([self.GIT, 'config', '--file=%s' % MCVirt.BASE_STORAGE_DIR + '/.git/config',
-                               'user.email', mcvirt_config['git']['commit_email']])
+            System.runCommand([self.GIT, 'config', '--file=%s' %
+                               MCVirt.BASE_STORAGE_DIR +
+                               '/.git/config', 'user.name', mcvirt_config['git']['commit_name']])
+            System.runCommand([self.GIT, 'config', '--file=%s' %
+                               MCVirt.BASE_STORAGE_DIR +
+                               '/.git/config', 'user.email', mcvirt_config['git']['commit_email']])
 
             # Create git-credentials store
-            System.runCommand([self.GIT, 'config', '--file=%s' % MCVirt.BASE_STORAGE_DIR + '/.git/config',
-                               'credential.helper', 'store --file /root/.git-credentials'])
-            git_credentials = '%s://%s:%s@%s' % (mcvirt_config['git']['repo_protocol'], mcvirt_config['git']['username'],
-                                                 mcvirt_config['git']['password'], mcvirt_config['git']['repo_domain'])
+            System.runCommand([self.GIT,
+                               'config',
+                               '--file=%s' % MCVirt.BASE_STORAGE_DIR + '/.git/config',
+                               'credential.helper',
+                               'store --file /root/.git-credentials'])
+            git_credentials = '%s://%s:%s@%s' % (mcvirt_config['git']['repo_protocol'],
+                                                 mcvirt_config['git']['username'],
+                                                 mcvirt_config['git']['password'],
+                                                 mcvirt_config['git']['repo_domain'])
             fh = open('/root/.git-credentials', 'w')
             fh.write(git_credentials)
             fh.close()
 
             # Add the git remote
-            System.runCommand([self.GIT, 'remote', 'add', 'origin', mcvirt_config['git']['repo_protocol'] + '://'
-                                                                    + mcvirt_config['git']['repo_domain'] + '/'
-                                                                    + mcvirt_config['git']['repo_path']],
-                              cwd=MCVirt.BASE_STORAGE_DIR)
+            System.runCommand(
+                [
+                    self.GIT,
+                    'remote',
+                    'add',
+                    'origin',
+                    mcvirt_config['git']['repo_protocol'] +
+                    '://' +
+                    mcvirt_config['git']['repo_domain'] +
+                    '/' +
+                    mcvirt_config['git']['repo_path']],
+                cwd=MCVirt.BASE_STORAGE_DIR)
 
             # Update the repo
             System.runCommand([self.GIT, 'fetch'], cwd=MCVirt.BASE_STORAGE_DIR)
             System.runCommand([self.GIT, 'checkout', 'master'], cwd=MCVirt.BASE_STORAGE_DIR)
-            System.runCommand([self.GIT, 'branch', '--set-upstream-to', 'origin/master', 'master'], cwd=MCVirt.BASE_STORAGE_DIR)
+            System.runCommand([self.GIT,
+                               'branch',
+                               '--set-upstream-to',
+                               'origin/master',
+                               'master'],
+                              cwd=MCVirt.BASE_STORAGE_DIR)
 
             # Perform an initial commit of the configuration file
             self.gitAdd('Initial commit of configuration file.')
 
         else:
             # Update repository
-            System.runCommand([self.GIT, 'pull'], raise_exception_on_failure=False, cwd=MCVirt.BASE_STORAGE_DIR)
+            System.runCommand([self.GIT,
+                               'pull'],
+                              raise_exception_on_failure=False,
+                              cwd=MCVirt.BASE_STORAGE_DIR)
 
         return True

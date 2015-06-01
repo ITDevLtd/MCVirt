@@ -17,6 +17,7 @@
 
 from mcvirt.virtual_machine.hard_drive.config.base import Base
 
+
 class Local(Base):
     """Provides a configuration interface for local hard drive objects"""
 
@@ -25,7 +26,13 @@ class Local(Base):
     def __init__(self, vm_object, disk_id=None, config=None, registered=False):
         """Create config has for storing variables and run the base init method"""
         self.config = {}
-        super(Local, self).__init__(vm_object=vm_object, disk_id=disk_id, config=config, registered=registered)
+        super(
+            Local,
+            self).__init__(
+            vm_object=vm_object,
+            disk_id=disk_id,
+            config=config,
+            registered=registered)
 
     def _getDiskPath(self):
         """Returns the path of the raw disk image"""

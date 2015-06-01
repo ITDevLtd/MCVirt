@@ -16,13 +16,13 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import libvirt
-import sys
 import os
 from lockfile import FileLock
 from texttable import Texttable
 import socket
 
 from mcvirt_config import MCVirtConfig
+
 
 class MCVirt:
     """Provides general MCVirt functions"""
@@ -40,7 +40,7 @@ class MCVirt:
         self.libvirt_uri = uri
         self.connection = None
         # Create an MCVirt config instance and force an upgrade
-        config_instance = MCVirtConfig(perform_upgrade=True, mcvirt_instance=self)
+        MCVirtConfig(perform_upgrade=True, mcvirt_instance=self)
 
         # Configure custom username - used for unittests
         self.ignore_drbd = False
@@ -92,7 +92,7 @@ class MCVirt:
             if (self.initialise_nodes):
                 for remote_node in self.remote_nodes:
                     self.remote_nodes[remote_node].runRemoteCommand('mcvirt-obtainLock',
-                                                                      {'timeout': timeout})
+                                                                    {'timeout': timeout})
 
             self.obtained_filelock = True
         except:
@@ -114,9 +114,9 @@ class MCVirt:
         connect to libvirt and store the connection as an object variable.
         Exit if an error occurs whilst connecting.
         """
-        if (self.connection == None):
+        if (self.connection is None):
             self.connection = libvirt.open(self.libvirt_uri)
-            if (self.connection == None):
+            if (self.connection is None):
                 raise MCVirtException('Failed to open connection to the hypervisor')
         return self.connection
 
@@ -173,6 +173,7 @@ class MCVirt:
             table.add_row((node, node_config['ip_address'],
                            node_status))
         print table.draw()
+
 
 class MCVirtException(Exception):
     """Provides an exception to be thrown for errors in MCVirt"""

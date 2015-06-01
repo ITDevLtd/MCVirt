@@ -20,6 +20,7 @@ from mcvirt.auth import Auth
 
 import xml.etree.ElementTree as ET
 
+
 class NetworkDoesNotExistException(MCVirtException):
     """Network does not exist"""
     pass
@@ -63,8 +64,9 @@ class Network:
         connected_vms = self._checkConnectedVirtualMachines()
         if (len(connected_vms)):
             connected_vm_name_string = ', '.join(vm.getName() for vm in connected_vms)
-            raise NetworkUtilizedException('Network \'%s\' cannot be removed as it is used by the following VMs: %s'
-              % (self.getName(), connected_vm_name_string))
+            raise NetworkUtilizedException(
+                'Network \'%s\' cannot be removed as it is used by the following VMs: %s' %
+                (self.getName(), connected_vm_name_string))
 
         # Undefine object from libvirt
         try:
@@ -151,7 +153,7 @@ class Network:
         network_bridge_xml.set('name', physical_interface)
 
         # Convert XML object to string
-        network_xml_string = ET.tostring(network_xml, encoding = 'utf8', method = 'xml')
+        network_xml_string = ET.tostring(network_xml, encoding='utf8', method='xml')
 
         # Attempt to register network with LibVirt
         try:

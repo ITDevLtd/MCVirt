@@ -26,6 +26,7 @@ from mcvirt.system import System, MCVirtCommandException
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.mcvirt import MCVirtException
 
+
 class DrbdStateException(MCVirtException):
     """The DRBD state is not OK"""
     pass
@@ -69,9 +70,11 @@ class DrbdConnectionState(Enum):
     TEAR_DOWN = 'TearDown'
     # This node is waiting until the peer node becomes visible on the network.
     WF_CONNECTION = 'WFConnection'
-    # TCP connection has been established, this node waits for the first network packet from the peer.
+    # TCP connection has been established, this node waits for the first
+    # network packet from the peer.
     WF_REPORT_PARAMS = 'WFReportParams'
-    # A DRBD connection has been established, data mirroring is now active. This is the normal state.
+    # A DRBD connection has been established, data mirroring is now active.
+    # This is the normal state.
     CONNECTED = 'Connected'
     # Full synchronization, initiated by the administrator, is just starting.
     # The next possible states are: SyncSource or PausedSyncS.
@@ -86,21 +89,27 @@ class DrbdConnectionState(Enum):
     WF_BIT_MAP_T = 'WFBitMapT'
     # Synchronization is about to begin. Next possible states: SyncTarget or PausedSyncT.
     WF_SYNC_UUID = 'WFSyncUUID'
-    # Synchronization is currently running, with the local node being the source of synchronization.
+    # Synchronization is currently running, with the local node being the
+    # source of synchronization.
     SYNC_SOURCE = 'SyncSource'
-    # Synchronization is currently running, with the local node being the target of synchronization.
+    # Synchronization is currently running, with the local node being the
+    # target of synchronization.
     SYNC_TARGET = 'SyncTarget'
-    # The local node is the source of an ongoing synchronization, but synchronization is currently paused.
-    # This may be due to a dependency on the completion of another synchronization process, or due to
-    # synchronization having been manually interrupted by drbdadm pause-sync.
+    # The local node is the source of an ongoing synchronization,
+    # but synchronization is currently paused.
+    # This may be due to a dependency on the completion of another synchronization process,
+    # or due to synchronization having been manually interrupted by drbdadm pause-sync.
     PAUSED_SYNC_S = 'PausedSyncS'
-    # The local node is the target of an ongoing synchronization, but synchronization is currently paused.
-    # This may be due to a dependency on the completion of another synchronization process, or due to
-    # synchronization having been manually interrupted by drbdadm pause-sync.
+    # The local node is the target of an ongoing synchronization,
+    # but synchronization is currently paused.
+    # This may be due to a dependency on the completion of another synchronization process,
+    # or due to synchronization having been manually interrupted by drbdadm pause-sync.
     PAUSED_SYNC_T = 'PausedSyncT'
-    # On-line device verification is currently running, with the local node being the source of verification.
+    # On-line device verification is currently running, with the local node
+    # being the source of verification.
     VERIFY_S = 'VerifyS'
-    # On-line device verification is currently running, with the local node being the target of verification.
+    # On-line device verification is currently running, with the local node
+    # being the target of verification.
     VERIFY_T = 'VerifyT'
 
 
@@ -111,8 +120,8 @@ class DrbdRoleState(Enum):
     # This role only occurs on one of the two nodes, unless dual-primary mode is enabled.
     PRIMARY = 'Primary'
     # The resource is currently in the secondary role. It normally receives updates from its peer
-    # (unless running in disconnected mode), but may neither be read from nor written to. This role may
-    # occur on one or both nodes.
+    # (unless running in disconnected mode), but may neither be read from nor written to.
+    # This role may occur on one or both nodes.
     SECONDARY = 'Secondary'
     # The resource's role is currently unknown. The local resource role never has this status.
     # It is only displayed for the peer's resource role, and only in disconnected mode.
@@ -122,13 +131,14 @@ class DrbdRoleState(Enum):
 class DrbdDiskState(Enum):
     """Library of DRBD disk states"""
 
-    # No local block device has been assigned to the DRBD driver. This may mean that the resource has
-    # never attached to its backing device, that it has been manually detached using drbdadm detach,
-    # or that it automatically detached after a lower-level I/O error.
+    # No local block device has been assigned to the DRBD driver. This may mean that the resource
+    # has never attached to its backing device, that it has been manually detached using
+    # drbdadm detach, or that it automatically detached after a lower-level I/O error.
     DISKLESS = 'Diskless'
     # Transient state while reading meta data.
     ATTACHING = 'Attaching'
-    # Transient state following an I/O failure report by the local block device. Next state: Diskless.
+    # Transient state following an I/O failure report by the local block
+    # device. Next state: Diskless.
     FAILED = 'Failed'
     # Transient state when an Attach is carried out on an already-Connected DRBD device.
     NEGOTIATING = 'Negotiating'
@@ -150,33 +160,44 @@ class DrbdDiskState(Enum):
 class DRBD(Base):
     """Provides operations to manage DRBD-backed hard drives, used by VMs"""
 
-    CREATE_PROGRESS = Enum('CREATE_PROGRESS', ['START', 'CREATE_RAW_LV', 'CREATE_META_LV', 'CREATE_DRBD_CONFIG',
-                                               'CREATE_DRBD_CONFIG_R', 'DRBD_UP', 'DRBD_UP_R', 'ADD_TO_VM', 'DRBD_CONNECT',
-                                               'DRBD_CONNECT_R'])
+    CREATE_PROGRESS = Enum('CREATE_PROGRESS',
+                           ['START',
+                            'CREATE_RAW_LV',
+                            'CREATE_META_LV',
+                            'CREATE_DRBD_CONFIG',
+                            'CREATE_DRBD_CONFIG_R',
+                            'DRBD_UP',
+                            'DRBD_UP_R',
+                            'ADD_TO_VM',
+                            'DRBD_CONNECT',
+                            'DRBD_CONNECT_R'])
 
-    DRBD_STATES = \
-      {
-        'CONNECTION':
-        {
-          'OK': [DrbdConnectionState.CONNECTED, DrbdConnectionState.VERIFY_S, DrbdConnectionState.VERIFY_T,
-                 DrbdConnectionState.PAUSED_SYNC_S, DrbdConnectionState.STARTING_SYNC_S,
-                 DrbdConnectionState.SYNC_SOURCE, DrbdConnectionState.WF_BIT_MAP_S],
-
-          'WARNING': [DrbdConnectionState.STAND_ALONE, DrbdConnectionState.DISCONNECTING, DrbdConnectionState.UNCONNECTED,
-                      DrbdConnectionState.BROKEN_PIPE, DrbdConnectionState.NETWORK_FAILURE, DrbdConnectionState.WF_CONNECTION,
-                      DrbdConnectionState.WF_REPORT_PARAMS]
+    DRBD_STATES = {
+        'CONNECTION': {
+            'OK': [DrbdConnectionState.CONNECTED,
+                   DrbdConnectionState.VERIFY_S,
+                   DrbdConnectionState.VERIFY_T,
+                   DrbdConnectionState.PAUSED_SYNC_S,
+                   DrbdConnectionState.STARTING_SYNC_S,
+                   DrbdConnectionState.SYNC_SOURCE,
+                   DrbdConnectionState.WF_BIT_MAP_S],
+            'WARNING': [DrbdConnectionState.STAND_ALONE,
+                        DrbdConnectionState.DISCONNECTING,
+                        DrbdConnectionState.UNCONNECTED,
+                        DrbdConnectionState.BROKEN_PIPE,
+                        DrbdConnectionState.NETWORK_FAILURE,
+                        DrbdConnectionState.WF_CONNECTION,
+                        DrbdConnectionState.WF_REPORT_PARAMS]
         },
-        'ROLE':
-        {
-          'OK': [DrbdRoleState.PRIMARY],
-          'WARNING': []
+        'ROLE': {
+            'OK': [DrbdRoleState.PRIMARY],
+            'WARNING': []
         },
-        'DISK':
-        {
-          'OK': [DrbdDiskState.UP_TO_DATE],
-          'WARNING': [DrbdDiskState.CONSISTENT, DrbdDiskState.D_UNKNOWN]
+        'DISK': {
+            'OK': [DrbdDiskState.UP_TO_DATE],
+            'WARNING': [DrbdDiskState.CONSISTENT, DrbdDiskState.D_UNKNOWN]
         }
-      }
+    }
 
     def __init__(self, vm_object, disk_id):
         """Sets member variables"""
@@ -186,16 +207,22 @@ class DRBD(Base):
 
     def _checkExists(self):
         """Ensures the required storage elements exist on the system"""
-        raw_lv = self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_RAW_SUFFIX)
-        meta_lv = self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_META_SUFFIX)
+        raw_lv = self.getConfigObject()._getLogicalVolumeName(
+            self.getConfigObject().DRBD_RAW_SUFFIX
+        )
+        meta_lv = self.getConfigObject()._getLogicalVolumeName(
+            self.getConfigObject().DRBD_META_SUFFIX
+        )
         DRBD._ensureLogicalVolumeExists(self.getConfigObject(), raw_lv)
         DRBD._ensureLogicalVolumeExists(self.getConfigObject(), meta_lv)
         return True
 
     def activateDisk(self):
         """Ensures that the disk is ready to be used by a VM on the local node"""
-        raw_lv = self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_RAW_SUFFIX)
-        meta_lv = self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_META_SUFFIX)
+        raw_lv = self.getConfigObject()._getLogicalVolumeName(
+            self.getConfigObject().DRBD_RAW_SUFFIX)
+        meta_lv = self.getConfigObject()._getLogicalVolumeName(
+            self.getConfigObject().DRBD_META_SUFFIX)
         DRBD._ensureLogicalVolumeActive(self.getConfigObject(), raw_lv)
         DRBD._ensureLogicalVolumeActive(self.getConfigObject(), meta_lv)
         self._checkDrbdStatus()
@@ -208,22 +235,33 @@ class DRBD(Base):
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""
-        return DRBD._getLogicalVolumeSize(self.getConfigObject(),
-                                          self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_RAW_SUFFIX))
+        return DRBD._getLogicalVolumeSize(
+            self.getConfigObject(),
+            self.getConfigObject()._getLogicalVolumeName(
+                self.getConfigObject().DRBD_RAW_SUFFIX
+            )
+        )
 
     @staticmethod
     def create(vm_object, size, disk_id=None, drbd_minor=None, drbd_port=None):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
         in the VM configuration"""
         # Ensure user has privileges to create a DRBD volume
-        vm_object.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_DRBD, vm_object)
+        vm_object.mcvirt_object.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.MANAGE_DRBD,
+            vm_object
+        )
 
         # Ensure DRBD is enabled on the host
         if (not NodeDRBD.isEnabled()):
             raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
 
         # Obtain disk ID, DRBD minor and DRBD port if one has not been specified
-        config_object = ConfigDRBD(vm_object=vm_object, disk_id=disk_id, drbd_minor=drbd_minor, drbd_port=drbd_port)
+        config_object = ConfigDRBD(
+            vm_object=vm_object,
+            disk_id=disk_id,
+            drbd_minor=drbd_minor,
+            drbd_port=drbd_port)
 
         # Create cluster object for running on remote nodes
         cluster_instance = Cluster(vm_object.mcvirt_object)
@@ -234,23 +272,32 @@ class DRBD(Base):
         progress = DRBD.CREATE_PROGRESS.START
         try:
             # Create DRBD raw logical volume
-            raw_logical_volume_name = config_object._getLogicalVolumeName(config_object.DRBD_RAW_SUFFIX)
-            DRBD._createLogicalVolume(config_object, raw_logical_volume_name, size, perform_on_nodes=True)
+            raw_logical_volume_name = config_object._getLogicalVolumeName(
+                config_object.DRBD_RAW_SUFFIX)
+            DRBD._createLogicalVolume(config_object, raw_logical_volume_name,
+                                      size, perform_on_nodes=True)
             progress = DRBD.CREATE_PROGRESS.CREATE_RAW_LV
-            DRBD._activateLogicalVolume(config_object, raw_logical_volume_name, perform_on_nodes=True)
+            DRBD._activateLogicalVolume(config_object, raw_logical_volume_name,
+                                        perform_on_nodes=True)
 
             # Zero raw logical volume
-            DRBD._zeroLogicalVolume(config_object, raw_logical_volume_name, size, perform_on_nodes=True)
+            DRBD._zeroLogicalVolume(config_object, raw_logical_volume_name,
+                                    size, perform_on_nodes=True)
 
             # Create DRBD meta logical volume
-            meta_logical_volume_name = config_object._getLogicalVolumeName(config_object.DRBD_META_SUFFIX)
+            meta_logical_volume_name = config_object._getLogicalVolumeName(
+                config_object.DRBD_META_SUFFIX
+            )
             meta_logical_volume_size = config_object._calculateMetaDataSize()
-            DRBD._createLogicalVolume(config_object, meta_logical_volume_name, meta_logical_volume_size, perform_on_nodes=True)
+            DRBD._createLogicalVolume(config_object, meta_logical_volume_name,
+                                      meta_logical_volume_size, perform_on_nodes=True)
             progress = DRBD.CREATE_PROGRESS.CREATE_META_LV
-            DRBD._activateLogicalVolume(config_object, meta_logical_volume_name, perform_on_nodes=True)
+            DRBD._activateLogicalVolume(config_object, meta_logical_volume_name,
+                                        perform_on_nodes=True)
 
             # Zero meta logical volume
-            DRBD._zeroLogicalVolume(config_object, meta_logical_volume_name, meta_logical_volume_size, perform_on_nodes=True)
+            DRBD._zeroLogicalVolume(config_object, meta_logical_volume_name,
+                                    meta_logical_volume_size, perform_on_nodes=True)
 
             # Generate DRBD resource configuration
             config_object._generateDrbdConfig()
@@ -291,26 +338,33 @@ class DRBD(Base):
             # Ensure the DRBD resource is connected
             hard_drive_object._drbdConnect()
             progress = DRBD.CREATE_PROGRESS.DRBD_CONNECT
-            cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdConnect',
-                                              {'vm_name': vm_object.getName(),
-                                               'disk_id': hard_drive_object.getConfigObject().getId()})
+            cluster_instance.runRemoteCommand(
+                'virtual_machine-hard_drive-drbd-drbdConnect', {
+                    'vm_name': vm_object.getName(),
+                    'disk_id': hard_drive_object.getConfigObject().getId()
+                }
+            )
             progress = DRBD.CREATE_PROGRESS.DRBD_CONNECT_R
 
             # Mark volume as primary on local node
             hard_drive_object._drbdSetPrimary()
-            cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdSetSecondary',
-                                              {'vm_name': vm_object.getName(),
-                                               'disk_id': hard_drive_object.getConfigObject().getId()},
-                                              nodes=remote_nodes)
+            cluster_instance.runRemoteCommand(
+                'virtual_machine-hard_drive-drbd-drbdSetSecondary',
+                {
+                    'vm_name': vm_object.getName(),
+                    'disk_id': hard_drive_object.getConfigObject().getId()},
+                nodes=remote_nodes)
 
             return hard_drive_object
 
-        except Exception, e:
+        except Exception:
             # If the creation fails, tear down based on the progress of the creation
             if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_CONNECT_R.value):
-                cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDisconnect',
-                                                  {'vm_name': vm_object.getName(),
-                                                   'disk_id': hard_drive_object.getConfigObject().getId()})
+                cluster_instance.runRemoteCommand(
+                    'virtual_machine-hard_drive-drbd-drbdDisconnect',
+                    {
+                        'vm_name': vm_object.getName(),
+                        'disk_id': hard_drive_object.getConfigObject().getId()})
 
             if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_CONNECT.value):
                 hard_drive_object._drbdDisconnect()
@@ -327,18 +381,26 @@ class DRBD(Base):
                 DRBD._drbdDown(config_object)
 
             if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R.value):
-                cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-removeDrbdConfig',
-                                                  {'config': config_object._dumpConfig()},
-                                                  nodes=remote_nodes)
+                cluster_instance.runRemoteCommand(
+                    'virtual_machine-hard_drive-drbd-removeDrbdConfig',
+                    {
+                        'config': config_object._dumpConfig()},
+                    nodes=remote_nodes)
 
             if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG.value):
                 config_object._removeDrbdConfig()
 
             if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_META_LV.value):
-                DRBD._removeLogicalVolume(config_object, meta_logical_volume_name, perform_on_nodes=True)
+                DRBD._removeLogicalVolume(
+                    config_object,
+                    meta_logical_volume_name,
+                    perform_on_nodes=True)
 
             if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_RAW_LV.value):
-                DRBD._removeLogicalVolume(config_object, raw_logical_volume_name, perform_on_nodes=True)
+                DRBD._removeLogicalVolume(
+                    config_object,
+                    raw_logical_volume_name,
+                    perform_on_nodes=True)
 
             raise
 
@@ -364,12 +426,16 @@ class DRBD(Base):
         self.getConfigObject()._removeDrbdConfig()
 
         # Remove the meta and raw logical volume from all nodes
-        DRBD._removeLogicalVolume(self.getConfigObject(),
-                                  self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_META_SUFFIX),
-                                  perform_on_nodes=True)
-        DRBD._removeLogicalVolume(self.getConfigObject(),
-                                  self.getConfigObject()._getLogicalVolumeName(self.getConfigObject().DRBD_RAW_SUFFIX),
-                                  perform_on_nodes=True)
+        DRBD._removeLogicalVolume(
+            self.getConfigObject(),
+            self.getConfigObject()._getLogicalVolumeName(
+                self.getConfigObject().DRBD_META_SUFFIX),
+            perform_on_nodes=True)
+        DRBD._removeLogicalVolume(
+            self.getConfigObject(),
+            self.getConfigObject()._getLogicalVolumeName(
+                self.getConfigObject().DRBD_RAW_SUFFIX),
+            perform_on_nodes=True)
 
     @staticmethod
     def _addToVirtualMachine(config_object):
@@ -387,16 +453,20 @@ class DRBD(Base):
             try:
                 for node in config_object.vm_object._getRemoteNodes():
                     remote_object = cluster_instance.getRemoteNode(node)
-                    remote_object.runRemoteCommand('virtual_machine-hard_drive-addToVirtualMachine',
-                                                   {'config': config_object._dumpConfig()})
+                    remote_object.runRemoteCommand(
+                        'virtual_machine-hard_drive-addToVirtualMachine',
+                        {'config': config_object._dumpConfig()}
+                    )
                     successful_nodes.append(node)
             except Exception:
                 # If the hard drive fails to be added to a node, remove it from all successful nodes
                 # and remove from the local node
                 for node in successful_nodes:
                     remote_object = cluster_instance.getRemoteNode(node)
-                    remote_object.runRemoteCommand('virtual_machine-hard_drive-removeFromVirtualMachine',
-                                                   {'config': config_object._dumpConfig()})
+                    remote_object.runRemoteCommand(
+                        'virtual_machine-hard_drive-removeFromVirtualMachine',
+                        {'config': config_object._dumpConfig()}
+                    )
                 DRBD._removeFromVirtualMachine(config_object)
                 raise
 
@@ -412,8 +482,10 @@ class DRBD(Base):
             cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
             for node in config_object.vm_object._getRemoteNodes():
                 remote_object = cluster_instance.getRemoteNode(node)
-                remote_object.runRemoteCommand('virtual_machine-hard_drive-removeFromVirtualMachine',
-                                               {'config': config_object._dumpConfig()})
+                remote_object.runRemoteCommand(
+                    'virtual_machine-hard_drive-removeFromVirtualMachine',
+                    {'config': config_object._dumpConfig()}
+                )
 
     @staticmethod
     def _initialiseMetaData(resource_name):
@@ -439,11 +511,13 @@ class DRBD(Base):
     def _drbdConnect(self):
         """Performs a DRBD 'connect' on the hard drive DRBD resource"""
         if (self._drbdGetConnectionState() is not DrbdConnectionState.CONNECTED):
-            System.runCommand([NodeDRBD.DRBDADM, 'connect', self.getConfigObject()._getResourceName()])
+            System.runCommand(
+                [NodeDRBD.DRBDADM, 'connect', self.getConfigObject()._getResourceName()])
 
     def _drbdDisconnect(self):
         """Performs a DRBD 'disconnect' on the hard drive DRBD resource"""
-        System.runCommand([NodeDRBD.DRBDADM, 'disconnect', self.getConfigObject()._getResourceName()])
+        System.runCommand(
+            [NodeDRBD.DRBDADM, 'disconnect', self.getConfigObject()._getResourceName()])
 
     def _drbdSetPrimary(self):
         """Performs a DRBD 'primary' on the hard drive DRBD resource"""
@@ -453,24 +527,31 @@ class DRBD(Base):
         self._checkDrbdStatus()
 
         # Ensure that role states are not unknown
-        if (local_role_state is DrbdRoleState.UNKNOWN or remote_role_state is DrbdRoleState.UNKNOWN):
-            raise DrbdStateException('DRBD role is unknown for resource %s' % self.getConfigObject()._getResourceName())
+        if local_role_state is DrbdRoleState.UNKNOWN or remote_role_state is DrbdRoleState.UNKNOWN:
+            raise DrbdStateException('DRBD role is unknown for resource %s' %
+                                     self.getConfigObject()._getResourceName())
 
         # Ensure remote role is secondary
         if (remote_role_state is not DrbdRoleState.SECONDARY):
-            raise DrbdStateException('Cannot make local DRBD primary if remote DRBD is not secondary: %s' %
-                                     self.getConfigObject()._getResourceName())
+            raise DrbdStateException(
+                'Cannot make local DRBD primary if remote DRBD is not secondary: %s' %
+                self.getConfigObject()._getResourceName())
 
         # Set DRBD resource to primary
         System.runCommand([NodeDRBD.DRBDADM, 'primary', self.getConfigObject()._getResourceName()])
 
     def _drbdSetSecondary(self):
         """Performs a DRBD 'secondary' on the hard drive DRBD resource"""
-        System.runCommand([NodeDRBD.DRBDADM, 'secondary', self.getConfigObject()._getResourceName()])
+        System.runCommand(
+            [NodeDRBD.DRBDADM, 'secondary', self.getConfigObject()._getResourceName()])
 
     def _drbdOverwritePeer(self):
         """Force DRBD to overwrite the data on the peer"""
-        System.runCommand([NodeDRBD.DRBDADM, '--', '--overwrite-data-of-peer', 'primary', self.getConfigObject()._getResourceName()])
+        System.runCommand([NodeDRBD.DRBDADM,
+                           '--',
+                           '--overwrite-data-of-peer',
+                           'primary',
+                           self.getConfigObject()._getResourceName()])
 
     def _checkDrbdStatus(self):
         """Checks the status of the DRBD volume and returns the states"""
@@ -488,7 +569,8 @@ class DRBD(Base):
         # Ensure the disk is in-sync
         self._ensureInSync()
 
-        return ((local_disk_state, remote_disk_state), connection_state, (local_role_state, remote_role_state))
+        return ((local_disk_state, remote_disk_state),
+                connection_state, (local_role_state, remote_role_state))
 
     def _checkStateType(self, state_name, state):
         """Determines if the given type of state is OK or not. An exception
@@ -499,29 +581,36 @@ class DRBD(Base):
             # the DRBD state
             if (state in DRBD.DRBD_STATES[state_name]['WARNING']):
                 if (not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object)):
-                    raise DrbdStateException('DRBD connection state for the DRBD resource %s is %s so cannot continue. ' %
-                                             (self.getConfigObject()._getResourceName(), state.value) +
-                                             'Run MCVirt as a superuser with --ignore-drbd to ignore this issue')
+                    raise DrbdStateException(
+                        ('DRBD connection state for the DRBD resource '
+                         '%s is %s so cannot continue. Run MCVirt as a '
+                         'superuser with --ignore-drbd to ignore this issue') %
+                        (self.getConfigObject()._getResourceName(), state.value)
+                    )
             else:
-                raise DrbdStateException('DRBD connection state for the DRBD resource %s is %s so cannot continue. ' %
-                                         (self.getConfigObject()._getResourceName(), state.value))
+                raise DrbdStateException(
+                    'DRBD connection state for the DRBD resource %s is %s so cannot continue. ' %
+                    (self.getConfigObject()._getResourceName(), state.value))
 
     def _drbdGetConnectionState(self):
         """Returns the connection state of the DRBD resource"""
-        exit_code, stdout, stderr = System.runCommand([NodeDRBD.DRBDADM, 'cstate', self.getConfigObject()._getResourceName()])
+        _, stdout, _ = System.runCommand([NodeDRBD.DRBDADM, 'cstate',
+                                          self.getConfigObject()._getResourceName()])
         state = stdout.strip()
         return DrbdConnectionState(state)
 
     def _drbdGetDiskState(self):
         """Returns the disk state of the DRBD resource"""
-        exit_code, stdout, stderr = System.runCommand([NodeDRBD.DRBDADM, 'dstate', self.getConfigObject()._getResourceName()])
+        _, stdout, _ = System.runCommand([NodeDRBD.DRBDADM, 'dstate',
+                                          self.getConfigObject()._getResourceName()])
         states = stdout.strip()
         (local_state, remote_state) = states.split('/')
         return (DrbdDiskState(local_state), DrbdDiskState(remote_state))
 
     def _drbdGetRole(self):
         """Returns the role of the DRBD resource"""
-        exit_code, stdout, stderr = System.runCommand([NodeDRBD.DRBDADM, 'role', self.getConfigObject()._getResourceName()])
+        _, stdout, _ = System.runCommand([NodeDRBD.DRBDADM, 'role',
+                                          self.getConfigObject()._getResourceName()])
         states = stdout.strip()
         (local_state, remote_state) = states.split('/')
         return (DrbdRoleState(local_state), DrbdRoleState(remote_state))
@@ -532,8 +621,8 @@ class DRBD(Base):
         local_disk_state, remote_disk_state = self._drbdGetDiskState()
         connection_state = self._drbdGetConnectionState()
         if ((local_disk_state is not DrbdDiskState.UP_TO_DATE) or
-            (remote_disk_state is not DrbdDiskState.UP_TO_DATE) or
-            (connection_state is not DrbdConnectionState.CONNECTED)):
+                (remote_disk_state is not DrbdDiskState.UP_TO_DATE) or
+                (connection_state is not DrbdConnectionState.CONNECTED)):
             raise DrbdStateException('DRBD resource %s is not in a suitable state to be migrated. '
                                      % self.getConfigObject()._getResourceName() +
                                      'Both nodes must be up-to-date and connected')
@@ -542,16 +631,18 @@ class DRBD(Base):
         """Ensures that the DRBD block device exists"""
         drbd_block_device = self.getConfigObject()._getDrbdDevice()
         if (not os.path.exists(drbd_block_device)):
-            raise DrbdBlockDeviceDoesNotExistException('DRBD block device %s for resource %s does not exist' %
-                                                       (drbd_block_device,
-                                                        self.getConfigObject()._getResourceName()))
+            raise DrbdBlockDeviceDoesNotExistException(
+                'DRBD block device %s for resource %s does not exist' %
+                (drbd_block_device, self.getConfigObject()._getResourceName()))
 
     def _ensureInSync(self):
         """Ensures that the DRBD volume was marked as in sync during the last verification"""
         if (not self._isInSync() and not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object)):
-            raise DrbdVolumeNotInSyncException('The last DRBD verification of the DRBD volume failed: %s. ' %
-                                               self.getConfigObject()._getResourceName() +
-                                               'Run MCVirt as a superuser with --ignore-drbd to ignore this issue')
+            raise DrbdVolumeNotInSyncException(
+                'The last DRBD verification of the DRBD volume failed: %s. ' %
+                self.getConfigObject()._getResourceName() +
+                'Run MCVirt as a superuser with --ignore-drbd to ignore this issue'
+            )
 
     def _isInSync(self):
         """Returns whether the last DRBD verification reported the
@@ -570,10 +661,12 @@ class DRBD(Base):
         """Updates the hard drive config, marking the disk as out of sync"""
         def updateConfig(config):
             config['hard_disks'][self.getConfigObject().getId()]['sync_state'] = sync_state
-        self.getVmObject().getConfigObject().updateConfig(updateConfig, 'Updated sync state of disk \'%s\' of \'%s\' to \'%s\'' %
-                                                                        (self.getConfigObject().getId(),
-                                                                         self.getConfigObject().vm_object.getName(),
-                                                                         sync_state))
+        self.getVmObject().getConfigObject().updateConfig(
+            updateConfig,
+            'Updated sync state of disk \'%s\' of \'%s\' to \'%s\'' %
+            (self.getConfigObject().getId(),
+             self.getConfigObject().vm_object.getName(),
+             sync_state))
 
         # Update remote nodes
         if (self.getConfigObject().vm_object.mcvirt_object.initialiseNodes()):
@@ -591,8 +684,9 @@ class DRBD(Base):
 
         # Check DRBD state of disk
         if (self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
-            raise DrbdStateException('DRBD resource must be connected before performing a verification: %s' %
-                                     self.getConfigObject()._getResourceName())
+            raise DrbdStateException(
+                'DRBD resource must be connected before performing a verification: %s' %
+                self.getConfigObject()._getResourceName())
 
         # Reset the disk to be marked in a consistent state
         self.setSyncState(True)
@@ -602,7 +696,8 @@ class DRBD(Base):
             drbd_socket = DRBDSocket(self.getVmObject().mcvirt_object)
 
             # Perform a drbdadm verification
-            exit_code, stdout, stderr = System.runCommand([NodeDRBD.DRBDADM, 'verify', self.getConfigObject()._getResourceName()])
+            System.runCommand([NodeDRBD.DRBDADM, 'verify',
+                               self.getConfigObject()._getResourceName()])
 
             # Monitor the DRBD status, until the VM has started syncing
             while True:
@@ -620,7 +715,7 @@ class DRBD(Base):
             drbd_socket.mcvirt_instance = None
             drbd_socket = None
 
-        except Exception, e:
+        except Exception:
             # If an exception is thrown during the verify, mark the VM as
             # not in-sync
             self.setSyncState(False)
