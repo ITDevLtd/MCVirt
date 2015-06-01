@@ -5,9 +5,9 @@ Development
 Coding Standards
 ----------------
 
-The MCVirt code bases follows the `python PEP 8 coding standards <https://www.python.org/dev/peps/pep-0008/>`_, with a line length limit of 100.
+The MCVirt code base follows the `python PEP 8 coding standards <https://www.python.org/dev/peps/pep-0008/>`_, with a line length limit of 100 characters.
 
-All code changes must comply with this coding standard and is check by continuous integration tests.
+All code changes must comply with this coding standard and are checked by continuous integration.
 
 The PEP 8 code checker can be installed using::
 
