@@ -57,7 +57,7 @@ class ConfigFile():
     @staticmethod
     def _writeJSON(data, file_name):
         """Parses and writes the JSON VM config file"""
-        import pwd
+        import pwd, stat
         json_data = json.dumps(data, indent=2, separators=(',', ': '))
 
         # Open the config file and write to contents
@@ -66,7 +66,7 @@ class ConfigFile():
         config_file.close()
 
         # Check file permissions, only giving read/write access to libvirt-qemu/root
-        os.chmod(file_name, 0o600)
+        os.chmod(file_name, stat.S_IWUSR | stat.S_IRUSR)
         os.chown(file_name, pwd.getpwnam('libvirt-qemu').pw_uid, 0)
 
     @staticmethod
