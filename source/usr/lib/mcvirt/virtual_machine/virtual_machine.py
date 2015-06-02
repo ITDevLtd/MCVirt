@@ -385,7 +385,7 @@ class VirtualMachine:
 
         # Update the MCVirt configuration
         def updateConfig(config):
-            config['memory_allocation'] = memory_allocation
+            config['memory_allocation'] = str(memory_allocation)
         self.getConfigObject().updateConfig(
             updateConfig,
             'RAM allocation has been changed to %s' %
@@ -413,7 +413,7 @@ class VirtualMachine:
 
         # Update the MCVirt configuration
         def updateConfig(config):
-            config['cpu_cores'] = cpu_count
+            config['cpu_cores'] = str(cpu_count)
         self.getConfigObject().updateConfig(
             updateConfig,
             'CPU count has been changed to %s' %
