@@ -37,12 +37,6 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
         """
         raise MCVirtException(message)
 
-    def print_help(self):
-        """Overrides the print_help function - printing a header and footer"""
-        print "\nMCVirt - Managed Consistent Virtualisation\n"
-        argparse.ArgumentParser.print_help(self)
-        print "\nFor more information, see http://mcvirt.itdev.co.uk\n"
-
 
 class Parser:
     """Provides an argument parser for MCVirt"""
@@ -52,8 +46,13 @@ class Parser:
         self.print_status = print_status
         self.parent_parser = ThrowingArgumentParser(add_help=False)
 
+        argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n" + \
+                                + 'Manage the MCVirt host'
+        argparser_epilog = "\nFor more information, see http://mcvirt.itdev.co.uk\n"
+
         # Create an argument parser object
-        self.parser = ThrowingArgumentParser(description='Manage the MCVirt host')
+        self.parser = ThrowingArgumentParser(description=argparser_description,
+                                             epilog=argparser_epilog)
         self.subparsers = self.parser.add_subparsers(dest='action', metavar='Action',
                                                      help='Action to perform')
 
