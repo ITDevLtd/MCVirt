@@ -47,7 +47,7 @@ class Parser:
         self.parent_parser = ThrowingArgumentParser(add_help=False)
 
         argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n" + \
-                                + 'Manage the MCVirt host'
+                                'Manage the MCVirt host'
         argparser_epilog = "\nFor more information, see http://mcvirt.itdev.co.uk\n"
 
         # Create an argument parser object
