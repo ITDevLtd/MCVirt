@@ -37,6 +37,12 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
         """
         raise MCVirtException(message)
 
+    def print_help(self):
+        """Overrides the print_help function - printing a header and footer"""
+        print "\nMCVirt - Managed Consistent Virtualisation\n"
+        argparse.ArgumentParser.print_help(self)
+        print "\nFor more information, see http://mcvirt.itdev.co.uk\n"
+
 
 class Parser:
     """Provides an argument parser for MCVirt"""
