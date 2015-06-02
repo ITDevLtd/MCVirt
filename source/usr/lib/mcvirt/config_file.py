@@ -57,7 +57,8 @@ class ConfigFile():
     @staticmethod
     def _writeJSON(data, file_name):
         """Parses and writes the JSON VM config file"""
-        import pwd, stat
+        import pwd
+        import stat
         json_data = json.dumps(data, indent=2, separators=(',', ': '))
 
         # Open the config file and write to contents
