@@ -7,8 +7,10 @@ Install Operating System
 
 * MCVirt is currently built to support Ubuntu 14.04 with native versions of dependencies.
 * When installing the operating system, create the following logical volumes:
+
   * Root - Create a 50GB partition using ext4. This is used for the operating system, MCVirt configurations and ISO images
   * SWAP - leave the suggested SWAP volume unaltered
+* Virtual machine storage will be created as additional volumes in the volume group.
 
 Building the package
 --------------------
@@ -22,7 +24,7 @@ Installing Package
 
 To install the package, run::
 
-$ sudo dpkg -i mcvirt_0.10_all.deb
+$ sudo dpkg -i mcvirt_X.XX_all.deb
 $ sudo apt-get -f install
 
 Configure Network
