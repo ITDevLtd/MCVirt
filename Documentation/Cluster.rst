@@ -128,3 +128,111 @@ If the verification fails:
 
 * The DRBD volume must be resynced (for more information, see the `DRBD documentation for re-syncing <https://drbd.linbit.com/users-guide/ch-troubleshooting.html>`_).
 * Once this is complete, perform another MCVirt verification to mark the VM as in-sync, which will lift the limitations.
+
+===============
+Troubleshooting
+===============
+Failures during VM migration
+----------------------------
+
+If a VM migration fails, the VM maybe left in a state where it is not registered on either node in the cluster.
+
+To re-register the node in the cluster, as root, perform the following (where the example VM name is 'test-vm'::
+
+    root@node:~# python
+    >>> import sys
+    >>> sys.path.append('/usr/lib')
+    >>> from mcvirt.mcvirt import MCVirt
+    >>> mcvirt_instance = MCVirt()
+    >>> from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+    >>>
+    >>> # Replace 'test-vm' with the name of the VM
+    >>> vm_object = VirtualMachine(mcvirt_instance, 'test-vm')
+    >>>
+    >>> # Determine if the VM is definitiely not registered
+    >>> vm_object.getNode() is None
+    >>>
+    >>> vm_object.register() # Register on local node
+
+Failures during VM creation/deletion
+------------------------------------
+
+When a VM is created, the following order is performed:
+
+1. The VM is created, configured with the name, memory allocation and number of CPU cores
+
+2. The VM is then created on the remote node
+
+3. The VM is then registered with LibVirt on the local node
+
+4. The hard drive for the VM is created. (For DRBD-backed storage, the storage is created on both nodes and synced)
+
+5. Any network adapters are added to the VM
+ 
+If a failure of occurs during steps 4/5, the VM will still exist after the failure. The user should be able to see the VM, using ``mcvirt list``.
+ 
+The user can re-create the disks/network adapters as necessary, using the ``mcvirt update`` command, using ``mcvirt info <VM Name>`` to monitor the virtual hardware that is attached to the VM.
+
+DRBD hard drive creation failure
+--------------------------------
+
+If a failure occurs during the creation of the DRBD-backed hard drive, the following steps can be taken to manually remove it.
+
+**Note:** These must be performed as root.
+
+1. Assuming the creation failed, the hard drive will not have been added to VM configuration in LibVirt.
+
+2. Start a python shell and initialise MCVirt::
+
+    root@node:~# python
+    >>> import sys
+    >>> sys.path.append('/usr/lib')
+    >>> from mcvirt.mcvirt import MCVirt
+    >>> mcvirt_instance = MCVirt()
+
+3. Determine if the disk is attached to the VM::
+
+    >>> from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+    >>> vm_object = VirtualMachine(mcvirt_instance, '<VM Name>') # Replace <VM Name> with the name of the VM
+    >>> len(vm_object.getDiskObjects())
+    >>>
+    >>> # The number returned is the number of hard disks attached to the VM.
+    >>> # If this includes the disk that you wish to remove, perform the following
+    >>> from mcvirt.virtual_machine.hard_drive.factory import Factory
+    >>> Factory.getObject(vm_object, <Disk ID>).delete()
+
+3. If the disk object was not found in the previous step, perform the following::
+
+    >>> from mcvirt.virtual_machine.hard_drive.drbd import DRBD
+    >>> # Replace <Disk ID> with the ID of the disk (1 for the first hard drive, 2 for the second etc.)
+    >>> config_object = Factory.getConfigObject(vm_object, 'DRBD', '<Disk ID>')
+    >>> from mcvirt.node.cluster import Cluster
+    >>> cluster_instance = Cluster(mcvirt)
+    >>> cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDown',
+    ...                                   {'config': config_object._dumpConfig()})
+    >>> DRBD._drbdDown(config_object)
+    >>> cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-removeDrbdConfig',
+    ...                                   {'config': config_object._dumpConfig()})
+    >>> config_object._removeDrbdConfig()
+    >>> raw_logical_volume_name = config_object._getLogicalVolumeName(config_object.DRBD_RAW_SUFFIX)
+    >>> meta_logical_volume_name = config_object._getLogicalVolumeName(config_object.DRBD_META_SUFFIX)
+    >>> DRBD._removeLogicalVolume(config_object, meta_logical_volume_name,
+    ...                           perform_on_nodes=True)
+    >>> DRBD._removeLogicalVolume(config_object, raw_logical_volume_name,
+    ...                           perform_on_nodes=True)
+
+
+Failures due to 'Another instance of MCVirt is running'
+-------------------------------------------------------
+
+If MCVirt complains that 'Another instance of MCVirt is running', the following can be performed as root:
+
+1. Ensure that there are no instance actually running::
+
+    root@node:~# ps aux  | grep mcvirt
+
+2. Remove the lock files from the local node::
+
+    root@node:~# rm -r /var/run/lock/mcvirt
+
+3. Remove the lock files from the remote nodes, using the command in the previous step
