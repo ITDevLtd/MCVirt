@@ -35,7 +35,8 @@ class MCVirt:
     LOCK_FILE_DIR = '/var/run/lock/mcvirt'
     LOCK_FILE = LOCK_FILE_DIR + '/lock'
 
-    def __init__(self, uri=None, initialise_nodes=True, username=None):
+    def __init__(self, uri=None, initialise_nodes=True, username=None,
+                 ignore_cluster=False):
         """Checks lock file and performs initial connection to libvirt"""
         self.libvirt_uri = uri
         self.connection = None
@@ -44,6 +45,7 @@ class MCVirt:
 
         # Configure custom username - used for unittests
         self.ignore_drbd = False
+        self.ignore_cluster = ignore_cluster
         self.username = username
 
         # Cluster configuration

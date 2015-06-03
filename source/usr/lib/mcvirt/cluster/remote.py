@@ -367,7 +367,14 @@ class Remote:
             except AuthenticationException:
                 raise NodeAuthenticationException('Could not authenticate to node: %s' % self.name)
             except Exception:
-                raise CouldNotConnectToNodeException('Could not connect to node: %s' % self.name)
+                from mcvirt.auth import Auth
+
+                if (Auth().checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
+                    ignore_cluster_message = "\nThe cluster can be ignored using --ignore-cluster"
+                else:
+                    ignore_cluster_message = ''
+                raise CouldNotConnectToNodeException('Could not connect to node: %s' % self.name +
+                                                     ignore_cluster_message)
 
             # Save the SSH client object
             self.connection = ssh_client

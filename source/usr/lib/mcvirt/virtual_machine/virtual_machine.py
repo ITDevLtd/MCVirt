@@ -198,23 +198,30 @@ class VirtualMachine:
         """Returns the state of the VM, either running (1) or stopped (0)"""
         if (self.isRegisteredLocally()):
             return (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING)
-        elif (self.mcvirt_object.initialiseNodes()):
+        elif (self.mcvirt_object.initialiseNodes() and self.isRegisteredRemotely()):
             from mcvirt.cluster.cluster import Cluster
             cluster_object = Cluster(self.mcvirt_object)
             remote = cluster_object.getRemoteNode(self.getNode())
             return remote.runRemoteCommand('virtual_machine-getState', {'vm_name': self.getName()})
         else:
-            raise MCVirtException('Attempted to obtain status from incorrect node')
+            # Return 2 as the state of the VM is unknown
+            return 2
 
     def getStateText(self):
         """Returns the running state of the VM in text format"""
-        return 'Running' if (self.getState()) else 'Stopped'
+        state = self.getState()
+        if (state == 0):
+            return 'Stopped'
+        elif (state == 1):
+            return 'Running'
+        elif (state == 2):
+            return 'Unknown'
 
     def getInfo(self):
         """Gets information about the current VM"""
         self.ensureRegistered()
 
-        if (self.isRegisteredRemotely()):
+        if (self.isRegisteredRemotely() and self.mcvirt_object.initialise_nodes):
             from mcvirt.cluster.cluster import Cluster
             cluster_instance = Cluster(self.mcvirt_object)
             remote_object = cluster_instance.getRemoteNode(self.getNode())
@@ -239,9 +246,14 @@ class VirtualMachine:
         if (clone_parent):
             table.add_row(('Clone Parent', clone_parent))
 
-        # Display the path of the attached ISO (if present)
-        disk_object = DiskDrive(self)
-        disk_path = disk_object.getCurrentDisk()
+        # The ISO can only be displayed if the VM is on the local node
+        if (self.isRegisteredLocally()):
+            # Display the path of the attached ISO (if present)
+            disk_object = DiskDrive(self)
+            disk_path = disk_object.getCurrentDisk()
+        else:
+            disk_path = 'Unavailable'
+
         if (disk_path):
             table.add_row(('ISO location', disk_path))
 
