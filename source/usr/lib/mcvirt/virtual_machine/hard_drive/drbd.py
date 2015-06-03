@@ -711,6 +711,10 @@ class DRBD(Base):
                     break
                 time.sleep(5)
 
+            # Provide DRBD 5 seconds to run the mcvirt_drbd command, if necessary
+            time.sleep(10)
+
+            # Stop the DRBD connection socket
             drbd_socket.stop()
             drbd_socket.mcvirt_instance = None
             drbd_socket = None

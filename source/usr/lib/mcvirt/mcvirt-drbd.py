@@ -48,4 +48,5 @@ else:
         drbd_resource
     )
     hard_drive_object.setSyncState(False)
+    mcvirt_instance.releaseLock()
     mcvirt_instance = None
