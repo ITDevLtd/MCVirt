@@ -22,7 +22,7 @@ import shutil
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt
 from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
-                                                    Powerstates
+                                                    Powerstates,
                                                     InvalidVirtualMachineNameException,
                                                     VmAlreadyExistsException,
                                                     VmDirectoryAlreadyExistsException,
