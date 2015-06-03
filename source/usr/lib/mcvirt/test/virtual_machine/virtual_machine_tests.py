@@ -46,7 +46,7 @@ def stopAndDelete(mcvirt_instance, vm_name):
             remote_node = vm_object.getNode()
 
             # Stop the VM if it is running
-            if (vm_object.getState() is Powerstates.RUNNING):
+            if (vm_object.getState() is PowerStates.RUNNING):
                 remote_node.runRemoteCommand('virtual_machine-stop',
                                              {'vm_name': test_vm_object.getName()})
             # Remove VM from remote node
@@ -64,7 +64,7 @@ def stopAndDelete(mcvirt_instance, vm_name):
                 print 'Warning: VM not registered'
                 vm_object.register()
 
-            if (vm_object.getState() is Powerstates.RUNNING):
+            if (vm_object.getState() is PowerStates.RUNNING):
                 vm_object.stop()
             vm_object.delete(True)
 
