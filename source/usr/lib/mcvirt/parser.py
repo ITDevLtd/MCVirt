@@ -49,10 +49,11 @@ class Parser:
         auth_object = Auth()
 
         if (auth_object.checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
-          self.parent_parser.add_argument('--ignore-cluster', dest='ignore_cluster',
-                                   help='Ignores the cluster state', action='store_true')
-          self.parent_parser.add_argument('--accept-cluster-warning', dest='accept_cluster_warning',
-                                          help=argparse.SUPPRESS, action='store_true')
+            self.parent_parser.add_argument('--ignore-cluster', dest='ignore_cluster',
+                                            help='Ignores the cluster state', action='store_true')
+            self.parent_parser.add_argument('--accept-cluster-warning',
+                                            dest='accept_cluster_warning',
+                                            help=argparse.SUPPRESS, action='store_true')
 
         argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n" + \
                                 'Manage the MCVirt host'
