@@ -40,7 +40,6 @@ if __name__ == "__main__":
         try:
             parser_object.parse_arguments()
         except MCVirtException, e:
-            #raise
             print e.message
             sys.exit(1)
     else:
