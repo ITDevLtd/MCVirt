@@ -697,7 +697,7 @@ class VirtualMachine:
                network_interfaces=[], node=None, available_nodes=None, storage_type=None,
                auth_check=True):
         """Creates a VM and returns the virtual_machine object for it"""
-        from mcvirt.cluster.cluster import Cluster
+        from mcvirt.cluster.cluster import Cluster, ClusterNotInitailised
 
         if (auth_check):
             mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CREATE_VM)
@@ -707,6 +707,12 @@ class VirtualMachine:
         if (bool(valid_name_re(name))):
             raise InvalidVirtualMachineNameException(
                 'Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes')
+
+        # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
+        # in this state
+        if (mcvirt_instance.ignore_cluster):
+            raise ClusterNotInitailised('VM cannot be created whilst the cluster' +
+                                        ' is not initialised')
 
         # Determine if VM already exists
         if (VirtualMachine._checkExists(mcvirt_instance, name)):
