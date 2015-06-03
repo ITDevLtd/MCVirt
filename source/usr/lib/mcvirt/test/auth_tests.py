@@ -19,14 +19,14 @@ import unittest
 
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt
-from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
 
 
 def stopAndDelete(mcvirt_connection, vm_name):
     """Stops and removes VMs"""
     if (VirtualMachine._checkExists(mcvirt_connection.getLibvirtConnection(), vm_name)):
         vm_object = VirtualMachine(mcvirt_connection, vm_name)
-        if (vm_object.getState()):
+        if (vm_object.getState() is PowerStates.RUNNING):
             vm_object.stop()
         vm_object.delete(True)
 

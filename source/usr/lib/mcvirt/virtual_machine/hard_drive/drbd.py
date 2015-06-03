@@ -226,7 +226,11 @@ class DRBD(Base):
         DRBD._ensureLogicalVolumeActive(self.getConfigObject(), raw_lv)
         DRBD._ensureLogicalVolumeActive(self.getConfigObject(), meta_lv)
         self._checkDrbdStatus()
-        self._drbdSetPrimary()
+
+        # If the disk is not already set to primary, set it to primary
+        if (self._drbdGetRole()[0] is not DrbdRoleState('Primary')):
+            self._drbdSetPrimary()
+
         self._ensureBlockDeviceExists()
 
     def deactivateDisk(self):

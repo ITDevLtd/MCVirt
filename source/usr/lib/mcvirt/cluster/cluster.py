@@ -38,6 +38,11 @@ class RemoteObjectConflict(MCVirtException):
     pass
 
 
+class ClusterNotInitailisedException(MCVirtException):
+    """The cluster has not been initialised, so cannot connect to the remote node"""
+    pass
+
+
 class Cluster:
     """Class to perform node management within the MCVirt cluster"""
 
@@ -242,12 +247,27 @@ class Cluster:
 
     def connectNodes(self):
         """Obtains connection to each of the nodes"""
-        for node in self.getNodes():
-            self.getRemoteNode(node)
+        from remote import CouldNotConnectToNodeException
+        nodes = self.getNodes()
+        try:
+            for node in nodes:
+                self.getRemoteNode(node)
+        except CouldNotConnectToNodeException, e:
+            if (self.mcvirt_instance.ignore_cluster):
+                self.mcvirt_instance.initialise_nodes = False
+                for node in self.mcvirt_instance.remote_nodes:
+                    self.mcvirt_instance.remote_nodes[node]
+            else:
+                raise
 
     def getRemoteNode(self, node):
         """Obtains a Remote object for a node, caching the object"""
-        from remote import Remote
+        from mcvirt.cluster.remote import Remote
+
+        if (not self.mcvirt_instance.initialise_nodes):
+            raise ClusterNotInitailisedException('Cannot get remote node %s' % node +
+                                                 ' as the cluster is not initialised')
+
         if (node not in self.mcvirt_instance.remote_nodes):
             self.mcvirt_instance.remote_nodes[node] = Remote(self, node)
         return self.mcvirt_instance.remote_nodes[node]

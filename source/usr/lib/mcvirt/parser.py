@@ -26,6 +26,7 @@ from node.network import Network
 from cluster.cluster import Cluster
 from system import System
 from node.drbd import DRBD as NodeDRBD
+from auth import Auth
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -45,6 +46,14 @@ class Parser:
         """Configures the argument parser object"""
         self.print_status = print_status
         self.parent_parser = ThrowingArgumentParser(add_help=False)
+        auth_object = Auth()
+
+        if (auth_object.checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
+            self.parent_parser.add_argument('--ignore-cluster', dest='ignore_cluster',
+                                            help='Ignores the cluster state', action='store_true')
+            self.parent_parser.add_argument('--accept-cluster-warning',
+                                            dest='accept_cluster_warning',
+                                            help=argparse.SUPPRESS, action='store_true')
 
         argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n" + \
                                 'Manage the MCVirt host'
@@ -403,12 +412,27 @@ class Parser:
         args = self.parser.parse_args(script_args)
         action = args.action
 
+        if ('ignore_cluster' in args and args.ignore_cluster):
+            # If the user has specified to ignore the cluster,
+            # print a warning and confirm the user's answer
+            if (not args.accept_cluster_warning):
+                self.printStatus('WARNING: Running MCVirt with --ignore-cluster' +
+                                 ' can leave the cluster in an inconsistent state!')
+                continue_answer = System.getUserInput('Would you like to continue? (Y/n): ')
+
+                if (continue_answer.strip() is not 'Y'):
+                    self.printStatus('Canceled...')
+                    return
+            ignore_cluster = True
+        else:
+            ignore_cluster = False
+
         # Get an instance of MCVirt
         if (mcvirt_instance is None):
             # Add corner-case to allow host info command to not start
             # the MCVirt object, so that it can view the status of nodes in the cluster
             if not (action == 'info' and args.vm_name is None):
-                mcvirt_instance = MCVirt()
+                mcvirt_instance = MCVirt(ignore_cluster=ignore_cluster)
 
         # Perform functions on the VM based on the action passed to the script
         if (action == 'start'):

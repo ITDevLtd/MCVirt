@@ -22,6 +22,7 @@ import shutil
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt
 from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
+                                                    PowerStates,
                                                     InvalidVirtualMachineNameException,
                                                     VmAlreadyExistsException,
                                                     VmDirectoryAlreadyExistsException,
@@ -45,7 +46,7 @@ def stopAndDelete(mcvirt_instance, vm_name):
             remote_node = vm_object.getNode()
 
             # Stop the VM if it is running
-            if (vm_object.getState()):
+            if (vm_object.getState() is Powerstates.RUNNING):
                 remote_node.runRemoteCommand('virtual_machine-stop',
                                              {'vm_name': test_vm_object.getName()})
             # Remove VM from remote node
@@ -63,7 +64,7 @@ def stopAndDelete(mcvirt_instance, vm_name):
                 print 'Warning: VM not registered'
                 vm_object.register()
 
-            if (vm_object.getState()):
+            if (vm_object.getState() is Powerstates.RUNNING):
                 vm_object.stop()
             vm_object.delete(True)
 
