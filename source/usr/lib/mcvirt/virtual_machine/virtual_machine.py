@@ -108,6 +108,13 @@ class LockStates(Enum):
     LOCKED = 1
 
 
+class PowerStates(Enum):
+    """Library of virtual machine power states"""
+    STOPPED = 0
+    RUNNING = 1
+    UNKNOWN = 2
+
+
 class VirtualMachine:
     """Provides operations to manage a LibVirt virtual machine"""
 
@@ -149,7 +156,7 @@ class VirtualMachine:
         self.ensureRegisteredLocally()
 
         # Determine if VM is running
-        if (self.getState()):
+        if (self.getState() is PowerStates.RUNNING):
             # Stop the VM
             self._getLibvirtDomainObject().destroy()
         else:
@@ -173,7 +180,7 @@ class VirtualMachine:
             raise CannotStartClonedVmException('Cloned VMs cannot be started')
 
         # Determine if VM is stopped
-        if (self.getState()):
+        if (self.getState() is PowerStates.RUNNING):
             raise VmAlreadyStartedException('The VM is already running')
 
         for disk_object in self.getDiskObjects():
@@ -195,27 +202,21 @@ class VirtualMachine:
         self._getLibvirtDomainObject().create()
 
     def getState(self):
-        """Returns the state of the VM, either running (1) or stopped (0)"""
+        """Returns the power state of the VM in the form of a PowerStates enum"""
         if (self.isRegisteredLocally()):
-            return (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING)
+            if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
+                return PowerStates.RUNNING
+            else:
+                return PowerStates.STOPPED
+
         elif (self.mcvirt_object.initialiseNodes() and self.isRegisteredRemotely()):
             from mcvirt.cluster.cluster import Cluster
             cluster_object = Cluster(self.mcvirt_object)
             remote = cluster_object.getRemoteNode(self.getNode())
-            return remote.runRemoteCommand('virtual_machine-getState', {'vm_name': self.getName()})
+            return PowerStates(remote.runRemoteCommand('virtual_machine-getState',
+                                                       {'vm_name': self.getName()}))
         else:
-            # Return 2 as the state of the VM is unknown
-            return 2
-
-    def getStateText(self):
-        """Returns the running state of the VM in text format"""
-        state = self.getState()
-        if (state == 0):
-            return 'Stopped'
-        elif (state == 1):
-            return 'Running'
-        elif (state == 2):
-            return 'Unknown'
+            return PowerStates.UNKNOWN
 
     def getInfo(self):
         """Gets information about the current VM"""
@@ -234,7 +235,7 @@ class VirtualMachine:
         table.add_row(('Name', self.getName()))
         table.add_row(('CPU Cores', self.getCPU()))
         table.add_row(('Memory Allocation', str(int(self.getRAM()) / 1024) + 'MB'))
-        table.add_row(('State', self.getStateText()))
+        table.add_row(('State', self.getState().name))
 
         # Display clone children, if they exist
         clone_children = self.getCloneChildren()
@@ -528,7 +529,7 @@ class VirtualMachine:
         self._offlineMigratePreMigrateChecks(destination_node_name)
 
         # Check if VM is running
-        while (self.getState()):
+        while (self.getState() is PowerStates.RUNNING):
             # Unless the user has specified to wait for the VM to shutdown, throw an exception
             # if the VM is running
             if (not wait_for_vm_shutdown):
@@ -937,7 +938,7 @@ class VirtualMachine:
             Auth.PERMISSIONS.VIEW_VNC_CONSOLE,
             self)
 
-        if (not self.getState()):
+        if (self.getState() is not PowerStates.RUNNING):
             raise MCVirtException('The VM is not running')
         domain_xml = ET.fromstring(
             self._getLibvirtDomainObject().XMLDesc(

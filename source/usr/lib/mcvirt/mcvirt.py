@@ -148,7 +148,7 @@ class MCVirt:
         table.header(('VM Name', 'State', 'Node'))
 
         for vm_object in self.getAllVirtualMachineObjects():
-            table.add_row((vm_object.getName(), vm_object.getStateText(),
+            table.add_row((vm_object.getName(), vm_object.getState().name,
                            vm_object.getNode()))
         print table.draw()
 
