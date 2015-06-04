@@ -217,7 +217,7 @@ class DRBDSocket():
         """Deletes the socket connection object, removes the socket file and
            the MCVirt instance"""
         # If the MCVirt lock has not yet been re-instated, do so
-        if (not self.mcvirt_instance.obtained_filelock):
+        if (self.mcvirt_instance and not self.mcvirt_instance.obtained_filelock):
             self.mcvirt_instance.obtainLock(timeout=10)
 
         # Destroy the socket connection
