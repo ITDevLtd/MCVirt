@@ -18,7 +18,6 @@
 
 import sys
 import os
-import syslog
 
 sys.path.insert(0, '/usr/lib')
 
