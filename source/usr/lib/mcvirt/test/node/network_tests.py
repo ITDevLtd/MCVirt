@@ -21,7 +21,7 @@ from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt
 from mcvirt.node.network import Network, NetworkDoesNotExistException
 from mcvirt.node.network import NetworkAlreadyExistsException, NetworkUtilizedException
-from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
 
 
 def stopAndDelete(test_object):
@@ -30,7 +30,7 @@ def stopAndDelete(test_object):
     if (VirtualMachine._checkExists(test_object.mcvirt.getLibvirtConnection(),
                                     test_object.test_vm_name)):
         vm_object = VirtualMachine(test_object.mcvirt, test_object.test_vm_name)
-        if (vm_object.getState()):
+        if (vm_object.getState() is PowerStates.RUNNING):
             vm_object.stop()
         vm_object.delete(True)
 

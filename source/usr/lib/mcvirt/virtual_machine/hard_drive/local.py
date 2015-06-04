@@ -35,7 +35,8 @@ class Local(Base):
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         # Ensure VM is stopped
-        if (self.getVmObject().getState()):
+        from mcvirt.virtual_machine.virtual_machine import PowerStates
+        if (self.getVmObject().getState() is not PowerStates.STOPPED):
             raise MCVirtException('VM must be stopped before increasing disk size')
 
         # Ensure that VM has not been cloned and is not a clone

@@ -144,7 +144,7 @@ class Remote:
 
         elif (action == 'virtual_machine-getState'):
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-            return_data = vm_object.getState()
+            return_data = vm_object.getState().value
 
         elif (action == 'virtual_machine-getInfo'):
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])

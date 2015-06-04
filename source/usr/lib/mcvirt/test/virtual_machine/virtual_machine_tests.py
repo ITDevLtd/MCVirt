@@ -511,7 +511,7 @@ class VirtualMachineTests(unittest.TestCase):
             mcvirt_instance=self.mcvirt)
 
         # Ensure that it is running
-        self.assertTrue(test_vm_object.getState())
+        self.assertTrue(test_vm_object.getState() is PowerStates.RUNNING)
 
     def test_start_running_vm(self):
         """Attempts to start a running VM"""
@@ -556,7 +556,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Start VM and ensure it is running
         test_vm_object.start()
-        self.assertTrue(test_vm_object.getState())
+        self.assertTrue(test_vm_object.getState() is PowerStates.RUNNING)
 
         # Use the argument parser to stop the VM
         self.parser.parse_arguments(
@@ -565,7 +565,7 @@ class VirtualMachineTests(unittest.TestCase):
             mcvirt_instance=self.mcvirt)
 
         # Ensure the VM is stopped
-        self.assertFalse(test_vm_object.getState())
+        self.assertTrue(test_vm_object.getState() is PowerStates.STOPPED)
 
     def test_stop_stopped_vm(self):
         """Attempts to stop an already stopped VM"""
@@ -638,14 +638,14 @@ class VirtualMachineTests(unittest.TestCase):
                                      {'vm_name': test_vm_object.getName()})
 
         # Ensure VM is running
-        self.assertTrue(test_vm_object.getState())
+        self.assertTrue(test_vm_object.getState() is PowerStates.RUNNING)
 
         # Attempt to stop the VM on the remote node
         remote_node.runRemoteCommand('virtual_machine-stop',
                                      {'vm_name': test_vm_object.getName()})
 
         # Ensure VM is stopped
-        self.assertFalse(test_vm_object.getState())
+        self.assertTrue(test_vm_object.getState() is PowerStates.STOPPED)
 
         # Manually unregister VM from remote node
         remote_node.runRemoteCommand('virtual_machine-unregister',
