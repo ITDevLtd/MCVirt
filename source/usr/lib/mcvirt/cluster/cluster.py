@@ -38,7 +38,7 @@ class RemoteObjectConflict(MCVirtException):
     pass
 
 
-class ClusterNotInitailisedException(MCVirtException):
+class ClusterNotInitialisedException(MCVirtException):
     """The cluster has not been initialised, so cannot connect to the remote node"""
     pass
 
@@ -265,7 +265,7 @@ class Cluster:
         from mcvirt.cluster.remote import Remote
 
         if (not self.mcvirt_instance.initialise_nodes):
-            raise ClusterNotInitailisedException('Cannot get remote node %s' % node +
+            raise ClusterNotInitialisedException('Cannot get remote node %s' % node +
                                                  ' as the cluster is not initialised')
 
         if (node not in self.mcvirt_instance.remote_nodes):
