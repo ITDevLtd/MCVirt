@@ -698,7 +698,7 @@ class VirtualMachine:
                network_interfaces=[], node=None, available_nodes=None, storage_type=None,
                auth_check=True):
         """Creates a VM and returns the virtual_machine object for it"""
-        from mcvirt.cluster.cluster import Cluster, ClusterNotInitailisedException
+        from mcvirt.cluster.cluster import Cluster, ClusterNotInitialisedException
 
         if (auth_check):
             mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CREATE_VM)
@@ -712,7 +712,7 @@ class VirtualMachine:
         # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
         # in this state
         if (mcvirt_instance.ignore_cluster):
-            raise ClusterNotInitailisedException('VM cannot be created whilst the cluster' +
+            raise ClusterNotInitialisedException('VM cannot be created whilst the cluster' +
                                                  ' is not initialised')
 
         # Determine if VM already exists
