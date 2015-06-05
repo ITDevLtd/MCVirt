@@ -112,3 +112,7 @@ class Local(Base):
     def activateDisk(self):
         """Starts the disk logical volume"""
         Local._activateLogicalVolume(self.getConfigObject(), self.getConfigObject()._getDiskName())
+
+    def deactivateDisk(self):
+        """Deactivates the disk loglcal volume"""
+        pass

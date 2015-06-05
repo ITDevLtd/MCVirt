@@ -89,20 +89,52 @@ class Cluster:
         # conflicts
         remote = Remote(self, remote_host, remote_ip=remote_ip, password=password,
                         save_hostkey=True)
-        self.checkRemoteMachine(remote)
+        try:
+            self.checkRemoteMachine(remote)
+        except:
+            remote = None
+            raise
         remote = None
 
         # Sync SSH keys
         local_public_key = self.getSshPublicKey()
         remote_public_key = self.configureRemoteMachine(remote_host, remote_ip,
                                                         password, local_public_key)
+        all_pre_existing_cluster_nodes = self.getNodes(return_all=True)
+        all_active_pre_existing_cluster_nodes = self.getNodes()
 
         # Add remote node to configuration
         self.addNodeConfiguration(remote_host, remote_ip, remote_public_key)
 
         # Connect to remote machine ensuring that it saves the host file
         remote = Remote(self, remote_host)
+
+        # Add the local host key to the new remote node
         remote.runRemoteCommand('cluster-cluster-addHostKey', {'node': self.getHostname()})
+
+        # Add the host key of current remote nodes to the new remote node
+        for pre_existing_remote_node in all_pre_existing_cluster_nodes:
+            node_config = self.getNodeConfig(pre_existing_remote_node)
+            remote.runRemoteCommand('cluster-cluster-addNodeRemote',
+                                    {'node': pre_existing_remote_node,
+                                     'ip_address': node_config['ip_address'],
+                                     'public_key': node_config['public_key']})
+
+            if (pre_existing_remote_node in all_active_pre_existing_cluster_nodes):
+                # Add new remote node to pre-existing remote node
+                pre_existing_node_object = self.getRemoteNode(pre_existing_remote_node)
+                pre_existing_node_object.runRemoteCommand('cluster-cluster-addNodeRemote',
+                                                          {'node': remote_host,
+                                                           'ip_address': remote_ip,
+                                                           'public_key': remote_public_key})
+
+                # Add hostkey of pre-existing remote node to new remote node
+                remote.runRemoteCommand('cluster-cluster-addHostKey',
+                                        {'node': pre_existing_remote_node})
+
+                # Add hostkey of new remote node to pre-existing remote node
+                pre_existing_node_object.runRemoteCommand('cluster-cluster-addHostKey',
+                                                          {'node': remote_host})
 
         # Sync networks
         self.syncNetworks(remote)
@@ -178,6 +210,11 @@ class Cluster:
                                                     'username': user,
                                                     'vm_name': vm_object.getName()})
 
+            # Set the VM node
+            remote_object.runRemoteCommand('virtual_machine-setNode',
+                                           {'vm_name': vm_object.getName(),
+                                            'node': vm_object.getNode()})
+
     def checkRemoteMachine(self, remote_object):
         """Performs checks on the remote node to ensure that there will be
            no object conflicts when syncing the Network and VM configurations"""
@@ -197,14 +234,75 @@ class Cluster:
                 raise RemoteObjectConflict('Remote node contains duplicate Virtual Machine: %s' %
                                            local_vm)
 
+        # If DRBD is enabled on the local machine, ensure it is installed on the remote machine
+        # and is not already enabled
+        from mcvirt.node.drbd import (DRBD as NodeDRBD,
+                                      DRBDNotInstalledException,
+                                      DRBDAlreadyEnabled)
+        if (NodeDRBD.isEnabled()):
+            if (not remote_object.runRemoteCommand('node-drbd-isInstalled', [])):
+                raise DRBDNotInstalledException('DRBD is not installed on the remote node')
+
+            if (remote_object.runRemoteCommand('node-drbd-isEnabled', [])):
+                raise DRBDNotInstalledException('DRBD is already enabled on the remote node')
+
     def removeNode(self, remote_host):
         """Removes a node from the MCVirt cluster"""
         # Ensure the user has privileges to manage the cluster
         self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_CLUSTER)
-        remote = self.getRemoteNode(remote_host)
-        remote.runRemoteCommand('cluster-cluster-removeNodeConfiguration',
-                                {'node': self.getHostname()})
+
+        # Ensure node exists
+        self.ensureNodeExists(remote_host)
+
+        # Check for any VMs that the node to be removed is available to and is not the only
+        # not that the VM is available to
+        all_vm_objects = self.mcvirt_instance.getAllVirtualMachineObjects()
+        for vm_object in all_vm_objects:
+            if ((vm_object.getStorageType() == 'DRBD' and
+                 remote_host in vm_object.getAvailableNodes())):
+                raise RemoteObjectConflict('The remote node is available to VM: %s' %
+                                           vm_object.getName())
+
+        all_nodes = self.getNodes(return_all=True)
+        all_nodes.remove(remote_host)
+
+        # Remove any VMs that are only present on the remote node
+        for vm_object in all_vm_objects:
+            if ((vm_object.getStorageType() == 'Local' and
+                 vm_object.getAvailableNodes() == [remote_host])):
+                vm_object.delete(remove_data=True, local_only=True)
+                cluster.runRemoteCommand('virtual_machine-delete',
+                                         {'vm_name': vm_object.getName(),
+                                          'remove_data': True},
+                                         nodes=all_nodes)
+
+        if (remote_host not in self.getFailedNodes()):
+            remote = self.getRemoteNode(remote_host)
+
+            # Remove any VMs from the remote node that the node is not able to run
+            all_vm_objects = self.mcvirt_instance.getAllVirtualMachineObjects()
+            for vm_object in all_vm_objects:
+                if (vm_object.getAvailableNodes() != [remote_host]):
+                    remote.runRemoteCommand('virtual_machine-delete',
+                                            {'vm_name': vm_object.getName(),
+                                             'remove_data': True})
+
+            # Remove all nodes in the cluster from the remote node
+            all_nodes.append(self.getHostname())
+            for node in all_nodes:
+                remote.runRemoteCommand('cluster-cluster-removeNodeConfiguration',
+                                        {'node': node})
+
+        # Remove remote node from local configuration
         self.removeNodeConfiguration(remote_host)
+
+        # Remove the node from the remote node connections, if it exists
+        if (remote_host in self.mcvirt_instance.remote_nodes):
+            del self.mcvirt_instance.remote_nodes[remote_host]
+
+        # Remove the node from the rest of the nodes in the cluster
+        self.runRemoteCommand('cluster-cluster-removeNodeConfiguration',
+                              {'node': remote_host})
 
     def getClusterIpAddress(self):
         """Returns the cluster IP address of the local node"""
@@ -249,16 +347,14 @@ class Cluster:
         """Obtains connection to each of the nodes"""
         from remote import CouldNotConnectToNodeException
         nodes = self.getNodes()
-        try:
-            for node in nodes:
+        for node in nodes:
+            try:
                 self.getRemoteNode(node)
-        except CouldNotConnectToNodeException, e:
-            if (self.mcvirt_instance.ignore_cluster):
-                self.mcvirt_instance.initialise_nodes = False
-                for node in self.mcvirt_instance.remote_nodes:
-                    self.mcvirt_instance.remote_nodes[node]
-            else:
-                raise
+            except CouldNotConnectToNodeException, e:
+                if (self.mcvirt_instance.ignore_failed_nodes):
+                    self.mcvirt_instance.failed_nodes.append(node)
+                else:
+                    raise
 
     def getRemoteNode(self, node):
         """Obtains a Remote object for a node, caching the object"""
@@ -281,10 +377,19 @@ class Cluster:
         self.ensureNodeExists(node)
         return self.getClusterConfig()['nodes'][node]
 
-    def getNodes(self):
+    def getNodes(self, return_all=False):
         """Returns an array of node configurations"""
         cluster_config = self.getClusterConfig()
-        return cluster_config['nodes'].keys()
+        nodes = cluster_config['nodes'].keys()
+        if (self.mcvirt_instance.ignore_failed_nodes and not return_all):
+            for node in nodes:
+                if node in self.getFailedNodes():
+                    nodes.remove(node)
+        return nodes
+
+    def getFailedNodes(self):
+        """Returns an array of nodes that have failed to initialise and have been ignored"""
+        return self.mcvirt_instance.failed_nodes
 
     def runRemoteCommand(self, action, arguments, nodes=None):
         """Runs a remote command on all (or a given list of) remote nodes"""
@@ -300,7 +405,7 @@ class Cluster:
 
     def checkNodeExists(self, node_name):
         """Determines if a node is already present in the cluster"""
-        return (node_name in self.getNodes())
+        return (node_name in self.getNodes(return_all=True))
 
     def ensureNodeExists(self, node):
         """Checks if node exists and throws exception if it does not"""
@@ -332,7 +437,7 @@ class Cluster:
         from the MCVirt cluster node configuration"""
         with open(self.SSH_AUTHORIZED_KEYS_FILE, 'w') as text_file:
             text_file.write("# Generated by MCVirt\n")
-            nodes = self.getNodes()
+            nodes = self.getNodes(return_all=True)
             for node_name in nodes:
                 node_config = self.getNodeConfig(node_name)
                 text_file.write("%s\n" % node_config['public_key'])

@@ -30,7 +30,7 @@ class Auth:
                                        'DELETE_CLONE', 'MANAGE_HOST_NETWORKS', 'MANAGE_CLUSTER',
                                        'MANAGE_DRBD', 'CAN_IGNORE_DRBD', 'MIGRATE_VM',
                                        'DUPLICATE_VM', 'SET_VM_LOCK', 'BACKUP_VM',
-                                       'CAN_IGNORE_CLUSTER'])
+                                       'CAN_IGNORE_CLUSTER', 'MOVE_VM'])
 
     # Set the permissions for the permissions groups
     PERMISSION_GROUPS = \
@@ -200,15 +200,14 @@ class Auth:
 
             if (mcvirt_object.initialiseNodes()):
                 cluster_object = Cluster(mcvirt_object)
-                for node in cluster_object.getNodes():
-                    if (vm_object):
-                        vm_name = vm_object.getName()
-                    else:
-                        vm_name = None
-                    cluster_object.runRemoteCommand('auth-addUserPermissionGroup',
-                                                    {'permission_group': permission_group,
-                                                     'username': username,
-                                                     'vm_name': vm_name})
+                if (vm_object):
+                    vm_name = vm_object.getName()
+                else:
+                    vm_name = None
+                cluster_object.runRemoteCommand('auth-addUserPermissionGroup',
+                                                {'permission_group': permission_group,
+                                                 'username': username,
+                                                 'vm_name': vm_name})
 
         elif (not ignore_duplicate):
             raise MCVirtException('User \'%s\' already in group \'%s\'' %

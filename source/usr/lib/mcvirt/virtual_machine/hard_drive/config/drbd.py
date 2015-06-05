@@ -150,7 +150,7 @@ class DRBD(Base):
         drbd_config['nodes'].append(node_template_conf)
 
         # Add remote nodes to DRBD config
-        for node in cluster_object.getNodes():
+        for node in self.vm_object._getRemoteNodes():
             node_config = cluster_object.getNodeConfig(node)
             node_template_conf = \
                 {

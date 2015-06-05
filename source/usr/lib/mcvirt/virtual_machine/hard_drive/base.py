@@ -210,12 +210,14 @@ class Base(object):
 
             if (perform_on_nodes and config_object.vm_object.mcvirt_object.initialiseNodes()):
                 cluster = Cluster(config_object.vm_object.mcvirt_object)
+                nodes = config_object.vm_object._getRemoteNodes()
 
                 # Run on remote nodes
                 cluster.runRemoteCommand('virtual_machine-hard_drive-createLogicalVolume',
                                          {'config': config_object._dumpConfig(),
                                           'name': name,
-                                          'size': size})
+                                          'size': size},
+                                         nodes=nodes)
 
         except MCVirtCommandException, e:
             # Remove any logical volumes that had been created if one of them fails
@@ -459,4 +461,8 @@ class Base(object):
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""
+        raise NotImplementedError
+
+    def move(self, destination_node, source_node):
+        """Moves the storage to another node in the cluster"""
         raise NotImplementedError

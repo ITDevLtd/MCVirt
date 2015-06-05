@@ -346,7 +346,9 @@ class DRBD(Base):
                 'virtual_machine-hard_drive-drbd-drbdConnect', {
                     'vm_name': vm_object.getName(),
                     'disk_id': hard_drive_object.getConfigObject().getId()
-                }
+                },
+                nodes=remote_nodes
+
             )
             progress = DRBD.CREATE_PROGRESS.DRBD_CONNECT_R
 
@@ -426,7 +428,8 @@ class DRBD(Base):
 
         # Remove the DRBD configuration from all nodes
         cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-removeDrbdConfig',
-                                          {'config': self.getConfigObject()._dumpConfig()})
+                                          {'config': self.getConfigObject()._dumpConfig()},
+                                          nodes=remote_nodes)
         self.getConfigObject()._removeDrbdConfig()
 
         # Remove the meta and raw logical volume from all nodes
@@ -455,7 +458,7 @@ class DRBD(Base):
         # If the node cluster is initialised, update all remote node configurations
         if (config_object.vm_object.mcvirt_object.initialiseNodes()):
             try:
-                for node in config_object.vm_object._getRemoteNodes():
+                for node in cluster_instance.getNodes():
                     remote_object = cluster_instance.getRemoteNode(node)
                     remote_object.runRemoteCommand(
                         'virtual_machine-hard_drive-addToVirtualMachine',
@@ -484,7 +487,7 @@ class DRBD(Base):
         # If the cluster is initialised, run on all nodes that the VM is available on
         if (config_object.vm_object.mcvirt_object.initialiseNodes()):
             cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
-            for node in config_object.vm_object._getRemoteNodes():
+            for node in cluster_instance.getNodes():
                 remote_object = cluster_instance.getRemoteNode(node)
                 remote_object.runRemoteCommand(
                     'virtual_machine-hard_drive-removeFromVirtualMachine',
@@ -531,12 +534,16 @@ class DRBD(Base):
         self._checkDrbdStatus()
 
         # Ensure that role states are not unknown
-        if local_role_state is DrbdRoleState.UNKNOWN or remote_role_state is DrbdRoleState.UNKNOWN:
+        if (local_role_state is DrbdRoleState.UNKNOWN or
+            (remote_role_state is DrbdRoleState.UNKNOWN and
+             not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object))):
             raise DrbdStateException('DRBD role is unknown for resource %s' %
                                      self.getConfigObject()._getResourceName())
 
         # Ensure remote role is secondary
-        if (remote_role_state is not DrbdRoleState.SECONDARY):
+        if (remote_role_state is not DrbdRoleState.SECONDARY and
+            not (DrbdRoleState.UNKNOWN and
+                 NodeDRBD.isIgnored(self.getVmObject().mcvirt_object))):
             raise DrbdStateException(
                 'Cannot make local DRBD primary if remote DRBD is not secondary: %s' %
                 self.getConfigObject()._getResourceName())
@@ -735,3 +742,102 @@ class DRBD(Base):
         else:
             raise DrbdVolumeNotInSyncException('The DRBD verification for \'%s\' failed' %
                                                self.getConfigObject()._getResourceName())
+
+    def move(self, destination_node, source_node):
+        """Replaces a remote node for the DRBD volume with a new node
+           and syncs the data"""
+        cluster_instance = Cluster(self.getVmObject().mcvirt_object)
+
+        # Remove DRBD configuration from source node
+        dest_node_object = cluster_instance.getRemoteNode(destination_node)
+
+        if (source_node not in cluster_instance.getFailedNodes()):
+            src_node_object = cluster_instance.getRemoteNode(source_node)
+            src_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDisconnect',
+                                             {'vm_name': self.getVmObject().getName(),
+                                              'disk_id': self.getConfigObject().getId()})
+            src_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDown',
+                                             {'config': self.getConfigObject()._dumpConfig()})
+
+            # Remove the DRBD configuration from source node
+            src_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-removeDrbdConfig',
+                                             {'config': self.getConfigObject()._dumpConfig()})
+
+            # Remove the meta logical volume from remote node
+            src_node_object.runRemoteCommand('virtual_machine-hard_drive-removeLogicalVolume',
+                                             {'config': self.getConfigObject()._dumpConfig(),
+                                              'name': self.getConfigObject()._getLogicalVolumeName(
+                                                  self.getConfigObject().DRBD_META_SUFFIX),
+                                              'ignore_non_existent': False})
+
+        # Disconnect the local DRBD volume
+        self._drbdDisconnect()
+
+        # Obtain the size of the disk to be created
+        disk_size = self.getSize()
+
+        # Create the storage on the destination node
+        raw_logical_volume_name = self.getConfigObject()._getLogicalVolumeName(
+            self.getConfigObject().DRBD_RAW_SUFFIX)
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-createLogicalVolume',
+                                          {'config': self.getConfigObject()._dumpConfig(),
+                                           'name': raw_logical_volume_name,
+                                           'size': disk_size})
+
+        # Activate and zero raw volume
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-activateLogicalVolume',
+                                          {'config': self.getConfigObject()._dumpConfig(),
+                                           'name': raw_logical_volume_name})
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-zeroLogicalVolume',
+                                          {'config': self.getConfigObject()._dumpConfig(),
+                                           'name': raw_logical_volume_name,
+                                           'size': disk_size})
+
+        meta_logical_volume_name = self.getConfigObject()._getLogicalVolumeName(
+            self.getConfigObject().DRBD_META_SUFFIX)
+        meta_volume_size = self.getConfigObject()._calculateMetaDataSize()
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-createLogicalVolume',
+                                          {'config': self.getConfigObject()._dumpConfig(),
+                                           'name': meta_logical_volume_name,
+                                           'size': meta_volume_size})
+
+        # Activate and zero meta volume
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-activateLogicalVolume',
+                                          {'config': self.getConfigObject()._dumpConfig(),
+                                           'name': meta_logical_volume_name})
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-zeroLogicalVolume',
+                                          {'config': self.getConfigObject()._dumpConfig(),
+                                           'name': meta_logical_volume_name,
+                                           'size': meta_volume_size})
+
+        # Generate DRBD configuration on local and remote node
+        self.getConfigObject()._generateDrbdConfig()
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-generateDrbdConfig',
+                                          {'config': self.getConfigObject()._dumpConfig()})
+
+        NodeDRBD.adjustDRBDConfig(self.getVmObject().mcvirt_object,
+                                  self.getConfigObject()._getResourceName())
+
+        # Initialise meta-data on destination node
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-initialiseMetaData',
+                                          {'config': self.getConfigObject()._dumpConfig()})
+
+        # Bring up DRBD volume on destination node
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdUp',
+                                          {'config': self.getConfigObject()._dumpConfig()})
+
+        # Set destination node to secondary
+        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdSetSecondary',
+                                          {'vm_name': self.getVmObject().getName(),
+                                           'disk_id': self.getConfigObject().getId()})
+
+        # Overwrite peer with data from local node
+        self._drbdOverwritePeer()
+
+        # Remove the raw logic volume from the source node
+        if (source_node not in cluster_instance.getFailedNodes()):
+            src_node_object.runRemoteCommand('virtual_machine-hard_drive-removeLogicalVolume',
+                                             {'config': self.getConfigObject()._dumpConfig(),
+                                              'name': self.getConfigObject()._getLogicalVolumeName(
+                                                  self.getConfigObject().DRBD_RAW_SUFFIX),
+                                              'ignore_non_existent': False})

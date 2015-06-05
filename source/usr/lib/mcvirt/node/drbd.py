@@ -50,6 +50,7 @@ class DRBD:
     DRBDADM = '/sbin/drbdadm'
     INITIAL_PORT = 7789
     INITIAL_MINOR_ID = 1
+    CLUSTER_SIZE = 2
 
     @staticmethod
     def isEnabled():
@@ -68,6 +69,20 @@ class DRBD:
         mcvirt_instance.ignore_drbd = True
 
     @staticmethod
+    def isInstalled():
+        """Determines if the 'drbdadm' command is present to determine if the
+           'drbd8-utils' package is installed"""
+        import os
+        return (os.path.isfile(DRBD.DRBDADM))
+
+    @staticmethod
+    def ensureInstalled():
+        """Ensures that DRBD is installed on the node"""
+        if (not DRBD.isInstalled()):
+            raise DRBDNotInstalledException('drbdadm not found' +
+                                            ' (Is the drbd8-utils package installed?)')
+
+    @staticmethod
     def enable(mcvirt_instance, secret=None):
         """Ensures the machine is suitable to run DRBD"""
         import os.path
@@ -75,10 +90,8 @@ class DRBD:
         # Ensure user has the ability to manage DRBD
         mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_DRBD)
 
-        # Ensure DRBD is installed
-        if (not os.path.isfile(DRBD.DRBDADM)):
-            raise DRBDNotInstalledException('drbdadm not found' +
-                                            ' (Is the drbd8-utils package installed?)')
+        # Ensure that DRBD is installed
+        DRBD.ensureInstalled()
 
         if (DRBD.isEnabled() and mcvirt_instance.initialiseNodes()):
             raise DRBDAlreadyEnabled('DRBD has already been enabled on this node')
@@ -160,7 +173,7 @@ class DRBD:
     @staticmethod
     def adjustDRBDConfig(mcvirt_instance, resource='all'):
         """Performs a DRBD adjust, which updates the DRBD running configuration"""
-        if (len(DRBD.getAllDRBDHardDriveObjects(mcvirt_instance))):
+        if (len(DRBD.getAllDrbdHardDriveObjects(mcvirt_instance))):
             System.runCommand([DRBD.DRBDADM, 'adjust', resource])
 
     @staticmethod
