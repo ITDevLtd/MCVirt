@@ -399,8 +399,9 @@ class Cluster:
         if (nodes is None):
             nodes = self.getNodes()
         for node in nodes:
-            node_object = self.getRemoteNode(node)
-            return_data[node] = node_object.runRemoteCommand(action, arguments)
+            if (node not in self.getFailedNodes()):
+                node_object = self.getRemoteNode(node)
+                return_data[node] = node_object.runRemoteCommand(action, arguments)
         return return_data
 
     def checkNodeExists(self, node_name):
