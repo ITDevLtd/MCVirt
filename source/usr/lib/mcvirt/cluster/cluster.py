@@ -254,8 +254,8 @@ class Cluster:
         # Ensure node exists
         self.ensureNodeExists(remote_host)
 
-        # Check for any VMs that the node to be removed is available to and is not the only
-        # not that the VM is available to
+        # Check for any VMs that the target node is available to and where the node is not
+        # the only not that the VM is available to
         all_vm_objects = self.mcvirt_instance.getAllVirtualMachineObjects()
         for vm_object in all_vm_objects:
             if ((vm_object.getStorageType() == 'DRBD' and
