@@ -8,7 +8,7 @@
 function get_version {
   if [ -d "./.git" ]
   then
-    echo `git describe --dirty --always | sed s/^v//`
+    echo `git describe --dirty --always --tags --long | sed s/^v//`
   else
     echo `tr -d '\n' < VERSION`
   fi
