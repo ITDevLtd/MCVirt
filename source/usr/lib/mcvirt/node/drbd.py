@@ -160,7 +160,7 @@ class DRBD:
     @staticmethod
     def adjustDRBDConfig(mcvirt_instance, resource='all'):
         """Performs a DRBD adjust, which updates the DRBD running configuration"""
-        if (len(DRBD.getAllDRBDHardDriveObjects(mcvirt_instance))):
+        if (len(DRBD.getAllDrbdHardDriveObjects(mcvirt_instance))):
             System.runCommand([DRBD.DRBDADM, 'adjust', resource])
 
     @staticmethod
