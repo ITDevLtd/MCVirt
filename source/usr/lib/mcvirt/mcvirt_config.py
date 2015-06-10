@@ -29,7 +29,7 @@ class MCVirtConfig(ConfigFile):
 
         self.config_file = MCVirt.NODE_STORAGE_DIR + '/config.json'
 
-        if (not os.path.isdir(MCVirt.NODE_STORAGE_DIR)):
+        if (not os.path.isdir(MCVirt.BASE_STORAGE_DIR)):
             self._createConfigDirectories()
 
         if (not os.path.isfile(self.config_file)):
@@ -44,13 +44,15 @@ class MCVirtConfig(ConfigFile):
         # Initialise the git repository
         from mcvirt import MCVirt
         import pwd
+        import stat
 
+        os.mkdir(MCVirt.BASE_STORAGE_DIR)
         os.mkdir(MCVirt.NODE_STORAGE_DIR)
         os.mkdir(MCVirt.BASE_VM_STORAGE_DIR)
         os.mkdir(MCVirt.ISO_STORAGE_DIR)
 
         # Set permission on MCVirt directory
-        os.chmod(MCVirt.BASE_STORAGE_DIR, 0o600)
+        os.chmod(MCVirt.BASE_STORAGE_DIR, stat.S_IWUSR | stat.S_IRUSR)
         os.chown(MCVirt.BASE_STORAGE_DIR, pwd.getpwnam('libvirt-qemu').pw_uid, 0)
 
     def create(self):
