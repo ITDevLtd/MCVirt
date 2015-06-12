@@ -50,6 +50,7 @@ class DRBD:
     DRBDADM = '/sbin/drbdadm'
     INITIAL_PORT = 7789
     INITIAL_MINOR_ID = 1
+    CLUSTER_SIZE = 2
 
     @staticmethod
     def isEnabled():
@@ -68,6 +69,20 @@ class DRBD:
         mcvirt_instance.ignore_drbd = True
 
     @staticmethod
+    def isInstalled():
+        """Determines if the 'drbdadm' command is present to determine if the
+           'drbd8-utils' package is installed"""
+        import os
+        return (os.path.isfile(DRBD.DRBDADM))
+
+    @staticmethod
+    def ensureInstalled():
+        """Ensures that DRBD is installed on the node"""
+        if (not DRBD.isInstalled()):
+            raise DRBDNotInstalledException('drbdadm not found' +
+                                            ' (Is the drbd8-utils package installed?)')
+
+    @staticmethod
     def enable(mcvirt_instance, secret=None):
         """Ensures the machine is suitable to run DRBD"""
         import os.path
@@ -75,10 +90,8 @@ class DRBD:
         # Ensure user has the ability to manage DRBD
         mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_DRBD)
 
-        # Ensure DRBD is installed
-        if (not os.path.isfile(DRBD.DRBDADM)):
-            raise DRBDNotInstalledException('drbdadm not found' +
-                                            ' (Is the drbd8-utils package installed?)')
+        # Ensure that DRBD is installed
+        DRBD.ensureInstalled()
 
         if (DRBD.isEnabled() and mcvirt_instance.initialiseNodes()):
             raise DRBDAlreadyEnabled('DRBD has already been enabled on this node')
@@ -164,18 +177,20 @@ class DRBD:
             System.runCommand([DRBD.DRBDADM, 'adjust', resource])
 
     @staticmethod
-    def getAllDrbdHardDriveObjects(mcvirt_instance):
+    def getAllDrbdHardDriveObjects(mcvirt_instance, include_remote=False):
         from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+        from mcvirt.cluster.cluster import Cluster
 
         hard_drive_objects = []
         all_vms = VirtualMachine.getAllVms(mcvirt_instance)
         for vm_name in all_vms:
             vm_object = VirtualMachine(mcvirt_object=mcvirt_instance, name=vm_name)
-            all_hard_drive_objects = vm_object.getDiskObjects()
+            if (Cluster.getHostname() in vm_object.getAvailableNodes() or include_remote):
+                all_hard_drive_objects = vm_object.getDiskObjects()
 
-            for hard_drive_object in all_hard_drive_objects:
-                if (hard_drive_object.getType() is 'DRBD'):
-                    hard_drive_objects.append(hard_drive_object)
+                for hard_drive_object in all_hard_drive_objects:
+                    if (hard_drive_object.getType() is 'DRBD'):
+                        hard_drive_objects.append(hard_drive_object)
 
         return hard_drive_objects
 
@@ -183,7 +198,8 @@ class DRBD:
     def getUsedDrbdPorts(mcvirt_object):
         used_ports = []
 
-        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object):
+        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object,
+                                                                 include_remote=True):
             used_ports.append(hard_drive_object.getConfigObject()._getDrbdPort())
 
         return used_ports
@@ -192,7 +208,8 @@ class DRBD:
     def getUsedDrbdMinors(mcvirt_object):
         used_minors = []
 
-        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object):
+        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object,
+                                                                 include_remote=True):
             used_minors.append(hard_drive_object.getConfigObject()._getDrbdMinor())
 
         return used_minors

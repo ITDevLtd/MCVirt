@@ -157,6 +157,12 @@ class Remote:
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
             vm_object._setNode(arguments['node'])
 
+        elif (action == 'virtual_machine-virtual_machine-updateConfig'):
+            vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+            vm_object.updateConfig(attribute_path=arguments['attribute_path'],
+                                   value=arguments['value'],
+                                   reason=arguments['reason'])
+
         elif (action == 'virtual_machine-hard_drive-createLogicalVolume'):
             from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
             hard_drive_config_object = HardDriveFactory.getRemoteConfigObject(mcvirt_instance,
@@ -277,6 +283,14 @@ class Remote:
             from mcvirt.node.network import Network
             return_data = Network.getConfig()
 
+        elif (action == 'node-drbd-isInstalled'):
+            from mcvirt.node.drbd import DRBD
+            return_data = DRBD.isInstalled()
+
+        elif (action == 'node-drbd-isEnabled'):
+            from mcvirt.node.drbd import DRBD
+            return_data = DRBD.isEnabled()
+
         elif (action == 'node-drbd-enable'):
             from mcvirt.node.drbd import DRBD
             DRBD.enable(mcvirt_instance, arguments['secret'])
@@ -370,11 +384,11 @@ class Remote:
                 from mcvirt.auth import Auth
 
                 if (Auth().checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
-                    ignore_cluster_message = "\nThe cluster can be ignored using --ignore-cluster"
+                    ignore_node_message = "\nThe cluster can be ignored using --ignore-failed-nodes"
                 else:
-                    ignore_cluster_message = ''
+                    ignore_node_message = ''
                 raise CouldNotConnectToNodeException('Could not connect to node: %s' % self.name +
-                                                     ignore_cluster_message)
+                                                     ignore_node_message)
 
             # Save the SSH client object
             self.connection = ssh_client
@@ -415,6 +429,6 @@ class Remote:
                 self.connection.close()
                 self.connection = None
                 raise RemoteCommandExecutionFailedException(
-                    "Exit Code: %s\nCommand: %s\nStdout: %s\nStderr: %s" %
-                    (exit_code, command_json, ''.join(stdout), ''.join(stderr))
+                    "Exit Code: %s\nNode: %s\nCommand: %s\nStdout: %s\nStderr: %s" %
+                    (exit_code, self.name, command_json, ''.join(stdout), ''.join(stderr))
                 )

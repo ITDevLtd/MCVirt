@@ -49,11 +49,15 @@ class Parser:
         auth_object = Auth()
 
         if (auth_object.checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
-            self.parent_parser.add_argument('--ignore-cluster', dest='ignore_cluster',
-                                            help='Ignores the cluster state', action='store_true')
-            self.parent_parser.add_argument('--accept-cluster-warning',
-                                            dest='accept_cluster_warning',
+            self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
+                                            help='Ignores nodes that are inaccessible',
+                                            action='store_true')
+            self.parent_parser.add_argument('--accept-failed-nodes-warning',
+                                            dest='accept_failed_nodes_warning',
                                             help=argparse.SUPPRESS, action='store_true')
+        if (auth_object.checkPermission(Auth.PERMISSIONS.CAN_IGNORE_DRBD)):
+            self.parent_parser.add_argument('--ignore-drbd', dest='ignore_drbd',
+                                            help='Ignores DRBD state', action='store_true')
 
         argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n" + \
                                 'Manage the MCVirt host'
@@ -71,8 +75,6 @@ class Parser:
         self.start_parser.add_argument('--iso', metavar='ISO Path', type=str,
                                        help='Path of ISO to attach to VM')
         self.start_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
-        self.start_parser.add_argument('--ignore-drbd', dest='ignore_drbd',
-                                       help='Ignores DRBD state', action='store_true')
 
         # Add arguments for stopping a VM
         self.stop_parser = self.subparsers.add_parser('stop', help='Stop VM help',
@@ -98,6 +100,12 @@ class Parser:
             type=str, action='append',
             help='Name of networks to connect VM to (each network has a separate NIC)'
         )
+        self.create_parser.add_argument('--nodes', dest='nodes', action='append',
+                                        help='Specify the nodes that the VM will be' +
+                                             ' hosted on, if a DRBD storage-type' +
+                                             ' is specified',
+                                        default=[])
+
         self.create_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
         # Determine if machine is configured to use DRBD
         hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
@@ -111,6 +119,20 @@ class Parser:
         self.delete_parser.add_argument('--remove-data', dest='remove_data', action='store_true',
                                         help='Removes the VM data from the host')
         self.delete_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+
+        # Get arguments for registering a VM
+        self.register_parser = self.subparsers.add_parser('register', help='Registers a VM on' +
+                                                                           ' the local node',
+                                                          parents=[self.parent_parser])
+        self.register_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+
+        # Get arguments for unregistering a VM
+        self.unregister_parser = self.subparsers.add_parser('unregister',
+                                                            help='Unregisters a VM from' +
+                                                                 ' the local node',
+                                                            parents=[self.parent_parser])
+        self.unregister_parser.add_argument('vm_name', metavar='VM Name', type=str,
+                                            help='Name of VM')
 
         # Get arguments for updating a VM
         self.update_parser = self.subparsers.add_parser('update', help='Update VM help',
@@ -198,7 +220,8 @@ class Parser:
         )
         self.network_create_parser = self.network_subparser.add_parser(
             'create',
-            help='Create a network on the MCVirt host'
+            help='Create a network on the MCVirt host',
+            parents=[self.parent_parser]
         )
         self.network_create_parser.add_argument(
             '--interface',
@@ -212,7 +235,8 @@ class Parser:
                                                 help='Name of the virtual network to be created')
         self.network_delete_parser = self.network_subparser.add_parser(
             'delete',
-            help='Delete a network on the MCVirt host'
+            help='Delete a network on the MCVirt host',
+            parents=[self.parent_parser]
         )
         self.network_delete_parser.add_argument('network', metavar='Network Name', type=str,
                                                 help='Name of the virtual network to be removed')
@@ -288,6 +312,19 @@ class Parser:
         )
         self.migrate_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
+        # Create sub-parser for moving VMs
+        self.move_parser = self.subparsers.add_parser('move', help='Move a VM and related storage' +
+                                                                   ' to another node',
+                                                      parents=[self.parent_parser])
+        self.move_parser.add_argument('--source-node', dest='source_node',
+                                      help="The node that the VM will be moved from.\n" +
+                                      'For DRBD VMs, the source node must not be' +
+                                      " the local node.\nFor Local VMs, the node" +
+                                      " must be the local node, but may be omitted.")
+        self.move_parser.add_argument('--destination-node', dest='destination_node',
+                                      help='The node that the VM will be moved to')
+        self.move_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+
         # Create subparser for cluster-related commands
         self.cluster_parser = self.subparsers.add_parser(
             'cluster',
@@ -301,7 +338,8 @@ class Parser:
         )
         self.node_add_parser = self.cluster_subparser.add_parser(
             'add-node',
-            help='Adds a node to the MCVirt cluster')
+            help='Adds a node to the MCVirt cluster',
+            parents=[self.parent_parser])
         self.node_add_parser.add_argument(
             '--node',
             dest='node',
@@ -319,7 +357,8 @@ class Parser:
         )
         self.node_remove_parser = self.cluster_subparser.add_parser(
             'remove-node',
-            help='Removes a node to the MCVirt cluster'
+            help='Removes a node to the MCVirt cluster',
+            parents=[self.parent_parser]
         )
         self.node_remove_parser.add_argument(
             '--node',
@@ -412,34 +451,34 @@ class Parser:
         args = self.parser.parse_args(script_args)
         action = args.action
 
-        if ('ignore_cluster' in args and args.ignore_cluster):
+        if ('ignore_failed_nodes' in args and args.ignore_failed_nodes):
             # If the user has specified to ignore the cluster,
             # print a warning and confirm the user's answer
-            if (not args.accept_cluster_warning):
-                self.printStatus('WARNING: Running MCVirt with --ignore-cluster' +
+            if (not args.accept_failed_nodes_warning):
+                self.printStatus('WARNING: Running MCVirt with --ignore-failed-nodes' +
                                  ' can leave the cluster in an inconsistent state!')
                 continue_answer = System.getUserInput('Would you like to continue? (Y/n): ')
 
                 if (continue_answer.strip() is not 'Y'):
                     self.printStatus('Canceled...')
                     return
-            ignore_cluster = True
+            ignore_failed_nodes = True
         else:
-            ignore_cluster = False
+            ignore_failed_nodes = False
 
         # Get an instance of MCVirt
         if (mcvirt_instance is None):
             # Add corner-case to allow host info command to not start
             # the MCVirt object, so that it can view the status of nodes in the cluster
             if not (action == 'info' and args.vm_name is None):
-                mcvirt_instance = MCVirt(ignore_cluster=ignore_cluster)
+                mcvirt_instance = MCVirt(ignore_failed_nodes=ignore_failed_nodes)
+
+        # If the user has specified to ignore DRBD, set the global parameter
+        if (args.ignore_drbd):
+            NodeDRBD.ignoreDrbd(mcvirt_instance)
 
         # Perform functions on the VM based on the action passed to the script
         if (action == 'start'):
-            # If the user has specified to ignore DRBD, set the global parameter
-            if (args.ignore_drbd):
-                NodeDRBD.ignoreDrbd(mcvirt_instance)
-
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
             vm_object.start(args.iso if args.iso else None)
             self.printStatus('Successfully started VM')
@@ -456,7 +495,7 @@ class Parser:
                 if (NodeDRBD.isEnabled()):
                     self.parser.error('The VM must be configured with a storage type')
                 else:
-                    storage_type = None
+                    storage_type = []
 
             # Convert memory allocation from MiB to KiB
             memory_allocation = int(args.memory) * 1024
@@ -468,11 +507,20 @@ class Parser:
                 hard_drives=[
                     args.disk_size],
                 network_interfaces=args.networks,
-                storage_type=storage_type)
+                storage_type=storage_type,
+                available_nodes=args.nodes)
 
         elif (action == 'delete'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
             vm_object.delete(args.remove_data)
+
+        elif (action == 'register'):
+            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_object.register()
+
+        elif (action == 'unregister'):
+            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_object.unregister()
 
         elif (action == 'update'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
@@ -576,7 +624,7 @@ class Parser:
                 else:
                     self.printStatus(vm_object.getInfo())
             else:
-                mcvirt_instance = MCVirt(initialise_nodes=False)
+                mcvirt_instance = MCVirt(ignore_failed_nodes=True)
                 mcvirt_instance.printInfo()
 
         elif (action == 'network'):
@@ -592,6 +640,11 @@ class Parser:
                 args.destination_node,
                 wait_for_vm_shutdown=args.wait_for_shutdown,
                 start_after_migration=args.start_after_migration)
+
+        elif (action == 'move'):
+            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_object.move(destination_node=args.destination_node,
+                           source_node=args.source_node)
 
         elif (action == 'cluster'):
             if (args.cluster_action == 'add-node'):

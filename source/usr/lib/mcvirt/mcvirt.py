@@ -36,7 +36,7 @@ class MCVirt:
     LOCK_FILE = LOCK_FILE_DIR + '/lock'
 
     def __init__(self, uri=None, initialise_nodes=True, username=None,
-                 ignore_cluster=False):
+                 ignore_failed_nodes=False):
         """Checks lock file and performs initial connection to libvirt"""
         self.libvirt_uri = uri
         self.connection = None
@@ -44,13 +44,14 @@ class MCVirt:
         MCVirtConfig(perform_upgrade=True, mcvirt_instance=self)
 
         # Configure custom username - used for unittests
-        self.ignore_drbd = False
-        self.ignore_cluster = ignore_cluster
         self.username = username
 
         # Cluster configuration
         self.initialise_nodes = initialise_nodes
+        self.ignore_failed_nodes = ignore_failed_nodes
         self.remote_nodes = {}
+        self.failed_nodes = []
+        self.ignore_drbd = False
 
         self.obtained_filelock = False
         self.lockfile_object = None
@@ -149,12 +150,13 @@ class MCVirt:
 
         for vm_object in self.getAllVirtualMachineObjects():
             table.add_row((vm_object.getName(), vm_object.getState().name,
-                           vm_object.getNode()))
+                           vm_object.getNode() or 'Unregistered'))
         print table.draw()
 
     def printInfo(self):
         """Prints information about the nodes in the cluster"""
         from cluster.cluster import Cluster
+        from cluster.remote import CouldNotConnectToNodeException
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.header(('Node', 'IP Address', 'Status'))
@@ -164,13 +166,13 @@ class MCVirt:
                        'Local'))
 
         # Add remote nodes
-        for node in cluster_object.getNodes():
+        for node in cluster_object.getNodes(return_all=True):
             node_config = cluster_object.getNodeConfig(node)
             node_status = 'Unreachable'
             try:
                 cluster_object.getRemoteNode(node)
                 node_status = 'Connected'
-            except:
+            except CouldNotConnectToNodeException:
                 pass
             table.add_row((node, node_config['ip_address'],
                            node_status))
