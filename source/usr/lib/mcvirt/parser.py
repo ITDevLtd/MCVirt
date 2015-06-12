@@ -690,7 +690,7 @@ class Parser:
 
         elif (action == 'drbd'):
             if (args.enable):
-                DRBD.enable(mcvirt_instance)
+                NodeDRBD.enable(mcvirt_instance)
 
         elif (action == 'backup'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
