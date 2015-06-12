@@ -219,6 +219,7 @@ class DRBD(Base):
 
     def activateDisk(self):
         """Ensures that the disk is ready to be used by a VM on the local node"""
+        self._ensureExists()
         raw_lv = self.getConfigObject()._getLogicalVolumeName(
             self.getConfigObject().DRBD_RAW_SUFFIX)
         meta_lv = self.getConfigObject()._getLogicalVolumeName(
@@ -235,10 +236,12 @@ class DRBD(Base):
 
     def deactivateDisk(self):
         """Marks DRBD volume as secondary"""
+        self._ensureExists()
         self._drbdSetSecondary()
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""
+        self._ensureExists()
         return DRBD._getLogicalVolumeSize(
             self.getConfigObject(),
             self.getConfigObject()._getLogicalVolumeName(
@@ -412,6 +415,7 @@ class DRBD(Base):
 
     def _removeStorage(self):
         """Removes the backing storage for the DRBD hard drive"""
+        self._ensureExists()
         cluster_instance = Cluster(self.getVmObject().mcvirt_object)
         remote_nodes = self.getVmObject()._getRemoteNodes()
 
@@ -443,56 +447,6 @@ class DRBD(Base):
             self.getConfigObject()._getLogicalVolumeName(
                 self.getConfigObject().DRBD_RAW_SUFFIX),
             perform_on_nodes=True)
-
-    @staticmethod
-    def _addToVirtualMachine(config_object):
-        """Overrides the base function to add the hard drive to the virtual machine,
-           and performs the base function on all nodes in the cluster"""
-        # Create list of nodes that the hard drive was successfully added to
-        successful_nodes = []
-        cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
-
-        # Add to local VM
-        Base._addToVirtualMachine(config_object)
-
-        # If the node cluster is initialised, update all remote node configurations
-        if (config_object.vm_object.mcvirt_object.initialiseNodes()):
-            try:
-                for node in cluster_instance.getNodes():
-                    remote_object = cluster_instance.getRemoteNode(node)
-                    remote_object.runRemoteCommand(
-                        'virtual_machine-hard_drive-addToVirtualMachine',
-                        {'config': config_object._dumpConfig()}
-                    )
-                    successful_nodes.append(node)
-            except Exception:
-                # If the hard drive fails to be added to a node, remove it from all successful nodes
-                # and remove from the local node
-                for node in successful_nodes:
-                    remote_object = cluster_instance.getRemoteNode(node)
-                    remote_object.runRemoteCommand(
-                        'virtual_machine-hard_drive-removeFromVirtualMachine',
-                        {'config': config_object._dumpConfig()}
-                    )
-                DRBD._removeFromVirtualMachine(config_object)
-                raise
-
-    @staticmethod
-    def _removeFromVirtualMachine(config_object, unregister=False):
-        """Overrides the base method to remove the hard drive from a VM configuration and
-           performs the base function on all nodes in the cluster"""
-        # Perform removal on local node
-        Base._removeFromVirtualMachine(config_object, unregister=False)
-
-        # If the cluster is initialised, run on all nodes that the VM is available on
-        if (config_object.vm_object.mcvirt_object.initialiseNodes()):
-            cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
-            for node in cluster_instance.getNodes():
-                remote_object = cluster_instance.getRemoteNode(node)
-                remote_object.runRemoteCommand(
-                    'virtual_machine-hard_drive-removeFromVirtualMachine',
-                    {'config': config_object._dumpConfig()}
-                )
 
     @staticmethod
     def _initialiseMetaData(resource_name):

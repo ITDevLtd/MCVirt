@@ -50,6 +50,10 @@ class Base(object):
 
     def __init__(self, disk_id):
         """Sets member variables"""
+        pass
+
+    def _ensureExists(self):
+        """Ensures the disk exists on the local node"""
         if (not self._checkExists()):
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
@@ -69,6 +73,7 @@ class Base(object):
 
     def delete(self):
         """Deletes the logical volume for the disk"""
+        self._ensureExists()
         from mcvirt.virtual_machine.hard_drive.factory import Factory
         # Remove from LibVirt, if registered, so that libvirt doesn't
         # hold the device open when the storage is removed
@@ -85,6 +90,7 @@ class Base(object):
 
     def duplicate(self, destination_vm_object):
         """Clone the hard drive and attach it to the new VM object"""
+        self._ensureExists()
         from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
         disk_size = self.getSize()
 
@@ -115,38 +121,9 @@ class Base(object):
         return new_disk_object
 
     @staticmethod
-    def _removeFromVirtualMachine(config_object, unregister=False):
-        """Removes the hard drive configuration from the MCVirt VM configuration"""
-        # If the VM that the hard drive is attached to is registered on the local
-        # node, remove the hard drive from the LibVirt configuration
-        if (unregister and config_object.vm_object.isRegisteredLocally()):
-            Base._unregisterLibvirt(config_object)
-
-        # Update VM config file
-        def removeDiskFromConfig(vm_config):
-            del(vm_config['hard_disks'][str(config_object.getId())])
-
-        config_object.vm_object.getConfigObject().updateConfig(
-            removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %
-            (config_object.getId(), config_object.vm_object.getName()))
-
-    @staticmethod
-    def _unregisterLibvirt(config_object):
-        """Removes the hard drive from the LibVirt configuration for the VM"""
-        # Update the libvirt domain XML configuration
-        def updateXML(domain_xml):
-            device_xml = domain_xml.find('./devices')
-            disk_xml = device_xml.find(
-                './disk/target[@dev="%s"]/..' %
-                config_object._getTargetDev())
-            device_xml.remove(disk_xml)
-
-        # Update libvirt configuration
-        config_object.vm_object.editConfig(updateXML)
-
-    @staticmethod
-    def _addToVirtualMachine(config_object):
-        """Adds the current disk to a give VM"""
+    def _addToVirtualMachine(config_object, register=True):
+        """Add the hard drive to the virtual machine,
+           and performs the base function on all nodes in the cluster"""
         from mcvirt.virtual_machine.hard_drive.factory import Factory
 
         # Update the libvirt domain XML configuration
@@ -163,6 +140,75 @@ class Base(object):
         config_object.vm_object.getConfigObject().updateConfig(
             addDiskToConfig, 'Added disk \'%s\' to \'%s\'' %
             (config_object.getId(), config_object.vm_object.getName()))
+
+        # If the node cluster is initialised, update all remote node configurations
+        if (config_object.vm_object.mcvirt_object.initialiseNodes()):
+
+            # Create list of nodes that the hard drive was successfully added to
+            from mcvirt.cluster.cluster import Cluster
+            successful_nodes = []
+            cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
+            try:
+                for node in cluster_instance.getNodes():
+                    remote_object = cluster_instance.getRemoteNode(node)
+                    remote_object.runRemoteCommand(
+                        'virtual_machine-hard_drive-addToVirtualMachine',
+                        {'config': config_object._dumpConfig()}
+                    )
+                    successful_nodes.append(node)
+            except Exception:
+                # If the hard drive fails to be added to a node, remove it from all successful nodes
+                # and remove from the local node
+                for node in successful_nodes:
+                    remote_object = cluster_instance.getRemoteNode(node)
+                    remote_object.runRemoteCommand(
+                        'virtual_machine-hard_drive-removeFromVirtualMachine',
+                        {'config': config_object._dumpConfig()}
+                    )
+                Base._removeFromVirtualMachine(config_object)
+                raise
+
+    @staticmethod
+    def _removeFromVirtualMachine(config_object, unregister=False):
+        """Remove the hard drive from a VM configuration and perform all nodes
+           in the cluster"""
+        # If the VM that the hard drive is attached to is registered on the local
+        # node, remove the hard drive from the LibVirt configuration
+        if (unregister and config_object.vm_object.isRegisteredLocally()):
+            Base._unregisterLibvirt(config_object)
+
+        # Update VM config file
+        def removeDiskFromConfig(vm_config):
+            del(vm_config['hard_disks'][str(config_object.getId())])
+
+        config_object.vm_object.getConfigObject().updateConfig(
+            removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %
+            (config_object.getId(), config_object.vm_object.getName()))
+
+        # If the cluster is initialised, run on all nodes that the VM is available on
+        if (config_object.vm_object.mcvirt_object.initialiseNodes()):
+            from mcvirt.cluster.cluster import Cluster
+            cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
+            for node in cluster_instance.getNodes():
+                remote_object = cluster_instance.getRemoteNode(node)
+                remote_object.runRemoteCommand(
+                    'virtual_machine-hard_drive-removeFromVirtualMachine',
+                    {'config': config_object._dumpConfig()}
+                )
+
+    @staticmethod
+    def _unregisterLibvirt(config_object):
+        """Removes the hard drive from the LibVirt configuration for the VM"""
+        # Update the libvirt domain XML configuration
+        def updateXML(domain_xml):
+            device_xml = domain_xml.find('./devices')
+            disk_xml = device_xml.find(
+                './disk/target[@dev="%s"]/..' %
+                config_object._getTargetDev())
+            device_xml.remove(disk_xml)
+
+        # Update libvirt configuration
+        config_object.vm_object.editConfig(updateXML)
 
     @staticmethod
     def _registerLibvirt(config_object):
@@ -366,6 +412,7 @@ class Base(object):
 
     def createBackupSnapshot(self):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""
+        self._ensureExists()
         from mcvirt.auth import Auth
         from mcvirt.virtual_machine.virtual_machine import LockStates
         # Ensure the user has permission to delete snapshot backups
@@ -402,6 +449,7 @@ class Base(object):
 
     def deleteBackupSnapshot(self):
         """Deletes the backup snapshot for the disk and unlocks the VM"""
+        self._ensureExists()
         from mcvirt.auth import Auth
         from mcvirt.virtual_machine.virtual_machine import LockStates
         # Ensure the user has permission to delete snapshot backups

@@ -177,18 +177,20 @@ class DRBD:
             System.runCommand([DRBD.DRBDADM, 'adjust', resource])
 
     @staticmethod
-    def getAllDrbdHardDriveObjects(mcvirt_instance):
+    def getAllDrbdHardDriveObjects(mcvirt_instance, include_remote=False):
         from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+        from mcvirt.cluster.cluster import Cluster
 
         hard_drive_objects = []
         all_vms = VirtualMachine.getAllVms(mcvirt_instance)
         for vm_name in all_vms:
             vm_object = VirtualMachine(mcvirt_object=mcvirt_instance, name=vm_name)
-            all_hard_drive_objects = vm_object.getDiskObjects()
+            if (Cluster.getHostname() in vm_object.getAvailableNodes() or include_remote):
+                all_hard_drive_objects = vm_object.getDiskObjects()
 
-            for hard_drive_object in all_hard_drive_objects:
-                if (hard_drive_object.getType() is 'DRBD'):
-                    hard_drive_objects.append(hard_drive_object)
+                for hard_drive_object in all_hard_drive_objects:
+                    if (hard_drive_object.getType() is 'DRBD'):
+                        hard_drive_objects.append(hard_drive_object)
 
         return hard_drive_objects
 
@@ -196,7 +198,8 @@ class DRBD:
     def getUsedDrbdPorts(mcvirt_object):
         used_ports = []
 
-        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object):
+        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object,
+                                                                 include_remote=True):
             used_ports.append(hard_drive_object.getConfigObject()._getDrbdPort())
 
         return used_ports
@@ -205,7 +208,8 @@ class DRBD:
     def getUsedDrbdMinors(mcvirt_object):
         used_minors = []
 
-        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object):
+        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_object,
+                                                                 include_remote=True):
             used_minors.append(hard_drive_object.getConfigObject()._getDrbdMinor())
 
         return used_minors

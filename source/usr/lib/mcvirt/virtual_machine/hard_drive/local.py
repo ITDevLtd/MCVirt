@@ -34,6 +34,7 @@ class Local(Base):
 
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
+        self._ensureExists()
         # Ensure VM is stopped
         from mcvirt.virtual_machine.virtual_machine import PowerStates
         if (self.getVmObject().getState() is not PowerStates.STOPPED):
@@ -60,16 +61,19 @@ class Local(Base):
 
     def _removeStorage(self):
         """Removes the backing logical volume"""
+        self._ensureExists()
         Local._removeLogicalVolume(self.getConfigObject(), self.getConfigObject()._getDiskName())
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""
+        self._ensureExists()
         return Local._getLogicalVolumeSize(
             self.getConfigObject(),
             self.getConfigObject()._getDiskName())
 
     def clone(self, destination_vm_object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
+        self._ensureExists()
         new_disk_config = ConfigLocal(
             vm_object=destination_vm_object,
             disk_id=self.getConfigObject().getId())
@@ -111,8 +115,10 @@ class Local(Base):
 
     def activateDisk(self):
         """Starts the disk logical volume"""
+        self._ensureExists()
         Local._activateLogicalVolume(self.getConfigObject(), self.getConfigObject()._getDiskName())
 
     def deactivateDisk(self):
         """Deactivates the disk loglcal volume"""
+        self._ensureExists()
         pass

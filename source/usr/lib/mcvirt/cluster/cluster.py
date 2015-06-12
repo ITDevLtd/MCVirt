@@ -136,6 +136,10 @@ class Cluster:
                 pre_existing_node_object.runRemoteCommand('cluster-cluster-addHostKey',
                                                           {'node': remote_host})
 
+        # If DRBD is enabled on the local node, configure/enable it on the remote node
+        if (DRBD.isEnabled()):
+            remote.runRemoteCommand('node-drbd-enable', {'secret': DRBD.getConfig()['secret']})
+
         # Sync networks
         self.syncNetworks(remote)
 
@@ -144,10 +148,6 @@ class Cluster:
 
         # Sync VMs
         self.syncVirtualMachines(remote)
-
-        # If DRBD is enabled on the local node, configure/enable it on the remote node
-        if (DRBD.isEnabled()):
-            remote.runRemoteCommand('node-drbd-enable', {'secret': DRBD.getConfig()['secret']})
 
     def syncNetworks(self, remote_object):
         """Add the local networks to the remote node"""
@@ -191,6 +191,12 @@ class Cluster:
                                             'memory_allocation': vm_object.getRAM(),
                                             'node': vm_object.getNode(),
                                             'available_nodes': vm_object.getAvailableNodes()})
+
+            # Add each of the disks to the VM
+            for hard_disk in vm_object.getDiskObjects():
+                remote_object.runRemoteCommand('virtual_machine-hard_drive-addToVirtualMachine',
+                                               {'config':
+                                                hard_disk.getConfigObject()._dumpConfig()})
 
             for network_adapter in vm_object.getNetworkObjects():
                 # Add network adapters to VM
