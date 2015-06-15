@@ -474,7 +474,7 @@ class Parser:
                 mcvirt_instance = MCVirt(ignore_failed_nodes=ignore_failed_nodes)
 
         # If the user has specified to ignore DRBD, set the global parameter
-        if (args.ignore_drbd):
+        if ('ignore_drbd' in args and args.ignore_drbd):
             NodeDRBD.ignoreDrbd(mcvirt_instance)
 
         # Perform functions on the VM based on the action passed to the script
