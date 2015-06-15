@@ -405,12 +405,8 @@ class VirtualMachine:
         self.editConfig(updateXML)
 
         # Update the MCVirt configuration
-        def updateConfig(config):
-            config['memory_allocation'] = str(memory_allocation)
-        self.getConfigObject().updateConfig(
-            updateConfig,
-            'RAM allocation has been changed to %s' %
-            memory_allocation)
+        self.updateConfig(['memory_allocation'], str(memory_allocation),
+                          'RAM allocation has been changed to %s' % memory_allocation)
 
     def getCPU(self):
         """Returns the number of CPU cores attached to the VM"""
@@ -433,12 +429,8 @@ class VirtualMachine:
         self.editConfig(updateXML)
 
         # Update the MCVirt configuration
-        def updateConfig(config):
-            config['cpu_cores'] = str(cpu_count)
-        self.getConfigObject().updateConfig(
-            updateConfig,
-            'CPU count has been changed to %s' %
-            cpu_count)
+        self.updateConfig(['cpu_cores'], str(cpu_count), 'CPU count has been changed to %s' %
+                                                         cpu_count)
 
     def getNetworkObjects(self):
         """Returns an array of network interface objects for each of the
