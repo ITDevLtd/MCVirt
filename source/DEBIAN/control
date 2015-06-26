@@ -3,7 +3,7 @@ Version: 2.0.1
 Section: utils
 Maintainer: I.T. Dev Ltd <admin@itdev.co.uk>
 Architecture: all
-Depends: python, python-libvirt, qemu, python-lockfile, python-enum34, python-texttable, python-paramiko, python-cheetah
+Depends: python, python-libvirt, qemu, python-lockfile, python-enum34, python-texttable, python-paramiko, python-cheetah, libvirt-bin
 Recommends: git
 Suggests: iotop, iftop, htop, drbd8-utils
 Description: Virtualization host management utility.
