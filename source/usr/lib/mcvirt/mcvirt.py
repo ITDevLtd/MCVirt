@@ -100,7 +100,6 @@ class MCVirt:
 
             self.obtained_filelock = True
         except:
-            raise
             raise MCVirtException('An instance of MCVirt is already running')
 
     def releaseLock(self, initialise_nodes=True):
