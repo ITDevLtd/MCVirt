@@ -41,11 +41,10 @@ else:
     from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 
     # Otherwise, create an MCVirt object and update the VM directly
-    mcvirt_instance = MCVirt()
+    mcvirt_instance = MCVirt(obtain_lock=True, initialise_nodes=False)
     hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(
         mcvirt_instance,
         drbd_resource
     )
-    hard_drive_object.setSyncState(False)
-    mcvirt_instance.releaseLock()
+    hard_drive_object.setSyncState(False, update_remote=False)
     mcvirt_instance = None

@@ -622,8 +622,13 @@ class DRBD(Base):
             # assume the disk is being created and is in-sync
             return True
 
-    def setSyncState(self, sync_state):
+    def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
+        obtained_lock = False
+        if (not self.getVmObject().mcvirt_object.obtained_filelock):
+            obtained_lock = True
+            self.getVmObject().mcvirt_object.obtainLock(timeout=10, initialise_nodes=update_remote)
+
         def updateConfig(config):
             config['hard_disks'][self.getConfigObject().getId()]['sync_state'] = sync_state
         self.getVmObject().getConfigObject().updateConfig(
@@ -634,7 +639,7 @@ class DRBD(Base):
              sync_state))
 
         # Update remote nodes
-        if (self.getConfigObject().vm_object.mcvirt_object.initialiseNodes()):
+        if (self.getConfigObject().vm_object.mcvirt_object.initialiseNodes() and update_remote):
             cluster_instance = Cluster(self.getConfigObject().vm_object.mcvirt_object)
             for node in self.getConfigObject().vm_object._getRemoteNodes():
                 remote_object = cluster_instance.getRemoteNode(node)
@@ -642,6 +647,9 @@ class DRBD(Base):
                                                {'vm_name': self.getVmObject().getName(),
                                                 'disk_id': self.getConfigObject().getId(),
                                                 'sync_state': sync_state})
+
+        if (obtained_lock):
+            self.getVmObject().mcvirt_object.releaseLock(initialise_nodes=update_remote)
 
     def verify(self):
         """Performs a verification of a DRBD hard drive"""
@@ -652,6 +660,8 @@ class DRBD(Base):
             raise DrbdStateException(
                 'DRBD resource must be connected before performing a verification: %s' %
                 self.getConfigObject()._getResourceName())
+
+        self.getVmObject().mcvirt_object.releaseLock()
 
         # Reset the disk to be marked in a consistent state
         self.setSyncState(True)
@@ -690,6 +700,8 @@ class DRBD(Base):
             # not in-sync
             self.setSyncState(False)
             raise
+
+        self.getVmObject().mcvirt_object.obtainLock()
 
         if (self._isInSync()):
             return True
