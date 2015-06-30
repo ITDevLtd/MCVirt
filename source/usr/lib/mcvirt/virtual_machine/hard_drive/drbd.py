@@ -699,6 +699,11 @@ class DRBD(Base):
             # If an exception is thrown during the verify, mark the VM as
             # not in-sync
             self.setSyncState(False)
+
+            # Tear down the socket
+            if (drbd_socket):
+                drbd_socket.mcvirt_instance = None
+                drbd_socket = None
             raise
 
         self.getVmObject().mcvirt_object.obtainLock()
