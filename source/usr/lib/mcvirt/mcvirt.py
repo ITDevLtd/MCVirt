@@ -36,7 +36,7 @@ class MCVirt:
     LOCK_FILE = LOCK_FILE_DIR + '/lock'
 
     def __init__(self, uri=None, initialise_nodes=True, username=None,
-                 ignore_failed_nodes=False):
+                 ignore_failed_nodes=False, obtain_lock=True):
         """Checks lock file and performs initial connection to libvirt"""
         self.libvirt_uri = uri
         self.connection = None
@@ -55,7 +55,8 @@ class MCVirt:
 
         self.obtained_filelock = False
         self.lockfile_object = None
-        self.obtainLock()
+        if (obtain_lock):
+            self.obtainLock()
 
         # Create cluster instance, which will initialise the nodes
         from cluster.cluster import Cluster
@@ -74,7 +75,7 @@ class MCVirt:
         # Remove lock file
         self.releaseLock()
 
-    def obtainLock(self, timeout=2):
+    def obtainLock(self, timeout=2, initialise_nodes=True):
         """Obtains the MCVirt lock file"""
         # Create lock file, if it does not exist
         if (not os.path.isfile(self.LOCK_FILE)):
@@ -92,7 +93,7 @@ class MCVirt:
 
         try:
             self.lockfile_object.acquire(timeout=timeout)
-            if (self.initialise_nodes):
+            if (self.initialise_nodes and initialise_nodes):
                 for remote_node in self.remote_nodes:
                     self.remote_nodes[remote_node].runRemoteCommand('mcvirt-obtainLock',
                                                                     {'timeout': timeout})
@@ -101,10 +102,10 @@ class MCVirt:
         except:
             raise MCVirtException('An instance of MCVirt is already running')
 
-    def releaseLock(self):
+    def releaseLock(self, initialise_nodes=True):
         """Releases the MCVirt lock file"""
         if (self.obtained_filelock):
-            if (self.initialise_nodes):
+            if (self.initialise_nodes and initialise_nodes):
                 for remote_node in self.remote_nodes:
                     self.remote_nodes[remote_node].runRemoteCommand('mcvirt-releaseLock', {})
             self.lockfile_object.release()

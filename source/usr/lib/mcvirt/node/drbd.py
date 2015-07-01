@@ -226,17 +226,9 @@ class DRBDSocket():
         self.mcvirt_instance = mcvirt_instance
         self.thread = thread.start_new_thread(DRBDSocket.server, (self,))
 
-    def __del__(self):
-        """Stops the thread and tears down on object deletion"""
-        self.stop()
-
     def stop(self):
         """Deletes the socket connection object, removes the socket file and
            the MCVirt instance"""
-        # If the MCVirt lock has not yet been re-instated, do so
-        if (self.mcvirt_instance and not self.mcvirt_instance.obtained_filelock):
-            self.mcvirt_instance.obtainLock(timeout=10)
-
         # Destroy the socket connection
         self.connection = None
         try:
@@ -248,7 +240,6 @@ class DRBDSocket():
     def server(self):
         """Listens on the socket and marks any resources as out-of-sync"""
         # Remove MCVirt lock, so that other commands can run whilst the verify is taking place
-        self.mcvirt_instance.releaseLock()
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             os.remove(self.SOCKET_PATH)
@@ -257,18 +248,14 @@ class DRBDSocket():
 
         self.socket.bind(self.SOCKET_PATH)
         self.socket.listen(1)
-        self.connection, _ = self.socket.accept()
-        drbd_resource = self.connection.recv(1024)
-        if (drbd_resource):
-            # Re-instate MCVirt lock
-            self.mcvirt_instance.obtainLock(timeout=10)
-            from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-            hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(self.mcvirt_instance,
-                                                                             drbd_resource)
-            hard_drive_object.setSyncState(False)
-        self.connection.close()
-
-        try:
-            os.remove(self.SOCKET_PATH)
-        except OSError:
-            pass
+        while (1):
+            hard_drive_object = None
+            self.connection = None
+            self.connection, _ = self.socket.accept()
+            drbd_resource = self.connection.recv(1024)
+            if (drbd_resource):
+                from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+                hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(self.mcvirt_instance,
+                                                                                 drbd_resource)
+                hard_drive_object.setSyncState(False, update_remote=False)
+            self.connection.close()

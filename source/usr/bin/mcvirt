@@ -27,11 +27,8 @@ from mcvirt.auth import Auth
 
 if __name__ == "__main__":
 
-    parser_object = Parser()
-
     try:
-        # Ensure that the user is running MCVirt as root/sudo
-        Auth.checkRootPrivileges()
+        parser_object = Parser()
     except MCVirtException, e:
         print e.message
         sys.exit(1)
