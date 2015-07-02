@@ -46,7 +46,9 @@ Joining the node to the cluster
 
 
 **Note:** The following can only be performed by a superuser.
+
 **Note:** Both nodes must allow root login over SSH.
+
 **Note:** ``/root/.ssh/known_hosts`` must exist to add a node to the cluster.
 
 1. From the source node, run:
@@ -92,7 +94,9 @@ Off-line migration
 * Additional parameters are available to aid the migration and minimise downtime:
 
   * '--wait-for-shutdown', which will cause the migration command to poll the running state of the VM and migrate once the VM is in a powered off state, allowing the user to shutdown the VM from within the guest operating system.
+  
   * '--start-after-migration', which starts the VM immediately after the migration has finished
+  
 
 ====
 DRBD

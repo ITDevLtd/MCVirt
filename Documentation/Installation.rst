@@ -54,6 +54,6 @@ Creating/Removing Network
 Configure MCVirt
 -----------------
 
-* The first time MCVirt is run, it creates a configuration file for itself, found in **/var/lib/mcvirt/`hostname`/config.json**.
+* The first time MCVirt is run, it creates a configuration file for itself, found in **/var/lib/mcvirt/<Hostname>/config.json**.
 * Set ``vm_storage_vg`` in the configuration file to the name of volume group for the VMs to be stored in.
 * Set ``cluster_ip`` in the configuration file to your IP address.
