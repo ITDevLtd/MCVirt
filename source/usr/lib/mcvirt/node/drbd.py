@@ -255,7 +255,8 @@ class DRBDSocket():
             drbd_resource = self.connection.recv(1024)
             if (drbd_resource):
                 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-                hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(self.mcvirt_instance,
-                                                                                 drbd_resource)
+                hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(
+                    self.mcvirt_instance, drbd_resource
+                )
                 hard_drive_object.setSyncState(False, update_remote=False)
             self.connection.close()
