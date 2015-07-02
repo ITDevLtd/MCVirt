@@ -8,7 +8,10 @@ Permissions
 
 * To run MCVirt commands as a superuser you must either:
 
-  * Have your username included in the superusers section in the configuration file
+  * Have your username included in the superusers section in the configuration file.
+    **Note:** You will still have to run MCVirt commands using sudo, as MCVirt determines the permissions based on the username of the user that has run sudo.
+    
+    Sudo can be configured to allow you to run MCVirt using sudo with no password. To do this you can run ``visudo`` as root and add the following line: ``<Your username here> ALL=(ALL) NOPASSWD: /usr/bin/mcvirt``
   
   * Be logged in as root.
 

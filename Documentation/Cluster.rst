@@ -21,7 +21,7 @@ To view the status of the cluster, run the following on an MCVirt node:
     
 
 
-This will show the cluster nodes, IP addresses, and status. If the IP address field for the local node is blank then you must set ``cluster_ip`` to the node's IP address in the configuration file.
+This will show the cluster nodes, IP addresses, and status.
 
 
 
@@ -37,8 +37,7 @@ When a machine is connected to a cluster, it receives the permission/network/vir
 
 The new node must be configured on separate network/VLAN for MCVirt cluster communication.
 
-The IP address for this network must be stored in the MCVirt configuration file and can be retrieved from the machine, by running ``mcvirt info``.
-
+The IP address that MCVirt clustering/DRBD communications will be performed over must be included in the configuration file under ``cluster_ip`` on both nodes. This can be retrieved by running ``mcvirt info``.
 
 
 Joining the node to the cluster
@@ -47,7 +46,7 @@ Joining the node to the cluster
 
 **Note:** The following can only be performed by a superuser.
 
-**Note:** Both nodes must allow root login over SSH.
+**Note:** Both nodes must allow root login over SSH from the network chosen for MCVirt clustering.
 
 **Note:** ``/root/.ssh/known_hosts`` must exist to add a node to the cluster.
 
@@ -87,7 +86,7 @@ Get Cluster information
 Off-line migration
 ------------------
 
-* DRBD VMs can be migrated to the other node in the cluster, whilst the VM is powered off, using::
+* VMs that use DRBD-based storage can be migrated to the other node in the cluster, whilst the VM is powered off, using::
 
     sudo mcvirt migrate --node <Destination node> <VM Name>
 
@@ -95,8 +94,7 @@ Off-line migration
 
   * '--wait-for-shutdown', which will cause the migration command to poll the running state of the VM and migrate once the VM is in a powered off state, allowing the user to shutdown the VM from within the guest operating system.
   
-  * '--start-after-migration', which starts the VM immediately after the migration has finished
-  
+  * '--start-after-migration', which starts the VM immediately after the migration has finished  
 
 ====
 DRBD

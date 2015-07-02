@@ -36,9 +36,9 @@ Create VM
 
     * A network can be specified multiple times to create multiple adapters connected to the same network.
 
-  * **--storage-type** - Storage backing type.
+  * **--storage-type** - Storage backing type - either ``Local`` or ``DRBD``.
 	
-  * **--nodes** - Specifies the nodes that the VM will be hosted on, if a DRBD storage-type is specified.	
+  * **--nodes** - Specifies the nodes that the VM will be hosted on, if a DRBD storage-type is specified and there are more than 2 nodes in the cluster.	
 
 
 Cloning a VM
