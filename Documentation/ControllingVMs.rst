@@ -3,7 +3,7 @@ Controlling VMs
 ===============
 
 
-* All commands must be performed on the MCVirt node, which can be accessed via SSH.
+All commands must be performed on the MCVirt node, which can be accessed via SSH.
 
 
 

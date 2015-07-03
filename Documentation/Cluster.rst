@@ -37,8 +37,7 @@ When a machine is connected to a cluster, it receives the permission/network/vir
 
 The new node must be configured on separate network/VLAN for MCVirt cluster communication.
 
-The IP address for this network must be stored in the MCVirt configuration file and can be retrieved from the machine, by running ``mcvirt info``.
-
+The IP address that MCVirt clustering/DRBD communications will be performed over must be included in the configuration file under ``cluster_ip`` on both nodes. This can be retrieved by running ``mcvirt info``.
 
 
 Joining the node to the cluster
@@ -47,11 +46,15 @@ Joining the node to the cluster
 
 **Note:** The following can only be performed by a superuser.
 
+**Note:** Both nodes must allow root login over SSH from the network chosen for MCVirt clustering.
+
+**Note:** ``/root/.ssh/known_hosts`` must exist to add a node to the cluster.
+
 1. From the source node, run:
 
   ::
     
-    sudo mcvirt cluster --add-node --node <Remote Node Name> --ip-address <Remote Cluster IP Address>
+    sudo mcvirt cluster add-node --node <Remote Node Name> --ip-address <Remote Cluster IP Address>
     
 
 2. A prompt for the root password of the remote node will be presented.
@@ -83,22 +86,23 @@ Get Cluster information
 Off-line migration
 ------------------
 
-* VMs can be migrated to the other node in the cluster, whilst the VM is powered off, using::
+* VMs that use DRBD-based storage can be migrated to the other node in the cluster, whilst the VM is powered off, using::
 
     sudo mcvirt migrate --node <Destination node> <VM Name>
 
 * Additional parameters are available to aid the migration and minimise downtime:
-  * '--wait-for-shutdown', which will cause the migration command to poll the running state of the VM and migrate once the VM is in a powered off state, allowing the user to shutdown the VM from within the guest operating system.
-  * '--start-after-migration', which starts the VM immediately after the migration has finished
 
+  * '--wait-for-shutdown', which will cause the migration command to poll the running state of the VM and migrate once the VM is in a powered off state, allowing the user to shutdown the VM from within the guest operating system.
+  
+  * '--start-after-migration', which starts the VM immediately after the migration has finished  
 
 ====
 DRBD
 ====
 
-DRBD is used by McVirt to use replicate storage across a 2-node cluster.
+DRBD is used by MCVirt to use replicate storage across a 2-node cluster.
 
-Once DRBD is configured and the node is in a cluster, 'DRBD' can be specified when creating a VM, which allows the VM to be migrated between nodes.
+Once DRBD is configured and the node is in a cluster, 'DRBD' can be specified as the storage type when creating a VM, which allows the VM to be migrated between nodes.
 
 
 Configuring DRBD
@@ -114,7 +118,7 @@ Configuring DRBD
 DRBD verification
 -----------------
 
-MCVirt has the ability to start/monitor DRBD verifications (See the `DRBD documentation <https://drbd.linbit.com/users-guide/s-use-online-verify.html>`_.
+MCVirt has the ability to start/monitor DRBD verifications (See the `DRBD documentation <https://drbd.linbit.com/users-guide/s-use-online-verify.html>`_).
 
 The verification can be performed by using::
 

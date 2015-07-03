@@ -6,6 +6,7 @@ Create/Remove VMs
 
 * All commands must be performed on the MCVirt node, which can be accessed via SSH using LDAP credentials.
 
+* You must be a superuser to create and remove VMs
 
 
 Create VM
@@ -35,7 +36,9 @@ Create VM
 
     * A network can be specified multiple times to create multiple adapters connected to the same network.
 
-
+  * **--storage-type** - Storage backing type - either ``Local`` or ``DRBD``.
+	
+  * **--nodes** - Specifies the nodes that the VM will be hosted on, if a DRBD storage-type is specified and there are more than 2 nodes in the cluster.	
 
 
 Cloning a VM
@@ -78,7 +81,7 @@ A VM can be cloned by performing the following:
 
   ::
     
-    sudo mcvirt clone --parent <Source VM Name> <Target VM Name>
+    sudo mcvirt clone --template <Source VM Name> <Target VM Name>
     
 
 
@@ -95,7 +98,7 @@ A VM can be duplicated by performing the following:
 
   ::
     
-    sudo mcvirt duplicate --parent <Source VM Name> <Target VM Name>
+    sudo mcvirt duplicate --template <Source VM Name> <Target VM Name>
     
 
 
@@ -115,3 +118,4 @@ Removing VM
 
 * Without any parameters, the VM will simply be 'unregistered' from the node.
 * To remove all data associated with the VM, supply the parameter **--remove-data**
+* Only a superuser can delete a VM
