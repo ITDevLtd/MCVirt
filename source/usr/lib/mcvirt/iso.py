@@ -1,0 +1,158 @@
+# Copyright (c) 2015 - I.T. Dev Ltd
+#
+# This file is part of MCVirt.
+#
+# MCVirt is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# MCVirt is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
+
+import os
+import stat
+
+from mcvirt import MCVirtException
+from system import System
+
+class IsoManagement:
+    
+    @staticmethod
+    def checkName(name):
+        """Check that name ends in .iso"""
+        return name[-4:].lower() == '.iso'
+        
+    @staticmethod
+    def getFilename(path):
+        """Return filename part of path"""
+        return path.split('/')[-1]
+        
+    @staticmethod
+    def setIsoPermissions(path):
+        """Set permissions to 644"""
+        mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
+        os.chmod(path, mode)
+        
+    @staticmethod
+    def overwriteCheck(path):
+        """Check if a file already exists at path, and ask user whether they want to overwrite if so.
+           Returns True if they will overwrite, False otherwise"""
+           
+        if (os.path.exists(path)):
+            # If there is ask user if they want to overwrite
+            overwrite_answer = System.getUserInput(
+                '%s already exists, do you want to overwrite it? (Y/n): ' % IsoManagement.getFilename(path)
+                )
+            if (overwrite_answer.strip() is not 'Y'):
+                return False
+                
+        return True
+    
+    @staticmethod
+    def getIsoList(mcvirt_instance):
+        """Return a list of ISOs"""
+        
+        list = ''
+        # Get files in ISO directory
+        listing = os.listdir(mcvirt_instance.ISO_STORAGE_DIR)
+        for file in listing:
+            # If is a file and ends in '.iso' ...
+            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + file) and IsoManagement.checkName(file)):
+                if len(list) > 0:
+                    list += '\n'
+                list += file
+                
+        if (len(list) == 0):
+            list = 'No ISO found'
+            
+        return list
+    
+    @staticmethod
+    def addIso(mcvirt_instance, path):
+        """Copy an ISO to ISOs directory"""
+        import shutil
+        
+        # Check that file exists        
+        if (not os.path.isfile(path)):
+            raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
+           
+        # Check that filename ends in '.iso'
+        if (not IsoManagement.checkName(path)):
+            raise NotAnISOException('Error: \'%s\' is not an ISO' % path)      
+        
+        filename = IsoManagement.getFilename(path)
+        if (not IsoManagement.overwriteCheck(mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)):
+            return 'ISO not copied'
+        
+        shutil.copy(path, mcvirt_instance.ISO_STORAGE_DIR)
+        full_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
+        IsoManagement.setIsoPermissions(full_path)
+        
+        return 'ISO added successfully'
+    
+    @staticmethod
+    def deleteIso(mcvirt_instance, name):
+        """Delete an ISO"""
+        path = mcvirt_instance.ISO_STORAGE_DIR + '/' + name
+        
+        # Check exists
+        if (not os.path.isfile(path)):
+            raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
+        # Check filename
+        if (not IsoManagement.checkName(name)):
+            raise NotAnISOException('Error: \'%s\' is not an ISO' % path)
+        
+        delete_answer = System.getUserInput('Are you sure you want to delete %s? (Y/n): ' % name)
+        if (delete_answer.strip() is 'Y'):
+            os.remove(path)
+            return '%s successfully deleted' % name
+        else:
+            return 'ISO not deleted'
+            
+    @staticmethod
+    def addFromUrl(mcvirt_instance, url, name=None):
+        """Download an ISO from given URL and save in ISO directory"""
+        import urllib2, urlparse
+
+        # Work out name from URL if name is not supplied
+        if (name is None):
+            # Parse URL to get path part
+            url_parse = urlparse.urlparse(url)
+            name = IsoManagement.getFilename(url_parse.path) or 'downloaded.iso'
+        
+        if (not IsoManagement.checkName(name)):
+            name += '.iso'
+            
+        output_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + name
+        if (not IsoManagement.overwriteCheck(output_path)):
+            return 'ISO not added'
+        
+        # Open file
+        iso = urllib2.urlopen(url)
+        chunk_size = 16 * 1024 # Read file in 16KB chunks
+
+        # Save ISO
+        with open(output_path, 'wb') as file:
+            while True:
+                chunk = iso.read(chunk_size)
+                if not chunk:
+                    break
+                file.write(chunk)
+                
+        IsoManagement.setIsoPermissions(output_path)
+        
+        return 'ISO downloaded as %s' % name
+          
+class InvalidISOPathException(MCVirtException):
+    """ISO to add does not exist"""
+    pass
+    
+class NotAnISOException(MCVirtException):
+    """The ISO to add does not end in .iso, so assume it is not an ISO"""
+    pass
