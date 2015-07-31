@@ -21,11 +21,24 @@ import stat
 from mcvirt import MCVirtException
 from system import System
 
+
+class InvalidISOPathException(MCVirtException):
+    """ISO to add does not exist"""
+    pass
+
+
+class NotAnISOException(MCVirtException):
+    """The ISO to add does not end in .iso, so assume it is not an ISO"""
+    pass
+
+
 class NameNotSpecifiedException(MCVirtException):
     """A name has not been specified and cannot be determined by the path/URL"""
     pass
 
+
 class Iso:
+    """Provides management of ISOs for use in MCVirt"""
     
     @staticmethod
     def checkName(name):
@@ -157,11 +170,3 @@ class Iso:
         Iso.setIsoPermissions(output_path)
         
         return 'ISO downloaded as %s' % name
-          
-class InvalidISOPathException(MCVirtException):
-    """ISO to add does not exist"""
-    pass
-    
-class NotAnISOException(MCVirtException):
-    """The ISO to add does not end in .iso, so assume it is not an ISO"""
-    pass
