@@ -27,7 +27,7 @@ from cluster.cluster import Cluster
 from system import System
 from node.drbd import DRBD as NodeDRBD
 from auth import Auth
-from iso import IsoManagement
+from iso import Iso
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -736,16 +736,16 @@ class Parser:
             output = ''
         
             if (args.list):
-                output = IsoManagement.getIsoList(mcvirt_instance)
+                output = Iso.getIsoList(mcvirt_instance)
                 
             if (args.add_path):
-                output = IsoManagement.addIso(mcvirt_instance, args.add_path)
+                output = Iso.addIso(mcvirt_instance, args.add_path)
                 
             if (args.delete_path):
-                output = IsoManagement.deleteIso(mcvirt_instance, args.delete_path)
+                output = Iso.deleteIso(mcvirt_instance, args.delete_path)
                 
             if (args.add_url):
-                output = IsoManagement.addFromUrl(mcvirt_instance, args.add_url)
+                output = Iso.addFromUrl(mcvirt_instance, args.add_url)
                 
             if output:
                 self.printStatus(output)

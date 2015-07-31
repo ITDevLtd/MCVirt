@@ -21,7 +21,7 @@ import stat
 from mcvirt import MCVirtException
 from system import System
 
-class IsoManagement:
+class Iso:
     
     @staticmethod
     def checkName(name):
@@ -47,7 +47,7 @@ class IsoManagement:
         if (os.path.exists(path)):
             # If there is ask user if they want to overwrite
             overwrite_answer = System.getUserInput(
-                '%s already exists, do you want to overwrite it? (Y/n): ' % IsoManagement.getFilename(path)
+                '%s already exists, do you want to overwrite it? (Y/n): ' % Iso.getFilename(path)
                 )
             if (overwrite_answer.strip() is not 'Y'):
                 return False
@@ -63,7 +63,7 @@ class IsoManagement:
         listing = os.listdir(mcvirt_instance.ISO_STORAGE_DIR)
         for file in listing:
             # If is a file and ends in '.iso' ...
-            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + file) and IsoManagement.checkName(file)):
+            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + file) and Iso.checkName(file)):
                 if len(list) > 0:
                     list += '\n'
                 list += file
@@ -83,16 +83,16 @@ class IsoManagement:
             raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
            
         # Check that filename ends in '.iso'
-        if (not IsoManagement.checkName(path)):
+        if (not Iso.checkName(path)):
             raise NotAnISOException('Error: \'%s\' is not an ISO' % path)      
         
-        filename = IsoManagement.getFilename(path)
-        if (not IsoManagement.overwriteCheck(mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)):
+        filename = Iso.getFilename(path)
+        if (not Iso.overwriteCheck(mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)):
             return 'ISO not copied'
         
         shutil.copy(path, mcvirt_instance.ISO_STORAGE_DIR)
         full_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
-        IsoManagement.setIsoPermissions(full_path)
+        Iso.setIsoPermissions(full_path)
         
         return 'ISO added successfully'
     
@@ -105,7 +105,7 @@ class IsoManagement:
         if (not os.path.isfile(path)):
             raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
         # Check filename
-        if (not IsoManagement.checkName(name)):
+        if (not Iso.checkName(name)):
             raise NotAnISOException('Error: \'%s\' is not an ISO' % path)
         
         delete_answer = System.getUserInput('Are you sure you want to delete %s? (Y/n): ' % name)
@@ -124,13 +124,13 @@ class IsoManagement:
         if (name is None):
             # Parse URL to get path part
             url_parse = urlparse.urlparse(url)
-            name = IsoManagement.getFilename(url_parse.path) or 'downloaded.iso'
+            name = Iso.getFilename(url_parse.path) or 'downloaded.iso'
         
-        if (not IsoManagement.checkName(name)):
+        if (not Iso.checkName(name)):
             name += '.iso'
             
         output_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + name
-        if (not IsoManagement.overwriteCheck(output_path)):
+        if (not Iso.overwriteCheck(output_path)):
             return 'ISO not added'
         
         # Open file
@@ -145,7 +145,7 @@ class IsoManagement:
                     break
                 file.write(chunk)
                 
-        IsoManagement.setIsoPermissions(output_path)
+        Iso.setIsoPermissions(output_path)
         
         return 'ISO downloaded as %s' % name
           
