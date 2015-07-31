@@ -21,6 +21,10 @@ import stat
 from mcvirt import MCVirtException
 from system import System
 
+class NameNotSpecifiedException(MCVirtException):
+    """A name has not been specified and cannot be determined by the path/URL"""
+    pass
+
 class Iso:
     
     @staticmethod
@@ -31,7 +35,12 @@ class Iso:
     @staticmethod
     def getFilename(path):
         """Return filename part of path"""
-        return path.split('/')[-1]
+        filename = path.split('/')[-1]
+        if (filename):
+            return filename
+        else:
+            raise NameNotSpecifiedException('Name cannot be determined from "%s".' % path + "\n" +
+                                            'Name parameter must be provided')
         
     @staticmethod
     def setIsoPermissions(path):
@@ -124,7 +133,7 @@ class Iso:
         if (name is None):
             # Parse URL to get path part
             url_parse = urlparse.urlparse(url)
-            name = Iso.getFilename(url_parse.path) or 'downloaded.iso'
+            name = Iso.getFilename(url_parse.path)
         
         if (not Iso.checkName(name)):
             name += '.iso'
