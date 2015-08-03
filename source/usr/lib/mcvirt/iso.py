@@ -37,6 +37,11 @@ class NameNotSpecifiedException(MCVirtException):
     pass
 
 
+class IsoAlreadyExistsException(MCVirtException):
+    """An ISO with the same name already exists"""
+    pass
+
+
 class Iso:
     """Provides management of ISOs for use in MCVirt"""
     
@@ -72,7 +77,7 @@ class Iso:
                 '%s already exists, do you want to overwrite it? (Y/n): ' % Iso.getFilename(path)
                 )
             if (overwrite_answer.strip() is not 'Y'):
-                return False
+                raise IsoAlreadyExistsException('Error: An ISO with the same name already exists: "%s"' % path)
                 
         return True
     
@@ -109,8 +114,7 @@ class Iso:
             raise NotAnISOException('Error: \'%s\' is not an ISO' % path)      
         
         filename = Iso.getFilename(path)
-        if (not Iso.overwriteCheck(mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)):
-            return 'ISO not copied'
+        Iso.overwriteCheck(mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)
         
         shutil.copy(path, mcvirt_instance.ISO_STORAGE_DIR)
         full_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
@@ -152,8 +156,7 @@ class Iso:
             name += '.iso'
             
         output_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + name
-        if (not Iso.overwriteCheck(output_path)):
-            return 'ISO not added'
+        Iso.overwriteCheck(output_path)
         
         # Open file
         iso = urllib2.urlopen(url)
