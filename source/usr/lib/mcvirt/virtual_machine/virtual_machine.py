@@ -162,7 +162,7 @@ class VirtualMachine:
         else:
             raise VmAlreadyStoppedException('The VM is already shutdown')
 
-    def start(self, iso_name=None):
+    def start(self, iso_object=None):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
         self.mcvirt_object.getAuthObject().assertPermission(
@@ -187,10 +187,10 @@ class VirtualMachine:
             disk_object.activateDisk()
 
         disk_drive_object = DiskDrive(self)
-        if (iso_name):
+        if (iso_object):
             # If an ISO has been specified, attach it to the VM before booting
             # and adjust boot order to boot from ISO first
-            disk_drive_object.attachISO(iso_name)
+            disk_drive_object.attachISO(iso_object)
             self.setBootOrder(['cdrom', 'hd'])
         else:
             # If not ISO was specified, remove any attached ISOs and change boot order
@@ -257,12 +257,16 @@ class VirtualMachine:
         if (self.isRegisteredLocally()):
             # Display the path of the attached ISO (if present)
             disk_object = DiskDrive(self)
-            disk_path = disk_object.getCurrentDisk()
+            iso_object = disk_object.getCurrentDisk()
+            if (iso_object):
+                disk_name = iso_object.getName()
+            else:
+                disk_name = None
         else:
-            disk_path = 'Unavailable'
+            disk_name = 'Unavailable'
 
-        if (disk_path):
-            table.add_row(('ISO location', disk_path))
+        if (disk_name):
+            table.add_row(('ISO location', disk_name))
 
         # Get info for each disk
         disk_objects = self.getDiskObjects()

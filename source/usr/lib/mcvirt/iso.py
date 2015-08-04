@@ -27,11 +27,6 @@ class InvalidISOPathException(MCVirtException):
     pass
 
 
-class NotAnISOException(MCVirtException):
-    """The ISO to add does not end in .iso, so assume it is not an ISO"""
-    pass
-
-
 class NameNotSpecifiedException(MCVirtException):
     """A name has not been specified and cannot be determined by the path/URL"""
     pass
@@ -42,14 +37,40 @@ class IsoAlreadyExistsException(MCVirtException):
     pass
 
 
+class FailedToRemoveFileException(MCVirtException):
+    """A failure occurred whilst trying to remove an ISO"""
+    pass
+
+
+class IsoInUseException(MCVirtException):
+    """The ISO is in use, so cannot be removed"""
+    pass
+
+
 class Iso:
     """Provides management of ISOs for use in MCVirt"""
+
+    def __init__(self, mcvirt_instance, name):
+        self.name = name
+        self.mcvirt_instance = mcvirt_instance
+
+        if (not os.path.isfile(self.getPath())):
+            raise InvalidISOPathException('Error: \'%s\' does not exist' % self.getName())
+
+        self.setIsoPermissions()
+
+    def getName(self):
+        return self.name
+
+    def getPath(self):
+        return self.mcvirt_instance.ISO_STORAGE_DIR + '/' + self.getName()
 
     @staticmethod
     def addFromUrl(mcvirt_instance, url, name=None):
         """Download an ISO from given URL and save in ISO directory"""
         import urllib2
         import urlparse
+        import tempfile
 
         # Work out name from URL if name is not supplied
         if (name is None):
@@ -57,11 +78,9 @@ class Iso:
             url_parse = urlparse.urlparse(url)
             name = Iso.getFilenameFromPath(url_parse.path)
 
-        if (not Iso.checkName(name)):
-            name += '.iso'
-
-        output_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + name
-        Iso.overwriteCheck(output_path)
+        # Get temporary directory to store ISO
+        temp_directory = tempfile.mkdtemp()
+        output_path = temp_directory + '/' + name
 
         # Open file
         iso = urllib2.urlopen(url)
@@ -76,10 +95,14 @@ class Iso:
                 if not chunk:
                     break
                 file.write(chunk)
+        iso.close()
 
-        Iso.setIsoPermissions(output_path)
+        iso_object = Iso.addIso(mcvirt_instance, output_path)
 
-        return 'ISO downloaded as %s' % name
+        os.remove(output_path)
+        os.rmdir(temp_directory)
+
+        return iso_object
 
     @staticmethod
     def addIso(mcvirt_instance, path):
@@ -90,42 +113,34 @@ class Iso:
         if (not os.path.isfile(path)):
             raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
 
-        # Check that filename ends in '.iso'
-        if (not Iso.checkName(path)):
-            raise NotAnISOException('Error: \'%s\' is not an ISO' % path)
-
         filename = Iso.getFilenameFromPath(path)
-        Iso.overwriteCheck(mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)
+        Iso.overwriteCheck(mcvirt_instance, filename, mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)
 
         shutil.copy(path, mcvirt_instance.ISO_STORAGE_DIR)
         full_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
-        Iso.setIsoPermissions(full_path)
+        
 
         return 'ISO added successfully'
 
     @staticmethod
-    def getFilenameFromPath(path):
+    def getFilenameFromPath(path, append_iso=True):
         """Return filename part of path"""
         filename = path.split('/')[-1]
-        if (filename):
-            return filename
-        else:
+        if (not filename):
             raise NameNotSpecifiedException('Name cannot be determined from "%s".' % path + "\n" +
                                             'Name parameter must be provided')
+        if (filename[-4:].lower() != '.iso' and append_iso):
+            filename += '.iso'
 
-    @staticmethod
-    def checkName(name):
-        """Check that name ends in .iso"""
-        return name[-4:].lower() == '.iso'
+        return filename
 
-    @staticmethod
-    def setIsoPermissions(path):
+    def setIsoPermissions(self):
         """Set permissions to 644"""
         mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
-        os.chmod(path, mode)
+        os.chmod(self.getPath(), mode)
 
     @staticmethod
-    def overwriteCheck(path):
+    def overwriteCheck(mcvirt_instance, filename, path):
         """Check if a file already exists at path.
            Ask user whether they want to overwrite.
            Returns True if they will overwrite, False otherwise"""
@@ -133,11 +148,15 @@ class Iso:
         if (os.path.exists(path)):
             # If there is ask user if they want to overwrite
             overwrite_answer = System.getUserInput(
-                '%s already exists, do you want to overwrite it? (Y/n): ' % Iso.getFilename(path))
+                '%s already exists, do you want to overwrite it? (Y/n): ' % Iso.getFilenameFromPath(path))
             if (overwrite_answer.strip() is not 'Y'):
                 raise IsoAlreadyExistsException(
                     'Error: An ISO with the same name already exists: "%s"' % path
                 )
+            else:
+                original_object = Iso(mcvirt_instance, filename)
+                if (original_object.inUse()):
+                    IsoInUseException('The original ISO is attached to a VM, so cannot be replaced')
 
         return True
 
@@ -150,8 +169,7 @@ class Iso:
         listing = os.listdir(mcvirt_instance.ISO_STORAGE_DIR)
         for file in listing:
             # If is a file and ends in '.iso' ...
-            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + file)
-                    and Iso.checkName(file)):
+            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + file)):
                 if len(list) > 0:
                     list += '\n'
                 list += file
@@ -161,22 +179,37 @@ class Iso:
 
         return list
 
-
-    @staticmethod
-    def deleteIso(mcvirt_instance, name):
+    def delete(self):
         """Delete an ISO"""
-        path = mcvirt_instance.ISO_STORAGE_DIR + '/' + name
-
         # Check exists
-        if (not os.path.isfile(path)):
-            raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
-        # Check filename
-        if (not Iso.checkName(name)):
-            raise NotAnISOException('Error: \'%s\' is not an ISO' % path)
+        in_use = self.inUse()
+        if (in_use):
+            raise IsoInUseException(
+                'The ISO is attached to a VM, so cannot be removed: %s' % in_use
+            )
 
-        delete_answer = System.getUserInput('Are you sure you want to delete %s? (Y/n): ' % name)
+        delete_answer = System.getUserInput(
+            'Are you sure you want to delete %s? (Y/n): ' % self.getName()
+        )
         if (delete_answer.strip() is 'Y'):
-            os.remove(path)
-            return '%s successfully deleted' % name
+            if (os.remove(self.getPath())):
+                return True
+            else:
+                raise FailedToRemoveFileException(
+                    'A failure occurred whilst attempting to remove ISO: %s' % self.getName()
+                )
         else:
-            return 'ISO not deleted'
+            return False
+
+    def inUse(self):
+        """Determines if the ISO is currently in use by a VM"""
+        from virtual_machine.disk_drive import DiskDrive
+        for vm_object in self.mcvirt_instance.getAllVirtualMachineObjects():
+            vm_current_iso = DiskDrive(vm_object).getCurrentDisk()
+
+            # If the VM has an iso attached, check if the ISO is this one
+            if (vm_current_iso and (vm_current_iso.getPath() == self.getPath())):
+                return vm_object.getName()
+
+        return False
+

@@ -73,7 +73,7 @@ class Parser:
         # Add arguments for starting a VM
         self.start_parser = self.subparsers.add_parser('start', help='Start VM help',
                                                        parents=[self.parent_parser])
-        self.start_parser.add_argument('--iso', metavar='ISO Path', type=str,
+        self.start_parser.add_argument('--iso', metavar='ISO Name', type=str,
                                        help='Path of ISO to attach to VM')
         self.start_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
@@ -90,7 +90,7 @@ class Parser:
         self.iso_parser.add_argument('--add-from-path', dest='add_path',
                                      help='Copy an ISO to ISO directory', metavar='PATH')
         self.iso_parser.add_argument('--delete', dest='delete_path', help='Delete an ISO',
-                                     metavar='PATH')
+                                     metavar='NAME')
         self.iso_parser.add_argument('--add-from-url', dest='add_url',
                                      help='Download and add an ISO', metavar='URL')
 
@@ -493,7 +493,12 @@ class Parser:
         # Perform functions on the VM based on the action passed to the script
         if (action == 'start'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-            vm_object.start(args.iso if args.iso else None)
+
+            if (args.iso):
+                iso_object = Iso(mcvirt_instance, args.iso)
+            else:
+                iso_object = None
+            vm_object.start(iso_object)
             self.printStatus('Successfully started VM')
 
         elif (action == 'stop'):
@@ -743,7 +748,8 @@ class Parser:
                 output = Iso.addIso(mcvirt_instance, args.add_path)
 
             if (args.delete_path):
-                output = Iso.deleteIso(mcvirt_instance, args.delete_path)
+                iso_object = Iso(mcvirt_instance, args.delete_path)
+                iso_object.delete()
 
             if (args.add_url):
                 output = Iso.addFromUrl(mcvirt_instance, args.add_url)
