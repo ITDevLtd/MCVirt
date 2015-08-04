@@ -114,13 +114,13 @@ class Iso:
             raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
 
         filename = Iso.getFilenameFromPath(path)
-        Iso.overwriteCheck(mcvirt_instance, filename, mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)
+        Iso.overwriteCheck(mcvirt_instance, filename,
+                           mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)
 
         shutil.copy(path, mcvirt_instance.ISO_STORAGE_DIR)
         full_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
-        
 
-        return 'ISO added successfully'
+        return Iso(filename)
 
     @staticmethod
     def getFilenameFromPath(path, append_iso=True):
@@ -148,7 +148,9 @@ class Iso:
         if (os.path.exists(path)):
             # If there is ask user if they want to overwrite
             overwrite_answer = System.getUserInput(
-                '%s already exists, do you want to overwrite it? (Y/n): ' % Iso.getFilenameFromPath(path))
+                '%s already exists, do you want to overwrite it? (Y/n): ' %
+                Iso.getFilenameFromPath(path)
+            )
             if (overwrite_answer.strip() is not 'Y'):
                 raise IsoAlreadyExistsException(
                     'Error: An ISO with the same name already exists: "%s"' % path
@@ -212,4 +214,3 @@ class Iso:
                 return vm_object.getName()
 
         return False
-
