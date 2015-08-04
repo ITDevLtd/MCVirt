@@ -46,12 +46,65 @@ class Iso:
     """Provides management of ISOs for use in MCVirt"""
 
     @staticmethod
-    def checkName(name):
-        """Check that name ends in .iso"""
-        return name[-4:].lower() == '.iso'
+    def addFromUrl(mcvirt_instance, url, name=None):
+        """Download an ISO from given URL and save in ISO directory"""
+        import urllib2
+        import urlparse
+
+        # Work out name from URL if name is not supplied
+        if (name is None):
+            # Parse URL to get path part
+            url_parse = urlparse.urlparse(url)
+            name = Iso.getFilenameFromPath(url_parse.path)
+
+        if (not Iso.checkName(name)):
+            name += '.iso'
+
+        output_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + name
+        Iso.overwriteCheck(output_path)
+
+        # Open file
+        iso = urllib2.urlopen(url)
+
+        # Read file in 16KB chunks
+        chunk_size = 16 * 1024
+
+        # Save ISO
+        with open(output_path, 'wb') as file:
+            while True:
+                chunk = iso.read(chunk_size)
+                if not chunk:
+                    break
+                file.write(chunk)
+
+        Iso.setIsoPermissions(output_path)
+
+        return 'ISO downloaded as %s' % name
 
     @staticmethod
-    def getFilename(path):
+    def addIso(mcvirt_instance, path):
+        """Copy an ISO to ISOs directory"""
+        import shutil
+
+        # Check that file exists
+        if (not os.path.isfile(path)):
+            raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
+
+        # Check that filename ends in '.iso'
+        if (not Iso.checkName(path)):
+            raise NotAnISOException('Error: \'%s\' is not an ISO' % path)
+
+        filename = Iso.getFilenameFromPath(path)
+        Iso.overwriteCheck(mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)
+
+        shutil.copy(path, mcvirt_instance.ISO_STORAGE_DIR)
+        full_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
+        Iso.setIsoPermissions(full_path)
+
+        return 'ISO added successfully'
+
+    @staticmethod
+    def getFilenameFromPath(path):
         """Return filename part of path"""
         filename = path.split('/')[-1]
         if (filename):
@@ -59,6 +112,11 @@ class Iso:
         else:
             raise NameNotSpecifiedException('Name cannot be determined from "%s".' % path + "\n" +
                                             'Name parameter must be provided')
+
+    @staticmethod
+    def checkName(name):
+        """Check that name ends in .iso"""
+        return name[-4:].lower() == '.iso'
 
     @staticmethod
     def setIsoPermissions(path):
@@ -103,27 +161,6 @@ class Iso:
 
         return list
 
-    @staticmethod
-    def addIso(mcvirt_instance, path):
-        """Copy an ISO to ISOs directory"""
-        import shutil
-
-        # Check that file exists
-        if (not os.path.isfile(path)):
-            raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
-
-        # Check that filename ends in '.iso'
-        if (not Iso.checkName(path)):
-            raise NotAnISOException('Error: \'%s\' is not an ISO' % path)
-
-        filename = Iso.getFilename(path)
-        Iso.overwriteCheck(mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)
-
-        shutil.copy(path, mcvirt_instance.ISO_STORAGE_DIR)
-        full_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
-        Iso.setIsoPermissions(full_path)
-
-        return 'ISO added successfully'
 
     @staticmethod
     def deleteIso(mcvirt_instance, name):
@@ -143,39 +180,3 @@ class Iso:
             return '%s successfully deleted' % name
         else:
             return 'ISO not deleted'
-
-    @staticmethod
-    def addFromUrl(mcvirt_instance, url, name=None):
-        """Download an ISO from given URL and save in ISO directory"""
-        import urllib2
-        import urlparse
-
-        # Work out name from URL if name is not supplied
-        if (name is None):
-            # Parse URL to get path part
-            url_parse = urlparse.urlparse(url)
-            name = Iso.getFilename(url_parse.path)
-
-        if (not Iso.checkName(name)):
-            name += '.iso'
-
-        output_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + name
-        Iso.overwriteCheck(output_path)
-
-        # Open file
-        iso = urllib2.urlopen(url)
-
-        # Read file in 16KB chunks
-        chunk_size = 16 * 1024
-
-        # Save ISO
-        with open(output_path, 'wb') as file:
-            while True:
-                chunk = iso.read(chunk_size)
-                if not chunk:
-                    break
-                file.write(chunk)
-
-        Iso.setIsoPermissions(output_path)
-
-        return 'ISO downloaded as %s' % name
