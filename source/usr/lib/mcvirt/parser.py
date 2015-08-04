@@ -82,16 +82,17 @@ class Parser:
                                                       parents=[self.parent_parser])
         self.stop_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
-
         # Add arguments for ISO functions
         self.iso_parser = self.subparsers.add_parser('iso', help='ISO managment',
                                                      parents=[self.parent_parser])
-        self.iso_parser.add_argument('--list', dest='list', action='store_true', help='List available ISOs')
-        self.iso_parser.add_argument('--add-from-path', dest='add_path', help='Copy an ISO to ISO directory',
+        self.iso_parser.add_argument('--list', dest='list', action='store_true',
+                                     help='List available ISOs')
+        self.iso_parser.add_argument('--add-from-path', dest='add_path',
+                                     help='Copy an ISO to ISO directory', metavar='PATH')
+        self.iso_parser.add_argument('--delete', dest='delete_path', help='Delete an ISO',
                                      metavar='PATH')
-        self.iso_parser.add_argument('--delete', dest='delete_path', help='Delete an ISO', metavar='PATH')
-        self.iso_parser.add_argument('--add-from-url', dest='add_url', help='Download and add an ISO',
-                                     metavar='URL')
+        self.iso_parser.add_argument('--add-from-url', dest='add_url',
+                                     help='Download and add an ISO', metavar='URL')
 
         # Add arguments for creating a VM
         self.create_parser = self.subparsers.add_parser('create', help='Create VM help',
@@ -731,22 +732,21 @@ class Parser:
 
         elif (action == 'list'):
             mcvirt_instance.listVms()
-        
+
         elif (action == 'iso'):
             output = ''
-        
+
             if (args.list):
                 output = Iso.getIsoList(mcvirt_instance)
-                
+
             if (args.add_path):
                 output = Iso.addIso(mcvirt_instance, args.add_path)
-                
+
             if (args.delete_path):
                 output = Iso.deleteIso(mcvirt_instance, args.delete_path)
-                
+
             if (args.add_url):
                 output = Iso.addFromUrl(mcvirt_instance, args.add_url)
-                
+
             if output:
                 self.printStatus(output)
-

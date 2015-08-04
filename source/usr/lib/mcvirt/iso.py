@@ -68,16 +68,18 @@ class Iso:
 
     @staticmethod
     def overwriteCheck(path):
-        """Check if a file already exists at path, and ask user whether they want to overwrite if so.
+        """Check if a file already exists at path.
+           Ask user whether they want to overwrite.
            Returns True if they will overwrite, False otherwise"""
 
         if (os.path.exists(path)):
             # If there is ask user if they want to overwrite
             overwrite_answer = System.getUserInput(
-                '%s already exists, do you want to overwrite it? (Y/n): ' % Iso.getFilename(path)
-                )
+                '%s already exists, do you want to overwrite it? (Y/n): ' % Iso.getFilename(path))
             if (overwrite_answer.strip() is not 'Y'):
-                raise IsoAlreadyExistsException('Error: An ISO with the same name already exists: "%s"' % path)
+                raise IsoAlreadyExistsException(
+                    'Error: An ISO with the same name already exists: "%s"' % path
+                )
 
         return True
 
@@ -90,7 +92,8 @@ class Iso:
         listing = os.listdir(mcvirt_instance.ISO_STORAGE_DIR)
         for file in listing:
             # If is a file and ends in '.iso' ...
-            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + file) and Iso.checkName(file)):
+            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + file)
+                    and Iso.checkName(file)):
                 if len(list) > 0:
                     list += '\n'
                 list += file
@@ -144,7 +147,8 @@ class Iso:
     @staticmethod
     def addFromUrl(mcvirt_instance, url, name=None):
         """Download an ISO from given URL and save in ISO directory"""
-        import urllib2, urlparse
+        import urllib2
+        import urlparse
 
         # Work out name from URL if name is not supplied
         if (name is None):
@@ -160,7 +164,9 @@ class Iso:
 
         # Open file
         iso = urllib2.urlopen(url)
-        chunk_size = 16 * 1024 # Read file in 16KB chunks
+
+        # Read file in 16KB chunks
+        chunk_size = 16 * 1024
 
         # Save ISO
         with open(output_path, 'wb') as file:
