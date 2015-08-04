@@ -51,6 +51,8 @@ class Iso:
     """Provides management of ISOs for use in MCVirt"""
 
     def __init__(self, mcvirt_instance, name):
+        """Ensures the VM exists, checks the file permissions and creates
+           an Iso object"""
         self.name = name
         self.mcvirt_instance = mcvirt_instance
 
@@ -60,9 +62,11 @@ class Iso:
         self.setIsoPermissions()
 
     def getName(self):
+        """Returns the name of the ISO"""
         return self.name
 
     def getPath(self):
+        """Returns the full path of the ISO"""
         return self.mcvirt_instance.ISO_STORAGE_DIR + '/' + self.getName()
 
     @staticmethod
