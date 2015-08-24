@@ -52,6 +52,7 @@ class NetworkTests(unittest.TestCase):
         suite.addTest(NetworkTests('test_delete'))
         suite.addTest(NetworkTests('test_delete_non_existent'))
         suite.addTest(NetworkTests('test_delete_utilized'))
+        suite.addTest(NetworkTests('test_list'))
 
         return suite
 
