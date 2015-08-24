@@ -71,14 +71,14 @@ class Parser:
                                                      help='Action to perform')
 
         # Add arguments for starting a VM
-        self.start_parser = self.subparsers.add_parser('start', help='Start VM help',
+        self.start_parser = self.subparsers.add_parser('start', help='Start VM',
                                                        parents=[self.parent_parser])
         self.start_parser.add_argument('--iso', metavar='ISO Name', type=str,
                                        help='Path of ISO to attach to VM')
         self.start_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Add arguments for stopping a VM
-        self.stop_parser = self.subparsers.add_parser('stop', help='Stop VM help',
+        self.stop_parser = self.subparsers.add_parser('stop', help='Stop VM',
                                                       parents=[self.parent_parser])
         self.stop_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
@@ -95,7 +95,7 @@ class Parser:
                                      help='Download and add an ISO', metavar='URL')
 
         # Add arguments for creating a VM
-        self.create_parser = self.subparsers.add_parser('create', help='Create VM help',
+        self.create_parser = self.subparsers.add_parser('create', help='Create VM',
                                                         parents=[self.parent_parser])
         self.create_parser.add_argument('--memory', dest='memory', metavar='Memory',
                                         required=True, type=int,
@@ -127,7 +127,7 @@ class Parser:
                                         type=str, choices=hard_drive_storage_types)
 
         # Get arguments for deleting a VM
-        self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM help',
+        self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
                                                         parents=[self.parent_parser])
         self.delete_parser.add_argument('--remove-data', dest='remove_data', action='store_true',
                                         help='Removes the VM data from the host')
@@ -148,7 +148,7 @@ class Parser:
                                             help='Name of VM')
 
         # Get arguments for updating a VM
-        self.update_parser = self.subparsers.add_parser('update', help='Update VM help',
+        self.update_parser = self.subparsers.add_parser('update', help='Update the configuration of a VM',
                                                         parents=[self.parent_parser])
         self.update_parser.add_argument('--memory', dest='memory', metavar='Memory', type=int,
                                         help='Amount of memory to allocate to the VM (MiB)')
@@ -186,7 +186,7 @@ class Parser:
         # Get arguments for making permission changes to a VM
         self.permission_parser = self.subparsers.add_parser(
             'permission',
-            help='Update VM permissions help',
+            help='Update user permissions',
             parents=[self.parent_parser]
         )
         self.permission_parser.add_argument(
@@ -255,7 +255,7 @@ class Parser:
                                                 help='Name of the virtual network to be removed')
 
         # Get arguments for getting VM information
-        self.info_parser = self.subparsers.add_parser('info', help='View VM info help',
+        self.info_parser = self.subparsers.add_parser('info', help='View VM information',
                                                       parents=[self.parent_parser])
         self.info_mutually_exclusive_group = self.info_parser.add_mutually_exclusive_group(
             required=False
@@ -269,7 +269,7 @@ class Parser:
         self.info_mutually_exclusive_group.add_argument(
             '--node',
             dest='node',
-            help='Displays to node that the VM is currently registered on',
+            help='Displays which node that the VM is currently registered on',
             action='store_true'
         )
         self.info_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM',
@@ -280,7 +280,7 @@ class Parser:
                                                       parents=[self.parent_parser])
 
         # Get arguments for cloning a VM
-        self.clone_parser = self.subparsers.add_parser('clone', help='Clone a VM permissions help',
+        self.clone_parser = self.subparsers.add_parser('clone', help='Clone a VM',
                                                        parents=[self.parent_parser])
         self.clone_parser.add_argument('--template', dest='template', type=str,
                                        required=True, metavar='Parent VM',
@@ -289,7 +289,7 @@ class Parser:
 
         # Get arguments for cloning a VM
         self.duplicate_parser = self.subparsers.add_parser('duplicate',
-                                                           help='Duplicate a VM permissions help',
+                                                           help='Duplicate a VM',
                                                            parents=[self.parent_parser])
         self.duplicate_parser.add_argument('--template', dest='template', metavar='Parent VM',
                                            type=str, required=True,
@@ -473,7 +473,7 @@ class Parser:
                 continue_answer = System.getUserInput('Would you like to continue? (Y/n): ')
 
                 if (continue_answer.strip() is not 'Y'):
-                    self.printStatus('Canceled...')
+                    self.printStatus('Cancelled...')
                     return
             ignore_failed_nodes = True
         else:
