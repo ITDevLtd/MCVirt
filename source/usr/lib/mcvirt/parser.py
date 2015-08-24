@@ -395,11 +395,21 @@ class Parser:
         self.verify_mutual_exclusive_group.add_argument('vm_name', metavar='VM Name', nargs='?',
                                                         help='Specify a single VM to verify')
 
-        # Create subparser for drbd-related commands
-        self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering',
-                                                      parents=[self.parent_parser])
-        self.drbd_parser.add_argument('--enable', dest='enable', action='store_true',
-                                      help='Enable DRBD support on the cluster')
+        if (auth_object.checkPermission(Auth.PERMISSIONS.MANAGE_DRBD)):
+            # Create subparser for drbd-related commands
+            self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering',
+                                                          parents=[self.parent_parser])
+            self.drbd_mutually_exclusive_group = self.drbd_parser.add_mutually_exclusive_group(
+                required=True
+            )
+            self.drbd_mutually_exclusive_group.add_argument(
+                '--enable', dest='enable', action='store_true',
+                help='Enable DRBD support on the cluster'
+            )
+            self.drbd_mutually_exclusive_group.add_argument(
+                '--list', dest='list', action='store_true',
+                help='List DRBD volumes on the system'
+            )
 
         # Create subparser for backup commands
         self.backup_parser = self.subparsers.add_parser('backup',
@@ -709,6 +719,8 @@ class Parser:
         elif (action == 'drbd'):
             if (args.enable):
                 NodeDRBD.enable(mcvirt_instance)
+            if (args.list):
+                self.printStatus(NodeDRBD.list(mcvirt_instance))
 
         elif (action == 'backup'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
