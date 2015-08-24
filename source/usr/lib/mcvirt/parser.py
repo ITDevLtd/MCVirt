@@ -253,6 +253,8 @@ class Parser:
         )
         self.network_delete_parser.add_argument('network', metavar='Network Name', type=str,
                                                 help='Name of the virtual network to be removed')
+        self.network_subparser.add_parser('list', help='List the networks on the node',
+                                          parents=[self.parent_parser])
 
         # Get arguments for getting VM information
         self.info_parser = self.subparsers.add_parser('info', help='View VM information',
@@ -651,6 +653,8 @@ class Parser:
             elif (args.network_action == 'delete'):
                 network_object = Network(mcvirt_instance, args.network)
                 network_object.delete()
+            elif (args.network_action == 'list'):
+                self.printStatus(Network.list(mcvirt_instance))
 
         elif (action == 'migrate'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
