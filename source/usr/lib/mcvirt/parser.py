@@ -148,7 +148,7 @@ class Parser:
                                             help='Name of VM')
 
         # Get arguments for updating a VM
-        self.update_parser = self.subparsers.add_parser('update', help='Update the configuration of a VM',
+        self.update_parser = self.subparsers.add_parser('update', help='Update VM Configuration',
                                                         parents=[self.parent_parser])
         self.update_parser.add_argument('--memory', dest='memory', metavar='Memory', type=int,
                                         help='Amount of memory to allocate to the VM (MiB)')
