@@ -43,7 +43,6 @@ class MCVirtConfig(ConfigFile):
         """Creates the configuration directories for the node"""
         # Initialise the git repository
         from mcvirt import MCVirt
-        import pwd
         import stat
 
         os.mkdir(MCVirt.BASE_STORAGE_DIR)
@@ -52,8 +51,10 @@ class MCVirtConfig(ConfigFile):
         os.mkdir(MCVirt.ISO_STORAGE_DIR)
 
         # Set permission on MCVirt directory
-        os.chmod(MCVirt.BASE_STORAGE_DIR, stat.S_IWUSR | stat.S_IRUSR)
-        os.chown(MCVirt.BASE_STORAGE_DIR, pwd.getpwnam('libvirt-qemu').pw_uid, 0)
+        os.chmod(MCVirt.BASE_STORAGE_DIR, stat.S_IRWXU | stat.S_IRGRP \
+                                          | stat.S_IXGRP | stat.S_IROTH \
+                                          | stat.S_IXOTH)
+        os.chown(MCVirt.BASE_STORAGE_DIR, 0, 0)
 
     def create(self):
         """Creates a basic VM configuration for new VMs"""
