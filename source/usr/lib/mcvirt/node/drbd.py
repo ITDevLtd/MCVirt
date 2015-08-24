@@ -239,7 +239,7 @@ class DRBD:
                            drbd_object._drbdGetConnectionState().name,
                            'Local: %s, Remote: %s' % (drbd_object._drbdGetDiskState()[0].name,
                                                       drbd_object._drbdGetDiskState()[1].name),
-                           'Out of Sync' if drbd_object._isInSync() else 'Out of Sync'))
+                           'In Sync' if drbd_object._isInSync() else 'Out of Sync'))
         return table.draw()
 
 
