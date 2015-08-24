@@ -20,7 +20,7 @@ import os
 import shutil
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt
+from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
                                                     PowerStates,
                                                     InvalidVirtualMachineNameException,
@@ -88,6 +88,7 @@ class VirtualMachineTests(unittest.TestCase):
         suite.addTest(VirtualMachineTests('test_stop_stopped_vm'))
         suite.addTest(VirtualMachineTests('test_clone_local'))
         suite.addTest(VirtualMachineTests('test_duplicate_local'))
+        suite.addTest(VirtualMachineTests('test_unspecified_storage_type_local'))
 
         # Add tests for DRBD
         suite.addTest(VirtualMachineTests('test_create_drbd'))
@@ -98,6 +99,7 @@ class VirtualMachineTests(unittest.TestCase):
         suite.addTest(VirtualMachineTests('test_offline_migrate'))
         suite.addTest(VirtualMachineTests('test_clone_drbd'))
         suite.addTest(VirtualMachineTests('test_duplicate_drbd'))
+        suite.addTest(VirtualMachineTests('test_unspecified_storage_type_drbd'))
 
         return suite
 
@@ -709,3 +711,37 @@ class VirtualMachineTests(unittest.TestCase):
                 'lock --unlock %s' %
                 test_vm_object.getName(),
                 mcvirt_instance=self.mcvirt)
+
+    @unittest.skipIf(NodeDRBD.isEnabled(),
+                     'DRBD is enabled on this node')
+    def test_unspecified_storage_type_local(self):
+        """Create a VM without specifying the storage type"""
+        # Create virtual machine using parser, without specifying the storage_type
+        self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
+                                    ' --cpu-count %s --disk-size %s --memory %s' %
+                                    (self.test_vms['TEST_VM_1']['cpu_count'],
+                                     self.test_vms['TEST_VM_1']['disk_size'][0],
+                                     self.test_vms['TEST_VM_1']['memory_allocation']) +
+                                    ' --network %s' % self.test_vms['TEST_VM_1']['networks'][0],
+                                    mcvirt_instance=self.mcvirt)
+
+        # Ensure that the VM exists
+        self.assertTrue(
+            VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+                                        self.test_vms['TEST_VM_1']['name']))
+
+    @unittest.skipIf(not NodeDRBD.isEnabled(),
+                     'DRBD is not enabled on this node')
+    def test_unspecified_storage_type_drbd(self):
+        """Create a VM without specifying the storage type"""
+        # Create virtual machine using parser, without specifying the storage_type.
+        # Assert that an exception is thrown as the storage_type has not been specified
+        with self.assertRaises(MCVirtException):
+            self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
+                                        ' --cpu-count %s --disk-size %s --memory %s' %
+                                        (self.test_vms['TEST_VM_1']['cpu_count'],
+                                         self.test_vms['TEST_VM_1']['disk_size'][0],
+                                         self.test_vms['TEST_VM_1']['memory_allocation']) +
+                                        ' --network %s' %
+                                        self.test_vms['TEST_VM_1']['networks'][0],
+                                        mcvirt_instance=self.mcvirt)
