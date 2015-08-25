@@ -6,13 +6,11 @@
 Welcome to MCVirt's documentation!
 ==================================
 
-.. include:: MCVirt.rst
+.. include:: README.rst
 
 .. toctree::
     :maxdepth: 1
     :glob:
-
-    UserGuide/*
 
 
 API Documentation
