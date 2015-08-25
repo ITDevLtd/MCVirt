@@ -16,6 +16,7 @@ import sys
 import os
 
 import shutil
+import glob
 for filename in glob.glob('../*.rst'):
     shutil.copy(filename, './')
 
