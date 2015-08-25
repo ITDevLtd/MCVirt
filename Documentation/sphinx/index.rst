@@ -9,7 +9,7 @@ Welcome to MCVirt's documentation!
 .. toctree::
     :glob:
 
-    ../*
+    UserGuide/*
 
 
 API Documentation
