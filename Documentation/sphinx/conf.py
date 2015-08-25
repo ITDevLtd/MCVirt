@@ -40,7 +40,7 @@ def replace_links(filename, include_dir=True):
 
 # Replace links in file
 for filename in glob.glob('./UserGuide/*'):
-  replace_links(filename)
+  replace_links(filename, include_dir=False)
 replace_links('./README.rst')
 
 
