@@ -24,7 +24,26 @@ except:
     os.mkdir('./UserGuide')
 
 for filename in glob.glob('../*.rst'):
-  shutil.copy(filename, './UserGuide/')
+  if (filename == '../MCVirt.rst'):
+    shutil.copy(filename, './')
+  else:
+    shutil.copy(filename, './UserGuide/')
+
+def replace_links(filename):
+  f = open(filename,'r')
+  filedata = f.read()
+  f.close()
+
+  newdata = filedata.replace('.rst>`', '.html>`')
+
+  f = open(filename,'w')
+  f.write(newdata)
+  f.close()
+
+# Replace links in file
+for filename in glob.glob('./UserGuide/*'):
+  replace_links(filename)
+replace_links('./MCVirt.rst')
 
 
 # If extensions (or modules to document with autodoc) are in another directory,

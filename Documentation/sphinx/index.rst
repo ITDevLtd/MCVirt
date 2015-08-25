@@ -6,6 +6,8 @@
 Welcome to MCVirt's documentation!
 ==================================
 
+.. include:: MCVirt.rst
+
 .. toctree::
     :maxdepth: 1
     :glob:
