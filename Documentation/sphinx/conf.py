@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # mcvirt documentation build configuration file, created by
-# sphinx-quickstart on Tue Aug 25 14:54:27 2015.
+# sphinx-quickstart on Tue Aug 25 15:41:43 2015.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -18,6 +18,7 @@ import os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
+#sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('source/usr/lib'))
 
 from mock import MagicMock
@@ -44,7 +45,7 @@ extensions = [
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-#templates_path = ['_templates']
+templates_path = ['_templates']
 
 # The suffix of source filenames.
 source_suffix = '.rst'
@@ -53,11 +54,11 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-#master_doc = 'index'
+master_doc = 'index'
 
 # General information about the project.
 project = u'mcvirt'
-copyright = u'2015, I.T. Dev Ltd'
+copyright = u'2015, Author'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -140,7 +141,7 @@ html_theme = 'default'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['_static']
+html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -210,7 +211,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
   ('index', 'mcvirt.tex', u'mcvirt Documentation',
-   u'I.T. Dev Ltd', 'manual'),
+   u'Author', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -240,7 +241,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'mcvirt', u'mcvirt Documentation',
-     [u'I.T. Dev Ltd'], 1)
+     [u'Author'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -254,7 +255,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'mcvirt', u'mcvirt Documentation',
-   u'I.T. Dev Ltd', 'mcvirt', 'One line description of project.',
+   u'Author', 'mcvirt', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -275,9 +276,9 @@ texinfo_documents = [
 
 # Bibliographic Dublin Core info.
 epub_title = u'mcvirt'
-epub_author = u'I.T. Dev Ltd'
-epub_publisher = u'I.T. Dev Ltd'
-epub_copyright = u'2015, I.T. Dev Ltd'
+epub_author = u'Author'
+epub_publisher = u'Author'
+epub_copyright = u'2015, Author'
 
 # The basename for the epub file. It defaults to the project name.
 #epub_basename = u'mcvirt'
