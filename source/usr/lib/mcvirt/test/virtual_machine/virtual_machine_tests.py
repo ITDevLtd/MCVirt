@@ -90,6 +90,7 @@ class VirtualMachineTests(unittest.TestCase):
         suite.addTest(VirtualMachineTests('test_clone_local'))
         suite.addTest(VirtualMachineTests('test_duplicate_local'))
         suite.addTest(VirtualMachineTests('test_unspecified_storage_type_local'))
+        suite.addTest(VirtualMachineTests('test_invalid_network_name'))
 
         # Add tests for DRBD
         suite.addTest(VirtualMachineTests('test_create_drbd'))
