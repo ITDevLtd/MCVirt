@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # mcvirt documentation build configuration file, created by
-# sphinx-quickstart on Tue Aug 25 14:51:35 2015.
+# sphinx-quickstart on Tue Aug 25 14:54:27 2015.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -18,7 +18,7 @@ import os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('source/usr/lib'))
 
 # -- General configuration ------------------------------------------------
 
