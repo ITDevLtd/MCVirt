@@ -525,7 +525,7 @@ class Parser:
                 if (NodeDRBD.isEnabled()):
                     self.parser.error('The VM must be configured with a storage type')
                 else:
-                    storage_type = []
+                    storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
 
             # Convert memory allocation from MiB to KiB
             memory_allocation = int(args.memory) * 1024
