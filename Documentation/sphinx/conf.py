@@ -15,12 +15,6 @@
 import sys
 import os
 
-import shutil
-import glob
-for filename in glob.glob('../*.rst'):
-    shutil.copy(filename, './')
-
-
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -64,8 +58,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'mcvirt'
-copyright = u'2015, Author'
+project = u'MCVirt'
+copyright = u'2015, I.T. Dev Ltd'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -217,8 +211,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'mcvirt.tex', u'mcvirt Documentation',
-   u'Author', 'manual'),
+  ('index', 'mcvirt.tex', u'MCVirt Documentation',
+   u'I.T. Dev Ltd', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
