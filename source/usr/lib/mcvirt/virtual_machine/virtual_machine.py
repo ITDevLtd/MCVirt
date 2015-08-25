@@ -30,6 +30,7 @@ from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth import Auth
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+from mcvirt.node.network import Network
 
 
 class InvalidVirtualMachineNameException(MCVirtException):
@@ -909,7 +910,8 @@ class VirtualMachine:
             # network interfaces to the domain XML
             if (network_interfaces is not None):
                 for network in network_interfaces:
-                    NetworkAdapter.create(vm_object, network)
+                    network_object = Network(mcvirt_instance, network)
+                    NetworkAdapter.create(vm_object, network_object)
 
         return vm_object
 

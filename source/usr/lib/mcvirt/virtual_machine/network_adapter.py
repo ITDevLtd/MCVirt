@@ -91,13 +91,10 @@ class NetworkAdapter:
         return self.mac_address
 
     @staticmethod
-    def create(vm_object, network, mac_address=None):
+    def create(vm_object, network_object, mac_address=None):
         """Add interface device to the given VM object, connected to the given network"""
         from mcvirt.cluster.cluster import Cluster
         from mcvirt.node.network import Network
-
-        # Ensure network exists
-        Network._checkExists(network)
 
         # Generate a MAC address, if one has not been supplied
         if (mac_address is None):
@@ -108,16 +105,16 @@ class NetworkAdapter:
 
         # Add network interface to VM configuration
         def updateVmConfig(config):
-            config['network_interfaces'][mac_address] = network
+            config['network_interfaces'][mac_address] = network_object.getName()
         vm_object.getConfigObject().updateConfig(
             updateVmConfig, 'Added network adapter to \'%s\' on \'%s\' network' %
-            (vm_object.getName(), network))
+            (vm_object.getName(), network_object.getName()))
 
         if (mcvirt_object.initialiseNodes()):
             cluster_object = Cluster(mcvirt_object)
             cluster_object.runRemoteCommand('network_adapter-create',
                                             {'vm_name': vm_object.getName(),
-                                             'network_name': network,
+                                             'network_name': network_object.getName(),
                                              'mac_address': mac_address})
 
         network_adapter_object = NetworkAdapter(mac_address, vm_object)
