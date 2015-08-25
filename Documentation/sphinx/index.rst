@@ -7,6 +7,7 @@ Welcome to MCVirt's documentation!
 ==================================
 
 .. toctree::
+    :maxdepth: 1
     :glob:
 
     UserGuide/*
