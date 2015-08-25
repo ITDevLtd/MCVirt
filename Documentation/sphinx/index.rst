@@ -9,7 +9,8 @@ Welcome to MCVirt's documentation!
 .. toctree::
     :glob:
 
-    ../*
+    ../*.rst
+
 
 API Documentation
 =================
