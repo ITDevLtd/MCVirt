@@ -52,6 +52,7 @@ class NetworkTests(unittest.TestCase):
         suite.addTest(NetworkTests('test_delete'))
         suite.addTest(NetworkTests('test_delete_non_existent'))
         suite.addTest(NetworkTests('test_delete_utilized'))
+        suite.addTest(NetworkTests('test_list'))
 
         return suite
 
@@ -151,3 +152,18 @@ class NetworkTests(unittest.TestCase):
             self.parser.parse_arguments('network delete %s' %
                                         self.test_network_name,
                                         mcvirt_instance=self.mcvirt)
+
+    def test_list(self):
+        """Attempts to use the parser to list the networks"""
+        # Run the network list, to ensure an exception is not thrown
+        self.parser.parse_arguments('network list', mcvirt_instance=self.mcvirt)
+
+        # Create test network and re-run network list
+        Network.create(self.mcvirt, self.test_network_name, self.test_physical_interface)
+        self.parser.parse_arguments('network list', mcvirt_instance=self.mcvirt)
+
+        # Run the network list to ensure that the table contains the name
+        # and the physical interface of the test network
+        list_output = Network.list(self.mcvirt)
+        self.assertTrue(self.test_network_name in list_output)
+        self.assertTrue(self.test_physical_interface in list_output)

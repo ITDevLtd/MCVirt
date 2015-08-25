@@ -18,6 +18,7 @@
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.auth import Auth
 
+from texttable import Texttable
 import xml.etree.ElementTree as ET
 
 
@@ -174,3 +175,17 @@ class Network:
             config['networks'][name] = physical_interface
         from mcvirt.mcvirt_config import MCVirtConfig
         MCVirtConfig().updateConfig(updateConfig, 'Created network \'%s\'' % name)
+
+    @staticmethod
+    def list(mcvirt_instance):
+        """Return a table of networks registered on the node"""
+        # Create table and set headings
+        table = Texttable()
+        table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        table.header(('Network', 'Physical Interface'))
+
+        # Obtain network configurations and add to table
+        networks = Network.getConfig()
+        for network_name in networks:
+            table.add_row((network_name, networks[network_name]))
+        return table.draw()
