@@ -19,6 +19,7 @@ from Cheetah.Template import Template
 import os
 import socket
 import thread
+from texttable import Texttable
 
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -213,6 +214,33 @@ class DRBD:
             used_minors.append(hard_drive_object.getConfigObject()._getDrbdMinor())
 
         return used_minors
+
+    @staticmethod
+    def list(mcvirt_instance):
+        """Lists the DRBD volumes and statuses"""
+        # Create table and add headers
+        table = Texttable()
+        table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        table.header(('Volume Name', 'VM', 'Minor', 'Port', 'Role', 'Connection State',
+                      'Disk State', 'Sync Status'))
+
+        # Set column alignment and widths
+        table.set_cols_width((30, 20, 5, 5, 20, 20, 20, 13))
+        table.set_cols_align(('l', 'l', 'c', 'c', 'l', 'c', 'l', 'c'))
+
+        # Iterate over DRBD objects, adding to the table
+        for drbd_object in DRBD.getAllDrbdHardDriveObjects(mcvirt_instance, True):
+            table.add_row((drbd_object.getConfigObject()._getResourceName(),
+                           drbd_object.getVmObject().getName(),
+                           drbd_object.getConfigObject()._getDrbdMinor(),
+                           drbd_object.getConfigObject()._getDrbdPort(),
+                           'Local: %s, Remote: %s' % (drbd_object._drbdGetRole()[0].name,
+                                                      drbd_object._drbdGetRole()[1].name),
+                           drbd_object._drbdGetConnectionState().name,
+                           'Local: %s, Remote: %s' % (drbd_object._drbdGetDiskState()[0].name,
+                                                      drbd_object._drbdGetDiskState()[1].name),
+                           'In Sync' if drbd_object._isInSync() else 'Out of Sync'))
+        return table.draw()
 
 
 class DRBDSocket():
