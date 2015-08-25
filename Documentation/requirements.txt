@@ -3,3 +3,4 @@ texttable
 lockfile
 paramiko
 Cheetah
+mock
