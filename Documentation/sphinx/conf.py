@@ -32,7 +32,7 @@ def replace_links(filename, include_dir=True):
   filedata = f.read()
   f.close()
 
-  newdata = re.sub(r"`(.*?)<.*?([a-zA-Z]+)\.rst>`_", r"`\1<%s\2.html>`_" % 'UserGuide/' if include_dir else '', filedata).compile()
+  newdata = re.sub(r"`(.*?)<.*?([a-zA-Z]+)\.rst>`_", r"`\1<%s\2.html>`_" % 'UserGuide/' if include_dir else '', filedata)
 
   f = open(filename,'w')
   f.write(newdata)

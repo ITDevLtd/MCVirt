@@ -10,7 +10,10 @@ Welcome to MCVirt's documentation!
 
 .. toctree::
     :maxdepth: 1
+    :hidden:
     :glob:
+
+    UserGuide/*
 
 
 API Documentation
