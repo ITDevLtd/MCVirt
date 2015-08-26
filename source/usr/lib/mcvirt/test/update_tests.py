@@ -20,6 +20,7 @@ import unittest
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
+from mcvirt.virtual_machine.network_adapter import NetworkAdapterDoesNotExistException
 
 
 def stopAndDelete(mcvirt_connection, vm_name):
@@ -31,15 +32,16 @@ def stopAndDelete(mcvirt_connection, vm_name):
         vm_object.delete(True)
 
 
-class AuthTests(unittest.TestCase):
-    """Provides unit tests for the Auth class"""
+class UpdateTests(unittest.TestCase):
+    """Provides unit tests for the functionality
+       provided by the update subparser"""
 
     @staticmethod
     def suite():
-        """Returns a test suite of the Auth tests"""
+        """Returns a test suite"""
         suite = unittest.TestSuite()
-        suite.addTest(AuthTests('test_add_user'))
-        suite.addTest(AuthTests('test_remove_user'))
+        suite.addTest(UpdateTests('test_remove_network'))
+        suite.addTest(UpdateTests('test_remove_network_non_existant'))
         return suite
 
     def setUp(self):
@@ -60,8 +62,6 @@ class AuthTests(unittest.TestCase):
                 'networks': ['Production']
             }
 
-        self.test_user = 'test_user'
-
         # Ensure any test VM is stopped and removed from the machine
         stopAndDelete(self.mcvirt, self.test_vm['name'])
 
@@ -71,9 +71,10 @@ class AuthTests(unittest.TestCase):
         stopAndDelete(self.mcvirt, self.test_vm['name'])
         self.mcvirt = None
 
-    def test_add_user(self):
-        """Adds a user to a virtual machine, using the argument parser"""
-        # Ensure VM does not exist
+    def test_remove_network(self):
+        """Removes a network interface from a VM, using the
+           parser"""
+        # Create test VM
         test_vm_object = VirtualMachine.create(
             self.mcvirt,
             self.test_vm['name'],
@@ -81,34 +82,27 @@ class AuthTests(unittest.TestCase):
             self.test_vm['memory_allocation'],
             self.test_vm['disks'],
             self.test_vm['networks'])
-        self.assertTrue(
-            VirtualMachine._checkExists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vm['name']))
 
-        # Ensure user is not in 'user' group
-        auth_object = self.mcvirt.getAuthObject()
-        self.assertFalse(
-            self.test_user in auth_object.getUsersInPermissionGroup(
-                'user',
-                test_vm_object))
+        # Obtain the MAC address of the network interface
+        # attached to the new VM
+        mac_address = test_vm_object.getNetworkObjects()[0].getMacAddress()
 
-        # Add user to 'user' group using parser
-        self.parser.parse_arguments(
-            'permission --add-user %s %s' %
-            (self.test_user,
-             self.test_vm['name']),
-            mcvirt_instance=self.mcvirt)
+        # Ensure there is 1 network adapter attached to the VM
+        self.assertEqual(len(test_vm_object.getNetworkObjects()), 1)
 
-        # Ensure VM exists
-        self.assertTrue(
-            self.test_user in auth_object.getUsersInPermissionGroup(
-                'user',
-                test_vm_object))
+        # Remove the network interface from the VM, using the argument
+        # parser
+        self.parser.parse_arguments('update %s --remove-network %s' % (self.test_vm['name'],
+                                                                       mac_address),
+                                    mcvirt_instance=self.mcvirt)
 
-    def test_remove_user(self):
-        """Removes a user from a virtual machine, using the argument parser"""
-        # Ensure VM does not exist
+        # Ensure there is no longer any network adapters attached to the VM
+        self.assertEqual(len(test_vm_object.getNetworkObjects()), 0)
+
+    def test_remove_network_non_existant(self):
+        """Attempts to remove a network interface from a VM
+           that doesn't exist"""
+        # Create test VM
         test_vm_object = VirtualMachine.create(
             self.mcvirt,
             self.test_vm['name'],
@@ -116,28 +110,16 @@ class AuthTests(unittest.TestCase):
             self.test_vm['memory_allocation'],
             self.test_vm['disks'],
             self.test_vm['networks'])
-        self.assertTrue(
-            VirtualMachine._checkExists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vm['name']))
 
-        # Add user to 'user' group and ensure they have been added
-        auth_object = self.mcvirt.getAuthObject()
-        auth_object.addUserPermissionGroup(self.mcvirt, 'user', self.test_user, test_vm_object)
-        self.assertTrue(
-            self.test_user in auth_object.getUsersInPermissionGroup(
-                'user',
-                test_vm_object))
+        # Ensure there is 1 network adapter attached to the VM
+        self.assertEqual(len(test_vm_object.getNetworkObjects()), 1)
 
-        # Remove user from 'user' group using parser
-        self.parser.parse_arguments(
-            'permission --delete-user %s %s' %
-            (self.test_user,
-             self.test_vm['name']),
-            mcvirt_instance=self.mcvirt)
+        # Remove the network interface from the VM, using the argument
+        # parser
+        with self.assertRaises(NetworkAdapterDoesNotExistException):
+            self.parser.parse_arguments('update %s --remove-network 11:11:11:11:11:11' %
+                                        self.test_vm['name'],
+                                        mcvirt_instance=self.mcvirt)
 
-        # Ensure user is no longer in 'user' group
-        self.assertFalse(
-            self.test_user in auth_object.getUsersInPermissionGroup(
-                'user',
-                test_vm_object))
+        # Ensure that the network adapter is still attached to the VM
+        self.assertEqual(len(test_vm_object.getNetworkObjects()), 1)
