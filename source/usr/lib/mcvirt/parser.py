@@ -573,7 +573,8 @@ class Parser:
                 network_adapter_object = NetworkAdapter(args.remove_network, vm_object)
                 network_adapter_object.delete()
             if (args.add_network):
-                NetworkAdapter.create(vm_object, args.add_network)
+                network_object = Network(mcvirt_instance, args.add_network)
+                NetworkAdapter.create(vm_object, network_object)
             if (args.add_disk):
                 # Determine if the VM has already been configured to use a storage type
                 vm_storage_type = vm_object.getConfigObject().getConfig()['storage_type']

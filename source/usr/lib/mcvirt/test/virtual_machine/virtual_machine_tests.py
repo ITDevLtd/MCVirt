@@ -32,6 +32,7 @@ from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
                                                     CannotDeleteClonedVmException,
                                                     CannotCloneDrbdBasedVmsException,
                                                     VirtualMachineLockException)
+from mcvirt.node.network import NetworkDoesNotExistException
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdStateException
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 
@@ -89,6 +90,7 @@ class VirtualMachineTests(unittest.TestCase):
         suite.addTest(VirtualMachineTests('test_clone_local'))
         suite.addTest(VirtualMachineTests('test_duplicate_local'))
         suite.addTest(VirtualMachineTests('test_unspecified_storage_type_local'))
+        suite.addTest(VirtualMachineTests('test_invalid_network_name'))
 
         # Add tests for DRBD
         suite.addTest(VirtualMachineTests('test_create_drbd'))
@@ -744,4 +746,16 @@ class VirtualMachineTests(unittest.TestCase):
                                          self.test_vms['TEST_VM_1']['memory_allocation']) +
                                         ' --network %s' %
                                         self.test_vms['TEST_VM_1']['networks'][0],
+                                        mcvirt_instance=self.mcvirt)
+
+    def test_invalid_network_name(self):
+        """Attempts to create a VM using a network that does not exist"""
+        with self.assertRaises(NetworkDoesNotExistException):
+            self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
+                                        ' --cpu-count %s --disk-size %s --memory %s' %
+                                        (self.test_vms['TEST_VM_1']['cpu_count'],
+                                         self.test_vms['TEST_VM_1']['disk_size'][0],
+                                         self.test_vms['TEST_VM_1']['memory_allocation']) +
+                                        ' --network non-existent-network' +
+                                        ' --storage-type Local',
                                         mcvirt_instance=self.mcvirt)

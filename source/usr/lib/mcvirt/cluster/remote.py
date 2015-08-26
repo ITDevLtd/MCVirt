@@ -138,9 +138,11 @@ class Remote:
             vm_object.stop()
 
         elif (action == 'network_adapter-create'):
+            from mcvirt.node.network import Network
             from mcvirt.virtual_machine.network_adapter import NetworkAdapter
+            network_object = Network(mcvirt_instance, arguments['network_name'])
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-            NetworkAdapter.create(vm_object, arguments['network_name'], arguments['mac_address'])
+            NetworkAdapter.create(vm_object, network_object, arguments['mac_address'])
 
         elif (action == 'virtual_machine-getState'):
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
