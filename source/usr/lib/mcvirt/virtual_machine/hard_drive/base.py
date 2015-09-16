@@ -339,7 +339,8 @@ class Base(object):
         lv_path = config_object._getLogicalVolumePath(name)
 
         # Create command arguments
-        command_args = ['dd', 'if=/dev/zero', 'of=%s' % lv_path, 'bs=1M', 'count=%s' % size]
+        command_args = ['dd', 'if=/dev/zero', 'of=%s' % lv_path, 'bs=1M', 'count=%s' % size,
+                        'conv=fsync', 'oflag=direct']
         try:
             # Create logical volume on local node
             System.runCommand(command_args)
