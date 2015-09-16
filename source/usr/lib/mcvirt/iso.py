@@ -124,7 +124,7 @@ class Iso:
         shutil.copy(path, mcvirt_instance.ISO_STORAGE_DIR)
         full_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
 
-        return Iso(filename)
+        return Iso(mcvirt_instance, filename)
 
     @staticmethod
     def getFilenameFromPath(path, append_iso=True):
