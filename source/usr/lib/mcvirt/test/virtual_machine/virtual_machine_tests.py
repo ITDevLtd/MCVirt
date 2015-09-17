@@ -84,6 +84,8 @@ class VirtualMachineTests(unittest.TestCase):
         suite.addTest(VirtualMachineTests('test_vm_directory_already_exists'))
         suite.addTest(VirtualMachineTests('test_start_local'))
         suite.addTest(VirtualMachineTests('test_start_running_vm'))
+        suite.addTest(VirtualMachineTests('test_reset'))
+        suite.addTest(VirtualMachineTests('test_reset_stopped_vm'))
         suite.addTest(VirtualMachineTests('test_lock'))
         suite.addTest(VirtualMachineTests('test_stop_local'))
         suite.addTest(VirtualMachineTests('test_stop_stopped_vm'))
@@ -533,6 +535,42 @@ class VirtualMachineTests(unittest.TestCase):
         with self.assertRaises(VmAlreadyStartedException):
             self.parser.parse_arguments(
                 'start %s' %
+                self.test_vms['TEST_VM_1']['name'],
+                mcvirt_instance=self.mcvirt)
+
+    def test_reset(self):
+        """Resets a running VM"""
+        # Create Virtual machine and start it
+        test_vm_object = VirtualMachine.create(
+            self.mcvirt,
+            self.test_vms['TEST_VM_1']['name'],
+            self.test_vms['TEST_VM_1']['cpu_count'],
+            self.test_vms['TEST_VM_1']['memory_allocation'],
+            self.test_vms['TEST_VM_1']['disk_size'],
+            self.test_vms['TEST_VM_1']['networks'])
+        test_vm_object.start()
+
+        # Use argument parser to reset the VM
+        self.parser.parse_arguments(
+            'reset %s' %
+            self.test_vms['TEST_VM_1']['name'],
+            mcvirt_instance=self.mcvirt)
+
+    def test_reset_stopped_vm(self):
+        """Attempts to reset a stopped VM"""
+        # Create Virtual machine and start it
+        test_vm_object = VirtualMachine.create(
+            self.mcvirt,
+            self.test_vms['TEST_VM_1']['name'],
+            self.test_vms['TEST_VM_1']['cpu_count'],
+            self.test_vms['TEST_VM_1']['memory_allocation'],
+            self.test_vms['TEST_VM_1']['disk_size'],
+            self.test_vms['TEST_VM_1']['networks'])
+
+        # Use argument parser to reset the VM
+        with self.assertRaises(VmAlreadyStoppedException):
+            self.parser.parse_arguments(
+                'reset %s' %
                 self.test_vms['TEST_VM_1']['name'],
                 mcvirt_instance=self.mcvirt)
 

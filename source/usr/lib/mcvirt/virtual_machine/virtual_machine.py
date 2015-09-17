@@ -202,6 +202,26 @@ class VirtualMachine:
         # Start the VM
         self._getLibvirtDomainObject().create()
 
+    def reset(self):
+        """Resets the VM"""
+        # Check the user has permission to start/stop VMs
+        self.mcvirt_object.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.CHANGE_VM_POWER_STATE,
+            self)
+
+        # Ensure VM is unlocked
+        self.ensureUnlocked()
+
+        # Ensure VM is registered locally
+        self.ensureRegisteredLocally()
+
+        # Determine if VM is running
+        if (self.getState() is PowerStates.RUNNING):
+            # Stop the VM
+            self._getLibvirtDomainObject().reset()
+        else:
+            raise VmAlreadyStoppedException('Cannot reset a stopped VM')
+
     def getState(self):
         """Returns the power state of the VM in the form of a PowerStates enum"""
         if (self.isRegisteredLocally()):
