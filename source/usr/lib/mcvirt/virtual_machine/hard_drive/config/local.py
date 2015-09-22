@@ -22,6 +22,7 @@ class Local(Base):
     """Provides a configuration interface for local hard drive objects"""
 
     MAXIMUM_DEVICES = 4
+    CACHE_MODE = 'directsync'
 
     def __init__(self, vm_object, disk_id=None, config=None, registered=False):
         """Create config has for storing variables and run the base init method"""
