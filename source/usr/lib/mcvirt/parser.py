@@ -60,13 +60,14 @@ class Parser:
             self.parent_parser.add_argument('--ignore-drbd', dest='ignore_drbd',
                                             help='Ignores DRBD state', action='store_true')
 
-        argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n" + \
+        argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n\n" + \
                                 'Manage the MCVirt host'
         argparser_epilog = "\nFor more information, see http://mcvirt.itdev.co.uk\n"
 
         # Create an argument parser object
         self.parser = ThrowingArgumentParser(description=argparser_description,
-                                             epilog=argparser_epilog)
+                                             epilog=argparser_epilog,
+                                             formatter_class=argparse.RawDescriptionHelpFormatter)
         self.subparsers = self.parser.add_subparsers(dest='action', metavar='Action',
                                                      help='Action to perform')
 
