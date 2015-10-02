@@ -82,6 +82,11 @@ class Parser:
                                                       parents=[self.parent_parser])
         self.stop_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
+        # Add arguments for resetting a VM
+        self.reset_parser = self.subparsers.add_parser('reset', help='Reset VM',
+                                                       parents=[self.parent_parser])
+        self.reset_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+
         # Add arguments for ISO functions
         self.iso_parser = self.subparsers.add_parser('iso', help='ISO managment',
                                                      parents=[self.parent_parser])
@@ -517,6 +522,11 @@ class Parser:
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
             vm_object.stop()
             self.printStatus('Successfully stopped VM')
+
+        elif (action == 'reset'):
+            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_object.reset()
+            self.printStatus('Successfully reset VM')
 
         elif (action == 'create'):
             if (args.storage_type):
