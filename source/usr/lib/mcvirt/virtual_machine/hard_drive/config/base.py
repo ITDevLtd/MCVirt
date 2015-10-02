@@ -126,7 +126,7 @@ class Base(object):
         driver_xml = ET.SubElement(device_xml, 'driver')
         driver_xml.set('name', 'qemu')
         driver_xml.set('type', 'raw')
-        driver_xml.set('cache', 'directsync')
+        driver_xml.set('cache', self.CACHE_MODE)
 
         # Configure the source of the disk
         source_xml = ET.SubElement(device_xml, 'source')

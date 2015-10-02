@@ -32,6 +32,7 @@ class DRBD(Base):
     DRBD_RAW_SUFFIX = 'raw'
     DRBD_META_SUFFIX = 'meta'
     DRBD_CONFIG_TEMPLATE = MCVirt.TEMPLATE_DIR + '/drbd_resource.conf'
+    CACHE_MODE = 'writeback'
 
     def __init__(
             self,
