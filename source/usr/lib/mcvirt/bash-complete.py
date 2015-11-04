@@ -26,6 +26,7 @@ sys.path.insert(0, '/usr/lib')
 from mcvirt.parser import Parser
 from mcvirt.auth import Auth
 
+
 class NonSuperuserAuth(Auth):
     """Class to override the auth module, so that
        the argparser can attempt to check
@@ -45,7 +46,7 @@ class NonSuperuserAuth(Auth):
 
 if __name__ == "__main__":
 
-    # Create parser object and 
+    # Create auth and argparser object
     auth_object = NonSuperuserAuth()
     parser_object = Parser(auth_object=auth_object)
     argcomplete.autocomplete(parser_object.parser)
