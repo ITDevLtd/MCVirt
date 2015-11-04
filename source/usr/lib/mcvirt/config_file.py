@@ -66,7 +66,7 @@ class ConfigFile():
         config_file.write(json_data)
         config_file.close()
 
-        # Check file permissions, only giving read/write access to libvirt-qemu/root
+        # Check file permissions, only giving read/write access to root
         os.chmod(file_name, stat.S_IWUSR | stat.S_IRUSR)
         os.chown(file_name, 0, 0)
 
