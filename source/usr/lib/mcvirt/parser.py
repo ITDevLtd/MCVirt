@@ -43,11 +43,13 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 class Parser:
     """Provides an argument parser for MCVirt"""
 
-    def __init__(self, print_status=True):
+    def __init__(self, print_status=True, auth_object=None):
         """Configures the argument parser object"""
         self.print_status = print_status
         self.parent_parser = ThrowingArgumentParser(add_help=False)
-        auth_object = Auth()
+
+        if not auth_object:
+            auth_object = Auth()
 
         if (auth_object.checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
             self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',

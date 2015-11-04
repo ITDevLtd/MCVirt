@@ -20,6 +20,8 @@ import sys
 import argparse
 import socket
 
+import argcomplete
+
 sys.path.insert(0, '/usr/lib')
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.parser import Parser
@@ -29,6 +31,7 @@ if __name__ == "__main__":
 
     try:
         parser_object = Parser()
+        argcomplete.autocomplete(parser_object.parser)
     except MCVirtException, e:
         print e.message
         sys.exit(1)
