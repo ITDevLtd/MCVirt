@@ -77,7 +77,9 @@ class MCVirtConfig(ConfigFile):
                     'nodes': {}
                 },
                 'virtual_machines': [],
-                'networks': {},
+                'networks': {
+                    'default': 'virbr0'
+                },
                 'drbd': NodeDRBD.getDefaultConfig(),
                 'git':
                 {
