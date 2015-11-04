@@ -97,7 +97,11 @@ class Remote:
 
         elif (action == 'auth-deleteUserPermissionGroup'):
             auth_object = mcvirt_instance.getAuthObject()
-            vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+            if (arguments['vm_name']):
+                vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+            else:
+                vm_object = None
+
             auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance,
                                                   permission_group=arguments['permission_group'],
                                                   username=arguments['username'],
@@ -109,8 +113,12 @@ class Remote:
                 ignore_duplicate = arguments['ignore_duplicate']
             else:
                 ignore_duplicate = False
-            auth_object.addSuperuser(arguments['username'],
+            auth_object.addSuperuser(arguments['username'], mcvirt_object=mcvirt_instance,
                                      ignore_duplicate=ignore_duplicate)
+
+        elif (action == 'auth-deleteSuperuser'):
+            auth_object = mcvirt_instance.getAuthObject()
+            auth_object.deleteSuperuser(arguments['username'], mcvirt_object=mcvirt_instance)
 
         elif (action == 'virtual_machine-create'):
             VirtualMachine.create(mcvirt_instance, arguments['vm_name'], arguments['cpu_cores'],
