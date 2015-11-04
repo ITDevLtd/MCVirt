@@ -33,33 +33,34 @@ class InvalidIPAddressException(MCVirtException):
 
 class Node(object):
 
-  @staticmethod
-  def setStorageVolumeGroup(mcvirt_instance, volume_group):
-      """Update the MCVirt configuration to set the volume group for VM storage"""
-      # Ensure volume_group name is valid
-      pattern = re.compile("^[A-Z0-9a-z]+$")
-      if (not pattern.match(volume_group)):
-          raise InvalidVolumeGroupNameException('%s is not a valid volume group name' % volume_group)
+    @staticmethod
+    def setStorageVolumeGroup(mcvirt_instance, volume_group):
+        """Update the MCVirt configuration to set the volume group for VM storage"""
+        # Ensure volume_group name is valid
+        pattern = re.compile("^[A-Z0-9a-z]+$")
+        if (not pattern.match(volume_group)):
+            raise InvalidVolumeGroupNameException('%s is not a valid volume group name' %
+                                                  volume_group)
 
-      # Update global MCVirt configuration
-      def updateConfig(config):
-          config['vm_storage_vg'] = volume_group
-      mcvirt_config = MCVirtConfig(mcvirt_instance=mcvirt_instance)
-      mcvirt_config.updateConfig(updateConfig, 'Set virtual machine storage volume group to %s' %
-                                               volume_group)
+        # Update global MCVirt configuration
+        def updateConfig(config):
+            config['vm_storage_vg'] = volume_group
+        mcvirt_config = MCVirtConfig(mcvirt_instance=mcvirt_instance)
+        mcvirt_config.updateConfig(updateConfig, 'Set virtual machine storage volume group to %s' %
+                                                 volume_group)
 
+    @staticmethod
+    def setClusterIpAddress(mcvirt_instance, ip_address):
+        """Updates the cluster IP address for the node"""
+        # Check validity of IP address (mainly to ensure that )
+        pattern = re.compile(r"^((([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])[ (\[]?(\.|dot)"
+                             "[ )\]]?){3}([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5]))$")
+        if not pattern.match(ip_address):
+            raise InvalidIPAddressException('%s is not a valid IP address' % ip_address)
 
-  @staticmethod
-  def setClusterIpAddress(mcvirt_instance, ip_address):
-      """Updates the cluster IP address for the node"""
-      # Check validity of IP address (mainly to ensure that )
-      pattern = re.compile(r"^((([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])[ (\[]?(\.|dot)[ )\]]?){3}([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5]))$")
-      if not pattern.match(ip_address):
-        raise InvalidIPAddressException('%s is not a valid IP address' % ip_address)
-
-      # Update global MCVirt configuration
-      def updateConfig(config):
-          config['cluster']['cluster_ip'] = ip_address
-      mcvirt_config = MCVirtConfig(mcvirt_instance=mcvirt_instance)
-      mcvirt_config.updateConfig(updateConfig, 'Set node cluster IP address to %s' %
-                                               ip_address)
+        # Update global MCVirt configuration
+        def updateConfig(config):
+            config['cluster']['cluster_ip'] = ip_address
+        mcvirt_config = MCVirtConfig(mcvirt_instance=mcvirt_instance)
+        mcvirt_config.updateConfig(updateConfig, 'Set node cluster IP address to %s' %
+                                                 ip_address)

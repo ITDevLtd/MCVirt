@@ -239,7 +239,9 @@ class Parser:
             type=str,
             help='Removes a given user from the superuser group'
         )
-        self.permission_target_group = self.permission_parser.add_mutually_exclusive_group(required=True)
+        self.permission_target_group = self.permission_parser.add_mutually_exclusive_group(
+            required=True
+        )
         self.permission_target_group.add_argument('vm_name', metavar='VM Name',
                                                   type=str, help='Name of VM', nargs='?')
         self.permission_target_group.add_argument('--global', dest='global', action='store_true',
@@ -417,9 +419,10 @@ class Parser:
         self.node_parser.add_argument('--set-vm-vg', dest='volume_group', metavar='VM Volume Group',
                                       help=('Sets the local volume group used for Virtual'
                                             ' machine HDD logical volumes'))
-        self.node_parser.add_argument('--set-ip-address', dest='ip_address', metavar='Cluster IP Address',
-                                      help=('Sets the cluster IP address for the local node, used for'
-                                            ' DRBD and cluster management.'))
+        self.node_parser.add_argument('--set-ip-address', dest='ip_address',
+                                      metavar='Cluster IP Address',
+                                      help=('Sets the cluster IP address for the local node,'
+                                            ' used for DRBD and cluster management.'))
 
         # Create subparser for VM verification
         self.verify_parser = self.subparsers.add_parser(
@@ -758,7 +761,8 @@ class Parser:
         elif (action == 'node'):
             if (args.volume_group):
                 Node.setStorageVolumeGroup(mcvirt_instance, args.volume_group)
-                self.printStatus('Successfully set VM storage volume group to %s' % args.volume_group)
+                self.printStatus('Successfully set VM storage volume group to %s' %
+                                 args.volume_group)
 
             if (args.ip_address):
                 Node.setClusterIpAddress(mcvirt_instance, args.ip_address)
