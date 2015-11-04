@@ -32,9 +32,7 @@ Sudo Configuration
 
 * MCVirt must always be run, either, using sudo or as root.
 * MCVirt will handle user permissions based on the logged in user.
-* If a user is to be able to use MCVirt and does not already have permission to run commands using sudo.
-
-The following sudoers rule can be used::
+* If a user is to be able to use MCVirt and does not already have permission to run commands using sudo, the following sudoers rule can be used::
 
     example_username ALL=(ALL) /usr/bin/mcvirt
     %example_group ALL=(ALL) /usr/bin/mcvirt
