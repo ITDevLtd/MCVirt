@@ -27,6 +27,21 @@ To install the package, run::
 $ sudo dpkg -i mcvirt_X.XX_all.deb
 $ sudo apt-get -f install
 
+Sudo Configuration
+------------------
+
+* MCVirt must always be run, either, using sudo or as root.
+* MCVirt will handle user permissions based on the logged in user.
+* If a user is to be able to use MCVirt and does not already have permission to run commands using sudo, the following sudoers rule can be used::
+
+    example_username ALL=(ALL) /usr/bin/mcvirt
+    %example_group ALL=(ALL) /usr/bin/mcvirt
+
+Additionally, ``NOPASSWD:`` can be used to allow users to run MCVirt without having to re-enter their password::
+
+    example_user ALL=(ALL) NOPASSWD: /usr/bin/mcvirt
+
+
 Configure Network
 -----------------
 

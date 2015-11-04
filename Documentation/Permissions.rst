@@ -3,8 +3,8 @@
 Permissions
 -----------
 
-
-* All commands must be performed on the MCVirt node, which can be accessed via SSH using LDAP credentials.
+Superusers
+````````````````````
 
 * To run MCVirt commands as a superuser you must either:
 
