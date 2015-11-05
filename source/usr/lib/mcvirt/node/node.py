@@ -37,7 +37,7 @@ class Node(object):
     def setStorageVolumeGroup(mcvirt_instance, volume_group):
         """Update the MCVirt configuration to set the volume group for VM storage"""
         # Ensure volume_group name is valid
-        pattern = re.compile("^[A-Z0-9a-z]+$")
+        pattern = re.compile("^[A-Z0-9a-z_-]+$")
         if (not pattern.match(volume_group)):
             raise InvalidVolumeGroupNameException('%s is not a valid volume group name' %
                                                   volume_group)

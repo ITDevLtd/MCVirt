@@ -24,6 +24,12 @@ from mcvirt import MCVirtException
 
 class UserNotPresentInGroup(MCVirtException):
     """User to be removed from group is not in the group"""
+    pass
+
+
+class InsufficientPermissionsException(MCVirtException):
+    """User does not have the required permission"""
+    pass
 
 
 class Auth:
@@ -34,7 +40,9 @@ class Auth:
                                        'DELETE_CLONE', 'MANAGE_HOST_NETWORKS', 'MANAGE_CLUSTER',
                                        'MANAGE_DRBD', 'CAN_IGNORE_DRBD', 'MIGRATE_VM',
                                        'DUPLICATE_VM', 'SET_VM_LOCK', 'BACKUP_VM',
-                                       'CAN_IGNORE_CLUSTER', 'MOVE_VM'])
+                                       'CAN_IGNORE_CLUSTER', 'MOVE_VM',
+                                       'TEST_SUPERUSER_PERMISSION', 'TEST_OWNER_PERMISSION',
+                                       'TEST_USER_PERMISSION'])
 
     # Set the permissions for the permissions groups
     PERMISSION_GROUPS = \
@@ -42,7 +50,8 @@ class Auth:
             'user':
             [
                 PERMISSIONS.CHANGE_VM_POWER_STATE,
-                PERMISSIONS.VIEW_VNC_CONSOLE
+                PERMISSIONS.VIEW_VNC_CONSOLE,
+                PERMISSIONS.TEST_USER_PERMISSION
             ],
             'owner':
             [
@@ -51,7 +60,8 @@ class Auth:
                 PERMISSIONS.VIEW_VNC_CONSOLE,
                 PERMISSIONS.CLONE_VM,
                 PERMISSIONS.DELETE_CLONE,
-                PERMISSIONS.DUPLICATE_VM
+                PERMISSIONS.DUPLICATE_VM,
+                PERMISSIONS.TEST_OWNER_PERMISSION
             ]
         }
 
@@ -60,11 +70,15 @@ class Auth:
         if (username):
             self.username = username
         else:
-            self.username = Auth.getUsername()
+            self.username = Auth.getLogin()
         Auth.checkRootPrivileges()
 
+    def getUsername(self):
+        """Returns the username of the auth object"""
+        return self.username
+
     @staticmethod
-    def getUsername():
+    def getLogin():
         """Obtains the username of the current user"""
         # Ensure that MCVirt is effectively running as root
         if (os.geteuid() == 0):
@@ -87,7 +101,7 @@ class Auth:
     def checkRootPrivileges():
         """Ensures that the user is either running as root
         or using sudo"""
-        if (not Auth.getUsername()):
+        if (not Auth.getLogin()):
             raise MCVirtException('MCVirt must be run using sudo')
         else:
             return True
@@ -100,8 +114,9 @@ class Auth:
         else:
             # If the permission has not been found, throw an exception explaining that
             # the user does not have permission
-            raise MCVirtException('User does not have the required permission: %s' %
-                                  permission_enum.name)
+            raise InsufficientPermissionsException('User does not have the'
+                                                   ' required permission: %s' %
+                                                   permission_enum.name)
 
     def checkPermission(self, permission_enum, vm_object=None):
         """Checks if the user has a given permission, either globally through MCVirt or for a
@@ -114,7 +129,7 @@ class Auth:
         # if the user has been granted the permission
         mcvirt_config = MCVirtConfig()
         mcvirt_permissions = mcvirt_config.getPermissionConfig()
-        if (self.checkPermissionInConfig(mcvirt_permissions, Auth.getUsername(), permission_enum)):
+        if (self.checkPermissionInConfig(mcvirt_permissions, self.getUsername(), permission_enum)):
             return True
 
         # If a vm_object has been passed, check the VM
@@ -125,7 +140,7 @@ class Auth:
 
             # Determine if the user has been granted the required permissions
             # in the VM configuration file
-            if (self.checkPermissionInConfig(vm_config, Auth.getUsername(), permission_enum)):
+            if (self.checkPermissionInConfig(vm_config, self.getUsername(), permission_enum)):
                 return True
 
         return False
@@ -151,7 +166,7 @@ class Auth:
     def isSuperuser(self):
         """Determines if the current user is a superuser of MCVirt"""
         superusers = self.getSuperusers()
-        username = Auth.getUsername()
+        username = self.getUsername()
         return ((username in superusers) or (username == 'root'))
 
     def getSuperusers(self):
