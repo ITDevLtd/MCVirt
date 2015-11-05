@@ -112,6 +112,9 @@ class Remote:
             auth_object.addSuperuser(arguments['username'],
                                      ignore_duplicate=ignore_duplicate)
 
+        elif (action == 'virtual_machine-getAllVms'):
+            return_data = VirtualMachine.getAllVms(mcvirt_instance, Cluster.getHostname())
+
         elif (action == 'virtual_machine-create'):
             VirtualMachine.create(mcvirt_instance, arguments['vm_name'], arguments['cpu_cores'],
                                   arguments['memory_allocation'], node=arguments['node'],
@@ -248,11 +251,29 @@ class Remote:
             hard_drive_class = HardDriveFactory.getClass(hard_drive_config_object._getType())
             hard_drive_class._drbdDown(hard_drive_config_object)
 
+        elif (action == 'virtual_machine-hard_drive-drbd-drbdSetPrimary'):
+            from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+            vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+
+            if ('allow_two_primaries' in arguments):
+                allow_two_primaries = arguments['allow_two_primaries']
+            else:
+                allow_two_primaries = False
+
+            hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+            hard_drive_object._drbdSetPrimary(allow_two_primaries=allow_two_primaries)
+
         elif (action == 'virtual_machine-hard_drive-drbd-drbdSetSecondary'):
             from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
             hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
             hard_drive_object._drbdSetSecondary()
+
+        elif (action == 'virtual_machine-hard_drive-drbd-setTwoPrimariesConfig'):
+            from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+            vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+            hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+            hard_drive_object._setTwoPrimariesConfig(arguments['allow'])
 
         elif (action == 'virtual_machine-hard_drive-drbd-drbdConnect'):
             from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
@@ -302,6 +323,10 @@ class Remote:
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
             hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
             hard_drive_object.setSyncState(arguments['sync_state'])
+
+        elif (action == 'iso-getIsos'):
+            from mcvirt.iso import Iso
+            return_data = Iso.getIsos(mcvirt_instance)
 
         elif (action == 'mcvirt-obtainLock'):
             timeout = arguments['timeout']
