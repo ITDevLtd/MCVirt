@@ -503,9 +503,20 @@ class Base(object):
         """Deactivates the storage volume"""
         raise NotImplementedError
 
-    def offlineMigrateCheckState(self, destination_node):
+    def preMigrationChecks(self, destination_node):
         """Determines if the disk is in a state to allow the attached VM
            to be migrated to another node"""
+        raise NotImplementedError
+
+    def preOnlineMigration(self):
+        """Performs required tasks in order
+           for the underlying VM to perform an
+           online migration"""
+        raise NotImplementedError
+
+    def postOnlineMigration(self):
+        """Performs post tasks after a VM
+           has performed an online migration"""
         raise NotImplementedError
 
     def getSize(self):

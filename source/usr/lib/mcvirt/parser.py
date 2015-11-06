@@ -320,6 +320,12 @@ class Parser:
             help='The name of the destination node for the VM to be migrated to'
         )
         self.migrate_parser.add_argument(
+            '--online',
+            dest='online_migration',
+            help='Perform an online-migration',
+            action='store_true'
+        )
+        self.migrate_parser.add_argument(
             '--start-after-migration',
             dest='start_after_migration',
             help='Causes the VM to be booted after the migration',
@@ -680,10 +686,15 @@ class Parser:
 
         elif (action == 'migrate'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-            vm_object.offlineMigrate(
-                args.destination_node,
-                wait_for_vm_shutdown=args.wait_for_shutdown,
-                start_after_migration=args.start_after_migration)
+            if (args.online_migration):
+                vm_object.onlineMigrate(args.destination_node)
+            else:
+                vm_object.offlineMigrate(
+                    args.destination_node,
+                    wait_for_vm_shutdown=args.wait_for_shutdown,
+                    start_after_migration=args.start_after_migration)
+            self.printStatus('Successfully migrated \'%s\' to %s' %
+                             (vm_object.getName(), args.destination_node))
 
         elif (action == 'move'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)

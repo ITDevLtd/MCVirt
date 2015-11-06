@@ -20,7 +20,8 @@ import xml.etree.ElementTree as ET
 import os
 
 from mcvirt.mcvirt import MCVirtException, MCVirt
-from mcvirt.iso import Iso
+from mcvirt.iso import Iso, IsoNotPresentOnDestinationNodeException
+from mcvirt.cluster.cluster import Cluster
 
 
 class DiskDrive:
@@ -76,3 +77,18 @@ class DiskDrive:
             return Iso(self.vm_object.mcvirt_object, filename)
         else:
             return None
+
+    def preOnlineMigrationChecks(self, destination_node_name):
+        """Performs pre-online-migration checks"""
+        # Determines if an attached ISO is present on the remote node
+        if (self.getCurrentDisk()):
+            from mcvirt.cluster.cluster import Cluster
+            cluster_instance = Cluster(self.vm_object.mcvirt_object)
+            return_data = cluster_instance.runRemoteCommand('iso-getIsos', {},
+                                                            nodes=[destination_node_name])
+            if (self.getCurrentDisk().getName() not in return_data[destination_node_name]):
+                raise IsoNotPresentOnDestinationNodeException(
+                    'The ISO attached to \'%s\' (%s) is not present on %s' %
+                    (self.vm_object.getName(), self.getCurrentDisk().getName(),
+                     destination_node_name)
+                )
