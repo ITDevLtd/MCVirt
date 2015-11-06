@@ -726,8 +726,10 @@ class VirtualMachine:
         # Ensure VM is registered on the remote libvirt instance
         if (self.getName() not in VirtualMachine.getAllVms(self.mcvirt_object,
                                                            node=destination_node_name)):
-            raise VmNotRegistered('The VM is unexpectedly not registered on the remote node: %s' %
-                                  destination_node_name)
+            raise VmNotRegistered(
+                'The VM is unexpectedly not registered with libvirt on the destination node: %s' %
+                destination_node_name
+            )
 
         # Ensure VM is running on the remote node
         if (self.getState() is not PowerStates.RUNNING):
