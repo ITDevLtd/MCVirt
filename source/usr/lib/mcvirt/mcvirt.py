@@ -115,7 +115,7 @@ class MCVirt:
 
     def getRemoteLibvirtConnection(self, remote_node):
         """Obtains and caches connections to remote libvirt daemons"""
-        # Check is connection is already established
+        # Check if a connection has already been established
         if (remote_node.name not in self.libvirt_node_connections):
             # If not, establish a connection
             libvirt_url = 'qemu+ssh://%s/system' % remote_node.remote_ip
