@@ -218,7 +218,9 @@ class Iso:
     def inUse(self):
         """Determines if the ISO is currently in use by a VM"""
         from virtual_machine.disk_drive import DiskDrive
-        for vm_object in self.mcvirt_instance.getAllVirtualMachineObjects():
+        from mcvirt.cluster.cluster import Cluster
+        for vm_object in VirtualMachine.getAllVms(self.mcvirt_instance,
+                                                  node=Cluster.getHostname()):
             vm_current_iso = DiskDrive(vm_object).getCurrentDisk()
 
             # If the VM has an iso attached, check if the ISO is this one
