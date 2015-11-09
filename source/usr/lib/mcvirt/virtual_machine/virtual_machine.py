@@ -125,7 +125,7 @@ class PowerStates(Enum):
     UNKNOWN = 2
 
 
-class VirtualMachine:
+class VirtualMachine(object):
     """Provides operations to manage a LibVirt virtual machine"""
 
     def __init__(self, mcvirt_object, name):
@@ -684,25 +684,43 @@ class VirtualMachine:
             # Set the VM node to the destination node node
             self._setNode(destination_node_name)
 
-        except Exception, e:
+        except Exception as e:
             # Determine which node the VM is present on
+            vm_registration_found = False
+
+            # Wait 10 seconds before performing the tear-down, as DRBD
+            # will hold the block device open for a short period
+            import time
+            time.sleep(10)
+
             if (self.getName() in VirtualMachine.getAllVms(self.mcvirt_object,
                                                            node=Cluster.getHostname())):
                 # VM is registered on the local node.
+                vm_registration_found = True
+
                 # Set DRBD on remote node to secondary
                 for disk_object in self.getDiskObjects():
                     cluster_instance.runRemoteCommand(
                         'virtual_machine-hard_drive-drbd-drbdSetSecondary',
-                        {'vm_name': vm_object.getName(),
-                         'disk_id': hard_drive_object.getConfigObject().getId()},
+                        {'vm_name': self.getName(),
+                         'disk_id': disk_object.getConfigObject().getId()},
                         nodes=[destination_node_name])
 
-            if (self.getName() not in VirtualMachine.getAllVms(self.mcvirt_object,
-                                                               node=destination_node_name)):
+                # Re-register VM as being registered on the local node
+                self._setNode(Cluster.getHostname())
+
+            if (self.getName() in VirtualMachine.getAllVms(self.mcvirt_object,
+                                                           node=destination_node_name)):
                 # Otherwise, if VM is registered on remote node, set the
                 # local DRBD state to secondary
+                vm_registration_found = True
                 for disk_object in self.getDiskObjects():
+                    import time
+                    time.sleep(10)
                     disk_object._drbdSetSecondary()
+
+                # Register VM as being registered on the local node
+                self._setNode(destination_node_name)
 
             # Reset disks
             for disk_object in self.getDiskObjects():

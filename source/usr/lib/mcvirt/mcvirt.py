@@ -24,7 +24,7 @@ import socket
 from mcvirt_config import MCVirtConfig
 
 
-class MCVirt:
+class MCVirt(object):
     """Provides general MCVirt functions"""
 
     TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
@@ -200,4 +200,9 @@ class MCVirt:
 
 class MCVirtException(Exception):
     """Provides an exception to be thrown for errors in MCVirt"""
+    pass
+
+
+class ConnectionFailureToRemoteLibvirtInstance(MCVirtException):
+    """Connection failure whilst attempting to obtain a remote libvirt connection"""
     pass
