@@ -35,39 +35,7 @@ from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
 from mcvirt.node.network import NetworkDoesNotExistException
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdStateException
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
-
-
-def stopAndDelete(mcvirt_instance, vm_name):
-    """Stops and removes VMs"""
-    if (VirtualMachine._checkExists(mcvirt_instance.getLibvirtConnection(), vm_name)):
-        vm_object = VirtualMachine(mcvirt_instance, vm_name)
-        if (vm_object.isRegisteredRemotely()):
-            from mcvirt.cluster.cluster import Cluster
-            cluster = Cluster(mcvirt_instance)
-            remote_node = cluster.getRemoteNode(vm_object.getNode())
-
-            # Stop the VM if it is running
-            if (vm_object.getState() is PowerStates.RUNNING):
-                remote_node.runRemoteCommand('virtual_machine-stop',
-                                             {'vm_name': vm_object.getName()})
-            # Remove VM from remote node
-            remote_node.runRemoteCommand('virtual_machine-unregister',
-                                         {'vm_name': vm_object.getName()})
-            vm_object._setNode(None)
-
-            # Manually register VM on local node
-            vm_object.register()
-
-            # Delete VM
-            vm_object.delete(True)
-        else:
-            if (not vm_object.isRegisteredLocally()):
-                print 'Warning: VM not registered'
-                vm_object.register()
-
-            if (vm_object.getState() is PowerStates.RUNNING):
-                vm_object.stop()
-            vm_object.delete(True)
+from mcvirt.test.common import stop_and_delete
 
 
 class VirtualMachineTests(unittest.TestCase):
@@ -137,14 +105,14 @@ class VirtualMachineTests(unittest.TestCase):
             }
 
         # Ensure any test VM is stopped and removed from the machine
-        stopAndDelete(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
-        stopAndDelete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
+        stop_and_delete(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
+        stop_and_delete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
 
     def tearDown(self):
         """Stops and tears down any test VMs"""
         # Ensure any test VM is stopped and removed from the machine
-        stopAndDelete(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
-        stopAndDelete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
+        stop_and_delete(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
+        stop_and_delete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
         self.mcvirt = None
 
     def test_create_local(self):
