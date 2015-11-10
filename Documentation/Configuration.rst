@@ -20,8 +20,9 @@ Creating/Removing Networks
 
 * Networks provide bridges between physical/bridge interfaces and virtual machines.
 * To create a bridge network on the node, an additional network interface will need to be created on the node
-  * This will generally be placed in `/etc/network/interfaces`.
-  * The following example should help with creating this interface::
+* This will generally be placed in `/etc/network/interfaces`
+
+The following example should help with creating this interface::
 
     auto vmbr0
     iface vmbr0 inet manual
