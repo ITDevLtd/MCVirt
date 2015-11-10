@@ -349,8 +349,8 @@ class VirtualMachine(object):
                 'User must have MODIFY_VM permission or be the owner of the cloned VM')
 
         # Ensure the VM is not being removed from a machine that the VM is not being run on
-        if ((self.isRegisteredRemotely() and self.mcvirt_object.initialiseNodes()
-             and not local_only)):
+        if ((self.isRegisteredRemotely() and self.mcvirt_object.initialiseNodes() and
+             not local_only)):
             remote_node = self.getConfigObject().getConfig()['node']
             raise VmRegisteredElsewhereException(
                 'The VM \'%s\' is registered on the remote node: %s' %

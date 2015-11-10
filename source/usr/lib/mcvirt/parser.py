@@ -778,20 +778,18 @@ class Parser:
             mcvirt_instance.listVms()
 
         elif (action == 'iso'):
-            output = ''
-
             if (args.list):
-                output = Iso.getIsoList(mcvirt_instance)
+                self.printStatus(Iso.getIsoList(mcvirt_instance))
 
             if (args.add_path):
-                output = Iso.addIso(mcvirt_instance, args.add_path)
+                iso_object = Iso.addIso(mcvirt_instance, args.add_path)
+                self.printStatus('Successfully added ISO: %s' % iso_object.getName())
 
             if (args.delete_path):
                 iso_object = Iso(mcvirt_instance, args.delete_path)
                 iso_object.delete()
+                self.printStatus('Successfully removed iso: %s' % args.delete_path)
 
             if (args.add_url):
-                output = Iso.addFromUrl(mcvirt_instance, args.add_url)
-
-            if output:
-                self.printStatus(output)
+                iso_object = Iso.addFromUrl(mcvirt_instance, args.add_url)
+                self.printStatus('Successfully added ISO: %s' % iso_object.getName())
