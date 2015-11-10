@@ -41,34 +41,3 @@ Additionally, ``NOPASSWD:`` can be used to allow users to run MCVirt without hav
 
     example_user ALL=(ALL) NOPASSWD: /usr/bin/mcvirt
 
-
-Configure Network
------------------
-
-Remove default network
-``````````````````````
-
-* By default, libvirt configures a default network, 'default'.
-* This can be removed by performing the following::
-
-    sudo mcvirt network delete default
-
-Creating/Removing Network
-`````````````````````````
-
-* Networks provide bridges between physical interfaces and virtual machines.
-* To create a network on the node, perform the following as a superuser::
-
-    sudo mcvirt network create <Network name> --interface <Physical interface>
-
-
-* Assuming that there are not any VMs connected to a network, they can be removed using::
-
-    sudo mcvirt network delete <Network name>
-
-Configure MCVirt
------------------
-
-* The first time MCVirt is run, it creates a configuration file for itself, found in **/var/lib/mcvirt/<Hostname>/config.json**.
-* Set ``vm_storage_vg`` in the configuration file to the name of volume group for the VMs to be stored in.
-* Set ``cluster_ip`` in the configuration file to the IP address of the node that MCVirt clustering/DRBD communications will be performed on.

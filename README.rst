@@ -41,7 +41,7 @@ Add the volume group to be used for VM disks in the global MCVirt configuration:
   $ vim /var/lib/mcvirt/`hostname`/config.json
 
 
-See the `installation guide <Documentation/Installation.rst>`_ for further node configuration steps.
+See the `configuration guide <Documentation/Configuration.rst.rst>`_ for further node configuration steps.
 
 Usage
 -----
@@ -62,6 +62,12 @@ Development
 -----------
 
 For information on developing on MCVirt, see the `development documentation <Documentation/Development.rst>`_.
+
+
+Further information
+-------------------
+
+See the `guide index <Documentation/MCVirt.rst>`_ for a full list of manuals
 
 
 LICENSE
