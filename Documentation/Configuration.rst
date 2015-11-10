@@ -9,17 +9,32 @@ Remove default network
 ``````````````````````
 
 * By default, libvirt configures a default network, 'default'.
-* This can be removed by performing the following::
+* The 'default' network is attached to a private network, which provides NAT routing through the node's physical interfaces.
+* If you wish to use bridging, the default network can be removed by performing the following::
 
     sudo mcvirt network delete default
 
-Creating/Removing Network
-`````````````````````````
 
-* Networks provide bridges between physical interfaces and virtual machines.
+Creating/Removing Networks
+``````````````````````````
+
+* Networks provide bridges between physical/bridge interfaces and virtual machines.
+* To create a bridge network on the node, an additional network interface will need to be created on the node
+  * This will generally be placed in `/etc/network/interfaces`.
+  * The following example should help with creating this interface::
+
+    auto vmbr0
+    iface vmbr0 inet manual
+      bridge_ports <Physical interface>
+      bridge_stp off
+      bridge_fd 0
+
+Where `<Physical interface>` is the name of the interface that the bridge should be bridged with, e.g. 'eth0'
+
+
 * To create a network on the node, perform the following as a superuser::
 
-    sudo mcvirt network create <Network name> --interface <Physical interface>
+    sudo mcvirt network create <Network name> --interface <Bridge interface>
 
 
 * Assuming that there are not any VMs connected to a network, they can be removed using::
