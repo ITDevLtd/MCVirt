@@ -15,6 +15,11 @@ Superusers
   
   * Be logged in as root.
 
+* Superusers can be added/removed using the following::
+
+    sudo mcvirt permission --add-superuser=<username>
+    sudo mcvirt permission --delete-superuser=<username>
+
 
 Managing users
 ````````````````````````````

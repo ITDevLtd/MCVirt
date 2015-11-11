@@ -37,7 +37,11 @@ When a machine is connected to a cluster, it receives the permission/network/vir
 
 The new node must be configured on separate network/VLAN for MCVirt cluster communication.
 
-The IP address that MCVirt clustering/DRBD communications will be performed over must be included in the configuration file under ``cluster_ip`` on both nodes. This can be retrieved by running ``mcvirt info``.
+The IP address that MCVirt clustering/DRBD communications will be performed over must be configured by performing the following on both nodes::
+
+    sudo mcvirt node --set-ip-address <Node cluster IP address>
+
+This configuration can be retrieved by running ``mcvirt info``.
 
 
 Joining the node to the cluster

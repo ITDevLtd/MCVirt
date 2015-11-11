@@ -32,14 +32,11 @@ See the `installation guide <Documentation/Installation.rst>`_ for other depende
 Configuration
 -------------
 
-Perform an initial run of MCVirt, which will create a template configuration::
+Configure the volume group that MCVirt will use to store virtual machine data.
 
-  $ sudo mcvirt
+Configure the MCVirt volume group::
 
-Add the volume group to be used for VM disks in the global MCVirt configuration::
-
-  $ vim /var/lib/mcvirt/`hostname`/config.json
-
+  $ sudo mcvirt node --set-vm-vg <Volume Group>
 
 See the `configuration guide <Documentation/Configuration.rst.rst>`_ for further node configuration steps.
 
