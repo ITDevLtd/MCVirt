@@ -22,6 +22,12 @@ from mcvirt import MCVirtException
 from system import System
 
 
+class IsoNotPresentOnDestinationNodeException(MCVirtException):
+    """ISO attached to VM does not exist on destination node
+       whilst performing a migration"""
+    pass
+
+
 class InvalidISOPathException(MCVirtException):
     """ISO to add does not exist"""
     pass
@@ -167,23 +173,25 @@ class Iso:
         return True
 
     @staticmethod
-    def getIsoList(mcvirt_instance):
-        """Return a list of ISOs"""
-
-        list = ''
+    def getIsos(mcvirt_instance):
+        """Returns a list of a ISOs"""
         # Get files in ISO directory
-        listing = os.listdir(mcvirt_instance.ISO_STORAGE_DIR)
-        for file in listing:
-            # If is a file and ends in '.iso' ...
-            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + file)):
-                if len(list) > 0:
-                    list += '\n'
-                list += file
+        file_list = os.listdir(mcvirt_instance.ISO_STORAGE_DIR)
+        iso_list = []
 
-        if (len(list) == 0):
-            list = 'No ISO found'
+        for iso_name in file_list:
+            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + iso_name)):
+                iso_list.append(iso_name)
+        return iso_list
 
-        return list
+    @staticmethod
+    def getIsoList(mcvirt_instance):
+        """Return a user-readable list of ISOs"""
+        iso_list = Iso.getIsos(mcvirt_instance)
+        if (len(iso_list) == 0):
+            return 'No ISOs found'
+        else:
+            return "\n".join(iso_list)
 
     def delete(self):
         """Delete an ISO"""
@@ -210,7 +218,9 @@ class Iso:
     def inUse(self):
         """Determines if the ISO is currently in use by a VM"""
         from virtual_machine.disk_drive import DiskDrive
-        for vm_object in self.mcvirt_instance.getAllVirtualMachineObjects():
+        from mcvirt.cluster.cluster import Cluster
+        for vm_object in VirtualMachine.getAllVms(self.mcvirt_instance,
+                                                  node=Cluster.getHostname()):
             vm_current_iso = DiskDrive(vm_object).getCurrentDisk()
 
             # If the VM has an iso attached, check if the ISO is this one

@@ -21,15 +21,7 @@ from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
 from mcvirt.auth import Auth, InsufficientPermissionsException
-
-
-def stopAndDelete(mcvirt_connection, vm_name):
-    """Stops and removes VMs"""
-    if (VirtualMachine._checkExists(mcvirt_connection.getLibvirtConnection(), vm_name)):
-        vm_object = VirtualMachine(mcvirt_connection, vm_name)
-        if (vm_object.getState() is PowerStates.RUNNING):
-            vm_object.stop()
-        vm_object.delete(True)
+from mcvirt.test.common import stop_and_delete
 
 
 def removeTestUserPermissions(mcvirt_instance, username):
@@ -88,13 +80,13 @@ class AuthTests(unittest.TestCase):
         self.auth_object = Auth()
 
         # Ensure any test VM is stopped and removed from the machine
-        stopAndDelete(self.mcvirt, self.test_vm['name'])
+        stop_and_delete(self.mcvirt, self.test_vm['name'])
         removeTestUserPermissions(self.mcvirt, self.test_user)
 
     def tearDown(self):
         """Stops and tears down any test VMs"""
         # Ensure any test VM is stopped and removed from the machine
-        stopAndDelete(self.mcvirt, self.test_vm['name'])
+        stop_and_delete(self.mcvirt, self.test_vm['name'])
         removeTestUserPermissions(self.mcvirt, self.test_user)
         self.mcvirt = None
 

@@ -44,11 +44,13 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 class Parser:
     """Provides an argument parser for MCVirt"""
 
-    def __init__(self, print_status=True):
+    def __init__(self, print_status=True, auth_object=None):
         """Configures the argument parser object"""
         self.print_status = print_status
         self.parent_parser = ThrowingArgumentParser(add_help=False)
-        auth_object = Auth()
+
+        if not auth_object:
+            auth_object = Auth()
 
         if (auth_object.checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
             self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
@@ -339,6 +341,12 @@ class Parser:
             type=str,
             required=True,
             help='The name of the destination node for the VM to be migrated to'
+        )
+        self.migrate_parser.add_argument(
+            '--online',
+            dest='online_migration',
+            help='Perform an online-migration',
+            action='store_true'
         )
         self.migrate_parser.add_argument(
             '--start-after-migration',
@@ -736,10 +744,15 @@ class Parser:
 
         elif (action == 'migrate'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-            vm_object.offlineMigrate(
-                args.destination_node,
-                wait_for_vm_shutdown=args.wait_for_shutdown,
-                start_after_migration=args.start_after_migration)
+            if (args.online_migration):
+                vm_object.onlineMigrate(args.destination_node)
+            else:
+                vm_object.offlineMigrate(
+                    args.destination_node,
+                    wait_for_vm_shutdown=args.wait_for_shutdown,
+                    start_after_migration=args.start_after_migration)
+            self.printStatus('Successfully migrated \'%s\' to %s' %
+                             (vm_object.getName(), args.destination_node))
 
         elif (action == 'move'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
@@ -833,20 +846,18 @@ class Parser:
             mcvirt_instance.listVms()
 
         elif (action == 'iso'):
-            output = ''
-
             if (args.list):
-                output = Iso.getIsoList(mcvirt_instance)
+                self.printStatus(Iso.getIsoList(mcvirt_instance))
 
             if (args.add_path):
-                output = Iso.addIso(mcvirt_instance, args.add_path)
+                iso_object = Iso.addIso(mcvirt_instance, args.add_path)
+                self.printStatus('Successfully added ISO: %s' % iso_object.getName())
 
             if (args.delete_path):
                 iso_object = Iso(mcvirt_instance, args.delete_path)
                 iso_object.delete()
+                self.printStatus('Successfully removed iso: %s' % args.delete_path)
 
             if (args.add_url):
-                output = Iso.addFromUrl(mcvirt_instance, args.add_url)
-
-            if output:
-                self.printStatus(output)
+                iso_object = Iso.addFromUrl(mcvirt_instance, args.add_url)
+                self.printStatus('Successfully added ISO: %s' % iso_object.getName())

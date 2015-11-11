@@ -19,7 +19,7 @@ import unittest
 import os
 import time
 
-from mcvirt.test.virtual_machine.virtual_machine_tests import stopAndDelete
+from mcvirt.test.common import stop_and_delete
 from mcvirt.node.drbd import DRBD as NodeDRBD
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdConnectionState, DrbdVolumeNotInSyncException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
@@ -61,12 +61,12 @@ class DrbdTests(unittest.TestCase):
             }
 
         # Ensure any test VM is stopped and removed from the machine
-        stopAndDelete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
+        stop_and_delete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
 
     def tearDown(self):
         """Stops and tears down any test VMs"""
         # Ensure any test VM is stopped and removed from the machine
-        stopAndDelete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
+        stop_and_delete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
         self.mcvirt = None
 
     @unittest.skipIf(not NodeDRBD.isEnabled(),
