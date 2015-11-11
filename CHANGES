@@ -1,0 +1,114 @@
+# 3.0.0
+
+* Implemented online-migration, adding the ability to migrate DRBD-backed VMs between nodes, whilst the VM is running.
+* Fixed output after a VM is added, to return the name of the ISO, instead of the object.
+* Fixed exception, which was thrown whilst attempting to remove an ISO on a node within a cluster, where VMs were registered on the remote node.
+* Implemented bash-completion.
+* Added default libvirt network to default MCVirt configuration, to allow it be removed/managed through MCVirt.
+* Updated documentation to provide use-case based information and information about configuring 'sudo' for MCVirt.
+* Fixed issues around file permissions on remote node configuration in git-backed configuration clusters.
+* Added ability to configure the VM storage volume group, cluster IP address and superusers through MCVirt directly.
+
+# 2.2.2
+
+* Implemented functionality to reset VMs.
+* Fixed formatting of epilog/description in parser, so the output is not line-wrapped.
+* Updated cache mode for DRBD-backed disk from 'directsync' to 'writeback', to fix issues around DRBD synchronisation.
+
+# 2.2.1
+
+* Fixed issue around creation of DRBD volumes, as large volumes could cause nodes to become unresponsive, as 'dd' (used to wipe the backing logical volumes before use) would consume all available RAM.
+* Fixed issues around adding an ISO from a URL.
+
+# 2.2.0
+
+* Fixed issues with permissions on the MCVirt configuration directory, which caused issues whilst attaching ISOs to VMs.
+* Fixed default storage type on single-node instances of MCVirt, which caused an exception if it was not specified.
+* Implemented DRBD status, which provides the status/configuration for all MCVirt-configured DRBD volumes on the node.
+* Implemented functionality to list the networks present on the node.
+
+# 2.1.0
+
+* Switched graphic driver from 'cirrus' to 'vmvga', which increases graphics support among Linux distributions.
+* Implemented functionality to support adding ISOs to MCVirt nodes, either from a path or URL, as well as listing the present ISOs.
+* Switched VM HDD caching from 'none' to 'directsync', to improve performance.
+
+# 2.0.2
+
+* Fixed various issues around DRBD verification.
+* Enabled redirection of mcvirt-drbd.py output to syslog, instead of discarding it.
+* Updated debian dependencies to require libvirt-bin.
+
+# 2.0.1
+
+* Fixed issue around exceptions when performing commands as a non-superuser.
+
+# 2.0.0
+
+* Fixed build scrip to always specify the last tag and to always provide the git commit SHA ID.
+* Fixed bug where MCVirt was unable to create the base configuration directory.
+* Fixed bug around class name in DRBD enabling functionality.
+* Added functionality to be able to migrate VMs away from a failed node, whilst the node is offline.
+
+# 1.0.0
+
+* Converted MCVirt project for use with Git/GitHub.
+* Made MCVirt open source, under GPLv2 license.
+* Updated MCVirt to conform to PEP8 coding standards
+* Added epilog and description to parser output.
+* Fixed bug in conversion between integer and string, which caused errors after re-registering/migration a VM after the memory allocation/CPU count had been updated after creation.
+* Added ability for superusers to 'ignore cluster', so that commands may be run whilst a node in the cluster is offline.
+* Fixed debian package dependencies.
+* Fixed race-condition in DRBD verification.
+
+# 0.10
+
+* Implemented support for Cluster and DRBD for distributed VM storage.
+* Implemented VM duplication in MCVirt.
+* Implemented offline migration, for migrating powered off VMs between nodes in a cluster.
+* Implemented git support for retaining history of the MCVirt/VM configurations.
+
+# 0.9
+
+* Implemented functionality to add/remove node networks in MCVirt.
+
+# 0.8
+
+* Added test framework and unit tests to MCVirt.
+
+# 0.7
+
+* Added clones and clone parents parameters to VM in '--info' output.
+
+# 0.6
+
+* Added '--info' parameter to provide information about a VM configuration
+* Added '--list' parameter to list the VMs within MCVirt
+
+# 0.5
+
+* Updated VM starting functionality, so that any attached ISOs are detached.
+* Implemented functionality to perform 'cloning' of VMs
+* Switched VM backend-storage from using raw disks to LVM logical volumes.
+* Added shell-like functionality to the MCVirt.
+* Implemented authorisation into MCVirt, allowing users to be given access, using SUDO, providing different levels of permissions through user groups.
+
+# 0.4
+
+* Implemented functionality to add/remove network interfaces to/from VMs.
+* Implemented functionality to add/increase hard drives attached to VMs.
+* Implemented functionality to update RAM allocation/CPU count on VMs
+* Added lock, so that only one instance of MCVirt can be run at once.
+
+# 0.3
+
+* Implemented functionality to boot from ISO.
+
+# 0.2
+
+* Implemented functionality to create/delete VMs.
+
+# 0.1
+
+* Created initial implementation, allowing for starting/stopping VMs and documentation for creating VMs.
+* Created deb configuration for deb package creation.
