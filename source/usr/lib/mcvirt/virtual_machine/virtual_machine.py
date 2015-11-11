@@ -33,6 +33,11 @@ from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactor
 from mcvirt.node.network import Network
 
 
+class MigrationFailureExcpetion(MCVirtException):
+    """A Libvirt Exception occurred whilst performing a migration"""
+    pass
+
+
 class InvalidVirtualMachineNameException(MCVirtException):
     """VM is being created with an invalid name"""
     pass
@@ -69,8 +74,12 @@ class VmRegisteredElsewhereException(MCVirtException):
 
 
 class VmRunningException(MCVirtException):
-    """An offline migration can only be powered on a powered off VM"""
+    """An offline migration can only be performed on a powered off VM"""
     pass
+
+
+class VmStoppedException(MCVirtException):
+    """An online migraiton can only be performed on a powered on VM"""
 
 
 class UnsuitableNodeException(MCVirtException):
@@ -116,7 +125,7 @@ class PowerStates(Enum):
     UNKNOWN = 2
 
 
-class VirtualMachine:
+class VirtualMachine(object):
     """Provides operations to manage a LibVirt virtual machine"""
 
     def __init__(self, mcvirt_object, name):
@@ -201,6 +210,26 @@ class VirtualMachine:
 
         # Start the VM
         self._getLibvirtDomainObject().create()
+
+    def reset(self):
+        """Resets the VM"""
+        # Check the user has permission to start/stop VMs
+        self.mcvirt_object.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.CHANGE_VM_POWER_STATE,
+            self)
+
+        # Ensure VM is unlocked
+        self.ensureUnlocked()
+
+        # Ensure VM is registered locally
+        self.ensureRegisteredLocally()
+
+        # Determine if VM is running
+        if (self.getState() is PowerStates.RUNNING):
+            # Stop the VM
+            self._getLibvirtDomainObject().reset()
+        else:
+            raise VmAlreadyStoppedException('Cannot reset a stopped VM')
 
     def getState(self):
         """Returns the power state of the VM in the form of a PowerStates enum"""
@@ -320,8 +349,8 @@ class VirtualMachine:
                 'User must have MODIFY_VM permission or be the owner of the cloned VM')
 
         # Ensure the VM is not being removed from a machine that the VM is not being run on
-        if ((self.isRegisteredRemotely() and self.mcvirt_object.initialiseNodes()
-             and not local_only)):
+        if ((self.isRegisteredRemotely() and self.mcvirt_object.initialiseNodes() and
+             not local_only)):
             remote_node = self.getConfigObject().getConfig()['node']
             raise VmRegisteredElsewhereException(
                 'The VM \'%s\' is registered on the remote node: %s' %
@@ -486,8 +515,10 @@ class VirtualMachine:
             all_domains = mcvirt_object.getLibvirtConnection().listAllDomains()
             return [vm.name() for vm in all_domains]
         else:
-            # TODO Create remote command to return list of VMs registered on other nodes
-            raise NotImplemented()
+            # Return list of VMs registered on remote node
+            cluster_instance = Cluster(mcvirt_object)
+            node = cluster_instance.getRemoteNode(node)
+            return node.runRemoteCommand('virtual_machine-getAllVms', {})
 
     @staticmethod
     def _checkExists(mcvirt_object, name):
@@ -551,7 +582,7 @@ class VirtualMachine:
         self.ensureUnlocked()
 
         # Ensure VM is using a DRBD storage type
-        self._offlineMigratePreMigrateChecks(destination_node_name)
+        self._preMigrationChecks(destination_node_name)
 
         # Check if VM is running
         while (self.getState() is PowerStates.RUNNING):
@@ -585,7 +616,145 @@ class VirtualMachine:
             remote_object.runRemoteCommand('virtual_machine-start',
                                            {'vm_name': self.getName()})
 
-    def _offlineMigratePreMigrateChecks(self, destination_node_name):
+    def onlineMigrate(self, destination_node_name):
+        """Performs an online migration of a VM to another node in the cluster"""
+        from mcvirt.cluster.cluster import Cluster
+
+        # Ensure user has permission to migrate VM
+        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MIGRATE_VM, self)
+
+        # Ensure VM is registered locally and unlocked
+        self.ensureRegisteredLocally()
+        self.ensureUnlocked()
+
+        # Perform pre-migration checks
+        self._preMigrationChecks(destination_node_name)
+
+        # Perform online-migration-specific checks
+        self._preOnlineMigrationChecks(destination_node_name)
+
+        # Obtain cluster instance
+        cluster_instance = Cluster(self.mcvirt_object)
+
+        # Begin pre-migration tasks
+        try:
+            # Obtain node object for destination node
+            destination_node = cluster_instance.getRemoteNode(destination_node_name)
+
+            # Obtain libvirt connection to destination node
+            destination_libvirt_connection = self.mcvirt_object.getRemoteLibvirtConnection(
+                destination_node
+            )
+
+            # Clear the VM node configuration
+            self._setNode(None)
+
+            # Perform pre-migration tasks on disk objects
+            for disk_object in self.getDiskObjects():
+                disk_object.preOnlineMigration(destination_node)
+
+            # Build migration flags
+            migration_flags = (
+                # Perform a live migration
+                libvirt.VIR_MIGRATE_LIVE |
+                # The set destination domain as persistent
+                libvirt.VIR_MIGRATE_PERSIST_DEST |
+                # Undefine the domain on the source node
+                libvirt.VIR_MIGRATE_UNDEFINE_SOURCE |
+                # Abort migration on I/O errors
+                libvirt.VIR_MIGRATE_ABORT_ON_ERROR
+            )
+
+            # Perform migration
+            libvirt_domain_object = self._getLibvirtDomainObject()
+            status = libvirt_domain_object.migrate3(
+                destination_libvirt_connection,
+                params={},
+                flags=migration_flags
+            )
+
+            if (not status):
+                raise MigrationFailureExcpetion('Libvirt migration failed')
+
+            # Perform post steps on hard disks and check disks
+            for disk_object in self.getDiskObjects():
+                disk_object.postOnlineMigration()
+                disk_object._checkDrbdStatus()
+
+            # Set the VM node to the destination node node
+            self._setNode(destination_node_name)
+
+        except Exception as e:
+            # Determine which node the VM is present on
+            vm_registration_found = False
+
+            # Wait 10 seconds before performing the tear-down, as DRBD
+            # will hold the block device open for a short period
+            import time
+            time.sleep(10)
+
+            if (self.getName() in VirtualMachine.getAllVms(self.mcvirt_object,
+                                                           node=Cluster.getHostname())):
+                # VM is registered on the local node.
+                vm_registration_found = True
+
+                # Set DRBD on remote node to secondary
+                for disk_object in self.getDiskObjects():
+                    cluster_instance.runRemoteCommand(
+                        'virtual_machine-hard_drive-drbd-drbdSetSecondary',
+                        {'vm_name': self.getName(),
+                         'disk_id': disk_object.getConfigObject().getId()},
+                        nodes=[destination_node_name])
+
+                # Re-register VM as being registered on the local node
+                self._setNode(Cluster.getHostname())
+
+            if (self.getName() in VirtualMachine.getAllVms(self.mcvirt_object,
+                                                           node=destination_node_name)):
+                # Otherwise, if VM is registered on remote node, set the
+                # local DRBD state to secondary
+                vm_registration_found = True
+                for disk_object in self.getDiskObjects():
+                    import time
+                    time.sleep(10)
+                    disk_object._drbdSetSecondary()
+
+                # Register VM as being registered on the local node
+                self._setNode(destination_node_name)
+
+            # Reset disks
+            for disk_object in self.getDiskObjects():
+                # Reset dual-primary configuration
+                disk_object._setTwoPrimariesConfig(allow=False)
+
+                # Mark hard drives as being out-of-sync
+                disk_object.setSyncState(False)
+
+            raise e
+
+        # Perform post migration checks
+        # Ensure VM is no longer registered with libvirt on the local node
+        if (self.getName() in VirtualMachine.getAllVms(self.mcvirt_object,
+                                                       node=Cluster.getHostname())):
+            raise VmAlreadyRegisteredException(
+                'The VM is unexpectedly registered with libvirt on the local node: %s' %
+                self.getName()
+            )
+
+        # Ensure VM is registered on the remote libvirt instance
+        if (self.getName() not in VirtualMachine.getAllVms(self.mcvirt_object,
+                                                           node=destination_node_name)):
+            raise VmNotRegistered(
+                'The VM is unexpectedly not registered with libvirt on the destination node: %s' %
+                destination_node_name
+            )
+
+        # Ensure VM is running on the remote node
+        if (self.getState() is not PowerStates.RUNNING):
+            raise VmStoppedException('VM is in unexpected %s power state after migration' %
+                                     self.getState())
+
+    def _preMigrationChecks(self, destination_node_name):
         """Performs checks on the state of the VM to determine if is it suitable to
            be migrated"""
         # Ensure node is in the available nodes that the VM can be run on
@@ -602,7 +771,7 @@ class VirtualMachine:
         # Checks the DRBD state of the disks and ensure that they are
         # in a suitable state to be migrated
         for disk_object in self.getDiskObjects():
-            disk_object.offlineMigrateCheckState()
+            disk_object.preMigrationChecks()
 
         # Check the remote node to ensure that the networks, that the VM is connected to,
         # exist on the remote node
@@ -615,6 +784,19 @@ class VirtualMachine:
                     'The network %s does not exist on the remote node: %s' %
                     (connected_network, destination_node_name)
                 )
+
+    def _preOnlineMigrationChecks(self, destination_node_name):
+        """Perform online-migration-specific pre-migration checks"""
+        # Ensure any attached ISOs exist on the destination node
+        disk_drive_object = DiskDrive(self)
+        disk_drive_object.preOnlineMigrationChecks(destination_node_name)
+
+        # Ensure VM is powered on
+        if (self.getState() is not PowerStates.RUNNING):
+            raise VmStoppedException(
+                'An online migration can only be performed on a running VM: %s' %
+                self.getName()
+            )
 
     def getStorageType(self):
         """Returns the storage type of the VM"""

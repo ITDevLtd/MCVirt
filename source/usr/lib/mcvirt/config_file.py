@@ -49,6 +49,7 @@ class ConfigFile():
         ConfigFile._writeJSON(config, self.config_file)
         self.config = config
         self.gitAdd(reason)
+        self.setConfigPermissions()
 
     def getPermissionConfig(self):
         config = self.getConfig()
@@ -57,7 +58,6 @@ class ConfigFile():
     @staticmethod
     def _writeJSON(data, file_name):
         """Parses and writes the JSON VM config file"""
-        import pwd
         import stat
         json_data = json.dumps(data, indent=2, separators=(',', ': '))
 
@@ -66,14 +66,44 @@ class ConfigFile():
         config_file.write(json_data)
         config_file.close()
 
-        # Check file permissions, only giving read/write access to libvirt-qemu/root
+        # Check file permissions, only giving read/write access to root
         os.chmod(file_name, stat.S_IWUSR | stat.S_IRUSR)
-        os.chown(file_name, pwd.getpwnam('libvirt-qemu').pw_uid, 0)
+        os.chown(file_name, 0, 0)
 
     @staticmethod
     def create(self):
         """Creates a basic VM configuration for new VMs"""
         raise NotImplementedError
+
+    def setConfigPermissions(self):
+        """Sets file permissions for config directories"""
+        from mcvirt import MCVirt
+        import stat
+        import pwd
+
+        def setPermission(path, directory=True, owner=0):
+            permission_mode = stat.S_IRUSR
+            if directory:
+                permission_mode = permission_mode | stat.S_IWUSR | stat.S_IXUSR
+
+            os.chown(path, owner, 0)
+            os.chmod(path, permission_mode)
+
+        # Set permissions on git directory
+        for directory in os.listdir(MCVirt.BASE_STORAGE_DIR):
+            path = os.path.join(MCVirt.BASE_STORAGE_DIR, directory)
+            if (os.path.isdir(path)):
+                if (directory is '.git'):
+                    setPermission(path, directory=True)
+                else:
+                    setPermission(os.path.join(path, 'vm'), directory=True)
+                    setPermission(os.path.join(path, 'config.json'), directory=True)
+
+        # Set permission for base directory, node directory and ISO directory
+        for directory in [MCVirt.BASE_STORAGE_DIR, MCVirt.NODE_STORAGE_DIR,
+                          MCVirt.ISO_STORAGE_DIR]:
+            setPermission(directory, directory=True,
+                          owner=pwd.getpwnam('libvirt-qemu').pw_uid)
 
     def _upgrade(self, mcvirt_instance, config):
         """Updates the configuration file"""
@@ -113,7 +143,7 @@ class ConfigFile():
         from auth import Auth
         from cluster.cluster import Cluster
         if (self._checkGitRepo()):
-            message += "\nUser: %s\nNode: %s" % (Auth.getUsername(), Cluster.getHostname())
+            message += "\nUser: %s\nNode: %s" % (Auth.getLogin(), Cluster.getHostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file], cwd=MCVirt.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT,
@@ -136,7 +166,7 @@ class ConfigFile():
         from auth import Auth
         from cluster.cluster import Cluster
         if (self._checkGitRepo()):
-            message += "\nUser: %s\nNode: %s" % (Auth.getUsername(), Cluster.getHostname())
+            message += "\nUser: %s\nNode: %s" % (Auth.getLogin(), Cluster.getHostname())
             try:
                 System.runCommand([self.GIT,
                                    'rm',

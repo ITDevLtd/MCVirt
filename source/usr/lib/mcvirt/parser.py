@@ -26,6 +26,7 @@ from node.network import Network
 from cluster.cluster import Cluster
 from system import System
 from node.drbd import DRBD as NodeDRBD
+from node.node import Node
 from auth import Auth
 from iso import Iso
 
@@ -43,11 +44,13 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 class Parser:
     """Provides an argument parser for MCVirt"""
 
-    def __init__(self, print_status=True):
+    def __init__(self, print_status=True, auth_object=None):
         """Configures the argument parser object"""
         self.print_status = print_status
         self.parent_parser = ThrowingArgumentParser(add_help=False)
-        auth_object = Auth()
+
+        if not auth_object:
+            auth_object = Auth()
 
         if (auth_object.checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
             self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
@@ -60,13 +63,14 @@ class Parser:
             self.parent_parser.add_argument('--ignore-drbd', dest='ignore_drbd',
                                             help='Ignores DRBD state', action='store_true')
 
-        argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n" + \
+        argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n\n" + \
                                 'Manage the MCVirt host'
         argparser_epilog = "\nFor more information, see http://mcvirt.itdev.co.uk\n"
 
         # Create an argument parser object
         self.parser = ThrowingArgumentParser(description=argparser_description,
-                                             epilog=argparser_epilog)
+                                             epilog=argparser_epilog,
+                                             formatter_class=argparse.RawDescriptionHelpFormatter)
         self.subparsers = self.parser.add_subparsers(dest='action', metavar='Action',
                                                      help='Action to perform')
 
@@ -81,6 +85,11 @@ class Parser:
         self.stop_parser = self.subparsers.add_parser('stop', help='Stop VM',
                                                       parents=[self.parent_parser])
         self.stop_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+
+        # Add arguments for resetting a VM
+        self.reset_parser = self.subparsers.add_parser('reset', help='Reset VM',
+                                                       parents=[self.parent_parser])
+        self.reset_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Add arguments for ISO functions
         self.iso_parser = self.subparsers.add_parser('iso', help='ISO managment',
@@ -192,19 +201,19 @@ class Parser:
         self.permission_parser.add_argument(
             '--add-user',
             dest='add_user',
-            metavar='Add User',
+            metavar='Add user to user group',
             type=str,
             help='Adds a given user to a VM, allowing them to perform basic functions.')
         self.permission_parser.add_argument(
             '--delete-user',
             dest='delete_user',
-            metavar='Delete User',
+            metavar='Remove user from user group',
             type=str,
             help='Removes a given user from a VM. This prevents them to perform basic functions.')
         self.permission_parser.add_argument(
             '--add-owner',
             dest='add_owner',
-            metavar='Add Owner',
+            metavar='Add user to owner group',
             type=str,
             help=('Adds a given user as an owner to a VM, '
                   'allowing them to perform basic functions and manager users.')
@@ -212,13 +221,33 @@ class Parser:
         self.permission_parser.add_argument(
             '--delete-owner',
             dest='delete_owner',
-            metavar='Delete User',
+            metavar='Remove user from owner group',
             type=str,
             help=('Removes a given owner from a VM. '
                   'This prevents them to perform basic functions and manager users.')
         )
-        self.permission_parser.add_argument('vm_name', metavar='VM Name',
-                                            type=str, help='Name of VM')
+        self.permission_parser.add_argument(
+            '--add-superuser',
+            dest='add_superuser',
+            metavar='Add user to superuser group',
+            type=str,
+            help=('Adds a given user to the global superuser role. '
+                  'This allows the user to completely manage the MCVirt node/cluster')
+        )
+        self.permission_parser.add_argument(
+            '--delete-superuser',
+            dest='delete_superuser',
+            metavar='Removes user from the superuser group',
+            type=str,
+            help='Removes a given user from the superuser group'
+        )
+        self.permission_target_group = self.permission_parser.add_mutually_exclusive_group(
+            required=True
+        )
+        self.permission_target_group.add_argument('vm_name', metavar='VM Name',
+                                                  type=str, help='Name of VM', nargs='?')
+        self.permission_target_group.add_argument('--global', dest='global', action='store_true',
+                                                  help='Set a global MCVirt permission')
 
         # Create subparser for network-related commands
         self.network_parser = self.subparsers.add_parser(
@@ -314,6 +343,12 @@ class Parser:
             help='The name of the destination node for the VM to be migrated to'
         )
         self.migrate_parser.add_argument(
+            '--online',
+            dest='online_migration',
+            help='Perform an online-migration',
+            action='store_true'
+        )
+        self.migrate_parser.add_argument(
             '--start-after-migration',
             dest='start_after_migration',
             help='Causes the VM to be booted after the migration',
@@ -382,6 +417,20 @@ class Parser:
             type=str,
             required=True,
             help='Hostname of the remote node to remove from the cluster')
+
+        # Create subparser for commands relating to the local node configuration
+        self.node_parser = self.subparsers.add_parser(
+            'node',
+            help='Modify configurations relating to the local node',
+            parents=[self.parent_parser]
+        )
+        self.node_parser.add_argument('--set-vm-vg', dest='volume_group', metavar='VM Volume Group',
+                                      help=('Sets the local volume group used for Virtual'
+                                            ' machine HDD logical volumes'))
+        self.node_parser.add_argument('--set-ip-address', dest='ip_address',
+                                      metavar='Cluster IP Address',
+                                      help=('Sets the cluster IP address for the local node,'
+                                            ' used for DRBD and cluster management.'))
 
         # Create subparser for VM verification
         self.verify_parser = self.subparsers.add_parser(
@@ -518,6 +567,11 @@ class Parser:
             vm_object.stop()
             self.printStatus('Successfully stopped VM')
 
+        elif (action == 'reset'):
+            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_object.reset()
+            self.printStatus('Successfully reset VM')
+
         elif (action == 'create'):
             if (args.storage_type):
                 storage_type = args.storage_type
@@ -604,7 +658,16 @@ class Parser:
                 harddrive_object.increaseSize(args.increase_disk)
 
         elif (action == 'permission'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            if ((args.add_superuser or args.delete_superuser) and args.vm_name):
+                raise MCVirtException('Superuser groups are global-only roles')
+
+            if (args.vm_name):
+                vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+                permission_destination_string = 'role on VM %s' % vm_object.getName()
+            else:
+                vm_object = None
+                permission_destination_string = 'global role'
+
             auth_object = mcvirt_instance.getAuthObject()
             if (args.add_user):
                 auth_object.addUserPermissionGroup(
@@ -613,8 +676,9 @@ class Parser:
                     username=args.add_user,
                     vm_object=vm_object)
                 self.printStatus(
-                    'Successfully added \'%s\' as \'user\' to VM \'%s\'' %
-                    (args.add_user, vm_object.getName()))
+                    'Successfully added \'%s\' to \'user\' %s' %
+                    (args.add_user, permission_destination_string))
+
             if (args.delete_user):
                 auth_object.deleteUserPermissionGroup(
                     mcvirt_object=mcvirt_instance,
@@ -622,8 +686,9 @@ class Parser:
                     username=args.delete_user,
                     vm_object=vm_object)
                 self.printStatus(
-                    'Successfully removed \'%s\' as \'user\' from VM \'%s\'' %
-                    (args.delete_user, vm_object.getName()))
+                    'Successfully removed \'%s\' from \'user\' %s' %
+                    (args.delete_user, permission_destination_string))
+
             if (args.add_owner):
                 auth_object.addUserPermissionGroup(
                     mcvirt_object=mcvirt_instance,
@@ -631,8 +696,9 @@ class Parser:
                     username=args.add_owner,
                     vm_object=vm_object)
                 self.printStatus(
-                    'Successfully added \'%s\' as \'owner\' to VM \'%s\'' %
-                    (args.add_owner, vm_object.getName()))
+                    'Successfully added \'%s\' to \'owner\' %s' %
+                    (args.add_owner, permission_destination_string))
+
             if (args.delete_owner):
                 auth_object.deleteUserPermissionGroup(
                     mcvirt_object=mcvirt_instance,
@@ -640,8 +706,17 @@ class Parser:
                     username=args.delete_owner,
                     vm_object=vm_object)
                 self.printStatus(
-                    'Successfully added \'%s\' as \'owner\' from VM \'%s\'' %
-                    (args.delete_owner, vm_object.getName()))
+                    'Successfully removed \'%s\' from \'owner\' %s' %
+                    (args.delete_owner, permission_destination_string))
+
+            if (args.add_superuser):
+                auth_object.addSuperuser(args.add_superuser, mcvirt_object=mcvirt_instance)
+                self.printStatus('Successfully added %s to the global superuser group' %
+                                 args.add_superuser)
+            if (args.delete_superuser):
+                auth_object.deleteSuperuser(args.delete_superuser, mcvirt_object=mcvirt_instance)
+                self.printStatus('Successfully removed %s from the global superuser group ' %
+                                 args.delete_superuser)
 
         elif (action == 'info'):
             if (not args.vm_name and (args.vnc_port or args.node)):
@@ -669,10 +744,15 @@ class Parser:
 
         elif (action == 'migrate'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-            vm_object.offlineMigrate(
-                args.destination_node,
-                wait_for_vm_shutdown=args.wait_for_shutdown,
-                start_after_migration=args.start_after_migration)
+            if (args.online_migration):
+                vm_object.onlineMigrate(args.destination_node)
+            else:
+                vm_object.offlineMigrate(
+                    args.destination_node,
+                    wait_for_vm_shutdown=args.wait_for_shutdown,
+                    start_after_migration=args.start_after_migration)
+            self.printStatus('Successfully migrated \'%s\' to %s' %
+                             (vm_object.getName(), args.destination_node))
 
         elif (action == 'move'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
@@ -690,6 +770,16 @@ class Parser:
                 cluster_object = Cluster(mcvirt_instance)
                 cluster_object.removeNode(args.node)
                 self.printStatus('Successfully removed node %s' % args.node)
+
+        elif (action == 'node'):
+            if (args.volume_group):
+                Node.setStorageVolumeGroup(mcvirt_instance, args.volume_group)
+                self.printStatus('Successfully set VM storage volume group to %s' %
+                                 args.volume_group)
+
+            if (args.ip_address):
+                Node.setClusterIpAddress(mcvirt_instance, args.ip_address)
+                self.printStatus('Successfully set cluster IP address to %s' % args.ip_address)
 
         elif (action == 'verify'):
             if (args.vm_name):
@@ -756,20 +846,18 @@ class Parser:
             mcvirt_instance.listVms()
 
         elif (action == 'iso'):
-            output = ''
-
             if (args.list):
-                output = Iso.getIsoList(mcvirt_instance)
+                self.printStatus(Iso.getIsoList(mcvirt_instance))
 
             if (args.add_path):
-                output = Iso.addIso(mcvirt_instance, args.add_path)
+                iso_object = Iso.addIso(mcvirt_instance, args.add_path)
+                self.printStatus('Successfully added ISO: %s' % iso_object.getName())
 
             if (args.delete_path):
                 iso_object = Iso(mcvirt_instance, args.delete_path)
                 iso_object.delete()
+                self.printStatus('Successfully removed iso: %s' % args.delete_path)
 
             if (args.add_url):
-                output = Iso.addFromUrl(mcvirt_instance, args.add_url)
-
-            if output:
-                self.printStatus(output)
+                iso_object = Iso.addFromUrl(mcvirt_instance, args.add_url)
+                self.printStatus('Successfully added ISO: %s' % iso_object.getName())

@@ -51,10 +51,7 @@ class MCVirtConfig(ConfigFile):
         os.mkdir(MCVirt.ISO_STORAGE_DIR)
 
         # Set permission on MCVirt directory
-        os.chmod(MCVirt.BASE_STORAGE_DIR, stat.S_IRWXU | stat.S_IRGRP
-                 | stat.S_IXGRP | stat.S_IROTH
-                 | stat.S_IXOTH)
-        os.chown(MCVirt.BASE_STORAGE_DIR, 0, 0)
+        self.setConfigPermissions()
 
     def create(self):
         """Creates a basic VM configuration for new VMs"""
@@ -77,7 +74,9 @@ class MCVirtConfig(ConfigFile):
                     'nodes': {}
                 },
                 'virtual_machines': [],
-                'networks': {},
+                'networks': {
+                    'default': 'virbr0'
+                },
                 'drbd': NodeDRBD.getDefaultConfig(),
                 'git':
                 {

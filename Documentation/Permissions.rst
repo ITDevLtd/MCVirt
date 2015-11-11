@@ -3,8 +3,8 @@
 Permissions
 -----------
 
-
-* All commands must be performed on the MCVirt node, which can be accessed via SSH using LDAP credentials.
+Superusers
+````````````````````
 
 * To run MCVirt commands as a superuser you must either:
 
@@ -14,6 +14,11 @@ Permissions
     Sudo can be configured to allow you to run MCVirt using sudo with no password. To do this you can run ``visudo`` as root and add the following line: ``<Your username here> ALL=(ALL) NOPASSWD: /usr/bin/mcvirt``
   
   * Be logged in as root.
+
+* Superusers can be added/removed using the following::
+
+    sudo mcvirt permission --add-superuser=<username>
+    sudo mcvirt permission --delete-superuser=<username>
 
 
 Managing users
