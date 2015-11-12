@@ -557,6 +557,8 @@ class DRBD(Base):
             System.runCommand(set_secondary_command)
         except MCVirtCommandException:
             # If this fails, wait for 5 seconds, and attempt once more
+            from time import sleep
+            sleep(5)
             System.runCommand(set_secondary_command)
 
     def _drbdOverwritePeer(self):
