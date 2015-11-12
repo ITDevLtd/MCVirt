@@ -550,8 +550,16 @@ class DRBD(Base):
 
     def _drbdSetSecondary(self):
         """Performs a DRBD 'secondary' on the hard drive DRBD resource"""
-        System.runCommand(
-            [NodeDRBD.DRBDADM, 'secondary', self.getConfigObject()._getResourceName()])
+        # Attempt to set the disk as secondary
+        set_secondary_command = [NodeDRBD.DRBDADM, 'secondary',
+                                 self.getConfigObject()._getResourceName()]
+        try:
+            System.runCommand(set_secondary_command)
+        except MCVirtCommandException:
+            # If this fails, wait for 5 seconds, and attempt once more
+            from time import sleep
+            sleep(5)
+            System.runCommand(set_secondary_command)
 
     def _drbdOverwritePeer(self):
         """Force DRBD to overwrite the data on the peer"""
