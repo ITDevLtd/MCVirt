@@ -685,6 +685,7 @@ class VirtualMachine(object):
             self._setNode(destination_node_name)
 
         except Exception as e:
+            print e
             # Determine which node the VM is present on
             vm_registration_found = False
 
