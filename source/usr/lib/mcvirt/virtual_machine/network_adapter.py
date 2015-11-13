@@ -21,6 +21,11 @@ import xml.etree.ElementTree as ET
 from mcvirt.mcvirt import MCVirtException
 
 
+class NetworkAdapterDoesNotExistException(MCVirtException):
+    """The network adapter does not exist"""
+    pass
+
+
 class NetworkAdapter:
     """Provides operations to network interfaces attached to a VM"""
 
@@ -28,6 +33,11 @@ class NetworkAdapter:
         """Sets member variables and obtains libvirt domain object"""
         self.vm_object = vm_object
         self.mac_address = mac_address
+
+        if (not self._checkExists()):
+            raise NetworkAdapterDoesNotExistException(
+                'No interface with MAC address \'%s\' attached to VM' %
+                self.getMacAddress())
 
     def _generateLibvirtXml(self):
         """Creates a basic XML configuration for a network interface,
@@ -47,6 +57,11 @@ class NetworkAdapter:
         mac_address_xml.set('address', self.getMacAddress())
 
         return interface_xml
+
+    def _checkExists(self):
+        """Determines if the network interface is present on the VM"""
+        vm_config = self.vm_object.getConfigObject().getConfig()
+        return (self.getMacAddress() in vm_config['network_interfaces'])
 
     def getLibvirtConfig(self):
         """Returns a dict of the LibVirt configuration for the network interface"""
@@ -91,13 +106,10 @@ class NetworkAdapter:
         return self.mac_address
 
     @staticmethod
-    def create(vm_object, network, mac_address=None):
+    def create(vm_object, network_object, mac_address=None):
         """Add interface device to the given VM object, connected to the given network"""
         from mcvirt.cluster.cluster import Cluster
         from mcvirt.node.network import Network
-
-        # Ensure network exists
-        Network._checkExists(network)
 
         # Generate a MAC address, if one has not been supplied
         if (mac_address is None):
@@ -108,16 +120,16 @@ class NetworkAdapter:
 
         # Add network interface to VM configuration
         def updateVmConfig(config):
-            config['network_interfaces'][mac_address] = network
+            config['network_interfaces'][mac_address] = network_object.getName()
         vm_object.getConfigObject().updateConfig(
             updateVmConfig, 'Added network adapter to \'%s\' on \'%s\' network' %
-            (vm_object.getName(), network))
+            (vm_object.getName(), network_object.getName()))
 
         if (mcvirt_object.initialiseNodes()):
             cluster_object = Cluster(mcvirt_object)
             cluster_object.runRemoteCommand('network_adapter-create',
                                             {'vm_name': vm_object.getName(),
-                                             'network_name': network,
+                                             'network_name': network_object.getName(),
                                              'mac_address': mac_address})
 
         network_adapter_object = NetworkAdapter(mac_address, vm_object)
@@ -142,8 +154,8 @@ class NetworkAdapter:
                 self.getMacAddress())
 
             if (interface_xml is None):
-                raise MCVirtException(
-                    'Not interface with MAC address \'%s\' attached to VM' %
+                raise NetworkAdapterDoesNotExistException(
+                    'No interface with MAC address \'%s\' attached to VM' %
                     self.getMacAddress())
 
             device_xml.remove(interface_xml)
@@ -153,6 +165,6 @@ class NetworkAdapter:
         # Update the VM configuration
         def updateVmConfig(config):
             del config['network_interfaces'][self.getMacAddress()]
-        vm_object.getConfigObject().updateConfig(
-            updateVmConfig, 'Removed network adapter from \'%s\' on \'%s\' network' %
-            (vm_object.getName(), network))
+        self.vm_object.getConfigObject().updateConfig(
+            updateVmConfig, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
+            (self.vm_object.getName(), self.getConnectedNetwork(), self.getMacAddress()))

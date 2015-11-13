@@ -24,6 +24,11 @@ from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 
 
+class CannotMigrateLocalDiskException(MCVirtException):
+    """Local disks cannot be migrated"""
+    pass
+
+
 class Local(Base):
     """Provides operations to manage local hard drives, used by VMs"""
 
@@ -122,3 +127,7 @@ class Local(Base):
         """Deactivates the disk loglcal volume"""
         self._ensureExists()
         pass
+
+    def preMigrationChecks(self):
+        """Perform pre-migration checks"""
+        raise CannotMigrateLocalDiskException('VMs using local disks cannot be migrated')

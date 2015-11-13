@@ -339,7 +339,8 @@ class Base(object):
         lv_path = config_object._getLogicalVolumePath(name)
 
         # Create command arguments
-        command_args = ['dd', 'if=/dev/zero', 'of=%s' % lv_path, 'bs=1M', 'count=%s' % size]
+        command_args = ['dd', 'if=/dev/zero', 'of=%s' % lv_path, 'bs=1M', 'count=%s' % size,
+                        'conv=fsync', 'oflag=direct']
         try:
             # Create logical volume on local node
             System.runCommand(command_args)
@@ -502,9 +503,20 @@ class Base(object):
         """Deactivates the storage volume"""
         raise NotImplementedError
 
-    def offlineMigrateCheckState(self, destination_node):
+    def preMigrationChecks(self, destination_node):
         """Determines if the disk is in a state to allow the attached VM
            to be migrated to another node"""
+        raise NotImplementedError
+
+    def preOnlineMigration(self):
+        """Performs required tasks in order
+           for the underlying VM to perform an
+           online migration"""
+        raise NotImplementedError
+
+    def postOnlineMigration(self):
+        """Performs post tasks after a VM
+           has performed an online migration"""
         raise NotImplementedError
 
     def getSize(self):

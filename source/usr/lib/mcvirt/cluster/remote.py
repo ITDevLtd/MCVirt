@@ -97,7 +97,11 @@ class Remote:
 
         elif (action == 'auth-deleteUserPermissionGroup'):
             auth_object = mcvirt_instance.getAuthObject()
-            vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+            if (arguments['vm_name']):
+                vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+            else:
+                vm_object = None
+
             auth_object.deleteUserPermissionGroup(mcvirt_object=mcvirt_instance,
                                                   permission_group=arguments['permission_group'],
                                                   username=arguments['username'],
@@ -109,8 +113,15 @@ class Remote:
                 ignore_duplicate = arguments['ignore_duplicate']
             else:
                 ignore_duplicate = False
-            auth_object.addSuperuser(arguments['username'],
+            auth_object.addSuperuser(arguments['username'], mcvirt_object=mcvirt_instance,
                                      ignore_duplicate=ignore_duplicate)
+
+        elif (action == 'auth-deleteSuperuser'):
+            auth_object = mcvirt_instance.getAuthObject()
+            auth_object.deleteSuperuser(arguments['username'], mcvirt_object=mcvirt_instance)
+
+        elif (action == 'virtual_machine-getAllVms'):
+            return_data = VirtualMachine.getAllVms(mcvirt_instance, Cluster.getHostname())
 
         elif (action == 'virtual_machine-create'):
             VirtualMachine.create(mcvirt_instance, arguments['vm_name'], arguments['cpu_cores'],
@@ -138,9 +149,11 @@ class Remote:
             vm_object.stop()
 
         elif (action == 'network_adapter-create'):
+            from mcvirt.node.network import Network
             from mcvirt.virtual_machine.network_adapter import NetworkAdapter
+            network_object = Network(mcvirt_instance, arguments['network_name'])
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-            NetworkAdapter.create(vm_object, arguments['network_name'], arguments['mac_address'])
+            NetworkAdapter.create(vm_object, network_object, arguments['mac_address'])
 
         elif (action == 'virtual_machine-getState'):
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
@@ -246,11 +259,29 @@ class Remote:
             hard_drive_class = HardDriveFactory.getClass(hard_drive_config_object._getType())
             hard_drive_class._drbdDown(hard_drive_config_object)
 
+        elif (action == 'virtual_machine-hard_drive-drbd-drbdSetPrimary'):
+            from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+            vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+
+            if ('allow_two_primaries' in arguments):
+                allow_two_primaries = arguments['allow_two_primaries']
+            else:
+                allow_two_primaries = False
+
+            hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+            hard_drive_object._drbdSetPrimary(allow_two_primaries=allow_two_primaries)
+
         elif (action == 'virtual_machine-hard_drive-drbd-drbdSetSecondary'):
             from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
             hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
             hard_drive_object._drbdSetSecondary()
+
+        elif (action == 'virtual_machine-hard_drive-drbd-setTwoPrimariesConfig'):
+            from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+            vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+            hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
+            hard_drive_object._setTwoPrimariesConfig(arguments['allow'])
 
         elif (action == 'virtual_machine-hard_drive-drbd-drbdConnect'):
             from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
@@ -300,6 +331,10 @@ class Remote:
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
             hard_drive_object = HardDriveFactory.getObject(vm_object, arguments['disk_id'])
             hard_drive_object.setSyncState(arguments['sync_state'])
+
+        elif (action == 'iso-getIsos'):
+            from mcvirt.iso import Iso
+            return_data = Iso.getIsos(mcvirt_instance)
 
         elif (action == 'mcvirt-obtainLock'):
             timeout = arguments['timeout']

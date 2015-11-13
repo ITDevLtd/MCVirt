@@ -480,7 +480,49 @@ class DRBD(Base):
         System.runCommand(
             [NodeDRBD.DRBDADM, 'disconnect', self.getConfigObject()._getResourceName()])
 
-    def _drbdSetPrimary(self):
+    def _setTwoPrimariesConfig(self, allow=False):
+        """Configures DRBD to temporarily allow or re-disable whether
+           two allow two primaries"""
+        if (allow):
+            # Configure DRBD on both nodes to allow DRBD volume to be set to primary
+            self._checkDrbdStatus()
+
+            System.runCommand([NodeDRBD.DRBDADM, 'net-options',
+                               self.getConfigObject()._getResourceName(),
+                               '--allow-two-primaries'])
+
+        else:
+            # Get disk role state
+            local_role, remote_role = self._drbdGetRole()
+
+            # Ensure neither states are unknown
+            if (local_role is DrbdRoleState.UNKNOWN or
+                    remote_role is DrbdRoleState.UNKNOWN):
+                raise DrbdStateException('Cannot disable two-primaries configuration as'
+                                         ' local or remote role is currently unknown')
+
+            # Ensure that only one node has been set to primary
+            if (local_role is DrbdRoleState.PRIMARY and
+                    remote_role is DrbdRoleState.PRIMARY):
+                raise DrbdStateException('Both nodes are set to primary whilst attempting'
+                                         ' to disable dual-primary mode')
+
+            System.runCommand([NodeDRBD.DRBDADM, 'net-options',
+                               self.getConfigObject()._getResourceName(),
+                               '--allow-two-primaries=no'])
+
+        # Config remote node(s)
+        if (self.getConfigObject().vm_object.mcvirt_object.initialiseNodes()):
+            cluster_instance = Cluster(self.getConfigObject().vm_object.mcvirt_object)
+            cluster_instance.runRemoteCommand(
+                'virtual_machine-hard_drive-drbd-setTwoPrimariesConfig',
+                {'vm_name': self.getVmObject().getName(),
+                 'disk_id': self.getConfigObject().getId(),
+                 'allow': allow},
+                nodes=self.getConfigObject().vm_object._getRemoteNodes()
+            )
+
+    def _drbdSetPrimary(self, allow_two_primaries=False):
         """Performs a DRBD 'primary' on the hard drive DRBD resource"""
         local_role_state, remote_role_state = self._drbdGetRole()
 
@@ -495,7 +537,8 @@ class DRBD(Base):
                                      self.getConfigObject()._getResourceName())
 
         # Ensure remote role is secondary
-        if (remote_role_state is not DrbdRoleState.SECONDARY and
+        if (not allow_two_primaries and
+            remote_role_state is not DrbdRoleState.SECONDARY and
             not (DrbdRoleState.UNKNOWN and
                  NodeDRBD.isIgnored(self.getVmObject().mcvirt_object))):
             raise DrbdStateException(
@@ -507,8 +550,16 @@ class DRBD(Base):
 
     def _drbdSetSecondary(self):
         """Performs a DRBD 'secondary' on the hard drive DRBD resource"""
-        System.runCommand(
-            [NodeDRBD.DRBDADM, 'secondary', self.getConfigObject()._getResourceName()])
+        # Attempt to set the disk as secondary
+        set_secondary_command = [NodeDRBD.DRBDADM, 'secondary',
+                                 self.getConfigObject()._getResourceName()]
+        try:
+            System.runCommand(set_secondary_command)
+        except MCVirtCommandException:
+            # If this fails, wait for 5 seconds, and attempt once more
+            from time import sleep
+            sleep(5)
+            System.runCommand(set_secondary_command)
 
     def _drbdOverwritePeer(self):
         """Force DRBD to overwrite the data on the peer"""
@@ -580,17 +631,54 @@ class DRBD(Base):
         (local_state, remote_state) = states.split('/')
         return (DrbdRoleState(local_state), DrbdRoleState(remote_state))
 
-    def offlineMigrateCheckState(self):
-        """Ensures that the DRBD state of the disk is in a state suitable for offline migration"""
+    def preMigrationChecks(self):
+        """Ensures that the DRBD state of the disk is in a state suitable for migration"""
         # Ensure disk state is up-to-date on both local and remote nodes
         local_disk_state, remote_disk_state = self._drbdGetDiskState()
+        local_role, remote_role = self._drbdGetRole()
         connection_state = self._drbdGetConnectionState()
         if ((local_disk_state is not DrbdDiskState.UP_TO_DATE) or
                 (remote_disk_state is not DrbdDiskState.UP_TO_DATE) or
-                (connection_state is not DrbdConnectionState.CONNECTED)):
+                (connection_state is not DrbdConnectionState.CONNECTED) or
+                (local_role is not DrbdRoleState.PRIMARY) or
+                (remote_role is not DrbdRoleState.SECONDARY)):
             raise DrbdStateException('DRBD resource %s is not in a suitable state to be migrated. '
                                      % self.getConfigObject()._getResourceName() +
                                      'Both nodes must be up-to-date and connected')
+
+    def preOnlineMigration(self, destination_node):
+        """Performs required tasks in order
+           for the underlying VM to perform an
+           online migration"""
+        # Temporarily allow the DRBD volume to be in a dual-primary mode
+        self._setTwoPrimariesConfig(allow=True)
+
+        # Set remote node as primary
+        destination_node.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdSetPrimary',
+                                          {'vm_name': self.getVmObject().getName(),
+                                           'disk_id': self.getConfigObject().getId(),
+                                           'allow_two_primaries': True})
+
+    def postOnlineMigration(self):
+        """Performs post tasks after a VM
+           has performed an online migration"""
+        import time
+        # Set DRBD on local node as secondary
+        self._drbdSetSecondary()
+
+        # Attempt to wait for DRBD to update status to secondary
+        # If, after 15 seconds, the local volume is still not
+        # primary, let the setTwiPrimariesConfig function raise
+        # an appropriate exception
+        for i in range(1, 3):
+            local_role, _ = self._drbdGetRole()
+            if (local_role is DrbdRoleState.SECONDARY):
+                break
+            else:
+                time.sleep(5)
+
+        # Disable the DRBD volume from being a dual-primary mode
+        self._setTwoPrimariesConfig(allow=False)
 
     def _ensureBlockDeviceExists(self):
         """Ensures that the DRBD block device exists"""

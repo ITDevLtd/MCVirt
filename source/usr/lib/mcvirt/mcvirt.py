@@ -24,7 +24,7 @@ import socket
 from mcvirt_config import MCVirtConfig
 
 
-class MCVirt:
+class MCVirt(object):
     """Provides general MCVirt functions"""
 
     TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
@@ -50,6 +50,7 @@ class MCVirt:
         self.initialise_nodes = initialise_nodes
         self.ignore_failed_nodes = ignore_failed_nodes
         self.remote_nodes = {}
+        self.libvirt_node_connections = {}
         self.failed_nodes = []
         self.ignore_drbd = False
 
@@ -111,6 +112,23 @@ class MCVirt:
             self.lockfile_object.release()
             self.lockfile_object = None
             self.obtained_filelock = False
+
+    def getRemoteLibvirtConnection(self, remote_node):
+        """Obtains and caches connections to remote libvirt daemons"""
+        # Check if a connection has already been established
+        if (remote_node.name not in self.libvirt_node_connections):
+            # If not, establish a connection
+            libvirt_url = 'qemu+ssh://%s/system' % remote_node.remote_ip
+            connection = libvirt.open(libvirt_url)
+
+            if (connection is None):
+                raise ConnectionFailureToRemoteLibvirtInstance(
+                    'Failed to connect to remote libvirt daemon on %s' %
+                    remote_node.getName()
+                )
+            self.libvirt_node_connections[remote_node.name] = connection
+
+        return self.libvirt_node_connections[remote_node.name]
 
     def getLibvirtConnection(self):
         """
@@ -182,4 +200,9 @@ class MCVirt:
 
 class MCVirtException(Exception):
     """Provides an exception to be thrown for errors in MCVirt"""
+    pass
+
+
+class ConnectionFailureToRemoteLibvirtInstance(MCVirtException):
+    """Connection failure whilst attempting to obtain a remote libvirt connection"""
     pass
