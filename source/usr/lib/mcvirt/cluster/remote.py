@@ -167,8 +167,13 @@ class Remote:
             vm_object.unregister()
 
         elif (action == 'virtual_machine-start'):
+            if ('iso' in arguments):
+                from mcvirt.iso import Iso
+                iso_object = Iso(mcvirt_instance, arguments['iso'])
+            else:
+                iso_object = None
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-            vm_object.start()
+            vm_object.start(iso_object=iso)
 
         elif (action == 'virtual_machine-stop'):
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])

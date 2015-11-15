@@ -224,8 +224,13 @@ class VirtualMachine(object):
             from mcvirt.cluster.cluster import Cluster
             cluster_object = Cluster(self.mcvirt_object)
             remote = cluster_object.getRemoteNode(self.getNode())
+            if (iso_object):
+                iso_name = iso_object.getName()
+            else:
+                iso_name = None
             remote.runRemoteCommand('virtual_machine-start',
-                                    {'vm_name': self.getName()})
+                                    {'vm_name': self.getName(),
+                                     'iso': iso_name})
 
         else:
             raise VmRegisteredElsewhereException(
