@@ -173,7 +173,7 @@ class Remote:
             else:
                 iso_object = None
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-            vm_object.start(iso_object=iso)
+            vm_object.start(iso_object=iso_object)
 
         elif (action == 'virtual_machine-stop'):
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
