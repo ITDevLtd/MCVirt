@@ -66,6 +66,8 @@ Further information
 
 See the `guide index <Documentation/MCVirt.rst>`_ for a full list of manuals
 
+For more information, please feel free to `contact us <http://www.itdev.co.uk/Contact/>`_
+
 
 LICENSE
 =======
