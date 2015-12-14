@@ -93,7 +93,7 @@ class ConfigFile():
         for directory in os.listdir(MCVirt.BASE_STORAGE_DIR):
             path = os.path.join(MCVirt.BASE_STORAGE_DIR, directory)
             if (os.path.isdir(path)):
-                if (directory is '.git'):
+                if (directory == '.git'):
                     setPermission(path, directory=True)
                 else:
                     setPermission(os.path.join(path, 'vm'), directory=True)
