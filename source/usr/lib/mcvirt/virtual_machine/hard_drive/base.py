@@ -99,7 +99,8 @@ class Base(object):
             self.getType()).create(
             destination_vm_object,
             disk_size,
-            disk_id=self.getConfigObject().getId())
+            disk_id=self.getConfigObject().getId(),
+            driver=self.getConfigObject()._getDriver())
 
         source_drbd_block_device = self.getConfigObject()._getDiskPath()
         destination_drbd_block_device = new_disk_object.getConfigObject()._getDiskPath()
@@ -490,7 +491,7 @@ class Base(object):
         raise NotImplementedError
 
     @staticmethod
-    def create(vm_object, size):
+    def create(vm_object, size, driver, disk_id=None):
         """Creates a new disk image, attaches the disk to the VM and records the disk
         in the VM configuration"""
         raise NotImplementedError

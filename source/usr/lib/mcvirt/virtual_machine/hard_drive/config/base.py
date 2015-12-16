@@ -16,6 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import xml.etree.ElementTree as ET
+from enum import Enum
 
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -26,15 +27,27 @@ class ReachedMaximumStorageDevicesException(MCVirtException):
     pass
 
 
+class Driver(Enum):
+    """Enums for specifying the hard drive driver type"""
+    VIRTIO = 'virtio'
+    IDE = 'ide'
+    SCSI = 'scsi'
+    USB = 'usb'
+    SATA = 'sata'
+    SD = 'sd'
+
+
 class Base(object):
     """Provides a base for storage configurations"""
 
+    DEFAULT_DRIVER = Driver.IDE
     SNAPSHOT_SUFFIX = '_snapshot'
     SNAPSHOT_SIZE = '500M'
 
-    def __init__(self, vm_object, disk_id=None, config=None, registered=False):
+    def __init__(self, vm_object, disk_id=None, driver=None, config=None, registered=False):
         """Set member variables and obtains the stored configuration"""
         self.config['disk_id'] = disk_id
+        self.config['driver'] = driver
         self.vm_object = vm_object
 
         # If a configuration hash has been passed, overwrite all
@@ -135,9 +148,17 @@ class Base(object):
         # Configure the target
         target_xml = ET.SubElement(device_xml, 'target')
         target_xml.set('dev', '%s' % self._getTargetDev())
-        target_xml.set('bus', 'virtio')
+        target_xml.set('bus', self._getLibvirtDriver())
 
         return device_xml
+
+    def _getDriver(self):
+        """Returns the disk drive driver name"""
+        return self.config['driver']
+
+    def _getLibvirtDriver(self):
+        """Returns the libvirt name of the driver for the disk"""
+        return Driver[self.config['driver']].value
 
     def _getDiskPath(self):
         """Returns the path of the raw disk image"""
@@ -145,7 +166,10 @@ class Base(object):
 
     def _getMCVirtConfig(self):
         """Returns the MCVirt configuration for the hard drive object"""
-        raise NotImplementedError
+        config = {
+            'driver': self.config['driver']
+        }
+        return config
 
     def _getBackupLogicalVolume(self):
         """Returns the storage device for the backup"""
