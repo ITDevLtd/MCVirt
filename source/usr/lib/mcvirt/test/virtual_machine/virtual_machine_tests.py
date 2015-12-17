@@ -784,5 +784,6 @@ class VirtualMachineTests(unittest.TestCase):
             vm_object = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
             domain_xml_string = vm_object._getLibvirtDomainObject().XMLDesc()
             domain_config = ET.fromstring(domain_xml_string)
-            self.assertEqual(find('./devices/disk[@type="block"]/target').get('bus'), disk_driver[1])
+            self.assertEqual(find('./devices/disk[@type="block"]/target').get('bus'),
+                             disk_driver[1])
             vm_object.delete(True)
