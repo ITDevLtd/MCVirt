@@ -18,6 +18,7 @@
 import unittest
 import os
 import shutil
+import xml.etree.ElementTree as ET
 
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt, MCVirtException
@@ -765,3 +766,23 @@ class VirtualMachineTests(unittest.TestCase):
                                         ' --network non-existent-network' +
                                         ' --storage-type Local',
                                         mcvirt_instance=self.mcvirt)
+
+    def test_create_alternative_driver(self):
+        """Creates VMs using alternative hard drive drivers"""
+        for disk_driver in [['IDE', 'ide'], ['VIRTIO', 'virtio'], ['SCSI', 'scsi']]:
+            self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
+                                        ' --cpu-count %s --disk-size %s --memory %s' %
+                                        (self.test_vms['TEST_VM_1']['cpu_count'],
+                                         self.test_vms['TEST_VM_1']['disk_size'][0],
+                                         self.test_vms['TEST_VM_1']['memory_allocation']) +
+                                        ' --network %s --storage-type %s' %
+                                        (self.test_vms['TEST_VM_1']['networks'][0],
+                                         storage_type) +
+                                        ' --driver %s' % disk_driver[0],
+                                        mcvirt_instance=self.mcvirt)
+
+            vm_object = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
+            domain_xml_string = vm_object._getLibvirtDomainObject().XMLDesc()
+            domain_config = ET.fromstring(domain_xml_string)
+            self.assertEqual(find('./devices/disk[@type="block"]/target').get('bus'), disk_driver[1])
+            vm_object.delete(True)
