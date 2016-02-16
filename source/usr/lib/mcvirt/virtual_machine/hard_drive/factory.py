@@ -61,9 +61,9 @@ class Factory():
                                        config=arguments['config'])
 
     @staticmethod
-    def create(vm_object, size, storage_type):
+    def create(vm_object, size, storage_type, driver):
         """Performs the creation of a hard drive, using a given storage type"""
-        return Factory.getClass(storage_type).create(vm_object, size)
+        return Factory.getClass(storage_type).create(vm_object, size, driver)
 
     @staticmethod
     def getStorageTypes():

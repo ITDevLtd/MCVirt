@@ -31,6 +31,7 @@ from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth import Auth
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.node.network import Network
+from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 
 
 class MigrationFailureExcpetion(MCVirtException):
@@ -1010,7 +1011,7 @@ class VirtualMachine(object):
     @staticmethod
     def create(mcvirt_instance, name, cpu_cores, memory_allocation, hard_drives=[],
                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-               auth_check=True):
+               auth_check=True, hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
         from mcvirt.cluster.cluster import (Cluster, ClusterNotInitialisedException,
                                             NodeDoesNotExistException)
@@ -1116,13 +1117,17 @@ class VirtualMachine(object):
         if (storage_type is None):
             storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
 
+        if (hard_drive_driver is None):
+            hard_drive_driver = HardDriveConfigBase.DEFAULT_DRIVER.name
+
         if (mcvirt_instance.initialiseNodes()):
             # Create disk images
             for hard_drive_size in hard_drives:
                 HardDriveFactory.create(
                     vm_object=vm_object,
                     size=hard_drive_size,
-                    storage_type=storage_type)
+                    storage_type=storage_type,
+                    driver=hard_drive_driver)
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML
