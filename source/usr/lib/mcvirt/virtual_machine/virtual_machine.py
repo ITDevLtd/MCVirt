@@ -309,6 +309,8 @@ class VirtualMachine(object):
         table.add_row(('CPU Cores', self.getCPU()))
         table.add_row(('Memory Allocation', str(int(self.getRAM()) / 1024) + 'MB'))
         table.add_row(('State', self.getState().name))
+        table.add_row(('Node', self.getNode()))
+        table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
 
         # Display clone children, if they exist
         clone_children = self.getCloneChildren()
