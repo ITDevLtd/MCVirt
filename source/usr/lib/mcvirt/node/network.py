@@ -71,6 +71,7 @@ class Network:
 
         # Undefine object from libvirt
         try:
+            self._getLibVirtObject().destroy()
             self._getLibVirtObject().undefine()
         except:
             raise MCVirtException('Failed to delete network from libvirt')
@@ -175,6 +176,15 @@ class Network:
             config['networks'][name] = physical_interface
         from mcvirt.mcvirt_config import MCVirtConfig
         MCVirtConfig().updateConfig(updateConfig, 'Created network \'%s\'' % name)
+
+        # Obtain instance of the network object
+        network_instance = Network(mcvirt_object, name)
+
+        # Start network
+        network_instance._getLibVirtObject().create()
+
+        # Set network to autostart
+        network_instance._getLibVirtObject().setAutostart(True)
 
     @staticmethod
     def list(mcvirt_instance):
