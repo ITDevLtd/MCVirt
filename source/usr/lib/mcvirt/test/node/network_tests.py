@@ -64,7 +64,7 @@ class NetworkTests(unittest.TestCase):
         # Get an MCVirt instance
         self.mcvirt = MCVirt()
         self.test_network_name = 'test_network'
-        self.test_physical_interface = 'vmbr99'
+        self.test_physical_interface = 'vmbr0'
 
         # Setup variable for test VM
         self.test_vm_name = 'mcvirt-unittest-vm'
