@@ -18,6 +18,7 @@
 import json
 from paramiko.client import SSHClient, AutoAddPolicy
 from paramiko.ssh_exception import AuthenticationException
+import os
 
 from mcvirt.mcvirt import MCVirtException
 from cluster import Cluster
@@ -366,6 +367,8 @@ class Remote:
         self.save_hostkey = save_hostkey
         self.initialise_node = initialise_node
 
+        self._initialiseKnownHosts()
+
         # Ensure the node exists
         if (not self.save_hostkey):
             cluster_instance.ensureNodeExists(self.name)
@@ -391,6 +394,19 @@ class Remote:
 
             # Close the SSH connection
             self.connection.close()
+
+    def _initialiseKnownHosts(self):
+        """Creates the SSH directory and known hosts file
+           if they don't already exist"""
+        # If the known hosts file doesn't exist, create it
+        if not os.path.exists(Cluster.SSH_KNOWN_HOSTS_FILE):
+
+            # If the SSH directory doesn't exist, create it, before
+            # creating the known hosts file
+            if not os.path.exists(Cluster.SSH_DIRECTORY):
+                os.mkdir(Cluster.SSH_DIRECTORY)
+
+            open(Cluster.SSH_KNOWN_HOSTS_FILE, 'a').close()
 
     def __connect(self):
         """Connect the SSH session"""
