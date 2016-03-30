@@ -455,7 +455,7 @@ class Remote:
         # Attempt to convert stdout to JSON
         try:
             # Obtains the first line of output and decode JSON
-            return json.loads(str.strip(stdout))
+            return json.loads(str.strip(str(stdout)))
         except ValueError:
             # If the exit code was not 0, close the SSH session and throw an exception
             stderr = self.stderr.readlines()
