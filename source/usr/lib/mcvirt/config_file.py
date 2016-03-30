@@ -86,8 +86,10 @@ class ConfigFile():
             if directory:
                 permission_mode = permission_mode | stat.S_IWUSR | stat.S_IXUSR
 
-            os.chown(path, owner, 0)
-            os.chmod(path, permission_mode)
+            if (directory and os.path.isdir(path) or
+                    not directory and os.path.exists(path)):
+                os.chown(path, owner, 0)
+                os.chmod(path, permission_mode)
 
         # Set permissions on git directory
         for directory in os.listdir(MCVirt.BASE_STORAGE_DIR):
@@ -97,7 +99,7 @@ class ConfigFile():
                     setPermission(path, directory=True)
                 else:
                     setPermission(os.path.join(path, 'vm'), directory=True)
-                    setPermission(os.path.join(path, 'config.json'), directory=True)
+                    setPermission(os.path.join(path, 'config.json'), directory=False)
 
         # Set permission for base directory, node directory and ISO directory
         for directory in [MCVirt.BASE_STORAGE_DIR, MCVirt.NODE_STORAGE_DIR,
