@@ -180,7 +180,9 @@ class DRBD(Base):
                    DrbdConnectionState.PAUSED_SYNC_S,
                    DrbdConnectionState.STARTING_SYNC_S,
                    DrbdConnectionState.SYNC_SOURCE,
-                   DrbdConnectionState.WF_BIT_MAP_S],
+                   DrbdConnectionState.WF_BIT_MAP_S,
+                   DrbdConnectionState.WF_BIT_MAP_T,
+                   DrbdConnectionState.WF_SYNC_UUID],
             'WARNING': [DrbdConnectionState.STAND_ALONE,
                         DrbdConnectionState.DISCONNECTING,
                         DrbdConnectionState.UNCONNECTED,
@@ -471,7 +473,7 @@ class DRBD(Base):
 
     def _drbdConnect(self):
         """Performs a DRBD 'connect' on the hard drive DRBD resource"""
-        if (self._drbdGetConnectionState() is not DrbdConnectionState.CONNECTED):
+        if (self._drbdGetConnectionState() not in DRBD.DRBD_STATES['CONNECTION']['OK']):
             System.runCommand(
                 [NodeDRBD.DRBDADM, 'connect', self.getConfigObject()._getResourceName()])
 
