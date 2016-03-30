@@ -181,7 +181,10 @@ class Network:
         network_instance = Network(mcvirt_object, name)
 
         # Start network
-        network_instance._getLibVirtObject().start()
+        network_instance._getLibVirtObject().create()
+
+        # Set network to autostart
+        network_instance._getLibVirtObject().setAutostart(True)
 
     @staticmethod
     def list(mcvirt_instance):
