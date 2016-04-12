@@ -180,7 +180,9 @@ class DRBD(Base):
                    DrbdConnectionState.PAUSED_SYNC_S,
                    DrbdConnectionState.STARTING_SYNC_S,
                    DrbdConnectionState.SYNC_SOURCE,
-                   DrbdConnectionState.WF_BIT_MAP_S],
+                   DrbdConnectionState.WF_BIT_MAP_S,
+                   DrbdConnectionState.WF_BIT_MAP_T,
+                   DrbdConnectionState.WF_SYNC_UUID],
             'WARNING': [DrbdConnectionState.STAND_ALONE,
                         DrbdConnectionState.DISCONNECTING,
                         DrbdConnectionState.UNCONNECTED,
@@ -472,7 +474,7 @@ class DRBD(Base):
 
     def _drbdConnect(self):
         """Performs a DRBD 'connect' on the hard drive DRBD resource"""
-        if (self._drbdGetConnectionState() is not DrbdConnectionState.CONNECTED):
+        if (self._drbdGetConnectionState() not in DRBD.DRBD_STATES['CONNECTION']['OK']):
             System.runCommand(
                 [NodeDRBD.DRBDADM, 'connect', self.getConfigObject()._getResourceName()])
 
@@ -551,8 +553,16 @@ class DRBD(Base):
 
     def _drbdSetSecondary(self):
         """Performs a DRBD 'secondary' on the hard drive DRBD resource"""
-        System.runCommand(
-            [NodeDRBD.DRBDADM, 'secondary', self.getConfigObject()._getResourceName()])
+        # Attempt to set the disk as secondary
+        set_secondary_command = [NodeDRBD.DRBDADM, 'secondary',
+                                 self.getConfigObject()._getResourceName()]
+        try:
+            System.runCommand(set_secondary_command)
+        except MCVirtCommandException:
+            # If this fails, wait for 5 seconds, and attempt once more
+            from time import sleep
+            sleep(5)
+            System.runCommand(set_secondary_command)
 
     def _drbdOverwritePeer(self):
         """Force DRBD to overwrite the data on the peer"""
