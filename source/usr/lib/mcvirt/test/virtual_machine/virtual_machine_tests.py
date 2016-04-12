@@ -62,6 +62,7 @@ class VirtualMachineTests(unittest.TestCase):
         suite.addTest(VirtualMachineTests('test_duplicate_local'))
         suite.addTest(VirtualMachineTests('test_unspecified_storage_type_local'))
         suite.addTest(VirtualMachineTests('test_invalid_network_name'))
+        suite.addTest(VirtualMachineTests('test_create_alternative_driver'))
 
         # Add tests for DRBD
         suite.addTest(VirtualMachineTests('test_create_drbd'))
@@ -777,7 +778,7 @@ class VirtualMachineTests(unittest.TestCase):
                                          self.test_vms['TEST_VM_1']['memory_allocation']) +
                                         ' --network %s --storage-type %s' %
                                         (self.test_vms['TEST_VM_1']['networks'][0],
-                                         storage_type) +
+                                         'Local') +
                                         ' --driver %s' % disk_driver[0],
                                         mcvirt_instance=self.mcvirt)
 
