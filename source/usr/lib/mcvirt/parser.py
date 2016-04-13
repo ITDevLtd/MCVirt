@@ -203,8 +203,10 @@ class Parser:
                                         help='Increases VM disk by provided amount (MB)')
         self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
                                         help='The ID of the disk to be increased by')
-        self.update_parser.add_argument('--attach-iso', '--iso', dest='iso', metavar='ISO Name', type=str,
-                                        help='Attach an ISO to a running VM. Specify without value to detach ISO.')
+        self.update_parser.add_argument('--attach-iso', '--iso', dest='iso', metavar='ISO Name',
+                                        type=str,
+                                        help=('Attach an ISO to a running VM.'
+                                              ' Specify without value to detach ISO.'))
         self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Get arguments for making permission changes to a VM

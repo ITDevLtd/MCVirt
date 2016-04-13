@@ -788,8 +788,10 @@ class VirtualMachineTests(unittest.TestCase):
             vm_object = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
             domain_xml_string = vm_object._getLibvirtDomainObject().XMLDesc()
             domain_config = ET.fromstring(domain_xml_string)
-            self.assertEqual(domain_config.find('./devices/disk[@type="block"]/target').get('bus'),
-                             disk_driver[1])
+            self.assertEqual(
+                domain_config.find('./devices/disk[@type="block"]/target').get('bus'),
+                disk_driver[1]
+            )
             vm_object.delete(True)
 
     def test_live_iso_change(self):
@@ -822,12 +824,16 @@ class VirtualMachineTests(unittest.TestCase):
 
         try:
             self.parser.parse_arguments('update %s --attach-iso %s' %
-                                         (self.test_vms['TEST_VM_1']['name'], iso_object.getName()),
+                                         (self.test_vms['TEST_VM_1']['name'],
+                                          iso_object.getName()),
                                         mcvirt_instance=self.mcvirt)
 
             domain_xml_string = test_vm_object._getLibvirtDomainObject().XMLDesc()
             domain_config = ET.fromstring(domain_xml_string)
-            self.assertEqual(domain_config.find('./devices/disk[@device="cdrom"]/source').get('file'), iso_object.getPath())
+            self.assertEqual(
+                domain_config.find('./devices/disk[@device="cdrom"]/source').get('file'),
+                iso_object.getPath()
+            )
         except Exception, e:
             test_vm_object.stop()
             test_vm_object.delete(True)

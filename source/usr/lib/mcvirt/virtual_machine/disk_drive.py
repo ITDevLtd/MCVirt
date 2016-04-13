@@ -44,7 +44,8 @@ class DiskDrive:
         flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
 
         # Update the libvirt cdrom device
-        if (not self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string, flags)):
+        libvirt_object = self.vm_object._getLibvirtDomainObject()
+        if (not libvirt_object.updateDeviceFlags(cdrom_xml_string, flags)):
             print 'Attached ISO %s' % iso_object.getName()
         else:
             raise MCVirtException('An error occurred whilst attaching ISO')

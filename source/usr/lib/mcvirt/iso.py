@@ -224,8 +224,9 @@ class Iso:
         from cluster.cluster import Cluster
         from virtual_machine.virtual_machine import VirtualMachine
         for vm_name in VirtualMachine.getAllVms(self.mcvirt_instance,
-                                                  node=Cluster.getHostname()):
-            vm_current_iso = DiskDrive(VirtualMachine(self.mcvirt_instance, vm_name)).getCurrentDisk()
+                                                node=Cluster.getHostname()):
+            disk_drive_object = DiskDrive(VirtualMachine(self.mcvirt_instance, vm_name))
+            vm_current_iso = disk_drive_object.getCurrentDisk()
 
             # If the VM has an iso attached, check if the ISO is this one
             if (vm_current_iso and (vm_current_iso.getPath() == self.getPath())):
