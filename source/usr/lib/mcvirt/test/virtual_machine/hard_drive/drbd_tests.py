@@ -83,6 +83,9 @@ class DrbdTests(unittest.TestCase):
         self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
                                                     self.test_vms['TEST_VM_1']['name']))
 
+        # Wait for 10 seconds after creation to ensure that DRBD goes into connection -> Resyncing state
+        time.sleep(10)
+
         # Wait until the DRBD resource is synced
         for disk_object in test_vm_object.getDiskObjects():
             wait_timeout = 6
