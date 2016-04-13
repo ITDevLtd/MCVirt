@@ -824,8 +824,8 @@ class VirtualMachineTests(unittest.TestCase):
 
         try:
             self.parser.parse_arguments('update %s --attach-iso %s' %
-                                         (self.test_vms['TEST_VM_1']['name'],
-                                          iso_object.getName()),
+                                        (self.test_vms['TEST_VM_1']['name'],
+                                         iso_object.getName()),
                                         mcvirt_instance=self.mcvirt)
 
             domain_xml_string = test_vm_object._getLibvirtDomainObject().XMLDesc()
