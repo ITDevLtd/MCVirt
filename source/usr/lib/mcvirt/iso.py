@@ -193,7 +193,7 @@ class Iso:
         else:
             return "\n".join(iso_list)
 
-    def delete(self):
+    def delete(self, force=False):
         """Delete an ISO"""
         # Check exists
         in_use = self.inUse()
@@ -202,26 +202,30 @@ class Iso:
                 'The ISO is attached to a VM, so cannot be removed: %s' % in_use
             )
 
-        delete_answer = System.getUserInput(
-            'Are you sure you want to delete %s? (Y/n): ' % self.getName()
-        )
-        if (delete_answer.strip() is 'Y'):
-            if (os.remove(self.getPath())):
-                return True
-            else:
-                raise FailedToRemoveFileException(
-                    'A failure occurred whilst attempting to remove ISO: %s' % self.getName()
-                )
+        if not force:
+            delete_answer = System.getUserInput(
+                'Are you sure you want to delete %s? (Y/n): ' % self.getName()
+            )
+            if (delete_answer.strip() is not 'Y'):
+                return False
+
+        os.remove(self.getPath())
+
+        if not os.path.isfile(self.getPath()):
+            return True
         else:
-            return False
+            raise FailedToRemoveFileException(
+                'A failure occurred whilst attempting to remove ISO: %s' % self.getName()
+            )
 
     def inUse(self):
         """Determines if the ISO is currently in use by a VM"""
         from virtual_machine.disk_drive import DiskDrive
-        from mcvirt.cluster.cluster import Cluster
-        for vm_object in VirtualMachine.getAllVms(self.mcvirt_instance,
+        from cluster.cluster import Cluster
+        from virtual_machine.virtual_machine import VirtualMachine
+        for vm_name in VirtualMachine.getAllVms(self.mcvirt_instance,
                                                   node=Cluster.getHostname()):
-            vm_current_iso = DiskDrive(vm_object).getCurrentDisk()
+            vm_current_iso = DiskDrive(VirtualMachine(self.mcvirt_instance, vm_name)).getCurrentDisk()
 
             # If the VM has an iso attached, check if the ISO is this one
             if (vm_current_iso and (vm_current_iso.getPath() == self.getPath())):
