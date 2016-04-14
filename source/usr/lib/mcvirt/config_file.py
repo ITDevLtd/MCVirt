@@ -22,7 +22,7 @@ import os
 class ConfigFile():
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    CURRENT_VERSION = 1
+    CURRENT_VERSION = 2
     GIT = '/usr/bin/git'
 
     def __init__(self):
@@ -86,18 +86,20 @@ class ConfigFile():
             if directory:
                 permission_mode = permission_mode | stat.S_IWUSR | stat.S_IXUSR
 
-            os.chown(path, owner, 0)
-            os.chmod(path, permission_mode)
+            if (directory and os.path.isdir(path) or
+                    not directory and os.path.exists(path)):
+                os.chown(path, owner, 0)
+                os.chmod(path, permission_mode)
 
         # Set permissions on git directory
         for directory in os.listdir(MCVirt.BASE_STORAGE_DIR):
             path = os.path.join(MCVirt.BASE_STORAGE_DIR, directory)
             if (os.path.isdir(path)):
-                if (directory is '.git'):
+                if (directory == '.git'):
                     setPermission(path, directory=True)
                 else:
                     setPermission(os.path.join(path, 'vm'), directory=True)
-                    setPermission(os.path.join(path, 'config.json'), directory=True)
+                    setPermission(os.path.join(path, 'config.json'), directory=False)
 
         # Set permission for base directory, node directory and ISO directory
         for directory in [MCVirt.BASE_STORAGE_DIR, MCVirt.NODE_STORAGE_DIR,

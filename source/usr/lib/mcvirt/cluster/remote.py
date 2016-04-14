@@ -18,6 +18,7 @@
 import json
 from paramiko.client import SSHClient, AutoAddPolicy
 from paramiko.ssh_exception import AuthenticationException
+import os
 
 from mcvirt.mcvirt import MCVirtException
 from cluster import Cluster
@@ -77,6 +78,16 @@ class Remote:
             cluster_instance = Cluster(mcvirt_instance)
             cluster_instance.removeNodeConfiguration(arguments['node'])
 
+        elif (action == 'cluster-cluster-getNodes'):
+            cluster_instance = Cluster(mcvirt_instance)
+            if 'return_all' in arguments:
+                return_data = cluster_instance.getNodes(return_all=arguments['return_all'])
+            else:
+                return_data = cluster_instance.getNodes()
+
+        elif (action == 'cluster-cluster-getHostname'):
+            return_data = Cluster.getHostname()
+
         elif (action == 'auth-addUserPermissionGroup'):
             auth_object = mcvirt_instance.getAuthObject()
             if ('vm_name' in arguments and arguments['vm_name']):
@@ -121,7 +132,23 @@ class Remote:
             auth_object.deleteSuperuser(arguments['username'], mcvirt_object=mcvirt_instance)
 
         elif (action == 'virtual_machine-getAllVms'):
-            return_data = VirtualMachine.getAllVms(mcvirt_instance, Cluster.getHostname())
+            if 'node' not in arguments:
+                node = Cluster.getHostname()
+            else:
+                node = arguments['node']
+            return_data = VirtualMachine.getAllVms(mcvirt_instance, node)
+
+        elif (action == 'virtual_machine-getConfig'):
+            vm_name = arguments['vm_name']
+            vm_object = VirtualMachine(mcvirt_instance, vm_name)
+            return_data = {
+                'cpu_cores': vm_object.getCPU(),
+                'memory_allocation': vm_object.getRAM(),
+                'power_state': vm_object.getState().name,
+                'lock_state': vm_object.getLockState().name,
+                'node': vm_object.getNode(),
+                'available_nodes': vm_object.getAvailableNodes()
+            }
 
         elif (action == 'virtual_machine-create'):
             VirtualMachine.create(mcvirt_instance, arguments['vm_name'], arguments['cpu_cores'],
@@ -141,12 +168,21 @@ class Remote:
             vm_object.unregister()
 
         elif (action == 'virtual_machine-start'):
+            if ('iso' in arguments):
+                from mcvirt.iso import Iso
+                iso_object = Iso(mcvirt_instance, arguments['iso'])
+            else:
+                iso_object = None
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-            vm_object.start()
+            vm_object.start(iso_object=iso_object)
 
         elif (action == 'virtual_machine-stop'):
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
             vm_object.stop()
+
+        elif (action == 'virtual_machine-reset'):
+            vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+            vm_object.reset()
 
         elif (action == 'network_adapter-create'):
             from mcvirt.node.network import Network
@@ -366,6 +402,8 @@ class Remote:
         self.save_hostkey = save_hostkey
         self.initialise_node = initialise_node
 
+        self._initialiseKnownHosts()
+
         # Ensure the node exists
         if (not self.save_hostkey):
             cluster_instance.ensureNodeExists(self.name)
@@ -391,6 +429,19 @@ class Remote:
 
             # Close the SSH connection
             self.connection.close()
+
+    def _initialiseKnownHosts(self):
+        """Creates the SSH directory and known hosts file
+           if they don't already exist"""
+        # If the known hosts file doesn't exist, create it
+        if not os.path.exists(Cluster.SSH_KNOWN_HOSTS_FILE):
+
+            # If the SSH directory doesn't exist, create it, before
+            # creating the known hosts file
+            if not os.path.exists(Cluster.SSH_DIRECTORY):
+                os.mkdir(Cluster.SSH_DIRECTORY)
+
+            open(Cluster.SSH_KNOWN_HOSTS_FILE, 'a').close()
 
     def __connect(self):
         """Connect the SSH session"""
@@ -455,7 +506,7 @@ class Remote:
         # Attempt to convert stdout to JSON
         try:
             # Obtains the first line of output and decode JSON
-            return json.loads(str.strip(stdout))
+            return json.loads(str.strip(str(stdout)))
         except ValueError:
             # If the exit code was not 0, close the SSH session and throw an exception
             stderr = self.stderr.readlines()

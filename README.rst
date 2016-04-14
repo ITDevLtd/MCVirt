@@ -66,6 +66,8 @@ Further information
 
 See the `guide index <Documentation/MCVirt.rst>`_ for a full list of manuals
 
+For more information, please feel free to `contact us <https://www.itdev.co.uk/Contact/>`_
+
 
 LICENSE
 =======
@@ -77,5 +79,5 @@ COPYRIGHT
 
 .. |copy|   unicode:: U+000A9 .. COPYRIGHT SIGN
 
-Copyright |copy| 2015 - `I.T. Dev Ltd <http://www.itdev.co.uk>`_
+Copyright |copy| 2015 - `I.T. Dev Ltd <https://www.itdev.co.uk>`_
 

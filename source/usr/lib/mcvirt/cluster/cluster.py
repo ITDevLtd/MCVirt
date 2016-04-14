@@ -46,6 +46,7 @@ class ClusterNotInitialisedException(MCVirtException):
 class Cluster:
     """Class to perform node management within the MCVirt cluster"""
 
+    SSH_DIRECTORY = '/root/.ssh'
     SSH_AUTHORIZED_KEYS_FILE = '/root/.ssh/authorized_keys'
     SSH_PRIVATE_KEY = '/root/.ssh/id_rsa'
     SSH_PUBLIC_KEY = '/root/.ssh/id_rsa.pub'

@@ -31,6 +31,7 @@ from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth import Auth
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.node.network import Network
+from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 
 
 class MigrationFailureExcpetion(MCVirtException):
@@ -163,14 +164,24 @@ class VirtualMachine(object):
             self)
 
         # Determine if VM is registered on the local machine
-        self.ensureRegisteredLocally()
+        if self.isRegisteredLocally():
+            # Determine if VM is running
+            if (self.getState() is PowerStates.RUNNING):
+                # Stop the VM
+                self._getLibvirtDomainObject().destroy()
+            else:
+                raise VmAlreadyStoppedException('The VM is already shutdown')
+        elif self.mcvirt_object.initialiseNodes():
+            from mcvirt.cluster.cluster import Cluster
+            cluster_object = Cluster(self.mcvirt_object)
+            remote = cluster_object.getRemoteNode(self.getNode())
+            remote.runRemoteCommand('virtual_machine-stop',
+                                    {'vm_name': self.getName()})
 
-        # Determine if VM is running
-        if (self.getState() is PowerStates.RUNNING):
-            # Stop the VM
-            self._getLibvirtDomainObject().destroy()
         else:
-            raise VmAlreadyStoppedException('The VM is already shutdown')
+            raise VmRegisteredElsewhereException(
+                'VM registered elsewhere and cluster is not initialised'
+            )
 
     def start(self, iso_object=None):
         """Starts the VM"""
@@ -183,33 +194,49 @@ class VirtualMachine(object):
         self.ensureUnlocked()
 
         # Ensure VM is registered locally
-        self.ensureRegisteredLocally()
+        if self.isRegisteredLocally():
+            # Ensure VM hasn't been cloned
+            if (self.getCloneChildren()):
+                raise CannotStartClonedVmException('Cloned VMs cannot be started')
 
-        # Ensure VM hasn't been cloned
-        if (self.getCloneChildren()):
-            raise CannotStartClonedVmException('Cloned VMs cannot be started')
+            # Determine if VM is stopped
+            if (self.getState() is PowerStates.RUNNING):
+                raise VmAlreadyStartedException('The VM is already running')
 
-        # Determine if VM is stopped
-        if (self.getState() is PowerStates.RUNNING):
-            raise VmAlreadyStartedException('The VM is already running')
+            for disk_object in self.getDiskObjects():
+                disk_object.activateDisk()
 
-        for disk_object in self.getDiskObjects():
-            disk_object.activateDisk()
+            disk_drive_object = DiskDrive(self)
+            if (iso_object):
+                # If an ISO has been specified, attach it to the VM before booting
+                # and adjust boot order to boot from ISO first
+                disk_drive_object.attachISO(iso_object)
+                self.setBootOrder(['cdrom', 'hd'])
+            else:
+                # If not ISO was specified, remove any attached ISOs and change boot order
+                # to boot from HDD
+                disk_drive_object.removeISO()
+                self.setBootOrder(['hd'])
 
-        disk_drive_object = DiskDrive(self)
-        if (iso_object):
-            # If an ISO has been specified, attach it to the VM before booting
-            # and adjust boot order to boot from ISO first
-            disk_drive_object.attachISO(iso_object)
-            self.setBootOrder(['cdrom', 'hd'])
+            # Start the VM
+            self._getLibvirtDomainObject().create()
+
+        elif self.mcvirt_object.initialiseNodes():
+            from mcvirt.cluster.cluster import Cluster
+            cluster_object = Cluster(self.mcvirt_object)
+            remote = cluster_object.getRemoteNode(self.getNode())
+            if (iso_object):
+                iso_name = iso_object.getName()
+            else:
+                iso_name = None
+            remote.runRemoteCommand('virtual_machine-start',
+                                    {'vm_name': self.getName(),
+                                     'iso': iso_name})
+
         else:
-            # If not ISO was specified, remove any attached ISOs and change boot order
-            # to boot from HDD
-            disk_drive_object.removeISO()
-            self.setBootOrder(['hd'])
-
-        # Start the VM
-        self._getLibvirtDomainObject().create()
+            raise VmRegisteredElsewhereException(
+                'VM registered elsewhere and cluster is not initialised'
+            )
 
     def reset(self):
         """Resets the VM"""
@@ -222,14 +249,24 @@ class VirtualMachine(object):
         self.ensureUnlocked()
 
         # Ensure VM is registered locally
-        self.ensureRegisteredLocally()
+        if self.isRegisteredLocally():
+            # Determine if VM is running
+            if (self.getState() is PowerStates.RUNNING):
+                # Stop the VM
+                self._getLibvirtDomainObject().reset()
+            else:
+                raise VmAlreadyStoppedException('Cannot reset a stopped VM')
+        elif self.mcvirt_object.initialiseNodes():
+            from mcvirt.cluster.cluster import Cluster
+            cluster_object = Cluster(self.mcvirt_object)
+            remote = cluster_object.getRemoteNode(self.getNode())
+            remote.runRemoteCommand('virtual_machine-reset',
+                                    {'vm_name': self.getName()})
 
-        # Determine if VM is running
-        if (self.getState() is PowerStates.RUNNING):
-            # Stop the VM
-            self._getLibvirtDomainObject().reset()
         else:
-            raise VmAlreadyStoppedException('Cannot reset a stopped VM')
+            raise VmRegisteredElsewhereException(
+                'VM registered elsewhere and cluster is not initialised'
+            )
 
     def getState(self):
         """Returns the power state of the VM in the form of a PowerStates enum"""
@@ -272,6 +309,8 @@ class VirtualMachine(object):
         table.add_row(('CPU Cores', self.getCPU()))
         table.add_row(('Memory Allocation', str(int(self.getRAM()) / 1024) + 'MB'))
         table.add_row(('State', self.getState().name))
+        table.add_row(('Node', self.getNode()))
+        table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
 
         # Display clone children, if they exist
         clone_children = self.getCloneChildren()
@@ -974,7 +1013,7 @@ class VirtualMachine(object):
     @staticmethod
     def create(mcvirt_instance, name, cpu_cores, memory_allocation, hard_drives=[],
                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-               auth_check=True):
+               auth_check=True, hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
         from mcvirt.cluster.cluster import (Cluster, ClusterNotInitialisedException,
                                             NodeDoesNotExistException)
@@ -1080,13 +1119,17 @@ class VirtualMachine(object):
         if (storage_type is None):
             storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
 
+        if (hard_drive_driver is None):
+            hard_drive_driver = HardDriveConfigBase.DEFAULT_DRIVER.name
+
         if (mcvirt_instance.initialiseNodes()):
             # Create disk images
             for hard_drive_size in hard_drives:
                 HardDriveFactory.create(
                     vm_object=vm_object,
                     size=hard_drive_size,
-                    storage_type=storage_type)
+                    storage_type=storage_type,
+                    driver=hard_drive_driver)
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML
