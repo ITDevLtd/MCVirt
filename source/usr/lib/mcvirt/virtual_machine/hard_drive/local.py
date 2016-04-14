@@ -81,7 +81,8 @@ class Local(Base):
         self._ensureExists()
         new_disk_config = ConfigLocal(
             vm_object=destination_vm_object,
-            disk_id=self.getConfigObject().getId())
+            disk_id=self.getConfigObject().getId(),
+            driver=self.getConfigObject()._getDriver())
         new_logical_volume_name = new_disk_config._getDiskName()
         disk_size = self.getSize()
 
@@ -99,10 +100,10 @@ class Local(Base):
         return new_disk_object
 
     @staticmethod
-    def create(vm_object, size, disk_id=None,):
+    def create(vm_object, size, driver, disk_id=None):
         """Creates a new disk image, attaches the disk to the VM and records the disk
         in the VM configuration"""
-        disk_config_object = ConfigLocal(vm_object=vm_object, disk_id=disk_id)
+        disk_config_object = ConfigLocal(vm_object=vm_object, disk_id=disk_id, driver=driver)
         disk_path = disk_config_object._getDiskPath()
         logical_volume_name = disk_config_object._getDiskName()
 

@@ -38,6 +38,7 @@ class DRBD(Base):
             self,
             vm_object,
             disk_id=None,
+            driver=None,
             drbd_minor=None,
             drbd_port=None,
             config=None,
@@ -54,6 +55,7 @@ class DRBD(Base):
             self,
             vm_object=vm_object,
             disk_id=disk_id,
+            driver=driver,
             config=config,
             registered=registered)
 
@@ -205,13 +207,11 @@ class DRBD(Base):
 
     def _getMCVirtConfig(self):
         """Returns the MCVirt hard drive configuration for the DRBD hard drive"""
-        mcvirt_config = \
-            {
-                'drbd_port': self.config['drbd_port'],
-                'drbd_minor': self.config['drbd_minor'],
-                'sync_state': self.config['sync_state']
-            }
-        return mcvirt_config
+        config = super(DRBD, self)._getMCVirtConfig()
+        config['drbd_port'] = self.config['drbd_port']
+        config['drbd_minor'] = self.config['drbd_minor']
+        config['sync_state'] = self.config['sync_state']
+        return config
 
     def _getBackupLogicalVolume(self):
         """Returns the storage device for the backup"""

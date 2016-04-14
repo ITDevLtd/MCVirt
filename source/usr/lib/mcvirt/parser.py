@@ -19,9 +19,12 @@ import argparse
 
 from mcvirt import MCVirt, MCVirtException
 from virtual_machine.virtual_machine import VirtualMachine, LockStates
+from virtual_machine.hard_drive.config.base import (Base as HardDriveConfigBase,
+                                                    Driver as HardDriveDriver)
 from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from virtual_machine.hard_drive.drbd import DrbdVolumeNotInSyncException
 from virtual_machine.network_adapter import NetworkAdapter
+from virtual_machine.disk_drive import DiskDrive
 from node.network import Network
 from cluster.cluster import Cluster
 from system import System
@@ -134,6 +137,11 @@ class Parser:
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
                                         type=str, choices=hard_drive_storage_types)
+        self.create_parser.add_argument('--driver', metavar='Hard Drive Driver',
+                                        dest='hard_disk_driver', type=str,
+                                        help='Driver for hard disk',
+                                        choices=list(HardDriveDriver.__members__),
+                                        default=HardDriveConfigBase.DEFAULT_DRIVER.name)
 
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
@@ -185,11 +193,20 @@ class Parser:
         self.update_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type', type=str,
                                         choices=hard_drive_storage_types)
+        self.update_parser.add_argument('--driver', metavar='Hard Drive Driver',
+                                        dest='hard_disk_driver', type=str,
+                                        help='Driver for hard disk',
+                                        choices=list(HardDriveDriver.__members__),
+                                        default=HardDriveConfigBase.DEFAULT_DRIVER.name)
         self.update_parser.add_argument('--increase-disk', dest='increase_disk',
                                         metavar='Increase Disk', type=int,
                                         help='Increases VM disk by provided amount (MB)')
         self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
                                         help='The ID of the disk to be increased by')
+        self.update_parser.add_argument('--attach-iso', '--iso', dest='iso', metavar='ISO Name',
+                                        type=str,
+                                        help=('Attach an ISO to a running VM.'
+                                              ' Specify without value to detach ISO.'))
         self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Get arguments for making permission changes to a VM
@@ -592,6 +609,7 @@ class Parser:
                     args.disk_size],
                 network_interfaces=args.networks,
                 storage_type=storage_type,
+                hard_drive_driver=args.hard_disk_driver,
                 available_nodes=args.nodes)
 
         elif (action == 'delete'):
@@ -652,10 +670,16 @@ class Parser:
                     # If DRBD is not enabled, assume the default storage type is being used
                     vm_storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
 
-                HardDriveFactory.create(vm_object, args.add_disk, storage_type)
+                HardDriveFactory.create(vm_object, size=args.add_disk, storage_type=storage_type,
+                                        driver=hard_disk_driver)
             if (args.increase_disk and args.disk_id):
                 harddrive_object = HardDriveFactory.getObject(vm_object, args.disk_id)
                 harddrive_object.increaseSize(args.increase_disk)
+
+            if args.iso:
+                iso_object = Iso(mcvirt_instance, args.iso)
+                disk_object = DiskDrive(vm_object)
+                disk_object.attachISO(iso_object, True)
 
         elif (action == 'permission'):
             if ((args.add_superuser or args.delete_superuser) and args.vm_name):

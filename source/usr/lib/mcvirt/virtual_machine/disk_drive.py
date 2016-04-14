@@ -31,7 +31,7 @@ class DiskDrive:
         """Sets member variables and obtains libvirt domain object"""
         self.vm_object = vm_object
 
-    def attachISO(self, iso_object):
+    def attachISO(self, iso_object, live=False):
         """Attaches an ISO image to the disk drive of the VM"""
 
         # Import cdrom XML template
@@ -41,8 +41,11 @@ class DiskDrive:
         cdrom_xml.find('source').set('file', iso_object.getPath())
         cdrom_xml_string = ET.tostring(cdrom_xml.getroot(), encoding='utf8', method='xml')
 
+        flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
+
         # Update the libvirt cdrom device
-        if (not self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):
+        libvirt_object = self.vm_object._getLibvirtDomainObject()
+        if (not libvirt_object.updateDeviceFlags(cdrom_xml_string, flags)):
             print 'Attached ISO %s' % iso_object.getName()
         else:
             raise MCVirtException('An error occurred whilst attaching ISO')

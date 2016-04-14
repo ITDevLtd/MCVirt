@@ -252,7 +252,7 @@ class DRBD(Base):
         )
 
     @staticmethod
-    def create(vm_object, size, disk_id=None, drbd_minor=None, drbd_port=None):
+    def create(vm_object, size, driver, disk_id=None, drbd_minor=None, drbd_port=None):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
         in the VM configuration"""
         # Ensure user has privileges to create a DRBD volume
@@ -269,6 +269,7 @@ class DRBD(Base):
         config_object = ConfigDRBD(
             vm_object=vm_object,
             disk_id=disk_id,
+            driver=driver,
             drbd_minor=drbd_minor,
             drbd_port=drbd_port)
 

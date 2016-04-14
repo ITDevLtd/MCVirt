@@ -105,3 +105,9 @@ class VirtualMachineConfig(ConfigFile):
             from mcvirt.virtual_machine.virtual_machine import LockStates
             # Add 'lock' to configuration
             config['lock'] = LockStates.UNLOCKED.value
+
+        if self._getVersion() < 2:
+            # Add the hard drive driver configuration to each of the
+            # disk configurations
+            for disk in config['hard_disks']:
+                config['hard_disks'][disk]['driver'] = 'VIRTIO'

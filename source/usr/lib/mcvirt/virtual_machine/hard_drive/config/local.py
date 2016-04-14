@@ -24,7 +24,7 @@ class Local(Base):
     MAXIMUM_DEVICES = 4
     CACHE_MODE = 'directsync'
 
-    def __init__(self, vm_object, disk_id=None, config=None, registered=False):
+    def __init__(self, vm_object, disk_id=None, driver=None, config=None, registered=False):
         """Create config has for storing variables and run the base init method"""
         self.config = {}
         super(
@@ -32,6 +32,7 @@ class Local(Base):
             self).__init__(
             vm_object=vm_object,
             disk_id=disk_id,
+            driver=driver,
             config=config,
             registered=registered)
 
@@ -49,7 +50,7 @@ class Local(Base):
     def _getMCVirtConfig(self):
         """Returns the MCVirt hard drive configuration for the Local hard drive"""
         # There are no configurations for the disk stored by MCVirt
-        return {}
+        return super(Local, self)._getMCVirtConfig()
 
     def _getBackupLogicalVolume(self):
         """Returns the storage device for the backup"""
