@@ -19,6 +19,7 @@ import unittest
 import os
 import shutil
 import xml.etree.ElementTree as ET
+import tempfile
 
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt, MCVirtException
@@ -36,6 +37,7 @@ from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
 from mcvirt.node.network import NetworkDoesNotExistException
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdStateException
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
+from mcvirt.iso import Iso
 from mcvirt.test.common import stop_and_delete
 
 
@@ -63,6 +65,7 @@ class VirtualMachineTests(unittest.TestCase):
         suite.addTest(VirtualMachineTests('test_unspecified_storage_type_local'))
         suite.addTest(VirtualMachineTests('test_invalid_network_name'))
         suite.addTest(VirtualMachineTests('test_create_alternative_driver'))
+        suite.addTest(VirtualMachineTests('test_live_iso_change'))
 
         # Add tests for DRBD
         suite.addTest(VirtualMachineTests('test_create_drbd'))
@@ -785,6 +788,58 @@ class VirtualMachineTests(unittest.TestCase):
             vm_object = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
             domain_xml_string = vm_object._getLibvirtDomainObject().XMLDesc()
             domain_config = ET.fromstring(domain_xml_string)
-            self.assertEqual(find('./devices/disk[@type="block"]/target').get('bus'),
-                             disk_driver[1])
+            self.assertEqual(
+                domain_config.find('./devices/disk[@type="block"]/target').get('bus'),
+                disk_driver[1]
+            )
             vm_object.delete(True)
+
+    def test_live_iso_change(self):
+        """Changes the ISO attached to a running VM"""
+        # Create a test VM and start
+        test_vm_object = VirtualMachine.create(
+            self.mcvirt,
+            self.test_vms['TEST_VM_1']['name'],
+            self.test_vms['TEST_VM_1']['cpu_count'],
+            self.test_vms['TEST_VM_1']['memory_allocation'],
+            self.test_vms['TEST_VM_1']['disk_size'],
+            self.test_vms['TEST_VM_1']['networks'],
+            storage_type='Local')
+        test_vm_object.start()
+
+        # Create temp file, for use as fake ISO
+        temp_file = tempfile.NamedTemporaryFile(suffix='.iso')
+        temp_iso = temp_file.name
+        temp_file.close()
+
+        fhandle = open(temp_iso, 'a')
+        try:
+            fhandle.write('test')
+            os.utime(temp_iso, None)
+        finally:
+            fhandle.close()
+
+        iso_object = Iso.addIso(self.mcvirt, temp_iso)
+        os.unlink(temp_iso)
+
+        try:
+            self.parser.parse_arguments('update %s --attach-iso %s' %
+                                        (self.test_vms['TEST_VM_1']['name'],
+                                         iso_object.getName()),
+                                        mcvirt_instance=self.mcvirt)
+
+            domain_xml_string = test_vm_object._getLibvirtDomainObject().XMLDesc()
+            domain_config = ET.fromstring(domain_xml_string)
+            self.assertEqual(
+                domain_config.find('./devices/disk[@device="cdrom"]/source').get('file'),
+                iso_object.getPath()
+            )
+        except Exception, e:
+            test_vm_object.stop()
+            test_vm_object.delete(True)
+            iso_object.delete(force=True)
+            raise e
+
+        test_vm_object.stop()
+        test_vm_object.delete(True)
+        iso_object.delete(force=True)
