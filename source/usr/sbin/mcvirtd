@@ -16,5 +16,4 @@ ns = nameserver.obtainConnection()
 
 # Create RPC Daemo and start
 daemon = RpcNSMixinDaemon(name_server=ns)
-daemon.registerFactories()
 daemon.start()

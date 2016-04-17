@@ -65,6 +65,7 @@ class RpcNSMixinDaemon(object):
         self.name_server = name_server
         self.mcvirt_instance = MCVirt()
         self.daemon = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance)
+        self.registerFactories()
 
     def start(self):
         self.daemon.requestLoop()
