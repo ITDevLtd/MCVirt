@@ -18,8 +18,8 @@
 import os
 from enum import Enum
 from texttable import Texttable
-from mcvirt_config import MCVirtConfig
-from mcvirt import MCVirtException
+from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.mcvirt import MCVirtException
 
 
 class UserNotPresentInGroup(MCVirtException):
