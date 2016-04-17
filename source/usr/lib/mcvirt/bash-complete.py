@@ -24,7 +24,7 @@ import argcomplete
 
 sys.path.insert(0, '/usr/lib')
 from mcvirt.parser import Parser
-from mcvirt.auth import Auth
+from mcvirt.auth.auth import Auth
 
 
 class NonSuperuserAuth(Auth):

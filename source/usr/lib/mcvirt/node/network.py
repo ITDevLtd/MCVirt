@@ -16,7 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from mcvirt.mcvirt import MCVirtException
-from mcvirt.auth import Auth
+from mcvirt.auth.auth import Auth
 
 from texttable import Texttable
 import xml.etree.ElementTree as ET

@@ -28,7 +28,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
-from mcvirt.auth import Auth
+from mcvirt.auth.auth import Auth
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.node.network import Network
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
@@ -541,23 +541,6 @@ class VirtualMachine(object):
                                               {'vm_name': self.getName(),
                                                'attribute_path': attribute_path, 'value': value,
                                                'reason': reason})
-
-    @staticmethod
-    def getAllVms(mcvirt_object, node=None):
-        """Returns a list of all VMs within the cluster or those registered on a specific node"""
-        from mcvirt.cluster.cluster import Cluster
-        # If no node was defined, check the local configuration for all VMs
-        if (node is None):
-            return MCVirtConfig().getConfig()['virtual_machines']
-        elif (node == Cluster.getHostname()):
-            # Obtain array of all domains from libvirt
-            all_domains = mcvirt_object.getLibvirtConnection().listAllDomains()
-            return [vm.name() for vm in all_domains]
-        else:
-            # Return list of VMs registered on remote node
-            cluster_instance = Cluster(mcvirt_object)
-            node = cluster_instance.getRemoteNode(node)
-            return node.runRemoteCommand('virtual_machine-getAllVms', {})
 
     @staticmethod
     def _checkExists(mcvirt_object, name):

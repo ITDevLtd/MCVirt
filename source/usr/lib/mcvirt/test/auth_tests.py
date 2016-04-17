@@ -20,7 +20,7 @@ import unittest
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
-from mcvirt.auth import Auth, InsufficientPermissionsException
+from mcvirt.auth.auth import Auth, InsufficientPermissionsException
 from mcvirt.test.common import stop_and_delete
 
 

@@ -1,19 +1,20 @@
 #!/usr/bin/python
 
 import sys
+import atexit
 sys.path.insert(0, '/usr/lib')
 
 from mcvirt.rpc.name_server import NameServer
-from mcvirt.rpc.rpc_daemon import RpcDaemon
-from mcvirt.mcvirt import MCVirt
+from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
 
 # Start Pyro name server
 nameserver = NameServer()
 nameserver.start()
 
-# Create MCVirt instance
-mcvirt_instance = MCVirt()
+# Wait for nameserver
+ns = nameserver.obtainConnection()
 
 # Create RPC Daemo and start
-daemon = RpcDaemon(mcvirt_instance=mcvirt_instance)
-daemon.requestLoop()
+daemon = RpcNSMixinDaemon(name_server=ns)
+daemon.registerFactories()
+daemon.start()

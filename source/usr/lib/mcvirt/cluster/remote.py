@@ -467,7 +467,7 @@ class Remote:
             except AuthenticationException:
                 raise NodeAuthenticationException('Could not authenticate to node: %s' % self.name)
             except Exception:
-                from mcvirt.auth import Auth
+                from mcvirt.auth.auth import Auth
 
                 if (Auth().checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
                     ignore_node_message = "\nThe cluster can be ignored using --ignore-failed-nodes"

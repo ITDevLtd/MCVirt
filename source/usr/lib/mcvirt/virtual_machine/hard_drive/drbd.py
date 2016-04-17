@@ -21,7 +21,7 @@ import os
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode, DRBDSocket
-from mcvirt.auth import Auth
+from mcvirt.auth.auth import Auth
 from mcvirt.system import System, MCVirtCommandException
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.mcvirt import MCVirtException

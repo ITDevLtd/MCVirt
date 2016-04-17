@@ -415,7 +415,7 @@ class Base(object):
     def createBackupSnapshot(self):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""
         self._ensureExists()
-        from mcvirt.auth import Auth
+        from mcvirt.auth.auth import Auth
         from mcvirt.virtual_machine.virtual_machine import LockStates
         # Ensure the user has permission to delete snapshot backups
         self.getConfigObject().vm_object.mcvirt_object.getAuthObject().assertPermission(
@@ -452,7 +452,7 @@ class Base(object):
     def deleteBackupSnapshot(self):
         """Deletes the backup snapshot for the disk and unlocks the VM"""
         self._ensureExists()
-        from mcvirt.auth import Auth
+        from mcvirt.auth.auth import Auth
         from mcvirt.virtual_machine.virtual_machine import LockStates
         # Ensure the user has permission to delete snapshot backups
         self.getConfigObject().vm_object.mcvirt_object.getAuthObject().assertPermission(

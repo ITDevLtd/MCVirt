@@ -142,7 +142,7 @@ class ConfigFile():
         """Commits changes to an added or modified configuration file"""
         from system import System
         from mcvirt import MCVirt
-        from auth import Auth
+        from auth.auth import Auth
         from cluster.cluster import Cluster
         if (self._checkGitRepo()):
             message += "\nUser: %s\nNode: %s" % (Auth.getLogin(), Cluster.getHostname())
@@ -165,7 +165,7 @@ class ConfigFile():
         """Removes and commits a configuration file"""
         from system import System
         from mcvirt import MCVirt
-        from auth import Auth
+        from auth.auth import Auth
         from cluster.cluster import Cluster
         if (self._checkGitRepo()):
             message += "\nUser: %s\nNode: %s" % (Auth.getLogin(), Cluster.getHostname())

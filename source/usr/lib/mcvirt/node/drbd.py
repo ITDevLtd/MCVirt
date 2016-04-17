@@ -24,7 +24,7 @@ from texttable import Texttable
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
-from mcvirt.auth import Auth
+from mcvirt.auth.auth import Auth
 
 
 class DRBDNotInstalledException(MCVirtException):

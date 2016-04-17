@@ -16,7 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os.path
-from mcvirt.auth import Auth
+from mcvirt.auth.auth import Auth
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.system import System
 from mcvirt.mcvirt_config import MCVirtConfig

@@ -30,7 +30,7 @@ from cluster.cluster import Cluster
 from system import System
 from node.drbd import DRBD as NodeDRBD
 from node.node import Node
-from auth import Auth
+from auth.auth import Auth
 from iso import Iso
 
 

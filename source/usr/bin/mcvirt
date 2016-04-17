@@ -23,7 +23,7 @@ import socket
 sys.path.insert(0, '/usr/lib')
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.parser import Parser
-from mcvirt.auth import Auth
+from mcvirt.auth.auth import Auth
 
 if __name__ == "__main__":
 
