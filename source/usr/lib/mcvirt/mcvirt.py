@@ -35,16 +35,13 @@ class MCVirt(object):
     LOCK_FILE_DIR = '/var/run/lock/mcvirt'
     LOCK_FILE = LOCK_FILE_DIR + '/lock'
 
-    def __init__(self, uri=None, initialise_nodes=True, username=None,
+    def __init__(self, uri=None, initialise_nodes=True,
                  ignore_failed_nodes=False, obtain_lock=True):
         """Checks lock file and performs initial connection to libvirt"""
         self.libvirt_uri = uri
         self.connection = None
         # Create an MCVirt config instance and force an upgrade
         MCVirtConfig(perform_upgrade=True, mcvirt_instance=self)
-
-        # Configure custom username - used for unittests
-        self.username = username
 
         # Cluster configuration
         self.initialise_nodes = initialise_nodes
@@ -145,11 +142,6 @@ class MCVirt(object):
     def initialiseNodes(self):
         """Returns the status of the MCVirt 'initialise_nodes' flag"""
         return self.initialise_nodes
-
-    def getAuthObject(self):
-        """Returns an instance of the Auth class"""
-        from auth import Auth
-        return Auth(self.username)
 
     def getAllVirtualMachineObjects(self):
         """Obtain array of all domains from libvirt"""

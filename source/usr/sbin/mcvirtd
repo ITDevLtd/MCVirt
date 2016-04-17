@@ -1,0 +1,19 @@
+#!/usr/bin/python
+
+import sys
+sys.path.insert(0, '/usr/lib')
+
+from mcvirt.rpc.name_server import NameServer
+from mcvirt.rpc.rpc_daemon import RpcDaemon
+from mcvirt.mcvirt import MCVirt
+
+# Start Pyro name server
+nameserver = NameServer()
+nameserver.start()
+
+# Create MCVirt instance
+mcvirt_instance = MCVirt()
+
+# Create RPC Daemo and start
+daemon = RpcDaemon(mcvirt_instance=mcvirt_instance)
+daemon.requestLoop()
