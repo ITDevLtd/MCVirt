@@ -13,7 +13,8 @@ class NameServer(threading.Thread):
         while 1:
             try:
                 ns = naming.locateNS(host='127.0.0.1', port=9090, broadcast=False)
-                return ns
+                ns = None
+                return
             except:
                 # Wait for 1 second for name server to come up
                 time.sleep(1)

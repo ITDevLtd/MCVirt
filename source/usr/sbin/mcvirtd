@@ -9,11 +9,12 @@ from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
 
 # Start Pyro name server
 nameserver = NameServer()
-nameserver.start()
+# Run external nameserver for now, due to connection errors.
+#nameserver.start()
 
 # Wait for nameserver
-ns = nameserver.obtainConnection()
+nameserver.obtainConnection()
 
 # Create RPC Daemo and start
-daemon = RpcNSMixinDaemon(name_server=ns)
+daemon = RpcNSMixinDaemon()
 daemon.start()

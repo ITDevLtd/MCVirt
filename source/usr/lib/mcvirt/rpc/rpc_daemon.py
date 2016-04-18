@@ -74,10 +74,9 @@ class RpcNSMixinDaemon(object):
        Pyro daemon class overrides get/setattr and other
        built-in object methods"""
 
-    def __init__(self, name_server):
+    def __init__(self):
         """Store required object member variables and create MCVirt object"""
         # Store nameserver, MCVirt instance and create daemon
-        self.name_server = name_server
         self.mcvirt_instance = MCVirt()
         self.daemon = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance)
         self.registerFactories()
@@ -89,15 +88,17 @@ class RpcNSMixinDaemon(object):
     def register(self, obj_or_class, objectId, *args, **kwargs):
         """Override register to register object with NS"""
         uri = self.daemon.register(obj_or_class, *args, **kwargs)
-        self._nameserver.register(objectId, uri)
+        ns = Pyro4.naming.locateNS(host='127.0.0.1', port=9090, broadcast=False)
+        ns.register(objectId, uri)
+        ns = None
         return uri
 
     def registerFactories(self):
         """Register base MCVirt factories with RPC daemon"""
         # Create Virtual machine factory object and register with daemon
-        self.daemon.register(Session, objectId='session', force=True)
+        self.register(Session, objectId='session', force=True)
         virtual_machine_factory = VirtualMachineFactory(self.mcvirt_instance)
-        self.daemon.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
+        self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
 
     @atexit.register
     def destroy(self):
