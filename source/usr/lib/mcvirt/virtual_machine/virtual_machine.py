@@ -22,6 +22,7 @@ import os
 import shutil
 from texttable import Texttable
 from enum import Enum
+import Pyro4
 
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -268,6 +269,7 @@ class VirtualMachine(object):
                 'VM registered elsewhere and cluster is not initialised'
             )
 
+    @Pyro4.expose()
     def getState(self):
         """Returns the power state of the VM in the form of a PowerStates enum"""
         if (self.isRegisteredLocally()):

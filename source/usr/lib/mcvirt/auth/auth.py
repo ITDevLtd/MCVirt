@@ -32,6 +32,10 @@ class InsufficientPermissionsException(MCVirtException):
     pass
 
 
+class AuthenticationError(MCVirtException):
+    """Incorrect credentials"""
+    pass
+
 class Auth:
     """Provides authentication and permissions for performing functions within MCVirt"""
 
@@ -76,6 +80,13 @@ class Auth:
     def getUsername(self):
         """Returns the username of the auth object"""
         return self.username
+
+    @staticmethod
+    def authenticate(username, password):
+        if username == 'admin' and password == 'pass':
+            return True
+        else:
+            raise AuthenticationError('Invalid username/password')
 
     @staticmethod
     def getLogin():

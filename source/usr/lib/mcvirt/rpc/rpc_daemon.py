@@ -1,5 +1,6 @@
 import atexit
 import Pyro4
+import uuid
 
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.auth.auth import Auth
@@ -59,8 +60,22 @@ class BaseRpcDaemon(Pyro4.Daemon):
         raise Pyro4.errors.SecurityError('Invalid username/password/session')
 
 
+class Session(object):
+    @Pyro4.expose()
+    def getSessionId(self):
+        if Pyro4.current_context.session_id:
+            return Pyro4.current_context.session_id
+        else:
+            raise error.DaemonError('No Session ID')
+
+
 class RpcNSMixinDaemon(object):
+    """Wrapper for the daemon. Required since the
+       Pyro daemon class overrides get/setattr and other
+       built-in object methods"""
+
     def __init__(self, name_server):
+        """Store required object member variables and create MCVirt object"""
         # Store nameserver, MCVirt instance and create daemon
         self.name_server = name_server
         self.mcvirt_instance = MCVirt()
@@ -68,6 +83,7 @@ class RpcNSMixinDaemon(object):
         self.registerFactories()
 
     def start(self):
+        """Start the Pyro daemon"""
         self.daemon.requestLoop()
 
     def register(self, obj_or_class, objectId, *args, **kwargs):
@@ -79,10 +95,12 @@ class RpcNSMixinDaemon(object):
     def registerFactories(self):
         """Register base MCVirt factories with RPC daemon"""
         # Create Virtual machine factory object and register with daemon
+        self.daemon.register(Session, objectId='session', force=True)
         virtual_machine_factory = VirtualMachineFactory(self.mcvirt_instance)
         self.daemon.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
 
     @atexit.register
     def destroy(self):
+        """Destroy the MCVirt instance on destruction of object"""
         # Create MCVirt instance
         self.mcvirt_instance = None
