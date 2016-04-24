@@ -57,7 +57,7 @@ class Parser:
         self.parent_parser = ThrowingArgumentParser(add_help=False)
 
         self.parent_parser.add_argument('--username', '-U', dest='username',
-                                        help='MCVirt username', required=True)
+                                        help='MCVirt username')
         self.parent_parser.add_argument('--password', dest='password',
                                         help='MCVirt password')
         self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
@@ -548,12 +548,13 @@ class Parser:
         if Parser.SESSION_ID and Parser.USERNAME:
             rpc = Connection(username=Parser.USERNAME, session_id=Parser.SESSION_ID)
         else:
-            # Check if password has been passed. Else, ask user for password
+            # Check if user/password have been passed. Else, ask for them.
+            username = args.username if args.username else System.getUserInput('Username: ').rstrip()
             password = args.password if args.password else System.getUserInput('Password: ',
-                                                                               password=True)
-            rpc = Connection(username=args.username, password=password)
+                                                                               password=True).rstrip()
+            rpc = Connection(username=username, password=password)
             Parser.SESSION_ID = rpc.SESSION_ID
-            Parser.USERNAME = args.username
+            Parser.USERNAME = username
 
 
         if ('ignore_failed_nodes' in args and args.ignore_failed_nodes):
@@ -638,11 +639,15 @@ class Parser:
             vm_object.delete(args.remove_data)
 
         elif (action == 'register'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
             vm_object.register()
 
         elif (action == 'unregister'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
             vm_object.unregister()
 
         elif (action == 'update'):

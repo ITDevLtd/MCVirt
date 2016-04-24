@@ -639,7 +639,7 @@ class VirtualMachineTests(unittest.TestCase):
                 mcvirt_instance=self.mcvirt)
         except DrbdStateException:
             # If the migration fails, attempt to manually register locally before failing
-            test_vm_object.register()
+            test_vm_object._register()
             raise
 
         # Ensure the VM node matches the destination node
@@ -668,7 +668,7 @@ class VirtualMachineTests(unittest.TestCase):
         test_vm_object._setNode(None)
 
         # Manually register VM on local node
-        test_vm_object.register()
+        test_vm_object._register()
 
         # Delete VM
         test_vm_object.delete(True)

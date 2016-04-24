@@ -648,7 +648,7 @@ class VirtualMachine(object):
             time.sleep(5)
 
         # Unregister the VM on the local node
-        self.unregister()
+        self._unregister()
 
         # Register on remote node
         cluster_instance = Cluster(self.mcvirt_object)
@@ -1010,7 +1010,7 @@ class VirtualMachine(object):
 
         # If the VM is a Local VM, unregister it from the local node
         if (self.getStorageType() == 'Local'):
-            self.unregister()
+            self._unregister()
 
         # If the VM is a local VM, register it on the remote node
         if (self.getStorageType() == 'Local'):
@@ -1018,8 +1018,15 @@ class VirtualMachine(object):
             remote_node.runRemoteCommand('virtual_machine-register',
                                          {'vm_name': self.getName()})
 
+    @Pyro4.expose()
+    def register(self):
+        """Public method for permforming VM register"""
+        self.mcvirt_object.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.SET_VM_NODE, self
+        )
+        self._register()
 
-    def register(self, set_node=True):
+    def _register(self, set_node=True):
         """Registers a VM with LibVirt"""
         from mcvirt.cluster.cluster import Cluster
         # Import domain XML template
@@ -1073,7 +1080,15 @@ class VirtualMachine(object):
             # Mark VM as being hosted on this machine
             self._setNode(Cluster.getHostname())
 
+    @Pyro4.expose()
     def unregister(self):
+        """Public method for permforming VM unregister"""
+        self.mcvirt_object.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.SET_VM_NODE, self
+        )
+        self._unregister()
+
+    def _unregister(self):
         """Unregisters the VM from the local node"""
         # Ensure VM is unlocked
         self.ensureUnlocked()

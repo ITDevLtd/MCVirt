@@ -223,7 +223,7 @@ class OnlineMigrateTests(unittest.TestCase):
         self.test_vm_object.stop()
 
         # Unregister VM
-        self.test_vm_object.unregister()
+        self.test_vm_object._unregister()
 
         # Attempt to migrate VM
         with self.assertRaises(VmRegisteredElsewhereException):

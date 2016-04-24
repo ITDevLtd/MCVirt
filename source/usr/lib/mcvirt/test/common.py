@@ -27,14 +27,14 @@ def stop_and_delete(mcvirt_instance, vm_name):
             vm_object._setNode(None)
 
             # Manually register VM on local node
-            vm_object.register()
+            vm_object._register()
 
             # Delete VM
             vm_object.delete(True)
         else:
             if (not vm_object.isRegisteredLocally()):
                 print 'Warning: VM not registered'
-                vm_object.register()
+                vm_object._register()
 
             if (vm_object.getLockState() is LockStates.LOCKED):
                 vm_object.setLockState(LockStates(LockStates.UNLOCKED))

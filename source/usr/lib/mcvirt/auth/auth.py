@@ -44,7 +44,7 @@ class Auth(object):
                                        'DELETE_CLONE', 'MANAGE_HOST_NETWORKS', 'MANAGE_CLUSTER',
                                        'MANAGE_DRBD', 'CAN_IGNORE_DRBD', 'MIGRATE_VM',
                                        'DUPLICATE_VM', 'SET_VM_LOCK', 'BACKUP_VM',
-                                       'CAN_IGNORE_CLUSTER', 'MOVE_VM',
+                                       'CAN_IGNORE_CLUSTER', 'MOVE_VM', 'SET_VM_NODE',
                                        'TEST_SUPERUSER_PERMISSION', 'TEST_OWNER_PERMISSION',
                                        'TEST_USER_PERMISSION'])
 

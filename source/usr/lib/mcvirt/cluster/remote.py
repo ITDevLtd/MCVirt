@@ -161,7 +161,7 @@ class Remote:
 
         elif (action == 'virtual_machine-register'):
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
-            vm_object.register(set_node=False)
+            vm_object.register()
 
         elif (action == 'virtual_machine-unregister'):
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])

@@ -161,7 +161,7 @@ class Factory(object):
             # Register VM with LibVirt. If MCVirt has not been initialised on this node,
             # do not set the node in the VM configuration, as the change can't be
             # replicated to remote nodes
-            vm_object.register(set_node=self.mcvirt_instance.initialiseNodes())
+            vm_object._register(set_node=self.mcvirt_instance.initialiseNodes())
         elif (self.mcvirt_instance.initialiseNodes()):
             # If MCVirt has been initialised on this node and the local machine is
             # not the node that the VM will be registered on, set the node on the VM
