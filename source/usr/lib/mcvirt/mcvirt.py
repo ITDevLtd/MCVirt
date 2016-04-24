@@ -38,6 +38,8 @@ class MCVirt(object):
     def __init__(self, uri=None, initialise_nodes=True,
                  ignore_failed_nodes=False, obtain_lock=True):
         """Checks lock file and performs initial connection to libvirt"""
+        from auth.auth import Auth
+        Auth.checkRootPrivileges()
         self.libvirt_uri = uri
         self.connection = None
         # Create an MCVirt config instance and force an upgrade
@@ -142,6 +144,11 @@ class MCVirt(object):
     def initialiseNodes(self):
         """Returns the status of the MCVirt 'initialise_nodes' flag"""
         return self.initialise_nodes
+
+    def getAuthObject(self):
+        """Returns an instance of the Auth class"""
+        from auth.auth import Auth
+        return Auth()
 
     def getAllVirtualMachineObjects(self):
         """Obtain array of all domains from libvirt"""

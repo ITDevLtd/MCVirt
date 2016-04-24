@@ -18,6 +18,7 @@
 import os
 from enum import Enum
 from texttable import Texttable
+
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.mcvirt import MCVirtException
 
@@ -32,12 +33,10 @@ class InsufficientPermissionsException(MCVirtException):
     pass
 
 
-class AuthenticationError(MCVirtException):
-    """Incorrect credentials"""
-    pass
-
-class Auth:
+class Auth(object):
     """Provides authentication and permissions for performing functions within MCVirt"""
+
+    USER_SESSIONS = {}
 
     PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM',
                                        'MANAGE_VM_USERS', 'VIEW_VNC_CONSOLE', 'CLONE_VM',
@@ -82,13 +81,6 @@ class Auth:
         return self.username
 
     @staticmethod
-    def authenticate(username, password):
-        if username == 'admin' and password == 'pass':
-            return True
-        else:
-            raise AuthenticationError('Invalid username/password')
-
-    @staticmethod
     def getLogin():
         """Obtains the username of the current user"""
         # Ensure that MCVirt is effectively running as root
@@ -112,10 +104,10 @@ class Auth:
     def checkRootPrivileges():
         """Ensures that the user is either running as root
         or using sudo"""
-        if (not Auth.getLogin()):
-            raise MCVirtException('MCVirt must be run using sudo')
-        else:
+        if (os.geteuid() == 0):
             return True
+        else:
+            raise MCVirtException('MCVirt must be run using sudo')
 
     def assertPermission(self, permission_enum, vm_object=None):
         """Uses checkPermission function to determine if a user has a given permission

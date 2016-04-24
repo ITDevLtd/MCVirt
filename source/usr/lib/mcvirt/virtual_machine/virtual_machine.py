@@ -35,6 +35,11 @@ from mcvirt.node.network import Network
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 
 
+class UnkownException(MCVirtException):
+    """An unkown error occurred whislt performing a LibVirt action"""
+    pass
+
+
 class MigrationFailureExcpetion(MCVirtException):
     """A Libvirt Exception occurred whilst performing a migration"""
     pass
@@ -137,7 +142,7 @@ class VirtualMachine(object):
 
         # Ensure that the connection is alive
         if (not self.mcvirt_object.getLibvirtConnection().isAlive()):
-            raise MCVirtException('Error: LibVirt connection not alive')
+            raise UnkownException('Error: LibVirt connection not alive')
 
         # Check that the domain exists
         if (not VirtualMachine._checkExists(self.mcvirt_object, self.name)):
@@ -147,6 +152,7 @@ class VirtualMachine(object):
         """Returns the configuration object for the VM"""
         return VirtualMachineConfig(self)
 
+    @Pyro4.expose()
     def getName(self):
         """Returns the name of the VM"""
         return self.name
@@ -157,6 +163,7 @@ class VirtualMachine(object):
         # Get the domain object.
         return self.mcvirt_object.getLibvirtConnection().lookupByName(self.name)
 
+    @Pyro4.expose()
     def stop(self):
         """Stops the VM"""
         # Check the user has permission to start/stop VMs
@@ -167,9 +174,12 @@ class VirtualMachine(object):
         # Determine if VM is registered on the local machine
         if self.isRegisteredLocally():
             # Determine if VM is running
-            if (self.getState() is PowerStates.RUNNING):
-                # Stop the VM
-                self._getLibvirtDomainObject().destroy()
+            if (self.getPowerState() is PowerStates.RUNNING):
+                try:
+                    # Stop the VM
+                    self._getLibvirtDomainObject().destroy()
+                except Exception, e:
+                    raise UnkownException('Failed to stop VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('The VM is already shutdown')
         elif self.mcvirt_object.initialiseNodes():
@@ -184,6 +194,7 @@ class VirtualMachine(object):
                 'VM registered elsewhere and cluster is not initialised'
             )
 
+    @Pyro4.expose()
     def start(self, iso_object=None):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
@@ -201,7 +212,7 @@ class VirtualMachine(object):
                 raise CannotStartClonedVmException('Cloned VMs cannot be started')
 
             # Determine if VM is stopped
-            if (self.getState() is PowerStates.RUNNING):
+            if (self.getPowerState() is PowerStates.RUNNING):
                 raise VmAlreadyStartedException('The VM is already running')
 
             for disk_object in self.getDiskObjects():
@@ -220,7 +231,10 @@ class VirtualMachine(object):
                 self.setBootOrder(['hd'])
 
             # Start the VM
-            self._getLibvirtDomainObject().create()
+            try:
+                self._getLibvirtDomainObject().create()
+            except Exception, e:
+                raise UnkownException('Failed to start VM: %s' % e)
 
         elif self.mcvirt_object.initialiseNodes():
             from mcvirt.cluster.cluster import Cluster
@@ -239,6 +253,7 @@ class VirtualMachine(object):
                 'VM registered elsewhere and cluster is not initialised'
             )
 
+    @Pyro4.expose()
     def reset(self):
         """Resets the VM"""
         # Check the user has permission to start/stop VMs
@@ -252,9 +267,12 @@ class VirtualMachine(object):
         # Ensure VM is registered locally
         if self.isRegisteredLocally():
             # Determine if VM is running
-            if (self.getState() is PowerStates.RUNNING):
-                # Stop the VM
-                self._getLibvirtDomainObject().reset()
+            if (self.getPowerState() is PowerStates.RUNNING):
+                try:
+                    # Reset the VM
+                    self._getLibvirtDomainObject().reset()
+                except Exception, e:
+                    raise UnkownException('Failed to reset VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('Cannot reset a stopped VM')
         elif self.mcvirt_object.initialiseNodes():
@@ -270,12 +288,16 @@ class VirtualMachine(object):
             )
 
     @Pyro4.expose()
-    def getState(self):
+    def getPowerState(self):
         """Returns the power state of the VM in the form of a PowerStates enum"""
         if (self.isRegisteredLocally()):
             if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
+                if self._pyroDaemon:
+                    return PowerStates.RUNNING.value
                 return PowerStates.RUNNING
             else:
+                if self._pyroDaemon:
+                    return PowerStates.STOPPED.value
                 return PowerStates.STOPPED
 
         elif (self.isRegisteredRemotely() and
@@ -283,7 +305,7 @@ class VirtualMachine(object):
             from mcvirt.cluster.cluster import Cluster
             cluster_object = Cluster(self.mcvirt_object)
             remote = cluster_object.getRemoteNode(self.getNode())
-            return PowerStates(remote.runRemoteCommand('virtual_machine-getState',
+            return PowerStates(remote.runRemoteCommand('virtual_machine-getPowerState',
                                                        {'vm_name': self.getName()}))
         else:
             return PowerStates.UNKNOWN
@@ -310,7 +332,7 @@ class VirtualMachine(object):
         table.add_row(('Name', self.getName()))
         table.add_row(('CPU Cores', self.getCPU()))
         table.add_row(('Memory Allocation', str(int(self.getRAM()) / 1024) + 'MB'))
-        table.add_row(('State', self.getState().name))
+        table.add_row(('State', self.getPowerState().name))
         table.add_row(('Node', self.getNode()))
         table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
 
@@ -545,9 +567,11 @@ class VirtualMachine(object):
                                                'reason': reason})
 
     @staticmethod
-    def _checkExists(mcvirt_object, name):
+    def _checkExists(mcvirt_instance, name):
         """Check if a domain exists"""
-        return (name in VirtualMachine.getAllVms(mcvirt_object))
+        from factory import Factory
+        factory = Factory(mcvirt_instance)
+        return (name in factory.getAllVmNames())
 
     @staticmethod
     def getVMDir(name):
@@ -609,7 +633,7 @@ class VirtualMachine(object):
         self._preMigrationChecks(destination_node_name)
 
         # Check if VM is running
-        while (self.getState() is PowerStates.RUNNING):
+        while (self.getPowerState() is PowerStates.RUNNING):
             # Unless the user has specified to wait for the VM to shutdown, throw an exception
             # if the VM is running
             if (not wait_for_vm_shutdown):
@@ -643,6 +667,8 @@ class VirtualMachine(object):
     def onlineMigrate(self, destination_node_name):
         """Performs an online migration of a VM to another node in the cluster"""
         from mcvirt.cluster.cluster import Cluster
+        from factory import Factory
+        factory = Factory(self.mcvirt_object)
 
         # Ensure user has permission to migrate VM
         self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MIGRATE_VM, self)
@@ -717,8 +743,7 @@ class VirtualMachine(object):
             import time
             time.sleep(10)
 
-            if (self.getName() in VirtualMachine.getAllVms(self.mcvirt_object,
-                                                           node=Cluster.getHostname())):
+            if (self.getName() in factory.getAllVms(node=Cluster.getHostname())):
                 # VM is registered on the local node.
                 vm_registration_found = True
 
@@ -733,8 +758,7 @@ class VirtualMachine(object):
                 # Re-register VM as being registered on the local node
                 self._setNode(Cluster.getHostname())
 
-            if (self.getName() in VirtualMachine.getAllVms(self.mcvirt_object,
-                                                           node=destination_node_name)):
+            if (self.getName() in factory.getAllVms(node=destination_node_name)):
                 # Otherwise, if VM is registered on remote node, set the
                 # local DRBD state to secondary
                 vm_registration_found = True
@@ -758,25 +782,23 @@ class VirtualMachine(object):
 
         # Perform post migration checks
         # Ensure VM is no longer registered with libvirt on the local node
-        if (self.getName() in VirtualMachine.getAllVms(self.mcvirt_object,
-                                                       node=Cluster.getHostname())):
+        if (self.getName() in factory.getAllVms(node=Cluster.getHostname())):
             raise VmAlreadyRegisteredException(
                 'The VM is unexpectedly registered with libvirt on the local node: %s' %
                 self.getName()
             )
 
         # Ensure VM is registered on the remote libvirt instance
-        if (self.getName() not in VirtualMachine.getAllVms(self.mcvirt_object,
-                                                           node=destination_node_name)):
+        if (self.getName() not in factory.getAllVms(node=destination_node_name)):
             raise VmNotRegistered(
                 'The VM is unexpectedly not registered with libvirt on the destination node: %s' %
                 destination_node_name
             )
 
         # Ensure VM is running on the remote node
-        if (self.getState() is not PowerStates.RUNNING):
+        if (self.getPowerState() is not PowerStates.RUNNING):
             raise VmStoppedException('VM is in unexpected %s power state after migration' %
-                                     self.getState())
+                                     self.getPowerState())
 
     def _preMigrationChecks(self, destination_node_name):
         """Performs checks on the state of the VM to determine if is it suitable to
@@ -816,7 +838,7 @@ class VirtualMachine(object):
         disk_drive_object.preOnlineMigrationChecks(destination_node_name)
 
         # Ensure VM is powered on
-        if (self.getState() is not PowerStates.RUNNING):
+        if (self.getPowerState() is not PowerStates.RUNNING):
             raise VmStoppedException(
                 'An online migration can only be performed on a running VM: %s' %
                 self.getName()
@@ -947,7 +969,7 @@ class VirtualMachine(object):
 
             # If migrating a local VM, since the only instance of the storage will be moved,
             # ensure that the VM is stopped
-            if (self.getState is not PowerStates.STOPPED):
+            if (self.getPowerState is not PowerStates.STOPPED):
                 raise VmRunningException('VM must be stopped before performing a move')
 
         # Perform checks on source and remote nodes
@@ -1268,7 +1290,7 @@ class VirtualMachine(object):
             Auth.PERMISSIONS.VIEW_VNC_CONSOLE,
             self)
 
-        if (self.getState() is not PowerStates.RUNNING):
+        if (self.getPowerState() is not PowerStates.RUNNING):
             raise MCVirtException('The VM is not running')
         domain_xml = ET.fromstring(
             self._getLibvirtDomainObject().XMLDesc(

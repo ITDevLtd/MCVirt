@@ -1,3 +1,20 @@
+# Copyright (c) 2016 - I.T. Dev Ltd
+#
+# This file is part of MCVirt.
+#
+# MCVirt is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# MCVirt is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
+
 import atexit
 import Pyro4
 import uuid
@@ -5,6 +22,7 @@ import uuid
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.auth.auth import Auth
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
+from mcvirt.auth.session import Session
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -20,9 +38,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
         # Store MCVirt instance
         self.mcvirt_instance = mcvirt_instance
-        self.user_sessions = {}
+        atexit.register(self.destroy)
 
-    @atexit.register
     def destroy(self):
         # Create MCVirt instance
         self.mcvirt_instance = None
@@ -41,18 +58,15 @@ class BaseRpcDaemon(Pyro4.Daemon):
         if 'PASS' in data:
             # Store the password and perform authentication check
             password = str(data['PASS'])
-            if (Auth.authenticate(username=username, password=password)):
-                # Generate a session ID, store and return to clinet
-                session_id = uuid.uuid4().hex
-                self.user_sessions[session_id] = {'username': username}
+            session_id = Session.authenticateUser(username=username, password=password)
+            if session_id:
                 Pyro4.current_context.session_id = session_id
                 return session_id
 
         # If a session id has been passed, store it and check the session_id/username against active sessions
         elif 'SEID' in data:
             session_id = str(data['SEID'])
-            if (session_id in self.user_sessions and
-                    self.user_sessions[session_id]['username'] == username):
+            if Session.authenticateSession(username=username, session=session_id):
                 Pyro4.current_context.session_id = session_id
                 return session_id
 
@@ -60,7 +74,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         raise Pyro4.errors.SecurityError('Invalid username/password/session')
 
 
-class Session(object):
+class DaemonSession(object):
     @Pyro4.expose()
     def getSessionId(self):
         if Pyro4.current_context.session_id:
@@ -78,6 +92,7 @@ class RpcNSMixinDaemon(object):
         """Store required object member variables and create MCVirt object"""
         # Store nameserver, MCVirt instance and create daemon
         self.mcvirt_instance = MCVirt()
+        atexit.register(self.destroy)
         self.daemon = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance)
         self.registerFactories()
 
@@ -96,11 +111,10 @@ class RpcNSMixinDaemon(object):
     def registerFactories(self):
         """Register base MCVirt factories with RPC daemon"""
         # Create Virtual machine factory object and register with daemon
-        self.register(Session, objectId='session', force=True)
+        self.register(DaemonSession, objectId='session', force=True)
         virtual_machine_factory = VirtualMachineFactory(self.mcvirt_instance)
         self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
 
-    @atexit.register
     def destroy(self):
         """Destroy the MCVirt instance on destruction of object"""
         # Create MCVirt instance
