@@ -17,8 +17,7 @@
 
 import os
 from binascii import hexlify
-from PBKDF2 import PBKDF2
-from Crypto.Cipher import AES
+from pbkdf2 import crypt
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.mcvirt import MCVirtException
@@ -61,7 +60,7 @@ class User(object):
     @staticmethod
     def _generateSalt():
         """Generates random salt for the user's password"""
-        return hexlify(os.urandom(8))
+        return hexlify(os.urandom(32))
 
     @staticmethod
     def create(username, password):
@@ -133,7 +132,7 @@ class User(object):
     @staticmethod
     def _hashString(string, salt):
         """Hash string using salt"""
-        return PBKDF2(string, salt).read(32)
+        return crypt(string, salt, iterations=1000)
 
     def delete(self):
         """Deletes current user from MCVirt config"""
