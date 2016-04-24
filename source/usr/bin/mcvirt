@@ -17,7 +17,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import sys
-import argparse
 import socket
 
 sys.path.insert(0, '/usr/lib')

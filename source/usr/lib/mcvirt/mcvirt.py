@@ -169,7 +169,7 @@ class MCVirt(object):
         for vm_object in self.getAllVirtualMachineObjects():
             table.add_row((vm_object.getName(), vm_object.getState().name,
                            vm_object.getNode() or 'Unregistered'))
-        print table.draw()
+        return table.draw()
 
     def printInfo(self):
         """Prints information about the nodes in the cluster"""

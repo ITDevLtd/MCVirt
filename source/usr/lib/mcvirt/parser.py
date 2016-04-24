@@ -31,6 +31,7 @@ from system import System
 from node.drbd import DRBD as NodeDRBD
 from node.node import Node
 from auth.auth import Auth
+from client.rpc import Connection
 from iso import Iso
 
 
@@ -47,24 +48,26 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 class Parser:
     """Provides an argument parser for MCVirt"""
 
+    SESSION_ID = None
+    USERNAME = None
+
     def __init__(self, print_status=True, auth_object=None):
         """Configures the argument parser object"""
         self.print_status = print_status
         self.parent_parser = ThrowingArgumentParser(add_help=False)
 
-        if not auth_object:
-            auth_object = Auth()
-
-        if (auth_object.checkPermission(Auth.PERMISSIONS.CAN_IGNORE_CLUSTER)):
-            self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
-                                            help='Ignores nodes that are inaccessible',
-                                            action='store_true')
-            self.parent_parser.add_argument('--accept-failed-nodes-warning',
-                                            dest='accept_failed_nodes_warning',
-                                            help=argparse.SUPPRESS, action='store_true')
-        if (auth_object.checkPermission(Auth.PERMISSIONS.CAN_IGNORE_DRBD)):
-            self.parent_parser.add_argument('--ignore-drbd', dest='ignore_drbd',
-                                            help='Ignores DRBD state', action='store_true')
+        self.parent_parser.add_argument('--username', '-U', dest='username',
+                                        help='MCVirt username', required=True)
+        self.parent_parser.add_argument('--password', dest='password',
+                                        help='MCVirt password')
+        self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
+                                        help='Ignores nodes that are inaccessible',
+                                        action='store_true')
+        self.parent_parser.add_argument('--accept-failed-nodes-warning',
+                                        dest='accept_failed_nodes_warning',
+                                        help=argparse.SUPPRESS, action='store_true')
+        self.parent_parser.add_argument('--ignore-drbd', dest='ignore_drbd',
+                                        help='Ignores DRBD state', action='store_true')
 
         argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n\n" + \
                                 'Manage the MCVirt host'
@@ -463,21 +466,20 @@ class Parser:
         self.verify_mutual_exclusive_group.add_argument('vm_name', metavar='VM Name', nargs='?',
                                                         help='Specify a single VM to verify')
 
-        if (auth_object.checkPermission(Auth.PERMISSIONS.MANAGE_DRBD)):
-            # Create subparser for drbd-related commands
-            self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering',
-                                                          parents=[self.parent_parser])
-            self.drbd_mutually_exclusive_group = self.drbd_parser.add_mutually_exclusive_group(
-                required=True
-            )
-            self.drbd_mutually_exclusive_group.add_argument(
-                '--enable', dest='enable', action='store_true',
-                help='Enable DRBD support on the cluster'
-            )
-            self.drbd_mutually_exclusive_group.add_argument(
-                '--list', dest='list', action='store_true',
-                help='List DRBD volumes on the system'
-            )
+        # Create subparser for drbd-related commands
+        self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering',
+                                                      parents=[self.parent_parser])
+        self.drbd_mutually_exclusive_group = self.drbd_parser.add_mutually_exclusive_group(
+            required=True
+        )
+        self.drbd_mutually_exclusive_group.add_argument(
+            '--enable', dest='enable', action='store_true',
+            help='Enable DRBD support on the cluster'
+        )
+        self.drbd_mutually_exclusive_group.add_argument(
+            '--list', dest='list', action='store_true',
+            help='List DRBD volumes on the system'
+        )
 
         # Create subparser for backup commands
         self.backup_parser = self.subparsers.add_parser('backup',
@@ -542,6 +544,18 @@ class Parser:
         args = self.parser.parse_args(script_args)
         action = args.action
 
+        # Obtain connection to Pyro server
+        if Parser.SESSION_ID and Parser.USERNAME:
+            rpc = Connection(username=Parser.USERNAME, session_id=Parser.SESSION_ID)
+        else:
+            # Check if password has been passed. Else, ask user for password
+            password = args.password if args.password else System.getUserInput('Password: ',
+                                                                               password=True)
+            rpc = Connection(username=args.username, password=password)
+            Parser.SESSION_ID = rpc.SESSION_ID
+            Parser.USERNAME = args.username
+
+
         if ('ignore_failed_nodes' in args and args.ignore_failed_nodes):
             # If the user has specified to ignore the cluster,
             # print a warning and confirm the user's answer
@@ -558,11 +572,11 @@ class Parser:
             ignore_failed_nodes = False
 
         # Get an instance of MCVirt
-        if (mcvirt_instance is None):
-            # Add corner-case to allow host info command to not start
-            # the MCVirt object, so that it can view the status of nodes in the cluster
-            if not (action == 'info' and args.vm_name is None):
-                mcvirt_instance = MCVirt(ignore_failed_nodes=ignore_failed_nodes)
+        # if (mcvirt_instance is None):
+        #     # Add corner-case to allow host info command to not start
+        #     # the MCVirt object, so that it can view the status of nodes in the cluster
+        #     if not (action == 'info' and args.vm_name is None):
+        #         mcvirt_instance = MCVirt(ignore_failed_nodes=ignore_failed_nodes)
 
         # If the user has specified to ignore DRBD, set the global parameter
         if ('ignore_drbd' in args and args.ignore_drbd):
@@ -570,13 +584,15 @@ class Parser:
 
         # Perform functions on the VM based on the action passed to the script
         if (action == 'start'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
 
-            if (args.iso):
-                iso_object = Iso(mcvirt_instance, args.iso)
-            else:
-                iso_object = None
-            vm_object.start(iso_object)
+            # if (args.iso):
+            #     iso_object = Iso(mcvirt_instance, args.iso)
+            # else:
+            #     iso_object = None
+            vm_object.start()
             self.printStatus('Successfully started VM')
 
         elif (action == 'stop'):
