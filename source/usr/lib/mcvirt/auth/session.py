@@ -29,15 +29,19 @@ class AuthenticationError(MCVirtException):
 
 
 class CurrentUserError(MCVirtException):
+    """Error whilst obtaining current pyro user"""
     pass
 
 
 class Session(object):
+    """Handle daemon user sessions"""
 
     USER_SESSIONS = {}
 
     @staticmethod
     def authenticateUser(username, password):
+        """Authenticate using username/password and store
+          session"""
         user_object = User.authenticate(username, password)
         if user_object:
             # Generate Session ID
@@ -53,10 +57,12 @@ class Session(object):
 
     @staticmethod
     def _generateSessionId():
+        """Generate random session ID"""
         return hexlify(os.urandom(8))
 
     @staticmethod
     def authenticateSession(username, session):
+        """Authenticate user session"""
         if session in Session.USER_SESSIONS and Session.USER_SESSIONS[session] == username:
             return User(username)
 
@@ -64,6 +70,7 @@ class Session(object):
 
     @staticmethod
     def getCurrentUser():
+        """Returns the current user object, based on pyro session"""
         if Pyro4.current_context.session_id:
             session_id = Pyro4.current_context.session_id
             username = Session.USER_SESSIONS[session_id]
