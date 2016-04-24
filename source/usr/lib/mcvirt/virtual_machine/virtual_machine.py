@@ -288,15 +288,15 @@ class VirtualMachine(object):
             )
 
     @Pyro4.expose()
-    def getPowerState(self):
+    def getPowerState(self, enum=False):
         """Returns the power state of the VM in the form of a PowerStates enum"""
         if (self.isRegisteredLocally()):
             if (self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING):
-                if self._pyroDaemon:
+                if self._pyroDaemon and not enum:
                     return PowerStates.RUNNING.value
                 return PowerStates.RUNNING
             else:
-                if self._pyroDaemon:
+                if self._pyroDaemon and not enum:
                     return PowerStates.STOPPED.value
                 return PowerStates.STOPPED
 

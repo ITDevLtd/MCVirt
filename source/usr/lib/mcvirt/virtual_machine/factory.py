@@ -1,4 +1,5 @@
 import Pyro4
+from texttable import Texttable
 
 from virtual_machine import VirtualMachine
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -39,3 +40,15 @@ class Factory(object):
             cluster_instance = Cluster(self.mcvirt_instance)
             node = cluster_instance.getRemoteNode(node)
             return node.runRemoteCommand('virtual_machine-getAllVms', {})
+
+    @Pyro4.expose()
+    def listVms(self):
+        """Lists the VMs that are currently on the host"""
+        table = Texttable()
+        table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        table.header(('VM Name', 'State', 'Node'))
+
+        for vm_object in self.getAllVirtualMachines():
+            table.add_row((vm_object.getName(), vm_object.getPowerState(enum=True).name,
+                           vm_object.getNode() or 'Unregistered'))
+        return table.draw()

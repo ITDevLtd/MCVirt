@@ -596,12 +596,16 @@ class Parser:
             self.printStatus('Successfully started VM')
 
         elif (action == 'stop'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
             vm_object.stop()
             self.printStatus('Successfully stopped VM')
 
         elif (action == 'reset'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
             vm_object.reset()
             self.printStatus('Successfully reset VM')
 
@@ -883,7 +887,8 @@ class Parser:
             vm_object.duplicate(mcvirt_instance, args.vm_name)
 
         elif (action == 'list'):
-            mcvirt_instance.listVms()
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            self.printStatus(vm_factory.listVms())
 
         elif (action == 'iso'):
             if (args.list):

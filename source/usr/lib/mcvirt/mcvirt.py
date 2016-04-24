@@ -20,6 +20,7 @@ import os
 from lockfile import FileLock
 from texttable import Texttable
 import socket
+from Pyro4 import util
 
 from mcvirt_config import MCVirtConfig
 
@@ -159,17 +160,6 @@ class MCVirt(object):
             vm_objects.append(VirtualMachine(self, vm_name))
 
         return vm_objects
-
-    def listVms(self):
-        """Lists the VMs that are currently on the host"""
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('VM Name', 'State', 'Node'))
-
-        for vm_object in self.getAllVirtualMachineObjects():
-            table.add_row((vm_object.getName(), vm_object.getState().name,
-                           vm_object.getNode() or 'Unregistered'))
-        return table.draw()
 
     def printInfo(self):
         """Prints information about the nodes in the cluster"""
