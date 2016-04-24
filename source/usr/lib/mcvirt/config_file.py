@@ -142,10 +142,10 @@ class ConfigFile():
         """Commits changes to an added or modified configuration file"""
         from system import System
         from mcvirt import MCVirt
-        from auth.auth import Auth
+        from auth.session import Session
         from cluster.cluster import Cluster
         if (self._checkGitRepo()):
-            message += "\nUser: %s\nNode: %s" % (Auth.getLogin(), Cluster.getHostname())
+            message += "\nUser: %s\nNode: %s" % (Session.getCurrentUserObject().getUsername(), Cluster.getHostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file], cwd=MCVirt.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT,
@@ -165,10 +165,10 @@ class ConfigFile():
         """Removes and commits a configuration file"""
         from system import System
         from mcvirt import MCVirt
-        from auth.auth import Auth
+        from auth.session import Session
         from cluster.cluster import Cluster
         if (self._checkGitRepo()):
-            message += "\nUser: %s\nNode: %s" % (Auth.getLogin(), Cluster.getHostname())
+            message += "\nUser: %s\nNode: %s" % (Session.getCurrentUserObject().getUsername(), Cluster.getHostname())
             try:
                 System.runCommand([self.GIT,
                                    'rm',

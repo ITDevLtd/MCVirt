@@ -69,7 +69,7 @@ class Session(object):
         raise AuthenticationError('Invalid session ID')
 
     @staticmethod
-    def getCurrentUser():
+    def getCurrentUserObject():
         """Returns the current user object, based on pyro session"""
         if Pyro4.current_context.session_id:
             session_id = Pyro4.current_context.session_id
