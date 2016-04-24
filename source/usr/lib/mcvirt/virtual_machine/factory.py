@@ -1,9 +1,20 @@
 import Pyro4
 from texttable import Texttable
+import re
+from os.path import exists as os_path_exists
+from os import makedirs
 
-from virtual_machine import VirtualMachine
+from virtual_machine import VirtualMachine, InvalidVirtualMachineNameException, VmAlreadyExistsException
+from virtual_machine_config import VirtualMachineConfig
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.cluster.cluster import Cluster
+from mcvirt.cluster.cluster import (Cluster, ClusterNotInitialisedException,
+                                    NodeDoesNotExistException)
+from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
+from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
+from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+from mcvirt.auth.auth import Auth
+from mcvirt.node.network import Network
+from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 
 class Factory(object):
     """Class for obtaining virtual machine objects"""
@@ -52,3 +63,131 @@ class Factory(object):
             table.add_row((vm_object.getName(), vm_object.getPowerState(enum=True).name,
                            vm_object.getNode() or 'Unregistered'))
         return table.draw()
+
+    @Pyro4.expose()
+    def create(self, name, cpu_cores, memory_allocation, hard_drives=[],
+               network_interfaces=[], node=None, available_nodes=[], storage_type=None,
+               auth_check=True, hard_drive_driver=None):
+        """Creates a VM and returns the virtual_machine object for it"""
+
+        if (auth_check):
+            self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CREATE_VM)
+
+        # Validate the VM name
+        valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
+        if (bool(valid_name_re(name))):
+            raise InvalidVirtualMachineNameException(
+                'Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes'
+            )
+
+        # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
+        # in this state
+        if (self.mcvirt_instance.ignore_failed_nodes):
+            raise ClusterNotInitialisedException('VM cannot be created whilst the cluster' +
+                                                 ' is not initialised')
+
+        # Determine if VM already exists
+        if (VirtualMachine._checkExists(self.mcvirt_instance, name)):
+            raise VmAlreadyExistsException('Error: VM already exists')
+
+        # If a node has not been specified, assume the local node
+        if (node is None):
+            node = Cluster.getHostname()
+
+        # If DRBD has been chosen as a storage type, ensure it is enabled on the node
+        if (storage_type == 'DRBD' and not NodeDRBD.isEnabled()):
+            raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
+
+        # Create directory for VM on the local and remote nodes
+        if (os_path_exists(VirtualMachine.getVMDir(name))):
+            raise VmDirectoryAlreadyExistsException('Error: VM directory already exists')
+
+        # If available nodes has not been passed, assume the local machine is the only
+        # available node if local storage is being used. Use the machines in the cluster
+        # if DRBD is being used
+        cluster_object = Cluster(self.mcvirt_instance)
+        all_nodes = cluster_object.getNodes()
+        all_nodes.append(Cluster.getHostname())
+        if (len(available_nodes) == 0):
+            if (storage_type == 'DRBD' and self.mcvirt_instance.initialiseNodes()):
+                # If the available nodes are not specified, use the
+                # nodes in the cluster
+                available_nodes = all_nodes
+            else:
+                # For local VMs, only use the local node as the available nodes
+                available_nodes = [Cluster.getHostname()]
+
+        # If there are more than the maximum number of DRBD machines in the cluster,
+        # add an option that forces the user to specify the nodes for the DRBD VM
+        # to be added to
+        if (storage_type == 'DRBD' and len(available_nodes) != NodeDRBD.CLUSTER_SIZE):
+            raise MCVirtException('Exactly two nodes must be specified')
+
+        for check_node in available_nodes:
+            if (check_node not in all_nodes):
+                raise NodeDoesNotExistException('Node \'%s\' does not exist' % check_node)
+
+        if (Cluster.getHostname() not in available_nodes and self.mcvirt_instance.initialiseNodes()):
+            raise MCVirtException('One of the nodes must be the local node')
+
+        # Create directory for VM
+        makedirs(VirtualMachine.getVMDir(name))
+
+        # Add VM to MCVirt configuration
+        def updateMCVirtConfig(config):
+            config['virtual_machines'].append(name)
+        MCVirtConfig().updateConfig(
+            updateMCVirtConfig,
+            'Adding new VM \'%s\' to global MCVirt configuration' %
+            name)
+
+        # Create VM configuration file
+        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation)
+
+        # Add VM to remote nodes
+        if (self.mcvirt_instance.initialiseNodes()):
+            cluster_object.runRemoteCommand('virtual_machine-create',
+                                            {'vm_name': name,
+                                             'memory_allocation': memory_allocation,
+                                             'cpu_cores': cpu_cores,
+                                             'node': node,
+                                             'available_nodes': available_nodes})
+
+        # Obtain an object for the new VM, to use to create disks/network interfaces
+        vm_object = self.getVirtualMachineByName(name)
+        vm_object.getConfigObject().gitAdd('Created VM \'%s\'' % vm_object.getName())
+
+        if (node == Cluster.getHostname()):
+            # Register VM with LibVirt. If MCVirt has not been initialised on this node,
+            # do not set the node in the VM configuration, as the change can't be
+            # replicated to remote nodes
+            vm_object.register(set_node=self.mcvirt_instance.initialiseNodes())
+        elif (self.mcvirt_instance.initialiseNodes()):
+            # If MCVirt has been initialised on this node and the local machine is
+            # not the node that the VM will be registered on, set the node on the VM
+            vm_object._setNode(node)
+
+        # If a storage type has not been specified, assume the default
+        if (storage_type is None):
+            storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
+
+        if (hard_drive_driver is None):
+            hard_drive_driver = HardDriveConfigBase.DEFAULT_DRIVER.name
+
+        if (self.mcvirt_instance.initialiseNodes()):
+            # Create disk images
+            for hard_drive_size in hard_drives:
+                HardDriveFactory.create(
+                    vm_object=vm_object,
+                    size=hard_drive_size,
+                    storage_type=storage_type,
+                    driver=hard_drive_driver)
+
+            # If any have been specified, add a network configuration for each of the
+            # network interfaces to the domain XML
+            if (network_interfaces is not None):
+                for network in network_interfaces:
+                    network_object = Network(self.mcvirt_instance, network)
+                    NetworkAdapter.create(vm_object, network_object)
+
+        return vm_object

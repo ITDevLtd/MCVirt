@@ -620,20 +620,21 @@ class Parser:
 
             # Convert memory allocation from MiB to KiB
             memory_allocation = int(args.memory) * 1024
-            VirtualMachine.create(
-                mcvirt_instance=mcvirt_instance,
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.create(
                 name=args.vm_name,
                 cpu_cores=args.cpu_count,
                 memory_allocation=memory_allocation,
-                hard_drives=[
-                    args.disk_size],
+                hard_drives=[args.disk_size],
                 network_interfaces=args.networks,
                 storage_type=storage_type,
                 hard_drive_driver=args.hard_disk_driver,
                 available_nodes=args.nodes)
 
         elif (action == 'delete'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
             vm_object.delete(args.remove_data)
 
         elif (action == 'register'):
