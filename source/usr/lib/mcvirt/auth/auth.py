@@ -69,10 +69,6 @@ class Auth(object):
             ]
         }
 
-    def __init__(self, username=None):
-        """Sets member variables"""
-        Auth.checkRootPrivileges()
-
     @staticmethod
     def checkRootPrivileges():
         """Ensures that the user is either running as root
@@ -96,7 +92,7 @@ class Auth(object):
 
     def checkPermission(self, permission_enum, vm_object=None):
         """Checks if the user has a given permission, either globally through MCVirt or for a
-        given VM"""
+           given VM"""
         # If the user is a superuser, all permissions are attached to the user
         if (self.isSuperuser()):
             return True
