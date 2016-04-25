@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import os
 
 from mcvirt.mcvirt import MCVirtException, MCVirt
-from mcvirt.iso import Iso, IsoNotPresentOnDestinationNodeException
+from mcvirt.iso.iso import Iso, IsoNotPresentOnDestinationNodeException
 from mcvirt.cluster.cluster import Cluster
 
 

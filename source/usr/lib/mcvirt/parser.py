@@ -32,7 +32,7 @@ from node.drbd import DRBD as NodeDRBD
 from node.node import Node
 from auth.auth import Auth
 from client.rpc import Connection
-from iso import Iso
+from iso.iso import Iso
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -589,11 +589,13 @@ class Parser:
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
 
-            # if (args.iso):
-            #     iso_object = Iso(mcvirt_instance, args.iso)
-            # else:
-            #     iso_object = None
-            vm_object.start()
+            if (args.iso):
+                iso_factory = rpc.getConnection('iso_factory')
+                iso_object = iso_factory.getIsoByName(args.iso)
+                rpc.annotateObject(iso_object)
+            else:
+                iso_object = None
+            vm_object.start(iso_object=iso_object)
             self.printStatus('Successfully started VM')
 
         elif (action == 'stop'):

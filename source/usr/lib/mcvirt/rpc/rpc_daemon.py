@@ -22,6 +22,7 @@ import uuid
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.auth.auth import Auth
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
+from mcvirt.iso.factory import Factory as IsoFactory
 from mcvirt.auth.session import Session
 
 
@@ -114,6 +115,8 @@ class RpcNSMixinDaemon(object):
         self.register(DaemonSession, objectId='session', force=True)
         virtual_machine_factory = VirtualMachineFactory(self.mcvirt_instance)
         self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
+        iso_factory = IsoFactory(self.mcvirt_instance)
+        self.register(iso_factory, objectId='iso_factory', force=True)
 
     def destroy(self):
         """Destroy the MCVirt instance on destruction of object"""

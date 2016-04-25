@@ -18,8 +18,8 @@
 import os
 import stat
 
-from mcvirt import MCVirtException
-from system import System
+from mcvirt.mcvirt import MCVirtException
+from mcvirt.system import System
 
 
 class IsoNotPresentOnDestinationNodeException(MCVirtException):
@@ -76,63 +76,6 @@ class Iso:
         return self.mcvirt_instance.ISO_STORAGE_DIR + '/' + self.getName()
 
     @staticmethod
-    def addFromUrl(mcvirt_instance, url, name=None):
-        """Download an ISO from given URL and save in ISO directory"""
-        import urllib2
-        import urlparse
-        import tempfile
-
-        # Work out name from URL if name is not supplied
-        if (name is None):
-            # Parse URL to get path part
-            url_parse = urlparse.urlparse(url)
-            name = Iso.getFilenameFromPath(url_parse.path)
-
-        # Get temporary directory to store ISO
-        temp_directory = tempfile.mkdtemp()
-        output_path = temp_directory + '/' + name
-
-        # Open file
-        iso = urllib2.urlopen(url)
-
-        # Read file in 16KB chunks
-        chunk_size = 16 * 1024
-
-        # Save ISO
-        with open(output_path, 'wb') as file:
-            while True:
-                chunk = iso.read(chunk_size)
-                if not chunk:
-                    break
-                file.write(chunk)
-        iso.close()
-
-        iso_object = Iso.addIso(mcvirt_instance, output_path)
-
-        os.remove(output_path)
-        os.rmdir(temp_directory)
-
-        return iso_object
-
-    @staticmethod
-    def addIso(mcvirt_instance, path):
-        """Copy an ISO to ISOs directory"""
-        import shutil
-
-        # Check that file exists
-        if (not os.path.isfile(path)):
-            raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
-
-        filename = Iso.getFilenameFromPath(path)
-        Iso.overwriteCheck(mcvirt_instance, filename,
-                           mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)
-
-        shutil.copy(path, mcvirt_instance.ISO_STORAGE_DIR)
-        full_path = mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
-
-        return Iso(mcvirt_instance, filename)
-
-    @staticmethod
     def getFilenameFromPath(path, append_iso=True):
         """Return filename part of path"""
         filename = path.split('/')[-1]
@@ -171,27 +114,6 @@ class Iso:
                     IsoInUseException('The original ISO is attached to a VM, so cannot be replaced')
 
         return True
-
-    @staticmethod
-    def getIsos(mcvirt_instance):
-        """Returns a list of a ISOs"""
-        # Get files in ISO directory
-        file_list = os.listdir(mcvirt_instance.ISO_STORAGE_DIR)
-        iso_list = []
-
-        for iso_name in file_list:
-            if (os.path.isfile(mcvirt_instance.ISO_STORAGE_DIR + '/' + iso_name)):
-                iso_list.append(iso_name)
-        return iso_list
-
-    @staticmethod
-    def getIsoList(mcvirt_instance):
-        """Return a user-readable list of ISOs"""
-        iso_list = Iso.getIsos(mcvirt_instance)
-        if (len(iso_list) == 0):
-            return 'No ISOs found'
-        else:
-            return "\n".join(iso_list)
 
     def delete(self, force=False):
         """Delete an ISO"""

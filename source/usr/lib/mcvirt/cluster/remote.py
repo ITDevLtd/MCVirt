@@ -169,7 +169,7 @@ class Remote:
 
         elif (action == 'virtual_machine-start'):
             if ('iso' in arguments):
-                from mcvirt.iso import Iso
+                from mcvirt.iso.iso import Iso
                 iso_object = Iso(mcvirt_instance, arguments['iso'])
             else:
                 iso_object = None
@@ -369,7 +369,7 @@ class Remote:
             hard_drive_object.setSyncState(arguments['sync_state'])
 
         elif (action == 'iso-getIsos'):
-            from mcvirt.iso import Iso
+            from mcvirt.iso.iso import Iso
             return_data = Iso.getIsos(mcvirt_instance)
 
         elif (action == 'mcvirt-obtainLock'):
