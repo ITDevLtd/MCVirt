@@ -3,6 +3,7 @@ import urllib2
 import urlparse
 import tempfile
 import shutil
+import Pyro4
 
 from iso import Iso
 
