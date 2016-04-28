@@ -613,13 +613,7 @@ class Parser:
             self.printStatus('Successfully reset VM')
 
         elif (action == 'create'):
-            if (args.storage_type):
-                storage_type = args.storage_type
-            else:
-                if (NodeDRBD.isEnabled()):
-                    self.parser.error('The VM must be configured with a storage type')
-                else:
-                    storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
+            storage_type = args.storage_type or None
 
             # Convert memory allocation from MiB to KiB
             memory_allocation = int(args.memory) * 1024

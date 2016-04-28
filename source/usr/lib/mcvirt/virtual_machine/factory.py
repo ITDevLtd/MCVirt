@@ -15,6 +15,13 @@ from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactor
 from mcvirt.auth.auth import Auth
 from mcvirt.node.network import Network
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
+from mcvirt.mcvirt import MCVirtException
+
+
+class StorageTypeNotSpecified(MCVirtException):
+    """Storage type has not been specified"""
+    pass
+
 
 class Factory(object):
     """Class for obtaining virtual machine objects"""
@@ -169,7 +176,10 @@ class Factory(object):
 
         # If a storage type has not been specified, assume the default
         if (storage_type is None):
-            storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
+            if NodeDRBD.isEnabled():
+                raise StorageTypeNotSpecified('Storage type must be specified')
+            else:
+                storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
 
         if (hard_drive_driver is None):
             hard_drive_driver = HardDriveConfigBase.DEFAULT_DRIVER.name
