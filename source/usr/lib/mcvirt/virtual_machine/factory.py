@@ -67,9 +67,14 @@ class Factory(object):
         table.header(('VM Name', 'State', 'Node'))
 
         for vm_object in self.getAllVirtualMachines():
-            table.add_row((vm_object.getName(), vm_object.getPowerState(enum=True).name,
+            table.add_row((vm_object.getName(), vm_object._getPowerState().name,
                            vm_object.getNode() or 'Unregistered'))
         return table.draw()
+
+    @Pyro4.expose()
+    def checkExists(self, vm_name):
+        """Determines if a VM exists, given a name"""
+        return (vm_name in self.getAllVmNames())
 
     @Pyro4.expose()
     def create(self, name, cpu_cores, memory_allocation, hard_drives=[],

@@ -567,11 +567,11 @@ class VirtualMachine(object):
                                                'reason': reason})
 
     @staticmethod
-    def _checkExists(mcvirt_instance, name):
+    def _checkExists(mcvirt_instance, vm_name):
         """Check if a domain exists"""
         from factory import Factory
         factory = Factory(mcvirt_instance)
-        return (name in factory.getAllVmNames())
+        return factory.checkExists(vm_name)
 
     @staticmethod
     def getVMDir(name):
