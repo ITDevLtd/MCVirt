@@ -16,7 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
-import exception
+import exceptions
 
 class AuthenticationError(Exception):
     """Exception raiased on authentication error"""
