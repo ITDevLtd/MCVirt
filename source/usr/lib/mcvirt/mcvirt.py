@@ -20,7 +20,7 @@ import os
 from lockfile import FileLock
 from texttable import Texttable
 import socket
-from Pyro4 import util
+import Pyro4
 
 from mcvirt_config import MCVirtConfig
 
@@ -190,7 +190,6 @@ class MCVirt(object):
 class MCVirtException(Exception):
     """Provides an exception to be thrown for errors in MCVirt"""
     pass
-
 
 class ConnectionFailureToRemoteLibvirtInstance(MCVirtException):
     """Connection failure whilst attempting to obtain a remote libvirt connection"""

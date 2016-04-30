@@ -77,6 +77,22 @@ class Factory(object):
         return (vm_name in self.getAllVmNames())
 
     @Pyro4.expose()
+    def checkName(self, name):
+        valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
+        if (bool(valid_name_re(name))):
+            raise InvalidVirtualMachineNameException(
+                'Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes'
+            )
+
+        if len(name) < 3:
+            raise InvalidVirtualMachineNameException('VM Name must be at least 3 characters long')
+
+        if self.checkExists(name):
+            raise InvalidVirtualMachineNameException('VM already exists')
+
+        return True
+
+    @Pyro4.expose()
     def create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
                auth_check=True, hard_drive_driver=None):
