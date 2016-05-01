@@ -33,6 +33,7 @@ from mcvirt.auth.auth import Auth
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.node.network import Network
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
+from mcvirt.rpc.lock import lockingMethod
 
 
 class UnkownException(MCVirtException):
@@ -164,6 +165,7 @@ class VirtualMachine(object):
         return self.mcvirt_object.getLibvirtConnection().lookupByName(self.name)
 
     @Pyro4.expose()
+    @lockingMethod('stop', 'stopping', 'stopped')
     def stop(self):
         """Stops the VM"""
         # Check the user has permission to start/stop VMs
@@ -195,6 +197,7 @@ class VirtualMachine(object):
             )
 
     @Pyro4.expose()
+    @lockingMethod('start', 'starting', 'started')
     def start(self, iso_object=None):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
@@ -254,6 +257,7 @@ class VirtualMachine(object):
             )
 
     @Pyro4.expose()
+    @lockingMethod('reset', 'resetting', 'reset')
     def reset(self):
         """Resets the VM"""
         # Check the user has permission to start/stop VMs
@@ -395,6 +399,7 @@ class VirtualMachine(object):
         return table.draw() + "\n" + warnings
 
     @Pyro4.expose()
+    @lockingMethod('delete', 'deleting', 'deleted')
     def delete(self, remove_data=False, local_only=False):
         """Delete the VM - removing it from LibVirt and from the filesystem"""
         from mcvirt.cluster.cluster import Cluster

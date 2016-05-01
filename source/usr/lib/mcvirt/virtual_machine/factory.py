@@ -16,6 +16,7 @@ from mcvirt.auth.auth import Auth
 from mcvirt.node.network import Network
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.mcvirt import MCVirtException
+from mcvirt.rpc.lock import lockingMethod
 
 
 class StorageTypeNotSpecified(MCVirtException):
@@ -93,11 +94,13 @@ class Factory(object):
         return True
 
     @Pyro4.expose()
+    @lockingMethod('create', 'creating', 'created')
     def create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
                auth_check=True, hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
-
+        from time import sleep
+        sleep(10)
         if (auth_check):
             self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CREATE_VM)
 

@@ -49,6 +49,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         """Perform authentication on new connections"""
         # Reset session_id for current context
         Pyro4.current_context.session_id = None
+        Pyro4.current_context.username = None
 
         # Check and store username from connection
         if 'USER' not in data:
@@ -61,6 +62,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
             password = str(data['PASS'])
             session_id = Session.authenticateUser(username=username, password=password)
             if session_id:
+                Pyro4.current_context.username = username
                 Pyro4.current_context.session_id = session_id
                 return session_id
 
@@ -68,6 +70,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         elif 'SEID' in data:
             session_id = str(data['SEID'])
             if Session.authenticateSession(username=username, session=session_id):
+                Pyro4.current_context.username = username
                 Pyro4.current_context.session_id = session_id
                 return session_id
 
