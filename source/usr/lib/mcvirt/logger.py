@@ -11,14 +11,36 @@ class Logger(object):
         return log_item
 
     @Pyro4.expose()
-    def get_logs(self, start_log=None, number=10):
+    def get_logs(self, start_log=None, back=0, newer=False):
         if start_log is None:
-            start_log = len(Logger.LOGS)
-        if number > len(Logger.LOGS):
-            number = len(Logger.LOGS)
-        start_log = len(Logger.LOGS) - start_log
+            start_log = len(Logger.LOGS) - 1
+
+        if start_log < 0:
+            start_log = 0
+        if start_log > len(Logger.LOGS) - 1:
+            start_log = len(Logger.LOGS) - 1
+
+        if back:
+            start = start_log if (start_log - back) < 0 else back
+            finish = start_log
+        elif newer:
+            start = start_log + 1
+            # Length would provide an indicy out of the range,
+            # since len(['a']) = 1, but ['a'][1] == error
+            # However, this is made up for the fact that range(0, 2) = [0, 1]
+            finish = len(Logger.LOGS)
+        else:
+            # Start at the current log, to return it
+            # Finish at current log + 1 as range(1, 2) = [1]
+            start = start_log
+            finish = start_log + 1
+
         return_logs = {}
-        for itx in range(start_log, start_log + number):
+        for itx in range(start, finish):
+            if itx < 0:
+                continue
+            if len(Logger.LOGS) < itx:
+                break
             log = Logger.LOGS[itx]
             return_logs[itx] = {
                 'status': log.status['status'],
@@ -33,10 +55,6 @@ class Logger(object):
                 'exception_message': log.exception_message
             }
         return return_logs
-
-    @Pyro4.expose()
-    def getUpdate(self, start_log):
-        return Logger.LOGS[start_log:]
 
 
 class LogState(object):
