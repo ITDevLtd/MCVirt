@@ -21,6 +21,7 @@ from lockfile import FileLock
 from texttable import Texttable
 import socket
 import Pyro4
+import atexit
 
 from mcvirt_config import MCVirtConfig
 
@@ -58,6 +59,7 @@ class MCVirt(object):
         self.lockfile_object = None
         if (obtain_lock):
             self.obtainLock()
+        atexit.register(self.cleanup)
 
         # Create cluster instance, which will initialise the nodes
         from cluster.cluster import Cluster
@@ -66,7 +68,7 @@ class MCVirt(object):
         # Connect to LibVirt
         self.getLibvirtConnection()
 
-    def __del__(self):
+    def cleanup(self):
         """Removes MCVirt lock file on object destruction"""
         # Disconnect from each of the nodes
         for connection in self.remote_nodes:
