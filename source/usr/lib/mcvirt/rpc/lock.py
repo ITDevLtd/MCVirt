@@ -1,35 +1,51 @@
 from mcvirt.mcvirt import MCVirtException
-from mcvirt.logger import Logger
+from mcvirt.logger import Logger, getLogNames
 import Pyro4
-from threading import Lock as ThreadingLock
+from threading import Lock
 
-class Lock(object):
-    lock = ThreadingLock()
+class MCVirtLock(object):
+    _lock = None
 
-def lockingMethod(name=None, present=None, past=None):
+    @classmethod
+    def getLock(cls):
+        if cls._lock is None:
+            cls._lock = Lock()
+        return cls._lock
+
+def lockingMethod(object_type=None, instance_method=True):
     def wrapper(callback):
-        callback.fun_name = wrapper.fun_name
-        callback.present_name = wrapper.present_name
-        callback.past_name = wrapper.past_name
+        callback.OBJECT_TYPE = wrapper.object_type
+        callback.INSTANCE_METHOD = wrapper.instance_method
         def lock_log_and_call(*args, **kwargs):
-            logger = Logger.get_log(callback, Pyro4.current_context.username)
-            Lock.lock.acquire()
+            # Attempt to obtain object type and name for logging
+            callback.OBJECT_NAME, callback.OBJECT_TYPE = getLogNames(callback,
+                                                                     instance_method,
+                                                                     object_type,
+                                                                     args=args,
+                                                                     kwargs=kwargs)
+            lock = MCVirtLock.getLock()
+            logger = Logger()
+            log = logger.create_log(callback, Pyro4.current_context.username)
+            lock.acquire()
+            log.start()
+            response = None
             try:
-                logger.start()
                 reponse = callback(*args, **kwargs)
-                logger.finish_success()
-                Lock.lock.release()
-                return response
             except MCVirtException as e:
-                logger.finish_error(e)
-                Lock.lock.release()
+                log.finish_error(e)
+                lock.release()
                 raise e
             except Exception as e:
-                logger.finish_error_unknown(e)
-                Lock.lock.release()
+                log.finish_error_unknown(e)
+                lock.release()
                 raise e
+
+            log.finish_success()
+            lock.release()
+            return response
+
         return lock_log_and_call
-    wrapper.fun_name = name
-    wrapper.present_name = present
-    wrapper.past_name = past
+
+    wrapper.instance_method = instance_method
+    wrapper.object_type = object_type
     return wrapper

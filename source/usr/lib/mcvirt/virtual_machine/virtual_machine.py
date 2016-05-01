@@ -136,6 +136,8 @@ class PowerStates(Enum):
 class VirtualMachine(object):
     """Provides operations to manage a LibVirt virtual machine"""
 
+    OBJECT_TYPE = 'virtual machine'
+
     def __init__(self, mcvirt_object, name):
         """Sets member variables and obtains LibVirt domain object"""
         self.name = name
@@ -165,7 +167,7 @@ class VirtualMachine(object):
         return self.mcvirt_object.getLibvirtConnection().lookupByName(self.name)
 
     @Pyro4.expose()
-    @lockingMethod('stop', 'stopping', 'stopped')
+    @lockingMethod()
     def stop(self):
         """Stops the VM"""
         # Check the user has permission to start/stop VMs
@@ -197,7 +199,7 @@ class VirtualMachine(object):
             )
 
     @Pyro4.expose()
-    @lockingMethod('start', 'starting', 'started')
+    @lockingMethod()
     def start(self, iso_object=None):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
@@ -257,7 +259,7 @@ class VirtualMachine(object):
             )
 
     @Pyro4.expose()
-    @lockingMethod('reset', 'resetting', 'reset')
+    @lockingMethod()
     def reset(self):
         """Resets the VM"""
         # Check the user has permission to start/stop VMs
@@ -399,7 +401,7 @@ class VirtualMachine(object):
         return table.draw() + "\n" + warnings
 
     @Pyro4.expose()
-    @lockingMethod('delete', 'deleting', 'deleted')
+    @lockingMethod()
     def delete(self, remove_data=False, local_only=False):
         """Delete the VM - removing it from LibVirt and from the filesystem"""
         from mcvirt.cluster.cluster import Cluster
@@ -1023,6 +1025,7 @@ class VirtualMachine(object):
                                          {'vm_name': self.getName()})
 
     @Pyro4.expose()
+    @lockingMethod()
     def register(self):
         """Public method for permforming VM register"""
         self.mcvirt_object.getAuthObject().assertPermission(
@@ -1085,6 +1088,7 @@ class VirtualMachine(object):
             self._setNode(Cluster.getHostname())
 
     @Pyro4.expose()
+    @lockingMethod()
     def unregister(self):
         """Public method for permforming VM unregister"""
         self.mcvirt_object.getAuthObject().assertPermission(

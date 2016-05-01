@@ -27,6 +27,8 @@ class StorageTypeNotSpecified(MCVirtException):
 class Factory(object):
     """Class for obtaining virtual machine objects"""
 
+    OBJECT_TYPE = 'virtual machine'
+
     def __init__(self, mcvirt_instance):
         """Create object, storing MCVirt instance"""
         self.mcvirt_instance = mcvirt_instance
@@ -94,13 +96,11 @@ class Factory(object):
         return True
 
     @Pyro4.expose()
-    @lockingMethod('create', 'creating', 'created')
+    @lockingMethod(instance_method=True)
     def create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
                auth_check=True, hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
-        from time import sleep
-        sleep(10)
         if (auth_check):
             self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CREATE_VM)
 

@@ -24,6 +24,7 @@ from mcvirt.auth.auth import Auth
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
 from mcvirt.iso.factory import Factory as IsoFactory
 from mcvirt.auth.session import Session
+from mcvirt.logger import Logger
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -120,6 +121,8 @@ class RpcNSMixinDaemon(object):
         self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
         iso_factory = IsoFactory(self.mcvirt_instance)
         self.register(iso_factory, objectId='iso_factory', force=True)
+        logger = Logger()
+        self.register(logger, objectId='logger', force=True)
 
     def destroy(self):
         """Destroy the MCVirt instance on destruction of object"""
