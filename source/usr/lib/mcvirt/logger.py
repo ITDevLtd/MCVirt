@@ -17,12 +17,12 @@ class Logger(object):
 
         if start_log < 0:
             start_log = 0
-        if start_log > len(Logger.LOGS) - 1:
+        if start_log > (len(Logger.LOGS) - 1):
             start_log = len(Logger.LOGS) - 1
 
         if back:
-            start = start_log if (start_log - back) < 0 else back
-            finish = start_log
+            start = 0 if (start_log - back) < 0 else (len(Logger.LOGS) - back)
+            finish = start_log + 1
         elif newer:
             start = start_log + 1
             # Length would provide an indicy out of the range,
@@ -43,6 +43,7 @@ class Logger(object):
                 break
             log = Logger.LOGS[itx]
             return_logs[itx] = {
+                'start_date': str(log.start_time),
                 'status': log.status['status'],
                 'status_name': log.status['name'],
                 'user': log.user,
