@@ -5,8 +5,8 @@ class Logger(object):
 
     LOGS = []
 
-    def create_log(self, method, user):
-        log_item = LogItem(method, user)
+    def create_log(self, method, user, object_name, object_type):
+        log_item = LogItem(method, user, object_name, object_type)
         Logger.LOGS.append(log_item)
         return log_item
 
@@ -47,12 +47,12 @@ class Logger(object):
                 'status': log.status['status'],
                 'status_name': log.status['name'],
                 'user': log.user,
-                'method': log.method.func_name,
-                'object_name': log.method.OBJECT_NAME,
-                'object_type': log.method.OBJECT_TYPE,
-                'description': '%s %s %s' % (log.method.func_name.capitalize(),
-                                             log.method.OBJECT_TYPE,
-                                             log.method.OBJECT_NAME),
+                'method': log.method_name,
+                'object_name': log.object_name,
+                'object_type': log.object_type,
+                'description': '%s %s %s' % (log.method_name.capitalize(),
+                                             log.object_name,
+                                             log.object_type),
                 'exception_message': log.exception_message
             }
         return return_logs
@@ -78,10 +78,13 @@ class LogState(object):
     }
 
 class LogItem(object):
-    def __init__(self, method, user):
+    def __init__(self, method, user, object_name, object_type):
         # Store information about method being run
         self.user = user
         self.method = method
+        self.object_name = object_name
+        self.object_type = object_type
+        self.method_name = method.func_name
 
         # Store method state
         self.status = LogState.QUEUED
@@ -122,15 +125,13 @@ def getLogNames(callback, instance_method, object_type, args, kwargs):
     # Determine if object is a method of an object
     object_name = None
 
-    if instance_method:
-        instance = args[0]
-        if 'OBJECT_TYPE' in dir(instance):
-            object_type = object_type if object_type else instance.OBJECT_TYPE
-        elif 'OBJECT_TYPE' in dir(callback.__class__):
-            object_type = object_type if object_type else callback.__class__.OBJECT_TYPE
-        if 'name' in dir(instance):
-            object_name = instance.name
-        elif 'name' in kwargs:
-            object_name = kwargs['name']
+    if instance_method and 'OBJECT_TYPE' in dir(args[0]):
+        object_type = object_type if object_type else args[0].OBJECT_TYPE
+    elif 'OBJECT_TYPE' in dir(callback.__class__):
+        object_type = object_type if object_type else callback.__class__.OBJECT_TYPE
+    if instance_method and 'name' in dir(args[0]):
+        object_name = args[0].name
+    elif 'name' in kwargs:
+        object_name = kwargs['name']
 
     return object_name, object_type

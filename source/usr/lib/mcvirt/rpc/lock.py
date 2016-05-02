@@ -18,14 +18,15 @@ def lockingMethod(object_type=None, instance_method=True):
         callback.INSTANCE_METHOD = wrapper.instance_method
         def lock_log_and_call(*args, **kwargs):
             # Attempt to obtain object type and name for logging
-            callback.OBJECT_NAME, callback.OBJECT_TYPE = getLogNames(callback,
-                                                                     instance_method,
-                                                                     object_type,
-                                                                     args=args,
-                                                                     kwargs=kwargs)
+            object_name, object_type = getLogNames(callback,
+                                                   wrapper.instance_method,
+                                                   wrapper.object_type,
+                                                   args=args,
+                                                   kwargs=kwargs)
             lock = MCVirtLock.getLock()
             logger = Logger()
-            log = logger.create_log(callback, Pyro4.current_context.username)
+            log = logger.create_log(callback, user=Pyro4.current_context.username,
+                                    object_name=object_name, object_type=object_type)
             lock.acquire()
             log.start()
             response = None
