@@ -120,6 +120,11 @@ class VirtualMachineLockException(MCVirtException):
     pass
 
 
+class InvalidArgumentException(MCVirtException):
+    """Argument given is not valid"""
+    pass
+
+
 class LockStates(Enum):
     """Library of virtual machine lock states"""
     UNLOCKED = 0
@@ -484,14 +489,24 @@ class VirtualMachine(object):
                                             {'vm_name': self.name,
                                              'remove_data': remove_data})
 
+    @Pyro4.expose()
     def getRAM(self):
         """Returns the amount of memory attached the VM"""
         return self.getConfigObject().getConfig()['memory_allocation']
 
+    @Pyro4.expose()
     def updateRAM(self, memory_allocation):
         """Updates the amount of RAM allocated to a VM"""
         # Check the user has permission to modify VMs
         self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
+
+        # Ensure memory_allocation is an interger, greater than 0
+        try:
+            int(memory_allocation)
+            if int(memory_allocation) <= 0:
+                raise ValueError
+        except ValueError:
+            raise InvalidArgumentException('Memory allocation must be an integer greater than 0')
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -512,14 +527,24 @@ class VirtualMachine(object):
         self.updateConfig(['memory_allocation'], str(memory_allocation),
                           'RAM allocation has been changed to %s' % memory_allocation)
 
+    @Pyro4.expose()
     def getCPU(self):
         """Returns the number of CPU cores attached to the VM"""
         return self.getConfigObject().getConfig()['cpu_cores']
 
+    @Pyro4.expose()
     def updateCPU(self, cpu_count):
         """Updates the number of CPU cores attached to a VM"""
         # Check the user has permission to modify VMs
         self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
+
+        # Ensure cpu count is an interger, greater than 0
+        try:
+            int(cpu_count)
+            if int(cpu_count) <= 0:
+                raise ValueError
+        except ValueError:
+            raise InvalidArgumentException('CPU count must be an integer greater than 0')
 
         # Ensure VM is unlocked
         self.ensureUnlocked()

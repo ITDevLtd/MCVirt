@@ -139,12 +139,11 @@ class Parser:
         hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
-                                        type=str, choices=hard_drive_storage_types)
+                                        type=str, default=None, choices=hard_drive_storage_types)
         self.create_parser.add_argument('--driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
-                                        choices=list(HardDriveDriver.__members__),
-                                        default=HardDriveConfigBase.DEFAULT_DRIVER.name)
+                                        default=None)
 
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
@@ -557,7 +556,7 @@ class Parser:
             Parser.USERNAME = username
 
 
-        if ('ignore_failed_nodes' in args and args.ignore_failed_nodes):
+        if args.ignore_failed_nodes:
             # If the user has specified to ignore the cluster,
             # print a warning and confirm the user's answer
             if (not args.accept_failed_nodes_warning):
@@ -580,16 +579,16 @@ class Parser:
         #         mcvirt_instance = MCVirt(ignore_failed_nodes=ignore_failed_nodes)
 
         # If the user has specified to ignore DRBD, set the global parameter
-        if ('ignore_drbd' in args and args.ignore_drbd):
+        if args.ignore_drbd:
             NodeDRBD.ignoreDrbd(mcvirt_instance)
 
         # Perform functions on the VM based on the action passed to the script
-        if (action == 'start'):
+        if action == 'start':
             vm_factory = rpc.getConnection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
 
-            if (args.iso):
+            if args.iso:
                 iso_factory = rpc.getConnection('iso_factory')
                 iso_object = iso_factory.getIsoByName(args.iso)
                 rpc.annotateObject(iso_object)
@@ -598,21 +597,21 @@ class Parser:
             vm_object.start(iso_object=iso_object)
             self.printStatus('Successfully started VM')
 
-        elif (action == 'stop'):
+        elif action == 'stop':
             vm_factory = rpc.getConnection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.stop()
             self.printStatus('Successfully stopped VM')
 
-        elif (action == 'reset'):
+        elif action == 'reset':
             vm_factory = rpc.getConnection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.reset()
             self.printStatus('Successfully reset VM')
 
-        elif (action == 'create'):
+        elif action == 'create':
             storage_type = args.storage_type or None
 
             # Convert memory allocation from MiB to KiB
@@ -628,26 +627,29 @@ class Parser:
                 hard_drive_driver=args.hard_disk_driver,
                 available_nodes=args.nodes)
 
-        elif (action == 'delete'):
+        elif action == 'delete':
             vm_factory = rpc.getConnection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.delete(args.remove_data)
 
-        elif (action == 'register'):
+        elif action == 'register':
             vm_factory = rpc.getConnection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.register()
 
-        elif (action == 'unregister'):
+        elif action == 'unregister':
             vm_factory = rpc.getConnection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.unregister()
 
-        elif (action == 'update'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        elif action == 'update':
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
+
             if (args.memory):
                 old_ram_allocation = int(vm_object.getRAM()) / 1024
                 new_ram_allocation = int(args.memory) * 1024
