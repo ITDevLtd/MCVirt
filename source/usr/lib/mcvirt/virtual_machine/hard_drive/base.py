@@ -236,7 +236,9 @@ class Base(object):
         number_of_disks = len(config_object.vm_object.getDiskObjects())
         current_storage_type = config_object.vm_object.getConfigObject(
         ).getConfig()['storage_type']
-        if (current_storage_type is not config_object._getType()):
+        print current_storage_type
+        print config_object._getType()
+        if (current_storage_type != config_object._getType()):
             if (number_of_disks):
                 raise StorageTypesCannotBeMixedException(
                     'The VM (%s) is already configured with %s disks' %

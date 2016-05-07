@@ -573,11 +573,15 @@ class VirtualMachine(object):
 
     @Pyro4.expose()
     @lockingMethod()
-    def createNetworAdapter(self, network_object):
+    def createNetworkAdapter(self, *args, **kwargs):
+        """Creates a network interface for a VM"""
+        return self._createNetworkAdapter(*args, **kwargs)
+
+    def _createNetworkAdapter(self, network_object):
         """Creates a network interface for the local VM"""
         self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
         network_adapter = NetworkAdapter.create(self, network_object)
-        if self._pyroDaemon:
+        if '_pyroDaemon' in self.__dict__:
             self._pyroDaemon.register(network_adapter)
         return network_adapter
 
@@ -595,7 +599,7 @@ class VirtualMachine(object):
         """Returns the network adapter by a given MAC address"""
         # Ensure that MAC address is a valid network adapter for the VM
         interface_object = NetworkAdapter(mac_address, self)
-        if self._pyroDaemon:
+        if '_pyroDaemon' in self.__dict__:
             self._pyroDaemon.register(interface_object)
         return interface_object
 

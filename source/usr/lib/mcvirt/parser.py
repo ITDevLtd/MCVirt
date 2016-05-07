@@ -676,7 +676,7 @@ class Parser:
                 network_factory = rpc.getConnection('network_factory')
                 network_object = network_factory.getNetworkByName(args.add_network)
                 rpc.annotateObject(network_object)
-                vm_object.createNetworAdapter(network_object)
+                vm_object.createNetworkAdapter(network_object)
 
             if args.add_disk:
                 hard_drive_factory = rpc.getConnection('hard_drive_factory')

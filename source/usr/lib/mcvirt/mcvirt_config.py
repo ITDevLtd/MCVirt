@@ -87,7 +87,8 @@ class MCVirtConfig(ConfigFile):
                     'password': '',
                     'commit_name': '',
                     'commit_email': ''
-                }
+                },
+                'users': {}
             }
 
         # Write the configuration to disk

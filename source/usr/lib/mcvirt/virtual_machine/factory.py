@@ -13,7 +13,7 @@ from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.auth.auth import Auth
-from mcvirt.node.network.network import Network
+from mcvirt.node.network.factory import Factory as NetworkFactory
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.rpc.lock import lockingMethod
@@ -37,7 +37,7 @@ class Factory(object):
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
         vm_object = VirtualMachine(self.mcvirt_instance, vm_name)
-        if self._pyroDaemon:
+        if '_pyroDaemon' in self.__dict__:
             self._pyroDaemon.register(vm_object)
         return vm_object
 
@@ -97,7 +97,11 @@ class Factory(object):
 
     @Pyro4.expose()
     @lockingMethod(instance_method=True)
-    def create(self, name, cpu_cores, memory_allocation, hard_drives=[],
+    def create(self, *args, **kwargs):
+        """Creates a VM and returns the virtual_machine object for it"""
+        return self._create(*args, **kwargs)
+
+    def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
                auth_check=True, hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
@@ -198,30 +202,19 @@ class Factory(object):
             # not the node that the VM will be registered on, set the node on the VM
             vm_object._setNode(node)
 
-        # If a storage type has not been specified, assume the default
-        if (storage_type is None):
-            if NodeDRBD.isEnabled():
-                raise StorageTypeNotSpecified('Storage type must be specified')
-            else:
-                storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
-
-        if (hard_drive_driver is None):
-            hard_drive_driver = HardDriveConfigBase.DEFAULT_DRIVER.name
-
         if (self.mcvirt_instance.initialiseNodes()):
             # Create disk images
+            hard_drive_factory = HardDriveFactory(self.mcvirt_instance)
             for hard_drive_size in hard_drives:
-                HardDriveFactory.create(
-                    vm_object=vm_object,
-                    size=hard_drive_size,
-                    storage_type=storage_type,
-                    driver=hard_drive_driver)
+                hard_drive_factory._create(vm_object=vm_object, size=hard_drive_size,
+                                           storage_type=storage_type, driver=hard_drive_driver)
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML
             if (network_interfaces is not None):
                 for network in network_interfaces:
-                    network_object = Network(self.mcvirt_instance, network)
-                    NetworkAdapter.create(vm_object, network_object)
+                    network_factory = NetworkFactory(self.mcvirt_instance)
+                    network_object = network_factory.getNetworkByName(network)
+                    vm_object._createNetworkAdapter(vm_object, network_object)
 
         return vm_object

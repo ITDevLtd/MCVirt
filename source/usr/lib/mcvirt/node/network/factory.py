@@ -96,7 +96,7 @@ class Factory(object):
     @Pyro4.expose()
     def getNetworkByName(self, network_name):
         network_object = Network(self.mcvirt_instance, network_name)
-        if self._pyroDaemon:
+        if '_pyroDaemon' in self.__dict__:
             self._pyroDaemon.register(network_object)
         return network_object
 

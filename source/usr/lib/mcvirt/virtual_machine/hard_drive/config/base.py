@@ -47,7 +47,7 @@ class Base(object):
     def __init__(self, vm_object, disk_id=None, driver=None, config=None, registered=False):
         """Set member variables and obtains the stored configuration"""
         self.config['disk_id'] = disk_id
-        self.config['driver'] = driver
+        self.config['driver'] = self.DEFAULT_DRIVER.name if driver is None else driver
         self.vm_object = vm_object
 
         # If a configuration hash has been passed, overwrite all

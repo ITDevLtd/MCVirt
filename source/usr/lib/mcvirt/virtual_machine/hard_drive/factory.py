@@ -71,9 +71,14 @@ class Factory(object):
 
     @Pyro4.expose()
     @lockingMethod()
-    def create(self, vm_object, size, storage_type, driver):
+    def create(self, *args, **kwargs):
+        """Performs the creation of a hard drive"""
+        return self._create(*args, **kwargs)
+
+    def _create(self, vm_object, size, storage_type, driver):
         """Performs the creation of a hard drive, using a given storage type"""
-        vm_object = self._pyroDaemon.convertRemoteObject(vm_object)
+        if '_pyroDaemon' in self.__dict__:
+            vm_object = self._pyroDaemon.convertRemoteObject(vm_object)
 
         # Ensure that the user has permissions to add create storage
 
@@ -87,6 +92,8 @@ class Factory(object):
                 raise InvalidStorageTypeException(
                     'Storage type does not match VMs current storage type'
                 )
+            storage_type = vm_object.getStorageType()
+            print storage_type
         else:
             available_storage_types = self._getAvailableStorageTypes()
             if len(available_storage_types) > 1 and not storage_type:

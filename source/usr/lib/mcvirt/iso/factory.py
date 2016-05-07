@@ -30,7 +30,7 @@ class Factory(object):
     def getIsoByName(self, iso_name):
         """Creates and registers Iso object"""
         iso_object = Iso(self.mcvirt_instance, iso_name)
-        if self._pyroDaemon:
+        if '_pyroDaemon' in self.__dict__:
             self._pyroDaemon.register(iso_object)
         return iso_object
 
