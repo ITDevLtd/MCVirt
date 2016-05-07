@@ -572,6 +572,7 @@ class VirtualMachine(object):
                                                          cpu_count)
 
     @Pyro4.expose()
+    @lockingMethod()
     def createNetworAdapter(self, network_object):
         """Creates a network interface for the local VM"""
         self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)

@@ -24,6 +24,7 @@ from mcvirt.auth.auth import Auth
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
 from mcvirt.iso.factory import Factory as IsoFactory
 from mcvirt.node.network.factory import Factory as NetworkFactory
+from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.auth.session import Session
 from mcvirt.logger import Logger
 
@@ -46,6 +47,15 @@ class BaseRpcDaemon(Pyro4.Daemon):
     def destroy(self):
         # Create MCVirt instance
         self.mcvirt_instance = None
+
+    def convertRemoteObject(self, remote_object):
+        """Returns a local instance of a remote object"""
+        # Ensure that object is a remote object
+        if '_pyroUri' in remote_object.__dict__.keys():
+            # Obtain daemon instance of object
+            return self.objectsById[remote_object._pyroUri.object]
+        else:
+            return remote_object
 
     def validateHandshake(self, conn, data):
         """Perform authentication on new connections"""
@@ -122,6 +132,8 @@ class RpcNSMixinDaemon(object):
         self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
         network_factory = NetworkFactory(self.mcvirt_instance)
         self.register(network_factory, objectId='network_factory', force=True)
+        hard_drive_factory = HardDriveFactory(self.mcvirt_instance)
+        self.register(hard_drive_factory, objectId='hard_drive_factory', force=True)
         iso_factory = IsoFactory(self.mcvirt_instance)
         self.register(iso_factory, objectId='iso_factory', force=True)
         logger = Logger()

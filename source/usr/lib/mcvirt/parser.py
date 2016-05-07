@@ -16,6 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import argparse
+import Pyro4
 
 from mcvirt import MCVirt, MCVirtException
 from virtual_machine.virtual_machine import VirtualMachine, LockStates
@@ -191,15 +192,13 @@ class Parser:
         )
         self.update_parser.add_argument('--add-disk', dest='add_disk', metavar='Add Disk',
                                         type=int, help='Add disk to the VM (size in MB)')
-        hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
         self.update_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type', type=str,
-                                        choices=hard_drive_storage_types)
+                                        default=None)
         self.update_parser.add_argument('--driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
-                                        choices=list(HardDriveDriver.__members__),
-                                        default=HardDriveConfigBase.DEFAULT_DRIVER.name)
+                                        default=None)
         self.update_parser.add_argument('--increase-disk', dest='increase_disk',
                                         metavar='Increase Disk', type=int,
                                         help='Increases VM disk by provided amount (MB)')
@@ -680,30 +679,14 @@ class Parser:
                 vm_object.createNetworAdapter(network_object)
 
             if args.add_disk:
-                # Determine if the VM has already been configured to use a storage type
-                vm_storage_type = vm_object.getStorageType()
-
-                # Ensure that if the VM has not been configured to use a storage type, the node is
-                # capable of DRBD backends that the user has specified a storage backend
-                if vm_storage_type and args.storage_type and vm_storage_type != args.storage_type:
-                    self.parser.error('The VM has already been configured '
-                                      'with a storage type, it cannot be changed.')
-                else:
-                    if (args.storage_type):
-                        # If the VM has not been configured to use a storage type, use
-                        # the storage type parameter
-                        vm_storage_type = args.storage_type
-                    else:
-                        self.parser.error('The VM is not configured with a storage type, '
-                                          '--storage-type must be specified')
-                if True:
-                    pass
-                else:
-                    # If DRBD is not enabled, assume the default storage type is being used
-                    vm_storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
-
-                HardDriveFactory.create(vm_object, size=args.add_disk, storage_type=storage_type,
-                                        driver=hard_disk_driver)
+                hard_drive_factory = rpc.getConnection('hard_drive_factory')
+                try:
+                    hard_drive_factory.create(vm_object, size=args.add_disk,
+                                            storage_type=args.storage_type,
+                                            driver=args.hard_disk_driver)
+                except Exception:
+                    print "Pyro traceback:"
+                    print "".join(Pyro4.util.getPyroTraceback())
 
             if (args.increase_disk and args.disk_id):
                 harddrive_object = HardDriveFactory.getObject(vm_object, args.disk_id)

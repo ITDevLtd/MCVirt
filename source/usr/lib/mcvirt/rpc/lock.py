@@ -35,11 +35,11 @@ def lockingMethod(object_type=None, instance_method=True):
             except MCVirtException as e:
                 log.finish_error(e)
                 lock.release()
-                raise e
+                raise
             except Exception as e:
                 log.finish_error_unknown(e)
                 lock.release()
-                raise e
+                raise
 
             log.finish_success()
             lock.release()

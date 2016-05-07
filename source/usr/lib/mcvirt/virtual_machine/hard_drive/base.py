@@ -170,6 +170,11 @@ class Base(object):
                 raise
 
     @staticmethod
+    def isAvailable():
+        """Returns whether the storage type is available on the node"""
+        raise NotImplementedError
+
+    @staticmethod
     def _removeFromVirtualMachine(config_object, unregister=False):
         """Remove the hard drive from a VM configuration and perform all nodes
            in the cluster"""

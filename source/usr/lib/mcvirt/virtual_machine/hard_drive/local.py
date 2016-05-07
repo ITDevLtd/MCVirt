@@ -37,6 +37,11 @@ class Local(Base):
         self.config = ConfigLocal(vm_object=vm_object, disk_id=disk_id, registered=True)
         super(Local, self).__init__(disk_id=disk_id)
 
+    @staticmethod
+    def isAvailable():
+        """Determine if local storage is available on the node"""
+        return True
+
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         self._ensureExists()

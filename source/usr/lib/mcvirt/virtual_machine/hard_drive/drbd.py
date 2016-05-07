@@ -207,6 +207,14 @@ class DRBD(Base):
         self.config = ConfigDRBD(vm_object=vm_object, disk_id=disk_id, registered=True)
         super(DRBD, self).__init__(disk_id=disk_id)
 
+    @staticmethod
+    def isAvailable():
+        """Determines if DRBD is available on the node"""
+        if NodeDRBD.isEnabled():
+            return True
+        else:
+            return False
+
     def _checkExists(self):
         """Ensures the required storage elements exist on the system"""
         raw_lv = self.getConfigObject()._getLogicalVolumeName(

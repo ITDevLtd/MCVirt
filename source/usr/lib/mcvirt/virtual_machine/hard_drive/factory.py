@@ -15,11 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import Pyro4
+
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import DRBD
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
+from mcvirt.auth.auth import Auth
+from mcvirt.rpc.lock import lockingMethod
 
 
 class UnknownStorageTypeException(MCVirtException):
@@ -27,11 +31,16 @@ class UnknownStorageTypeException(MCVirtException):
     pass
 
 
-class Factory():
+class Factory(object):
     """Provides a factory for creating hard drive/hard drive config objects"""
 
     STORAGE_TYPES = [Local, DRBD]
     DEFAULT_STORAGE_TYPE = 'Local'
+    OBJECT_TYPE = 'network'
+
+    def __init__(self, mcvirt_instance):
+        """Create object, storing MCVirt instance"""
+        self.mcvirt_instance = mcvirt_instance
 
     @staticmethod
     def getObject(vm_object, disk_id):
@@ -60,10 +69,41 @@ class Factory():
         return Factory.getConfigObject(vm_object=vm_object, storage_type=arguments['storage_type'],
                                        config=arguments['config'])
 
-    @staticmethod
-    def create(vm_object, size, storage_type, driver):
+    @Pyro4.expose()
+    @lockingMethod()
+    def create(self, vm_object, size, storage_type, driver):
         """Performs the creation of a hard drive, using a given storage type"""
+        vm_object = self._pyroDaemon.convertRemoteObject(vm_object)
+
+        # Ensure that the user has permissions to add create storage
+
+        # Ensure that the storage type:
+        # If the VM's storage type has been defined that the specified storage type
+        #   matches or has not been defined.
+        # Or that the storage type has been specified if the VM's storage type is
+        #   not defined
+        if vm_object.getStorageType():
+            if storage_type and storage_type != vm_object.getStorageType():
+                raise InvalidStorageTypeException(
+                    'Storage type does not match VMs current storage type'
+                )
+        else:
+            available_storage_types = self._getAvailableStorageTypes()
+            if len(available_storage_types) > 1 and not storage_type:
+                raise InvalidStorageTypeException('Storage type must be specified')
+            elif len(available_storage_types) == 1:
+                storage_type = available_storage_types[0].__name__
+            else:
+                raise InvalidStorageTypeException('There are no storage types available')
         return Factory.getClass(storage_type).create(vm_object, size, driver)
+
+    def _getAvailableStorageTypes(self):
+        """Returns a list of storage types that are available on the node"""
+        available_storage_types = []
+        for storage_type in self.STORAGE_TYPES:
+            if storage_type.isAvailable():
+                available_storage_types.append(storage_type)
+        return available_storage_types
 
     @staticmethod
     def getStorageTypes():

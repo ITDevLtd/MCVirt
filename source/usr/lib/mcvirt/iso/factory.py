@@ -43,7 +43,6 @@ class Factory(object):
         else:
             return "\n".join(iso_list)
 
-    @Pyro4.expose()
     def addIso(self, path):
         """Copy an ISO to ISOs directory"""
         # Check that file exists
