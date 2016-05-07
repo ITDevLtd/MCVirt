@@ -650,38 +650,44 @@ class Parser:
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
 
-            if (args.memory):
-                old_ram_allocation = int(vm_object.getRAM()) / 1024
+            if args.memory:
+                old_ram_allocation_kib = vm_object.getRAM()
+                old_ram_allocation = int(old_ram_allocation_kib) / 1024
                 new_ram_allocation = int(args.memory) * 1024
-                vm_object.updateRAM(new_ram_allocation)
+                vm_object.updateRAM(new_ram_allocation, old_value=old_ram_allocation_kib)
                 self.printStatus(
                     'RAM allocation will be changed from %sMiB to %sMiB.' %
                     (old_ram_allocation, args.memory)
                 )
-            if (args.cpu_count):
+
+            if args.cpu_count:
                 old_cpu_count = vm_object.getCPU()
-                vm_object.updateCPU(args.cpu_count)
+                vm_object.updateCPU(args.cpu_count, old_value=old_cpu_count)
                 self.printStatus(
                     'Number of virtual cores will be changed from %s to %s.' %
                     (old_cpu_count, args.cpu_count)
                 )
-            if (args.remove_network):
-                network_adapter_object = NetworkAdapter(args.remove_network, vm_object)
+
+            if args.remove_network:
+                network_adapter_object = vm_object.getNetworkAdapterByMacAdress(args.remove_network)
+                rpc.annotateObject(network_adapter_object)
                 network_adapter_object.delete()
+
             if (args.add_network):
-                network_object = Network(mcvirt_instance, args.add_network)
-                NetworkAdapter.create(vm_object, network_object)
-            if (args.add_disk):
+                network_factory = rpc.getConnection('network_factory')
+                network_object = network_factory.getNetworkByName(args.add_network)
+                rpc.annotateObject(network_object)
+                vm_object.createNetworAdapter(network_object)
+
+            if args.add_disk:
                 # Determine if the VM has already been configured to use a storage type
-                vm_storage_type = vm_object.getConfigObject().getConfig()['storage_type']
+                vm_storage_type = vm_object.getStorageType()
 
                 # Ensure that if the VM has not been configured to use a storage type, the node is
                 # capable of DRBD backends that the user has specified a storage backend
-                if (NodeDRBD.isEnabled()):
-                    if (vm_storage_type):
-                        if (args.storage_type):
-                            self.parser.error('The VM has already been configured '
-                                              'with a storage type, it cannot be changed.')
+                if vm_storage_type and args.storage_type and vm_storage_type != args.storage_type:
+                    self.parser.error('The VM has already been configured '
+                                      'with a storage type, it cannot be changed.')
                     else:
                         if (args.storage_type):
                             # If the VM has not been configured to use a storage type, use
@@ -696,6 +702,7 @@ class Parser:
 
                 HardDriveFactory.create(vm_object, size=args.add_disk, storage_type=storage_type,
                                         driver=hard_disk_driver)
+
             if (args.increase_disk and args.disk_id):
                 harddrive_object = HardDriveFactory.getObject(vm_object, args.disk_id)
                 harddrive_object.increaseSize(args.increase_disk)

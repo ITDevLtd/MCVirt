@@ -495,7 +495,8 @@ class VirtualMachine(object):
         return self.getConfigObject().getConfig()['memory_allocation']
 
     @Pyro4.expose()
-    def updateRAM(self, memory_allocation):
+    @lockingMethod()
+    def updateRAM(self, memory_allocation, old_value):
         """Updates the amount of RAM allocated to a VM"""
         # Check the user has permission to modify VMs
         self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
@@ -503,10 +504,14 @@ class VirtualMachine(object):
         # Ensure memory_allocation is an interger, greater than 0
         try:
             int(memory_allocation)
-            if int(memory_allocation) <= 0:
+            if int(memory_allocation) <= 0 or str(memory_allocation) != str(int(memory_allocation)):
                 raise ValueError
         except ValueError:
             raise InvalidArgumentException('Memory allocation must be an integer greater than 0')
+
+        current_value = self.getRAM()
+        if old_value and current_value != old_value:
+            raise AttributeAlreadyChanged('Memory has already been changed to %s since command call' % current_value)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -533,7 +538,8 @@ class VirtualMachine(object):
         return self.getConfigObject().getConfig()['cpu_cores']
 
     @Pyro4.expose()
-    def updateCPU(self, cpu_count):
+    @lockingMethod()
+    def updateCPU(self, cpu_count, old_value):
         """Updates the number of CPU cores attached to a VM"""
         # Check the user has permission to modify VMs
         self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
@@ -541,10 +547,14 @@ class VirtualMachine(object):
         # Ensure cpu count is an interger, greater than 0
         try:
             int(cpu_count)
-            if int(cpu_count) <= 0:
+            if int(cpu_count) <= 0 or str(cpu_count) != str(int(cpu_count)):
                 raise ValueError
         except ValueError:
             raise InvalidArgumentException('CPU count must be an integer greater than 0')
+
+        current_value = self.getCPU()
+        if old_value and current_value != old_value:
+            raise AttributeAlreadyChanged('CPU count has already been changed to %s since command call' % current_value)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -561,6 +571,16 @@ class VirtualMachine(object):
         self.updateConfig(['cpu_cores'], str(cpu_count), 'CPU count has been changed to %s' %
                                                          cpu_count)
 
+    @Pyro4.expose()
+    def createNetworAdapter(self, network_object):
+        """Creates a network interface for the local VM"""
+        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
+        network_adapter = NetworkAdapter.create(vm_object, network_object)
+        if self._pyroDaemon:
+            self._pyroDaemon.register(network_adapter)
+        return network_adapter
+
+
     def getNetworkObjects(self):
         """Returns an array of network interface objects for each of the
         interfaces attached to the VM"""
@@ -569,6 +589,14 @@ class VirtualMachine(object):
             interface_object = NetworkAdapter(mac_address, self)
             interfaces.append(interface_object)
         return interfaces
+
+    def getNetworkAdapterByMacAdress(self, mac_address):
+        """Returns the network adapter by a given MAC address"""
+        # Ensure that MAC address is a valid network adapter for the VM
+        interface_object = NetworkAdapter(mac_address, self)
+        if self._pyroDaemon:
+            self._pyroDaemon.register(interface_object)
+        return interface_object
 
     def getDiskObjects(self):
         """Returns an array of disk objects for the disks attached to the VM"""
@@ -876,6 +904,7 @@ class VirtualMachine(object):
                 self.getName()
             )
 
+    @Pyro4.expose()
     def getStorageType(self):
         """Returns the storage type of the VM"""
         return self.getConfigObject().getConfig()['storage_type']
