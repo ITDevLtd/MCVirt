@@ -34,7 +34,7 @@ from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
                                                     CannotDeleteClonedVmException,
                                                     CannotCloneDrbdBasedVmsException,
                                                     VirtualMachineLockException)
-from mcvirt.node.network import NetworkDoesNotExistException
+from mcvirt.node.network.network import NetworkDoesNotExistException
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdStateException
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 from mcvirt.iso import Iso

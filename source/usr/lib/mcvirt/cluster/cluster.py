@@ -152,7 +152,7 @@ class Cluster:
 
     def syncNetworks(self, remote_object):
         """Add the local networks to the remote node"""
-        from mcvirt.node.network import Network
+        from mcvirt.node.network.network import Network
         local_networks = Network.getConfig()
         for network_name in local_networks.keys():
             remote_object.runRemoteCommand('node-network-create',
@@ -227,7 +227,7 @@ class Cluster:
            no object conflicts when syncing the Network and VM configurations"""
         # Determine if any of the local networks/VMs exist on the remote node
         remote_networks = remote_object.runRemoteCommand('node-network-getConfig', [])
-        from mcvirt.node.network import Network
+        from mcvirt.node.network.network import Network
         for local_network in Network.getConfig().keys():
             if (local_network in remote_networks.keys()):
                 raise RemoteObjectConflict('Remote node contains duplicate network: %s' %

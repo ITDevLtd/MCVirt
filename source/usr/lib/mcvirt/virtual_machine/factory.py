@@ -13,7 +13,7 @@ from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.auth.auth import Auth
-from mcvirt.node.network import Network
+from mcvirt.node.network.network import Network
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.rpc.lock import lockingMethod

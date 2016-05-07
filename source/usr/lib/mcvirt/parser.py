@@ -25,7 +25,7 @@ from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from virtual_machine.hard_drive.drbd import DrbdVolumeNotInSyncException
 from virtual_machine.network_adapter import NetworkAdapter
 from virtual_machine.disk_drive import DiskDrive
-from node.network import Network
+from node.network.network import Network
 from cluster.cluster import Cluster
 from system import System
 from node.drbd import DRBD as NodeDRBD
@@ -688,14 +688,16 @@ class Parser:
                 if vm_storage_type and args.storage_type and vm_storage_type != args.storage_type:
                     self.parser.error('The VM has already been configured '
                                       'with a storage type, it cannot be changed.')
+                else:
+                    if (args.storage_type):
+                        # If the VM has not been configured to use a storage type, use
+                        # the storage type parameter
+                        vm_storage_type = args.storage_type
                     else:
-                        if (args.storage_type):
-                            # If the VM has not been configured to use a storage type, use
-                            # the storage type parameter
-                            vm_storage_type = args.storage_type
-                        else:
-                            self.parser.error('The VM is not configured with a storage type, '
-                                              '--storage-type must be specified')
+                        self.parser.error('The VM is not configured with a storage type, '
+                                          '--storage-type must be specified')
+                if True:
+                    pass
                 else:
                     # If DRBD is not enabled, assume the default storage type is being used
                     vm_storage_type = HardDriveFactory.DEFAULT_STORAGE_TYPE
@@ -789,13 +791,14 @@ class Parser:
                 mcvirt_instance.printInfo()
 
         elif (action == 'network'):
+            network_factory = rpc.getConnection('network_factory')
             if (args.network_action == 'create'):
                 Network.create(mcvirt_instance, args.network, args.interface)
             elif (args.network_action == 'delete'):
                 network_object = Network(mcvirt_instance, args.network)
                 network_object.delete()
             elif (args.network_action == 'list'):
-                self.printStatus(Network.list(mcvirt_instance))
+                self.printStatus(network_factory.getNetworkListTable())
 
         elif (action == 'migrate'):
             vm_object = VirtualMachine(mcvirt_instance, args.vm_name)

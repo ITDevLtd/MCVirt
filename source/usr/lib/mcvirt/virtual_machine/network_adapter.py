@@ -15,10 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import Pyro4
 import libvirt
 import xml.etree.ElementTree as ET
 
 from mcvirt.mcvirt import MCVirtException
+from mcvirt.auth.auth import Auth
 
 
 class NetworkAdapterDoesNotExistException(MCVirtException):
@@ -26,7 +28,7 @@ class NetworkAdapterDoesNotExistException(MCVirtException):
     pass
 
 
-class NetworkAdapter:
+class NetworkAdapter(object):
     """Provides operations to network interfaces attached to a VM"""
 
     def __init__(self, mac_address, vm_object):
@@ -85,6 +87,7 @@ class NetworkAdapter:
             }
         return network_config
 
+    @Pyro4.expose()
     def getConnectedNetwork(self):
         """Returns the network that a given interface is connected to"""
         interface_config = self.getConfig()
@@ -101,6 +104,7 @@ class NetworkAdapter:
 
         return ':'.join(map(lambda x: "%02x" % x, mac))
 
+    @Pyro4.expose()
     def getMacAddress(self):
         """Returns the MAC address of the current network object"""
         return self.mac_address
@@ -109,7 +113,7 @@ class NetworkAdapter:
     def create(vm_object, network_object, mac_address=None):
         """Add interface device to the given VM object, connected to the given network"""
         from mcvirt.cluster.cluster import Cluster
-        from mcvirt.node.network import Network
+        from mcvirt.node.network.network import Network
 
         # Generate a MAC address, if one has not been supplied
         if (mac_address is None):
@@ -145,8 +149,14 @@ class NetworkAdapter:
 
         return network_adapter_object
 
+    @Pyro4.expose()
     def delete(self):
         """Remove the given interface from the VM, based on the given MAC address"""
+        self.vm_object.mcvirt_object.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.MODIFY_VM,
+            self.vm_object
+        )
+
         def updateXML(domain_xml):
             device_xml = domain_xml.find('./devices')
             interface_xml = device_xml.find(

@@ -185,7 +185,7 @@ class Remote:
             vm_object.reset()
 
         elif (action == 'network_adapter-create'):
-            from mcvirt.node.network import Network
+            from mcvirt.node.network.network import Network
             from mcvirt.virtual_machine.network_adapter import NetworkAdapter
             network_object = Network(mcvirt_instance, arguments['network_name'])
             vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
@@ -332,22 +332,22 @@ class Remote:
             hard_drive_object._drbdDisconnect()
 
         elif (action == 'node-network-create'):
-            from mcvirt.node.network import Network
+            from mcvirt.node.network.network import Network
             Network.create(mcvirt_instance,
                            arguments['network_name'],
                            arguments['physical_interface'])
 
         elif (action == 'node-network-delete'):
-            from mcvirt.node.network import Network
+            from mcvirt.node.network.network import Network
             network_object = Network(mcvirt_instance, arguments['network_name'])
             network_object.delete()
 
         elif (action == 'node-network-checkExists'):
-            from mcvirt.node.network import Network
+            from mcvirt.node.network.network import Network
             return_data = Network._checkExists(arguments['network_name'])
 
         elif (action == 'node-network-getConfig'):
-            from mcvirt.node.network import Network
+            from mcvirt.node.network.network import Network
             return_data = Network.getConfig()
 
         elif (action == 'node-drbd-isInstalled'):

@@ -19,8 +19,9 @@ import unittest
 
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt
-from mcvirt.node.network import Network, NetworkDoesNotExistException
-from mcvirt.node.network import NetworkAlreadyExistsException, NetworkUtilizedException
+from mcvirt.node.network.network import (Network, NetworkDoesNotExistException,
+                                         NetworkUtilizedException)
+from mcvirt.node.network.factory import Factory as NetworkFactory, NetworkAlreadyExistsException,
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
 
 
@@ -103,7 +104,8 @@ class NetworkTests(unittest.TestCase):
     def test_duplicate_name_create(self):
         """Test attempting to create a network with a duplicate name through the argument parser"""
         # Create network
-        Network.create(self.mcvirt, self.test_network_name, self.test_physical_interface)
+        netowork_factory = NetworkFactory(self.mcvirt)
+        network_factory.create(self.test_network_name, self.test_physical_interface)
 
         # Attempt to create a network with the same name
         with self.assertRaises(NetworkAlreadyExistsException):
@@ -119,7 +121,8 @@ class NetworkTests(unittest.TestCase):
     def test_delete(self):
         """Test deleting a network through the argument parser"""
         # Create network
-        Network.create(self.mcvirt, self.test_network_name, self.test_physical_interface)
+        netowork_factory = NetworkFactory(self.mcvirt)
+        network_factory.create(self.test_network_name, self.test_physical_interface)
 
         # Remove the network through the argument parser
         self.parser.parse_arguments('network delete %s' %
@@ -143,7 +146,8 @@ class NetworkTests(unittest.TestCase):
     def test_delete_utilized(self):
         """Attempt to remove a network that is in use by a VM"""
         # Create test network and create test VM connected to the network
-        Network.create(self.mcvirt, self.test_network_name, self.test_physical_interface)
+        netowork_factory = NetworkFactory(self.mcvirt)
+        network_factory.create(self.test_network_name, self.test_physical_interface)
         VirtualMachine.create(self.mcvirt, self.test_vm_name, 1, 100, [100],
                               [self.test_network_name])
 
@@ -159,7 +163,8 @@ class NetworkTests(unittest.TestCase):
         self.parser.parse_arguments('network list', mcvirt_instance=self.mcvirt)
 
         # Create test network and re-run network list
-        Network.create(self.mcvirt, self.test_network_name, self.test_physical_interface)
+        netowork_factory = NetworkFactory(self.mcvirt)
+        network_factory.create(self.test_network_name, self.test_physical_interface)
         self.parser.parse_arguments('network list', mcvirt_instance=self.mcvirt)
 
         # Run the network list to ensure that the table contains the name
