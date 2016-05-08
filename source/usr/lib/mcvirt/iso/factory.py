@@ -6,8 +6,9 @@ import shutil
 import Pyro4
 
 from iso import Iso
+from mcvirt.rpc.pyro_object import PyroObject
 
-class Factory(object):
+class Factory(PyroObject):
     """Class for obtaining ISO objects"""
 
     def __init__(self, mcvirt_instance):
@@ -30,8 +31,7 @@ class Factory(object):
     def getIsoByName(self, iso_name):
         """Creates and registers Iso object"""
         iso_object = Iso(self.mcvirt_instance, iso_name)
-        if '_pyroDaemon' in self.__dict__:
-            self._pyroDaemon.register(iso_object)
+        self._register_object(iso_object)
         return iso_object
 
     @Pyro4.expose()

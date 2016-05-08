@@ -34,6 +34,7 @@ from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactor
 from mcvirt.node.network.network import Network
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.pyro_object import PyroObject
 
 
 class UnkownException(MCVirtException):
@@ -138,7 +139,7 @@ class PowerStates(Enum):
     UNKNOWN = 2
 
 
-class VirtualMachine(object):
+class VirtualMachine(PyroObject):
     """Provides operations to manage a LibVirt virtual machine"""
 
     OBJECT_TYPE = 'virtual machine'
@@ -581,8 +582,7 @@ class VirtualMachine(object):
         """Creates a network interface for the local VM"""
         self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
         network_adapter = NetworkAdapter.create(self, network_object)
-        if '_pyroDaemon' in self.__dict__:
-            self._pyroDaemon.register(network_adapter)
+        self._reegister_object(network_adapter)
         return network_adapter
 
     def getNetworkAdapterObjects(self):
@@ -599,8 +599,7 @@ class VirtualMachine(object):
         """Returns the network adapter by a given MAC address"""
         # Ensure that MAC address is a valid network adapter for the VM
         interface_object = NetworkAdapter(mac_address, self)
-        if '_pyroDaemon' in self.__dict__:
-            self._pyroDaemon.register(interface_object)
+        self._register_object(interface_object)
         return interface_object
 
     def getDiskObjects(self):

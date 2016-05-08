@@ -17,6 +17,7 @@ from mcvirt.node.network.factory import Factory as NetworkFactory
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.pyro_object import PyroObject
 
 
 class StorageTypeNotSpecified(MCVirtException):
@@ -24,7 +25,7 @@ class StorageTypeNotSpecified(MCVirtException):
     pass
 
 
-class Factory(object):
+class Factory(PyroObject):
     """Class for obtaining virtual machine objects"""
 
     OBJECT_TYPE = 'virtual machine'
@@ -37,8 +38,7 @@ class Factory(object):
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
         vm_object = VirtualMachine(self.mcvirt_instance, vm_name)
-        if '_pyroDaemon' in self.__dict__:
-            self._pyroDaemon.register(vm_object)
+        self._register_object(vm_object)
         return vm_object
 
     @Pyro4.expose()
