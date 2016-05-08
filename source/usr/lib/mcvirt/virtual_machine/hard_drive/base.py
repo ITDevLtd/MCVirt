@@ -15,8 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from mcvirt.mcvirt import MCVirtException
+import Pyro4
 import os
+
+from mcvirt.mcvirt import MCVirtException
 from mcvirt.system import System, MCVirtCommandException
 
 
@@ -485,6 +487,7 @@ class Base(object):
         # Unlock the VM
         self.getConfigObject().vm_object.setLockState(LockStates.UNLOCKED)
 
+    @Pyro4.expose()
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         raise NotImplementedError

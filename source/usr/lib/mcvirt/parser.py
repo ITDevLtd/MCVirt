@@ -680,17 +680,15 @@ class Parser:
 
             if args.add_disk:
                 hard_drive_factory = rpc.getConnection('hard_drive_factory')
-                try:
-                    hard_drive_factory.create(vm_object, size=args.add_disk,
-                                            storage_type=args.storage_type,
-                                            driver=args.hard_disk_driver)
-                except Exception:
-                    print "Pyro traceback:"
-                    print "".join(Pyro4.util.getPyroTraceback())
+                hard_drive_factory.create(vm_object, size=args.add_disk,
+                                        storage_type=args.storage_type,
+                                        driver=args.hard_disk_driver)
 
             if (args.increase_disk and args.disk_id):
-                harddrive_object = HardDriveFactory.getObject(vm_object, args.disk_id)
-                harddrive_object.increaseSize(args.increase_disk)
+                hard_drive_factory = rpc.getConnection('hard_drive_factory')
+                hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+                rpc.annotateObject(hard_drive_object)
+                hard_drive_object.increaseSize(args.increase_disk)
 
             if args.iso:
                 iso_object = Iso(mcvirt_instance, args.iso)

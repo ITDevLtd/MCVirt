@@ -48,15 +48,6 @@ class BaseRpcDaemon(Pyro4.Daemon):
         # Create MCVirt instance
         self.mcvirt_instance = None
 
-    def convertRemoteObject(self, remote_object):
-        """Returns a local instance of a remote object"""
-        # Ensure that object is a remote object
-        if '_pyroUri' in remote_object.__dict__.keys():
-            # Obtain daemon instance of object
-            return self.objectsById[remote_object._pyroUri.object]
-        else:
-            return remote_object
-
     def validateHandshake(self, conn, data):
         """Perform authentication on new connections"""
         # Reset session_id for current context

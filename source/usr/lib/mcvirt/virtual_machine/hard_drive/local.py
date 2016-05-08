@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import Pyro4
 import libvirt
 import os
 
@@ -22,6 +23,8 @@ from mcvirt.system import System, MCVirtCommandException
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
+from mcvirt.auth.auth import Auth
+from mcvirt.rpc.lock import lockingMethod
 
 
 class CannotMigrateLocalDiskException(MCVirtException):
@@ -42,12 +45,18 @@ class Local(Base):
         """Determine if local storage is available on the node"""
         return True
 
+    @Pyro4.expose()
+    @lockingMethod()
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
+        Auth().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self.getVmObject())
+
+        # Ensure disk exists
         self._ensureExists()
+
         # Ensure VM is stopped
         from mcvirt.virtual_machine.virtual_machine import PowerStates
-        if (self.getVmObject().getState() is not PowerStates.STOPPED):
+        if (self.getVmObject()._getPowerState() is not PowerStates.STOPPED):
             raise MCVirtException('VM must be stopped before increasing disk size')
 
         # Ensure that VM has not been cloned and is not a clone

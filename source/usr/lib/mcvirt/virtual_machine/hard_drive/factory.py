@@ -24,6 +24,7 @@ from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 from mcvirt.auth.auth import Auth
 from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.pyro_object import PyroObject
 
 
 class UnknownStorageTypeException(MCVirtException):
@@ -31,24 +32,28 @@ class UnknownStorageTypeException(MCVirtException):
     pass
 
 
-class Factory(object):
+class Factory(PyroObject):
     """Provides a factory for creating hard drive/hard drive config objects"""
 
     STORAGE_TYPES = [Local, DRBD]
     DEFAULT_STORAGE_TYPE = 'Local'
-    OBJECT_TYPE = 'network'
+    OBJECT_TYPE = 'hard disk'
 
     def __init__(self, mcvirt_instance):
         """Create object, storing MCVirt instance"""
         self.mcvirt_instance = mcvirt_instance
 
-    @staticmethod
-    def getObject(vm_object, disk_id):
+    @Pyro4.expose()
+    def getObject(self, vm_object, disk_id):
         """Returns the storage object for a given disk"""
+        vm_object = self._convert_remote_object(vm_object)
         vm_config = vm_object.getConfigObject().getConfig()
         storage_type = vm_config['storage_type']
 
-        return Factory.getClass(storage_type)(vm_object, disk_id)
+        hard_drive_object = Factory.getClass(storage_type)(vm_object, disk_id)
+        self._register_object(hard_drive_object)
+
+        return hard_drive_object
 
     @staticmethod
     def getConfigObject(vm_object, storage_type, disk_id=None, config=None):
@@ -77,8 +82,7 @@ class Factory(object):
 
     def _create(self, vm_object, size, storage_type, driver):
         """Performs the creation of a hard drive, using a given storage type"""
-        if '_pyroDaemon' in self.__dict__:
-            vm_object = self._pyroDaemon.convertRemoteObject(vm_object)
+        vm_object = self._convert_remote_object(vm_object)
 
         # Ensure that the user has permissions to add create storage
 
@@ -93,7 +97,6 @@ class Factory(object):
                     'Storage type does not match VMs current storage type'
                 )
             storage_type = vm_object.getStorageType()
-            print storage_type
         else:
             available_storage_types = self._getAvailableStorageTypes()
             if len(available_storage_types) > 1 and not storage_type:

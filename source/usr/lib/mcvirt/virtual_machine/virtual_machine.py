@@ -606,9 +606,10 @@ class VirtualMachine(object):
     def getDiskObjects(self):
         """Returns an array of disk objects for the disks attached to the VM"""
         disks = self.getConfigObject().getConfig()['hard_disks']
+        hard_drive_factory = HardDriveFactory(self.mcvirt_object)
         disk_objects = []
         for disk_id in disks:
-            disk_objects.append(HardDriveFactory.getObject(self, disk_id))
+            disk_objects.append(hard_drive_factory.getObject(self, disk_id))
         return disk_objects
 
     def updateConfig(self, attribute_path, value, reason):
