@@ -691,9 +691,12 @@ class Parser:
                 hard_drive_object.increaseSize(args.increase_disk)
 
             if args.iso:
-                iso_object = Iso(mcvirt_instance, args.iso)
-                disk_object = DiskDrive(vm_object)
-                disk_object.attachISO(iso_object, True)
+                iso_factory = rpc.getConnection('iso_factory')
+                iso_object = iso_factory.getIsoByName(args.iso)
+                rpc.annotateObject(iso_object)
+                disk_drive = vm_object.get_disk_drive()
+                rpc.annotateObject(disk_drive)
+                disk_drive.attachISO(iso_object, True)
 
         elif (action == 'permission'):
             if ((args.add_superuser or args.delete_superuser) and args.vm_name):
@@ -829,7 +832,7 @@ class Parser:
             # Iterate over the VMs and check each disk
             failures = []
             for vm_object in vm_objects:
-                for disk_object in vm_object.getDiskObjects():
+                for disk_object in vm_object.getHardDriveObjects():
                     if (disk_object.getType() == 'DRBD'):
                         # Catch any exceptions due to the DRBD volume not being in-sync
                         try:

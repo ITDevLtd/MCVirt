@@ -88,7 +88,7 @@ class DrbdTests(unittest.TestCase):
         time.sleep(10)
 
         # Wait until the DRBD resource is synced
-        for disk_object in test_vm_object.getDiskObjects():
+        for disk_object in test_vm_object.getHardDriveObjects():
             wait_timeout = 6
             while (disk_object._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
                 # If the DRBD volume has not connected within 1 minute, throw an exception
@@ -103,11 +103,11 @@ class DrbdTests(unittest.TestCase):
                                     mcvirt_instance=self.mcvirt)
 
         # Ensure the disks are in-sync
-        for disk_object in test_vm_object.getDiskObjects():
+        for disk_object in test_vm_object.getHardDriveObjects():
             self.assertTrue(disk_object._isInSync())
 
         # Obtain the DRBD raw volume for the VM and write random data to it
-        for disk_object in test_vm_object.getDiskObjects():
+        for disk_object in test_vm_object.getHardDriveObjects():
             config_object = disk_object.getConfigObject()
             drbd_raw_suffix = config_object.DRBD_RAW_SUFFIX
             raw_logical_volume_name = config_object._getLogicalVolumeName(drbd_raw_suffix)

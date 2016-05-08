@@ -243,7 +243,7 @@ class VirtualMachineTests(unittest.TestCase):
         test_data = os.urandom(8)
 
         # Obtain the disk path for the VM and write random data to it
-        for disk_object in test_vm_parent.getDiskObjects():
+        for disk_object in test_vm_parent.getHardDriveObjects():
             fh = open(disk_object.getConfigObject()._getDiskPath(), 'w')
             fh.write(test_data)
             fh.close()
@@ -257,7 +257,7 @@ class VirtualMachineTests(unittest.TestCase):
         test_vm_clone = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
 
         # Check data is present on target VM
-        for disk_object in test_vm_clone.getDiskObjects():
+        for disk_object in test_vm_clone.getHardDriveObjects():
             fh = open(disk_object.getConfigObject()._getDiskPath(), 'r')
             self.assertEqual(fh.read(8), test_data)
             fh.close()
@@ -332,7 +332,7 @@ class VirtualMachineTests(unittest.TestCase):
         test_data = os.urandom(8)
 
         # Obtain the disk path for the VM and write random data to it
-        for disk_object in test_vm_parent.getDiskObjects():
+        for disk_object in test_vm_parent.getHardDriveObjects():
             fh = open(disk_object.getConfigObject()._getDiskPath(), 'w')
             fh.write(test_data)
             fh.close()
@@ -346,7 +346,7 @@ class VirtualMachineTests(unittest.TestCase):
         test_vm_duplicate = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
 
         # Check data is present on target VM
-        for disk_object in test_vm_duplicate.getDiskObjects():
+        for disk_object in test_vm_duplicate.getHardDriveObjects():
             fh = open(disk_object.getConfigObject()._getDiskPath(), 'r')
             self.assertEqual(fh.read(8), test_data)
             fh.close()
@@ -623,7 +623,7 @@ class VirtualMachineTests(unittest.TestCase):
         self.assertTrue(test_vm_object.isRegisteredLocally())
 
         # Monitor the hard drives until they are synced
-        for disk_object in test_vm_object.getDiskObjects():
+        for disk_object in test_vm_object.getHardDriveObjects():
             while (
                 disk_object._drbdGetDiskState() != (
                     DrbdDiskState.UP_TO_DATE,

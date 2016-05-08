@@ -226,7 +226,7 @@ class VirtualMachine(PyroObject):
             if (self._getPowerState() is PowerStates.RUNNING):
                 raise VmAlreadyStartedException('The VM is already running')
 
-            for disk_object in self.getDiskObjects():
+            for disk_object in self.getHardDriveObjects():
                 disk_object.activateDisk()
 
             disk_drive_object = DiskDrive(self)
@@ -373,7 +373,7 @@ class VirtualMachine(PyroObject):
             table.add_row(('ISO location', disk_name))
 
         # Get info for each disk
-        disk_objects = self.getDiskObjects()
+        disk_objects = self.getHardDriveObjects()
         if (len(disk_objects)):
             table.add_row(('-- Disk ID --', '-- Disk Size --'))
             for disk_object in disk_objects:
@@ -447,7 +447,7 @@ class VirtualMachine(PyroObject):
         # If 'remove_data' has been passed as True, delete disks associated
         # with VM
         if (remove_data and Cluster.getHostname() in self.getAvailableNodes()):
-            for disk_object in self.getDiskObjects():
+            for disk_object in self.getHardDriveObjects():
                 disk_object.delete()
 
         # 'Undefine' object from LibVirt
@@ -602,7 +602,14 @@ class VirtualMachine(PyroObject):
         self._register_object(interface_object)
         return interface_object
 
-    def getDiskObjects(self):
+    @Pyro4.expose()
+    def get_disk_drive(self):
+        """Returns a disk drive object for the VM"""
+        disk_drive_object = DiskDrive(self)
+        self._register_object(disk_drive_object)
+        return disk_drive_object
+
+    def getHardDriveObjects(self):
         """Returns an array of disk objects for the disks attached to the VM"""
         disks = self.getConfigObject().getConfig()['hard_disks']
         hard_drive_factory = HardDriveFactory(self.mcvirt_object)
@@ -765,7 +772,7 @@ class VirtualMachine(PyroObject):
             self._setNode(None)
 
             # Perform pre-migration tasks on disk objects
-            for disk_object in self.getDiskObjects():
+            for disk_object in self.getHardDriveObjects():
                 disk_object.preOnlineMigration(destination_node)
 
             # Build migration flags
@@ -792,7 +799,7 @@ class VirtualMachine(PyroObject):
                 raise MigrationFailureExcpetion('Libvirt migration failed')
 
             # Perform post steps on hard disks and check disks
-            for disk_object in self.getDiskObjects():
+            for disk_object in self.getHardDriveObjects():
                 disk_object.postOnlineMigration()
                 disk_object._checkDrbdStatus()
 
@@ -813,7 +820,7 @@ class VirtualMachine(PyroObject):
                 vm_registration_found = True
 
                 # Set DRBD on remote node to secondary
-                for disk_object in self.getDiskObjects():
+                for disk_object in self.getHardDriveObjects():
                     cluster_instance.runRemoteCommand(
                         'virtual_machine-hard_drive-drbd-drbdSetSecondary',
                         {'vm_name': self.getName(),
@@ -827,7 +834,7 @@ class VirtualMachine(PyroObject):
                 # Otherwise, if VM is registered on remote node, set the
                 # local DRBD state to secondary
                 vm_registration_found = True
-                for disk_object in self.getDiskObjects():
+                for disk_object in self.getHardDriveObjects():
                     import time
                     time.sleep(10)
                     disk_object._drbdSetSecondary()
@@ -836,7 +843,7 @@ class VirtualMachine(PyroObject):
                 self._setNode(destination_node_name)
 
             # Reset disks
-            for disk_object in self.getDiskObjects():
+            for disk_object in self.getHardDriveObjects():
                 # Reset dual-primary configuration
                 disk_object._setTwoPrimariesConfig(allow=False)
 
@@ -881,7 +888,7 @@ class VirtualMachine(PyroObject):
 
         # Checks the DRBD state of the disks and ensure that they are
         # in a suitable state to be migrated
-        for disk_object in self.getDiskObjects():
+        for disk_object in self.getHardDriveObjects():
             disk_object.preMigrationChecks()
 
         # Check the remote node to ensure that the networks, that the VM is connected to,
@@ -973,7 +980,7 @@ class VirtualMachine(PyroObject):
         self.mcvirt_object.getAuthObject().copyPermissions(self, new_vm_object)
 
         # Clone the hard drives of the VM
-        disk_objects = self.getDiskObjects()
+        disk_objects = self.getHardDriveObjects()
         for disk_object in disk_objects:
             disk_object.clone(new_vm_object)
 
@@ -1010,7 +1017,7 @@ class VirtualMachine(PyroObject):
         self.mcvirt_object.getAuthObject().copyPermissions(self, new_vm_object)
 
         # Clone the hard drives of the VM
-        disk_objects = self.getDiskObjects()
+        disk_objects = self.getHardDriveObjects()
         for disk_object in disk_objects:
             disk_object.duplicate(new_vm_object)
 
@@ -1070,7 +1077,7 @@ class VirtualMachine(PyroObject):
                           (self.getName(), source_node, destination_node))
 
         # Move each of the attached disks to the remote node
-        for disk_object in self.getDiskObjects():
+        for disk_object in self.getHardDriveObjects():
             disk_object.move(source_node=source_node, destination_node=destination_node)
 
         # If the VM is a Local VM, unregister it from the local node
@@ -1112,7 +1119,7 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Activate hard disks
-        for disk_object in self.getDiskObjects():
+        for disk_object in self.getHardDriveObjects():
             disk_object.activateDisk()
 
         # Obtain domain XML
@@ -1126,7 +1133,7 @@ class VirtualMachine(PyroObject):
         device_xml = domain_xml.find('./devices')
 
         # Add hard drive configurations
-        for hard_drive_object in self.getDiskObjects():
+        for hard_drive_object in self.getHardDriveObjects():
             drive_xml = hard_drive_object.getConfigObject()._generateLibvirtXml()
             device_xml.append(drive_xml)
 
@@ -1170,7 +1177,7 @@ class VirtualMachine(PyroObject):
             raise MCVirtException('Failed to delete VM from libvirt')
 
         # De-activate the disk objects
-        for disk_object in self.getDiskObjects():
+        for disk_object in self.getHardDriveObjects():
             disk_object.deactivateDisk()
 
         # Remove node from VM configuration

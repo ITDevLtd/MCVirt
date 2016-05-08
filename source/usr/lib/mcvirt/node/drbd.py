@@ -187,7 +187,7 @@ class DRBD:
         for vm_name in all_vms:
             vm_object = VirtualMachine(mcvirt_object=mcvirt_instance, name=vm_name)
             if (Cluster.getHostname() in vm_object.getAvailableNodes() or include_remote):
-                all_hard_drive_objects = vm_object.getDiskObjects()
+                all_hard_drive_objects = vm_object.getHardDriveObjects()
 
                 for hard_drive_object in all_hard_drive_objects:
                     if (hard_drive_object.getType() is 'DRBD'):

@@ -85,6 +85,10 @@ class Factory(PyroObject):
         vm_object = self._convert_remote_object(vm_object)
 
         # Ensure that the user has permissions to add create storage
+        self.vm_object.mcvirt_object.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.MODIFY_VM,
+            vm_object
+        )
 
         # Ensure that the storage type:
         # If the VM's storage type has been defined that the specified storage type

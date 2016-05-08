@@ -194,7 +194,7 @@ class Cluster:
                                             'available_nodes': vm_object.getAvailableNodes()})
 
             # Add each of the disks to the VM
-            for hard_disk in vm_object.getDiskObjects():
+            for hard_disk in vm_object.getHardDriveObjects():
                 remote_object.runRemoteCommand('virtual_machine-hard_drive-addToVirtualMachine',
                                                {'config':
                                                 hard_disk.getConfigObject()._dumpConfig()})

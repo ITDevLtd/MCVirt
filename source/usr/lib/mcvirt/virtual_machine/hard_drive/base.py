@@ -235,7 +235,7 @@ class Base(object):
         """Set the VM configuration storage type to the current hard drive type"""
         # Ensure VM has not already been configured with disks that
         # do not match the type specified
-        number_of_disks = len(config_object.vm_object.getDiskObjects())
+        number_of_disks = len(config_object.vm_object.getHardDriveObjects())
         current_storage_type = config_object.vm_object.getConfigObject(
         ).getConfig()['storage_type']
         print current_storage_type

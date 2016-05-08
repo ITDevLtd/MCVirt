@@ -18,21 +18,32 @@
 import libvirt
 import xml.etree.ElementTree as ET
 import os
+import Pyro4
 
 from mcvirt.mcvirt import MCVirtException, MCVirt
 from mcvirt.iso.iso import Iso, IsoNotPresentOnDestinationNodeException
 from mcvirt.cluster.cluster import Cluster
+from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.auth.auth import Auth
 
 
-class DiskDrive:
+class DiskDrive(PyroObject):
     """Provides operations to manage the disk drive attached to a VM"""
 
     def __init__(self, vm_object):
         """Sets member variables and obtains libvirt domain object"""
-        self.vm_object = vm_object
+        self.vm_object = self._convert_remote_object(vm_object)
 
+    @Pyro4.expose()
     def attachISO(self, iso_object, live=False):
         """Attaches an ISO image to the disk drive of the VM"""
+        iso_object = self._convert_remote_object(iso_object)
+
+        # Ensure that the user has permissions to modifiy the VM
+        self.vm_object.mcvirt_object.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.MODIFY_VM,
+            self.vm_object
+        )
 
         # Import cdrom XML template
         cdrom_xml = ET.parse(MCVirt.TEMPLATE_DIR + '/cdrom.xml')

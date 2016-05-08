@@ -178,7 +178,7 @@ class OnlineMigrateTests(unittest.TestCase):
 
         # Wait until the DRBD resource is synced
         time.sleep(5)
-        for disk_object in self.test_vm_object.getDiskObjects():
+        for disk_object in self.test_vm_object.getHardDriveObjects():
             wait_timeout = 6
             while (disk_object._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
                 # If the DRBD volume has not connected within 1 minute, throw an exception
@@ -251,7 +251,7 @@ class OnlineMigrateTests(unittest.TestCase):
                      'DRBD is not enabled on this node')
     def test_migrate_drbd_not_connected(self):
         """Attempts to migrate a VM whilst DRBD is not connected"""
-        for disk_object in self.test_vm_object.getDiskObjects():
+        for disk_object in self.test_vm_object.getHardDriveObjects():
             disk_object._drbdDisconnect()
 
         with self.assertRaises(DrbdStateException):
@@ -260,7 +260,7 @@ class OnlineMigrateTests(unittest.TestCase):
         cluster_instance = Cluster(self.mcvirt)
         node_object = cluster_instance.getRemoteNode(self.get_remote_node())
 
-        for disk_object in self.test_vm_object.getDiskObjects():
+        for disk_object in self.test_vm_object.getHardDriveObjects():
             disk_object._drbdConnect()
 
             try:
@@ -271,7 +271,7 @@ class OnlineMigrateTests(unittest.TestCase):
                 pass
 
         # Wait until the DRBD resource is synced
-        for disk_object in self.test_vm_object.getDiskObjects():
+        for disk_object in self.test_vm_object.getHardDriveObjects():
             wait_timeout = 6
             while (disk_object._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
                 # If the DRBD volume has not connected within 1 minute, throw an exception
@@ -361,7 +361,7 @@ class OnlineMigrateTests(unittest.TestCase):
         )
 
         # Ensure DRBD disks are in a valid state
-        for disk_object in self.test_vm_object.getDiskObjects():
+        for disk_object in self.test_vm_object.getHardDriveObjects():
             # Check that the disk is shown as not in-sync
             with self.assertRaises(DrbdVolumeNotInSyncException):
                 disk_object._checkDrbdStatus()
@@ -407,7 +407,7 @@ class OnlineMigrateTests(unittest.TestCase):
         )
 
         # Ensure DRBD disks are in a valid state
-        for disk_object in self.test_vm_object.getDiskObjects():
+        for disk_object in self.test_vm_object.getHardDriveObjects():
             # Check that the disk is shown as not in-sync
             with self.assertRaises(DrbdVolumeNotInSyncException):
                 disk_object._checkDrbdStatus()
@@ -480,7 +480,7 @@ class OnlineMigrateTests(unittest.TestCase):
         )
 
         # Ensure DRBD disks are in a valid state
-        for disk_object in self.test_vm_object.getDiskObjects():
+        for disk_object in self.test_vm_object.getHardDriveObjects():
             # Check that the disk is shown as not in-sync
             disk_object._checkDrbdStatus()
 
