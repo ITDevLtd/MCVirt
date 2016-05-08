@@ -49,7 +49,9 @@ class Local(Base):
     @lockingMethod()
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
-        Auth().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self.getVmObject())
+        self.getVmObject().mcvirt_instance.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.MODIFY_VM, self.getVmObject()
+        )
 
         # Ensure disk exists
         self._ensureExists()

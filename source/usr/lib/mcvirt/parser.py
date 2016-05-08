@@ -221,13 +221,15 @@ class Parser:
             dest='add_user',
             metavar='Add user to user group',
             type=str,
-            help='Adds a given user to a VM, allowing them to perform basic functions.')
+            help='Adds a given user to a VM, allowing them to perform basic functions.'
+        )
         self.permission_parser.add_argument(
             '--delete-user',
             dest='delete_user',
             metavar='Remove user from user group',
             type=str,
-            help='Removes a given user from a VM. This prevents them to perform basic functions.')
+            help='Removes a given user from a VM. This prevents them to perform basic functions.'
+        )
         self.permission_parser.add_argument(
             '--add-owner',
             dest='add_owner',
@@ -698,64 +700,78 @@ class Parser:
                 rpc.annotateObject(disk_drive)
                 disk_drive.attachISO(iso_object, True)
 
-        elif (action == 'permission'):
-            if ((args.add_superuser or args.delete_superuser) and args.vm_name):
+        elif action == 'permission':
+            if (args.add_superuser or args.delete_superuser) and args.vm_name:
                 raise MCVirtException('Superuser groups are global-only roles')
 
-            if (args.vm_name):
-                vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            if args.vm_name:
+                vm_factory = rpc.getConnection('virtual_machine_factory')
+                vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+                rpc.annotateObject(vm_object)
                 permission_destination_string = 'role on VM %s' % vm_object.getName()
             else:
                 vm_object = None
                 permission_destination_string = 'global role'
 
-            auth_object = mcvirt_instance.getAuthObject()
-            if (args.add_user):
+            auth_object = rpc.getConnection('auth')
+            rpc.annotateObject(auth_object)
+            user_factory = rpc.getConnection('user_factory')
+            rpc.annotateObject(user_factory)
+
+            if args.add_user:
+                user_object = user_factory.get_user_by_username(args.add_user)
+                rpc.annotateObject(user_object)
                 auth_object.addUserPermissionGroup(
-                    mcvirt_object=mcvirt_instance,
                     permission_group='user',
-                    username=args.add_user,
+                    user_object=user_object,
                     vm_object=vm_object)
                 self.printStatus(
                     'Successfully added \'%s\' to \'user\' %s' %
                     (args.add_user, permission_destination_string))
 
-            if (args.delete_user):
+            if args.delete_user:
+                user_object = user_factory.get_user_by_username(args.delete_user)
+                rpc.annotateObject(user_object)
                 auth_object.deleteUserPermissionGroup(
-                    mcvirt_object=mcvirt_instance,
                     permission_group='user',
-                    username=args.delete_user,
+                    user_object=user_object,
                     vm_object=vm_object)
                 self.printStatus(
                     'Successfully removed \'%s\' from \'user\' %s' %
                     (args.delete_user, permission_destination_string))
 
-            if (args.add_owner):
+            if args.add_owner:
+                user_object = user_factory.get_user_by_username(args.add_owner)
+                rpc.annotateObject(user_object)
                 auth_object.addUserPermissionGroup(
-                    mcvirt_object=mcvirt_instance,
                     permission_group='owner',
-                    username=args.add_owner,
+                    user_object=user_object,
                     vm_object=vm_object)
                 self.printStatus(
                     'Successfully added \'%s\' to \'owner\' %s' %
                     (args.add_owner, permission_destination_string))
 
-            if (args.delete_owner):
+            if args.delete_owner:
+                user_object = user_factory.get_user_by_username(args.delete_owner)
+                rpc.annotateObject(user_object)
                 auth_object.deleteUserPermissionGroup(
-                    mcvirt_object=mcvirt_instance,
                     permission_group='owner',
-                    username=args.delete_owner,
+                    user_object=user_object,
                     vm_object=vm_object)
                 self.printStatus(
                     'Successfully removed \'%s\' from \'owner\' %s' %
                     (args.delete_owner, permission_destination_string))
 
-            if (args.add_superuser):
-                auth_object.addSuperuser(args.add_superuser, mcvirt_object=mcvirt_instance)
+            if args.add_superuser:
+                user_object = user_factory.get_user_by_username(args.add_superuser)
+                rpc.annotateObject(user_object)
+                auth_object.addSuperuser(user_object=user_object)
                 self.printStatus('Successfully added %s to the global superuser group' %
                                  args.add_superuser)
-            if (args.delete_superuser):
-                auth_object.deleteSuperuser(args.delete_superuser, mcvirt_object=mcvirt_instance)
+            if args.delete_superuser:
+                user_object = user_factory.get_user_by_username(args.delete_superuser)
+                rpc.annotateObject(user_object)
+                auth_object.deleteSuperuser(user_object=user_object)
                 self.printStatus('Successfully removed %s from the global superuser group ' %
                                  args.delete_superuser)
 

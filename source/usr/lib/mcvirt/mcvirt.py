@@ -151,7 +151,7 @@ class MCVirt(object):
     def getAuthObject(self):
         """Returns an instance of the Auth class"""
         from auth.auth import Auth
-        return Auth()
+        return Auth(self)
 
     def getAllVirtualMachineObjects(self):
         """Obtain array of all domains from libvirt"""

@@ -25,6 +25,7 @@ from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
 from mcvirt.iso.factory import Factory as IsoFactory
 from mcvirt.node.network.factory import Factory as NetworkFactory
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+from mcvirt.auth.factory import Factory as UserFactory
 from mcvirt.auth.session import Session
 from mcvirt.logger import Logger
 
@@ -117,16 +118,33 @@ class RpcNSMixinDaemon(object):
 
     def registerFactories(self):
         """Register base MCVirt factories with RPC daemon"""
-        # Create Virtual machine factory object and register with daemon
+        # Register session class
         self.register(DaemonSession, objectId='session', force=True)
+        # Create Virtual machine factory object and register with daemon
         virtual_machine_factory = VirtualMachineFactory(self.mcvirt_instance)
         self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
+
+        # Create network factory object and register with daemon
         network_factory = NetworkFactory(self.mcvirt_instance)
         self.register(network_factory, objectId='network_factory', force=True)
+
+        # Create network factory object and register with daemon
         hard_drive_factory = HardDriveFactory(self.mcvirt_instance)
         self.register(hard_drive_factory, objectId='hard_drive_factory', force=True)
+
+        # Create ISO factory object and register with daemon
         iso_factory = IsoFactory(self.mcvirt_instance)
         self.register(iso_factory, objectId='iso_factory', force=True)
+
+        # Create auth object and register with daemon
+        auth = Auth(self.mcvirt_instance)
+        self.register(auth, objectId='auth', force=True)
+
+        # Create user factory object and register with Daemon
+        user_factory = UserFactory(self.mcvirt_instance)
+        self.register(user_factory, objectId='user_factory', force=True)
+
+        # Create logger object and register with daemon
         logger = Logger()
         self.register(logger, objectId='logger', force=True)
 

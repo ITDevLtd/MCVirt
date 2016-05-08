@@ -18,6 +18,7 @@
 import os
 from binascii import hexlify
 from pbkdf2 import crypt
+import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.mcvirt import MCVirtException
@@ -88,6 +89,7 @@ class User(object):
         self._username = username
         self._ensureExists()
 
+    @Pyro4.expose()
     def getUsername(self):
         """Returns the username of the current user"""
         return self._username
@@ -96,7 +98,7 @@ class User(object):
         """Ensure that the current user exists in the MCVirt configuration"""
         if not User._checkExists(self.getUsername()):
             raise UserDoesNotExistException('User %s does not exist' %
-                                            self.username)
+                                            self.getUsername())
 
     def _getConfig(self):
         """Returns the config hash for the current user"""

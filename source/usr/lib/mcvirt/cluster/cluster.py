@@ -161,7 +161,7 @@ class Cluster:
 
     def syncPermissions(self, remote_object):
         """Duplicates the global permissions on the local node onto the remote node"""
-        auth_object = Auth()
+        auth_object = Auth(self.mcvirt_instance)
 
         # Sync superusers
         for superuser in auth_object.getSuperusers():
@@ -208,7 +208,7 @@ class Cluster:
                                                 'mac_address': network_adapter.getMacAddress()})
 
             # Sync permissions to VM on remote node
-            auth_object = Auth()
+            auth_object = Auth(self.mcvirt_instance)
             for group in auth_object.getPermissionGroups():
                 users = auth_object.getUsersInPermissionGroup(group, vm_object)
                 for user in users:

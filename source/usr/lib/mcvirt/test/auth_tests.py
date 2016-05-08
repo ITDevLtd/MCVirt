@@ -76,8 +76,8 @@ class AuthTests(unittest.TestCase):
             }
 
         self.test_user = 'test_user'
-        self.test_auth_object = Auth(self.test_user)
-        self.auth_object = Auth()
+        self.test_auth_object = Auth(self.mcvirt, self.test_user)
+        self.auth_object = Auth(self.mcvirt)
 
         # Ensure any test VM is stopped and removed from the machine
         stop_and_delete(self.mcvirt, self.test_vm['name'])
