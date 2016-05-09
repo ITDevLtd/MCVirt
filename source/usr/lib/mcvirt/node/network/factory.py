@@ -22,6 +22,7 @@ import xml.etree.ElementTree as ET
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.auth.auth import Auth
 from mcvirt.node.network.network import Network
+from mcvirt.rpc.lock import lockingMethod
 
 
 class NetworkAlreadyExistsException(MCVirtException):
@@ -39,6 +40,7 @@ class Factory(object):
         self.mcvirt_instance = mcvirt_instance
 
     @Pyro4.expose()
+    @lockingMethod()
     def create(self, name, physical_interface):
         """Creates a network on the node"""
         # Ensure user has permission to manage networks
