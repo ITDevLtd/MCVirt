@@ -59,7 +59,7 @@ class Factory(PyroObject):
         return self.getIsoByName(filename)
 
     @Pyro4.expose()
-    def addFromUrl(mcvirt_instance, url, name=None):
+    def addFromUrl(url, name=None):
         """Download an ISO from given URL and save in ISO directory"""
         # Work out name from URL if name is not supplied
         if name is None:
