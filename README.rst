@@ -6,7 +6,7 @@ A new release of MCVirt is in progress (v4.0.0).
 
 Older versions of MCVirt are no longer supported.
 
-If you have not yet installed MCVirt, we recommend waiting for v4.0.0 until you do so. (We the release will be made Late May/June 2016)
+If you have not yet installed MCVirt, we recommend waiting for v4.0.0 until you do so. (We are planning the release to be made late May/June 2016)
 
 ======
 MCVirt - Managed Consistent Virtualisation
