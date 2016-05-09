@@ -775,29 +775,33 @@ class Parser:
                 self.printStatus('Successfully removed %s from the global superuser group ' %
                                  args.delete_superuser)
 
-        elif (action == 'info'):
-            if (not args.vm_name and (args.vnc_port or args.node)):
+        elif action == 'info':
+            if not args.vm_name and (args.vnc_port or args.node):
                 self.parser.error('Must provide a VM Name')
-            if (args.vm_name):
-                vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+            if args.vm_name:
+                vm_factory = rpc.getConnection('virtual_machine_factory')
+                vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+                rpc.annotateObject(vm_object)
                 if (args.vnc_port):
                     self.printStatus(vm_object.getVncPort())
-                elif (args.node):
+                elif args.node:
                     self.printStatus(vm_object.getNode())
                 else:
                     self.printStatus(vm_object.getInfo())
-            else:
-                mcvirt_instance = MCVirt(ignore_failed_nodes=True)
-                mcvirt_instance.printInfo()
+            # Removed as this requires cluster support
+            # else:
+            #     mcvirt_instance = MCVirt(ignore_failed_nodes=True)
+            #     mcvirt_instance.printInfo()
 
-        elif (action == 'network'):
+        elif action == 'network':
             network_factory = rpc.getConnection('network_factory')
-            if (args.network_action == 'create'):
-                Network.create(mcvirt_instance, args.network, args.interface)
-            elif (args.network_action == 'delete'):
-                network_object = Network(mcvirt_instance, args.network)
+            if args.network_action == 'create':
+                network_factory.create(args.network, physical_interface=args.interface)
+            elif args.network_action == 'delete':
+                network_object = network_factory.getNetworkByName(args.network)
+                rpc.annotateObject(network_object)
                 network_object.delete()
-            elif (args.network_action == 'list'):
+            elif args.network_action == 'list':
                 self.printStatus(network_factory.getNetworkListTable())
 
         elif (action == 'migrate'):

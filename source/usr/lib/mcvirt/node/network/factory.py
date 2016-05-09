@@ -38,10 +38,11 @@ class Factory(object):
         """Create object, storing MCVirt instance"""
         self.mcvirt_instance = mcvirt_instance
 
+    @Pyro4.expose()
     def create(self, name, physical_interface):
         """Creates a network on the node"""
         # Ensure user has permission to manage networks
-        Auth().assertPermission(Auth.PERMISSIONS.MANAGE_HOST_NETWORKS)
+        Auth(self.mcvirt_instance).assertPermission(Auth.PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network does not already exist
         if (Network._checkExists(name)):

@@ -56,9 +56,7 @@ class DiskDrive(PyroObject):
 
         # Update the libvirt cdrom device
         libvirt_object = self.vm_object._getLibvirtDomainObject()
-        if (not libvirt_object.updateDeviceFlags(cdrom_xml_string, flags)):
-            print 'Attached ISO %s' % iso_object.getName()
-        else:
+        if libvirt_object.updateDeviceFlags(cdrom_xml_string, flags):
             raise MCVirtException('An error occurred whilst attaching ISO')
 
     def removeISO(self):
