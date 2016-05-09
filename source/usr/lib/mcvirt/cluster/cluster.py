@@ -16,11 +16,15 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os.path
+import json
+import socket
+import base64
+
 from mcvirt.auth.auth import Auth
 from mcvirt.mcvirt import MCVirtException
 from mcvirt.system import System
 from mcvirt.mcvirt_config import MCVirtConfig
-import socket
+from mcvirt.auth.factory import Factory as UserFactory
 
 
 class NodeAlreadyPresent(MCVirtException):
@@ -43,28 +47,37 @@ class ClusterNotInitialisedException(MCVirtException):
     pass
 
 
-class Cluster:
+class Cluster(object):
     """Class to perform node management within the MCVirt cluster"""
-
-    SSH_DIRECTORY = '/root/.ssh'
-    SSH_AUTHORIZED_KEYS_FILE = '/root/.ssh/authorized_keys'
-    SSH_PRIVATE_KEY = '/root/.ssh/id_rsa'
-    SSH_PUBLIC_KEY = '/root/.ssh/id_rsa.pub'
-    SSH_KNOWN_HOSTS_FILE = '/root/.ssh/known_hosts'
-    SSH_USER = 'root'
 
     @staticmethod
     def getHostname():
         """Returns the hostname of the system"""
         return socket.gethostname()
 
+    def getConnectionString(self):
+        # Only superusers can generate a connection string
+        self.mcvirt_instance.getAuthObject().assertPermission(
+            Auth.PERMISSIONS.MANAGE_CLUSTER
+        )
+
+        # Generate password and create connection user
+        user_factory = UserFactory(self.mcvirt_instance)
+        connection_username, connection_password = user_factory.generateConnectionUser()
+
+        # Generate dict with connection information. Convert to JSON and base64 encode
+        connection_info = {
+            'username': connection_username,
+            'password': connection_password,
+            'ip_address': '',
+            'hostname': ''
+        }
+        connection_info_json = json.dumps(connection_info)
+        return base64.b64encode(connection_info_json)
+
     def __init__(self, mcvirt_instance):
         """Sets member variables"""
         self.mcvirt_instance = mcvirt_instance
-
-        # Connect to each of the nodes
-        if (self.mcvirt_instance.initialise_nodes):
-            self.connectNodes()
 
     def addNodeRemote(self, remote_host, remote_ip_address, remote_public_key):
         """Adds the machine to a remote cluster"""
@@ -75,7 +88,7 @@ class Cluster:
         self.addNodeConfiguration(remote_host, remote_ip_address, remote_public_key)
         return local_public_key
 
-    def addNode(self, remote_host, remote_ip, password):
+    def addNode(self, node_connection_string):
         """Connects to a remote MCVirt machine, shares SSH keys and clusters the machines"""
         from remote import Remote
         from mcvirt.node.drbd import DRBD

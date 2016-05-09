@@ -64,7 +64,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
         if 'PASS' in data:
             # Store the password and perform authentication check
             password = str(data['PASS'])
-            session_id = Session.authenticateUser(username=username, password=password)
+            session_object = Session(self.mcvirt_instance)
+            session_id = session_object.authenticateUser(username=username, password=password)
             if session_id:
                 Pyro4.current_context.username = username
                 Pyro4.current_context.session_id = session_id
@@ -73,7 +74,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
         # If a session id has been passed, store it and check the session_id/username against active sessions
         elif 'SEID' in data:
             session_id = str(data['SEID'])
-            if Session.authenticateSession(username=username, session=session_id):
+            session_object = Session(self.mcvirt_instance)
+            if session_object.authenticateSession(username=username, session=session_id):
                 Pyro4.current_context.username = username
                 Pyro4.current_context.session_id = session_id
                 return session_id

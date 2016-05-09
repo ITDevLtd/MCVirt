@@ -19,7 +19,7 @@ import json
 import os
 
 
-class ConfigFile():
+class ConfigFile(object):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     CURRENT_VERSION = 2

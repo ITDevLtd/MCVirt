@@ -20,7 +20,7 @@ from binascii import hexlify
 import Pyro4
 
 from mcvirt.mcvirt import MCVirtException
-from user import User
+from factory import Factory as UserFactory
 
 
 class AuthenticationError(MCVirtException):
@@ -38,11 +38,15 @@ class Session(object):
 
     USER_SESSIONS = {}
 
-    @staticmethod
-    def authenticateUser(username, password):
+    def __init__(self, mcvirt_instance):
+        """Create instance and store MCVirt instance"""
+        self.mcvirt_instance = mcvirt_instance
+
+    def authenticateUser(self, username, password):
         """Authenticate using username/password and store
           session"""
-        user_object = User.authenticate(username, password)
+        user_factory = UserFactory(self.mcvirt_instance)
+        user_object = user_factory.authenticate(username, password)
         if user_object:
             # Generate Session ID
             session_id = Session._generateSessionId()
@@ -60,19 +64,19 @@ class Session(object):
         """Generate random session ID"""
         return hexlify(os.urandom(8))
 
-    @staticmethod
-    def authenticateSession(username, session):
+    def authenticateSession(self, username, session):
         """Authenticate user session"""
         if session in Session.USER_SESSIONS and Session.USER_SESSIONS[session] == username:
-            return User(username)
+            user_factory = UserFactory(self.mcvirt_instance)
+            return user_factory.get_user_by_username(username)
 
         raise AuthenticationError('Invalid session ID')
 
-    @staticmethod
-    def getCurrentUserObject():
+    def getCurrentUserObject(self):
         """Returns the current user object, based on pyro session"""
         if Pyro4.current_context.session_id:
             session_id = Pyro4.current_context.session_id
             username = Session.USER_SESSIONS[session_id]
-            return User(username)
+            user_factory = UserFactory(self.mcvirt_instance)
+            return user_factory.get_user_by_username(username)
         raise CurrentUserError('Cannot obtain current user')

@@ -22,7 +22,6 @@ import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.mcvirt import MCVirtException
-from session import Session
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
 
@@ -48,7 +47,7 @@ class Auth(PyroObject):
                                        'MANAGE_DRBD', 'CAN_IGNORE_DRBD', 'MIGRATE_VM',
                                        'DUPLICATE_VM', 'SET_VM_LOCK', 'BACKUP_VM',
                                        'CAN_IGNORE_CLUSTER', 'MOVE_VM', 'SET_VM_NODE',
-                                       'TEST_SUPERUSER_PERMISSION', 'TEST_OWNER_PERMISSION',
+                                       'MANAGE_USERS', 'TEST_SUPERUSER_PERMISSION', 'TEST_OWNER_PERMISSION',
                                        'TEST_USER_PERMISSION'])
 
     # Set the permissions for the permissions groups
@@ -104,7 +103,7 @@ class Auth(PyroObject):
         if (self.isSuperuser()):
             return True
 
-        user_object = Session.getCurrentUserObject()
+        user_object = self.mcvirt_instance.getSessionObject().getCurrentUserObject()
 
         # Check the global permissions configuration to determine
         # if the user has been granted the permission
@@ -146,7 +145,7 @@ class Auth(PyroObject):
 
     def isSuperuser(self):
         """Determines if the current user is a superuser of MCVirt"""
-        user_object = Session.getCurrentUserObject()
+        user_object = self.mcvirt_instance.getSessionObject().getCurrentUserObject()
         username = user_object.getUsername()
         superusers = self.getSuperusers()
 

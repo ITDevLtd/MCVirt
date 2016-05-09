@@ -153,6 +153,11 @@ class MCVirt(object):
         from auth.auth import Auth
         return Auth(self)
 
+    def getSessionObject(self):
+        """Returns an instance of the Session class"""
+        from auth.session import Session
+        return Session(self)
+
     def getAllVirtualMachineObjects(self):
         """Obtain array of all domains from libvirt"""
         from virtual_machine.virtual_machine import VirtualMachine
