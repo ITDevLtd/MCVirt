@@ -904,23 +904,27 @@ class Parser:
             vm_object = VirtualMachine(mcvirt_instance, args.template)
             vm_object.duplicate(mcvirt_instance, args.vm_name)
 
-        elif (action == 'list'):
+        elif action == 'list':
             vm_factory = rpc.getConnection('virtual_machine_factory')
             self.printStatus(vm_factory.listVms())
 
-        elif (action == 'iso'):
-            if (args.list):
-                self.printStatus(Iso.getIsoList(mcvirt_instance))
+        elif action == 'iso':
+            iso_factory = rpc.getConnection('iso_factory')
+            if args.list:
+                iso_factory = rpc.getConnection('iso_factory')
+                self.printStatus(iso_factory.getIsoList())
 
-            if (args.add_path):
-                iso_object = Iso.addIso(mcvirt_instance, args.add_path)
-                self.printStatus('Successfully added ISO: %s' % iso_object.getName())
+            # Tempoarrily disabled until it is determined how this will work
+            # if (args.add_path):
+            #     iso_object = Iso.addIso(mcvirt_instance, args.add_path)
+            #     self.printStatus('Successfully added ISO: %s' % iso_object.getName())
 
-            if (args.delete_path):
-                iso_object = Iso(mcvirt_instance, args.delete_path)
+            if args.delete_path:
+                iso_object = iso_factory.getIsoByName(args.delete_path)
+                rpc.annotateObject(iso_object)
                 iso_object.delete()
                 self.printStatus('Successfully removed iso: %s' % args.delete_path)
 
             if (args.add_url):
-                iso_object = Iso.addFromUrl(mcvirt_instance, args.add_url)
+                iso_object = iso_factory.addFromUrl(mcvirt_instance, args.add_url)
                 self.printStatus('Successfully added ISO: %s' % iso_object.getName())

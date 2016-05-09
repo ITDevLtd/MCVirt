@@ -38,7 +38,7 @@ class Factory(PyroObject):
     def getIsoList(self):
         """Return a user-readable list of ISOs"""
         iso_list = self.getIsos()
-        if (len(iso_list) == 0):
+        if len(iso_list) == 0:
             return 'No ISOs found'
         else:
             return "\n".join(iso_list)
@@ -58,10 +58,11 @@ class Factory(PyroObject):
 
         return self.getIsoByName(filename)
 
+    @Pyro4.expose()
     def addFromUrl(mcvirt_instance, url, name=None):
         """Download an ISO from given URL and save in ISO directory"""
         # Work out name from URL if name is not supplied
-        if (name is None):
+        if name is None:
             # Parse URL to get path part
             url_parse = urlparse.urlparse(url)
             name = Iso.getFilenameFromPath(url_parse.path)
@@ -85,9 +86,9 @@ class Factory(PyroObject):
                 file.write(chunk)
         iso.close()
 
-        iso_object = Factory.addIso(mcvirt_instance, output_path)
+        iso_object = self.addIso(output_path)
 
         os.remove(output_path)
         os.rmdir(temp_directory)
-
+        self._register_object(iso_object)
         return iso_object
