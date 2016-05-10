@@ -793,10 +793,9 @@ class Parser:
                     self.printStatus(vm_object.getNode())
                 else:
                     self.printStatus(vm_object.getInfo())
-            # Removed as this requires cluster support
-            # else:
-            #     mcvirt_instance = MCVirt(ignore_failed_nodes=True)
-            #     mcvirt_instance.printInfo()
+            else:
+                cluster_object = rpc.getConnection('cluster')
+                self.printStatus(cluster_object.printInfo())
 
         elif action == 'network':
             network_factory = rpc.getConnection('network_factory')

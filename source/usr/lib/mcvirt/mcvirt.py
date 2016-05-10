@@ -18,7 +18,6 @@
 import libvirt
 import os
 from lockfile import FileLock
-from texttable import Texttable
 import socket
 import Pyro4
 import atexit
@@ -167,31 +166,6 @@ class MCVirt(object):
             vm_objects.append(VirtualMachine(self, vm_name))
 
         return vm_objects
-
-    def printInfo(self):
-        """Prints information about the nodes in the cluster"""
-        from cluster.cluster import Cluster
-        from cluster.remote import CouldNotConnectToNodeException
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('Node', 'IP Address', 'Status'))
-        cluster_object = Cluster(self)
-        # Add this node to the table
-        table.add_row((Cluster.getHostname(), cluster_object.getClusterIpAddress(),
-                       'Local'))
-
-        # Add remote nodes
-        for node in cluster_object.getNodes(return_all=True):
-            node_config = cluster_object.getNodeConfig(node)
-            node_status = 'Unreachable'
-            try:
-                cluster_object.getRemoteNode(node)
-                node_status = 'Connected'
-            except CouldNotConnectToNodeException:
-                pass
-            table.add_row((node, node_config['ip_address'],
-                           node_status))
-        print table.draw()
 
 
 class MCVirtException(Exception):

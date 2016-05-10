@@ -20,6 +20,7 @@ import json
 import socket
 import base64
 import Pyro4
+from texttable import Texttable
 
 from mcvirt.auth.auth import Auth
 from mcvirt.mcvirt import MCVirtException
@@ -81,6 +82,29 @@ class Cluster(object):
     def __init__(self, mcvirt_instance):
         """Sets member variables"""
         self.mcvirt_instance = mcvirt_instance
+
+    @Pyro4.expose()
+    def printInfo(self):
+        """Prints information about the nodes in the cluster"""
+        table = Texttable()
+        table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        table.header(('Node', 'IP Address', 'Status'))
+        # Add this node to the table
+        table.add_row((Cluster.getHostname(), self.getClusterIpAddress(),
+                       'Local'))
+
+        # Add remote nodes
+        for node in self.getNodes(return_all=True):
+            node_config = self.getNodeConfig(node)
+            node_status = 'Unreachable'
+            try:
+                self.getRemoteNode(node)
+                node_status = 'Connected'
+            except CouldNotConnectToNodeException:
+                pass
+            table.add_row((node, node_config['ip_address'],
+                           node_status))
+        return table.draw()
 
     def addNodeRemote(self, remote_host, remote_ip_address, remote_public_key):
         """Adds the machine to a remote cluster"""
