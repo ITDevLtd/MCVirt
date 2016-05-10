@@ -19,6 +19,7 @@ import os.path
 import json
 import socket
 import base64
+import Pyro4
 
 from mcvirt.auth.auth import Auth
 from mcvirt.mcvirt import MCVirtException
@@ -55,6 +56,7 @@ class Cluster(object):
         """Returns the hostname of the system"""
         return socket.gethostname()
 
+    @Pyro4.expose()
     def getConnectionString(self):
         # Only superusers can generate a connection string
         self.mcvirt_instance.getAuthObject().assertPermission(
@@ -69,8 +71,8 @@ class Cluster(object):
         connection_info = {
             'username': connection_username,
             'password': connection_password,
-            'ip_address': '',
-            'hostname': ''
+            'ip_address': self.getClusterIpAddress(),
+            'hostname': Cluster.getHostname()
         }
         connection_info_json = json.dumps(connection_info)
         return base64.b64encode(connection_info_json)

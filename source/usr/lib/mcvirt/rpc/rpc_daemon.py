@@ -27,6 +27,7 @@ from mcvirt.node.network.factory import Factory as NetworkFactory
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.auth.factory import Factory as UserFactory
 from mcvirt.auth.session import Session
+from mcvirt.cluster.cluster import Cluster
 from mcvirt.logger import Logger
 
 
@@ -145,6 +146,10 @@ class RpcNSMixinDaemon(object):
         # Create user factory object and register with Daemon
         user_factory = UserFactory(self.mcvirt_instance)
         self.register(user_factory, objectId='user_factory', force=True)
+
+        # Create cluster object and register with Daemon
+        cluster = Cluster(self.mcvirt_instance)
+        self.register(cluster, objectId='cluster', force=True)
 
         # Create logger object and register with daemon
         logger = Logger()

@@ -16,6 +16,9 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os
+import os
+import random
+import string
 from binascii import hexlify
 from pbkdf2 import crypt
 import Pyro4
@@ -94,6 +97,15 @@ class UserBase(object):
     def _hashString(string, salt):
         """Hash string using salt"""
         return crypt(string, salt, iterations=1000)
+
+    @staticmethod
+    def generatePassword(length, numeric_only=False):
+        """Returns a randomly generated password"""
+        characers = string.ascii_letters
+        if not numeric_only:
+            characers += string.digits + '!@#$%^&*()'
+        random.seed(os.urandom(1024))
+        return ''.join(random.choice(characers) for i in range(length))
 
     def delete(self):
         """Deletes current user from MCVirt config"""

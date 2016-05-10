@@ -32,6 +32,11 @@ class IncorrectCredentials(MCVirtException):
     pass
 
 
+class InvalidUsernameException(MCVirtException):
+    """Username is within a reserved namespace"""
+    pass
+
+
 class Factory(PyroObject):
     """Class for obtaining user objects"""
 
@@ -48,11 +53,20 @@ class Factory(PyroObject):
         if user_type not in self.get_user_types():
             raise InvalidUserType('An invalid user type has been passed')
 
-    def create(self, username, password, user_class=User):
+    def create(self, username, password, user_type=User):
         """Creates a user"""
         self.mcvirt_instance.getAuthObject().assertPermission(
             Auth.PERMISSIONS.MANAGE_USERS
         )
+
+        # Ensure that username is not part of a reserved namespace
+        for user_class in self.get_user_types():
+            if (user_class is not user_type and
+                    user_class.USER_PREFIX is not None and
+                    username.startswith(user_class.USER_PREFIX):
+                raise InvalidUsernameException(
+                    'Username is within a reserved namespace'
+                )
 
         # Ensure that there is not a duplicate user
         if UserBase._checkExists(username):
@@ -60,7 +74,7 @@ class Factory(PyroObject):
                                     username)
 
         # Ensure valid user type
-        self.ensure_valid_user_type(user_class)
+        self.ensure_valid_user_type(user_type)
 
         # Generate password salt for user and hash password
         salt = UserBase._generateSalt()
@@ -70,7 +84,7 @@ class Factory(PyroObject):
         user_config = {
             'password': hashed_password,
             'salt': salt,
-            'user_type': user_class.__name__
+            'user_type': user_type.__name__
         }
         def updateConfig(config):
             config['users'][username] = user_config
@@ -130,6 +144,12 @@ class Factory(PyroObject):
         if not user_type.CAN_GENERATE:
             raise InvalidUserType('Users of type \'%s\' cannot be generated' %
                                   user_type.__name__)
+
         # Delete any old connection users
         for old_user_object in self.get_all_users(user_class=user_type):
-            old_user_object.delete()
+            old_user_object.delete()generatePasswordgeneratePassword
+
+        username = user_type.USER_PREFIX + user_type.generatePassword(32, numeric_only=True)
+        password = user_type.generatePassword(32)
+        Factory.create(username=username, password=password, user_type=user_type)
+        return username, password
