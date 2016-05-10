@@ -26,6 +26,7 @@ from mcvirt.mcvirt import MCVirtException
 from mcvirt.system import System
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.factory import Factory as UserFactory
+from mcvirt.auth.connection_user import ConnectionUser
 
 
 class NodeAlreadyPresent(MCVirtException):
@@ -65,7 +66,7 @@ class Cluster(object):
 
         # Generate password and create connection user
         user_factory = UserFactory(self.mcvirt_instance)
-        connection_username, connection_password = user_factory.generateConnectionUser()
+        connection_username, connection_password = user_factory.generate_user(ConnectionUser)
 
         # Generate dict with connection information. Convert to JSON and base64 encode
         connection_info = {

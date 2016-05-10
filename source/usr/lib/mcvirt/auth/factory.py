@@ -63,7 +63,7 @@ class Factory(PyroObject):
         for user_class in self.get_user_types():
             if (user_class is not user_type and
                     user_class.USER_PREFIX is not None and
-                    username.startswith(user_class.USER_PREFIX):
+                    username.startswith(user_class.USER_PREFIX)):
                 raise InvalidUsernameException(
                     'Username is within a reserved namespace'
                 )
@@ -128,8 +128,8 @@ class Factory(PyroObject):
 
             # Is the user object is the same type as specified, or the user type
             # has not been specified, add to user objects list
-            if user_class is None or user_objects.getUserType == user_class.__name__:
-                user_objects.append(user_objects)
+            if user_class is None or user_object.getUserType() == user_class.__name__:
+                user_objects.append(user_object)
 
         # Return found user objects
         return user_objects
@@ -138,7 +138,7 @@ class Factory(PyroObject):
         """Removes any existing connection user and generates credentials for a new
           connection user"""
         # Ensure valid user type
-        self.ensure_valid_user_type(user_class)
+        self.ensure_valid_user_type(user_type)
 
         # Ensure that users can be generated
         if not user_type.CAN_GENERATE:
@@ -147,9 +147,9 @@ class Factory(PyroObject):
 
         # Delete any old connection users
         for old_user_object in self.get_all_users(user_class=user_type):
-            old_user_object.delete()generatePasswordgeneratePassword
+            old_user_object.delete()
 
         username = user_type.USER_PREFIX + user_type.generatePassword(32, numeric_only=True)
         password = user_type.generatePassword(32)
-        Factory.create(username=username, password=password, user_type=user_type)
+        self.create(username=username, password=password, user_type=user_type)
         return username, password

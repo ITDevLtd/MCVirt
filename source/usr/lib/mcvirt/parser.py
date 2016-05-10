@@ -406,6 +406,11 @@ class Parser:
             metavar='Action',
             help='Action to perform on the cluster'
         )
+        self.connection_string_subparser = self.cluster_subparser.add_parser(
+            'get-connect-string',
+            help='Generates a connection string to add the node to a cluster',
+            parents=[self.parent_parser]
+        )
         self.node_add_parser = self.cluster_subparser.add_parser(
             'add-node',
             help='Adds a node to the MCVirt cluster',
@@ -822,6 +827,9 @@ class Parser:
                            source_node=args.source_node)
 
         elif (action == 'cluster'):
+            if args.cluster_action == 'get-connect-string':
+                cluster_object = rpc.getConnection('cluster')
+                self.printStatus(cluster_object.getConnectionString())
             if (args.cluster_action == 'add-node'):
                 password = System.getUserInput('Enter \'%s\' root password: ' % args.node,
                                                password=True)
