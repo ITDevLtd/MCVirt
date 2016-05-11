@@ -15,9 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import ssl
 import atexit
 import Pyro4
 import uuid
+import time
 
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.auth.auth import Auth
@@ -29,6 +31,7 @@ from mcvirt.auth.factory import Factory as UserFactory
 from mcvirt.auth.session import Session
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.logger import Logger
+from ssl_socket import SSLSocket
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -104,6 +107,14 @@ class RpcNSMixinDaemon(object):
         # Store nameserver, MCVirt instance and create daemon
         self.mcvirt_instance = MCVirt()
         atexit.register(self.destroy)
+
+        Pyro4.config.USE_MSG_WAITALL = False
+        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.createSSLSocket
+        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.createBroadcastSSLSocket
+
+        # Wait for nameserver
+        self.obtainConnection()
+
         self.daemon = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance)
         self.registerFactories()
 
@@ -114,7 +125,7 @@ class RpcNSMixinDaemon(object):
     def register(self, obj_or_class, objectId, *args, **kwargs):
         """Override register to register object with NS"""
         uri = self.daemon.register(obj_or_class, *args, **kwargs)
-        ns = Pyro4.naming.locateNS(host='127.0.0.1', port=9090, broadcast=False)
+        ns = Pyro4.naming.locateNS(host='laptop02', port=9090, broadcast=False)
         ns.register(objectId, uri)
         ns = None
         return uri
@@ -123,6 +134,7 @@ class RpcNSMixinDaemon(object):
         """Register base MCVirt factories with RPC daemon"""
         # Register session class
         self.register(DaemonSession, objectId='session', force=True)
+
         # Create Virtual machine factory object and register with daemon
         virtual_machine_factory = VirtualMachineFactory(self.mcvirt_instance)
         self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
@@ -159,3 +171,12 @@ class RpcNSMixinDaemon(object):
         """Destroy the MCVirt instance on destruction of object"""
         # Create MCVirt instance
         self.mcvirt_instance = None
+
+    def obtainConnection(self):
+        while 1:
+            try:
+                Pyro4.naming.locateNS(host='laptop02', port=9090, broadcast=False)
+                return
+            except Exception as e:
+                # Wait for 1 second for name server to come up
+                time.sleep(1)

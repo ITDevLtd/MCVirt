@@ -19,8 +19,8 @@
 import sys
 sys.path.insert(0, '/usr/lib')
 
-from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
+from mcvirt.rpc.name_server import NameServer
 
 # Create RPC Daemo and start
-daemon = RpcNSMixinDaemon()
-daemon.start()
+ns = NameServer()
+ns.start()

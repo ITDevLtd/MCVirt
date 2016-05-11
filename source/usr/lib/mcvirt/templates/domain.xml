@@ -25,6 +25,6 @@
     <video>
       <model type='vmvga' vram='16384' heads='1'/>
     </video>
-    <graphics type='vnc' listen='127.0.0.1' port='-1' keymap='en-gb'/>
+    <graphics type='vnc' listen='laptop02' port='-1' keymap='en-gb'/>
   </devices>
 </domain>

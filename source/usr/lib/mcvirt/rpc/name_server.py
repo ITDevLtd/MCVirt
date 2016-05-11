@@ -15,23 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from Pyro4 import naming
-import threading
+import Pyro4
 import time
 
-class NameServer(threading.Thread):
+from ssl_socket import SSLSocket
+
+class NameServer(object):
     """Thread for running the name server"""
 
-    def run(self):
-        """Start the Pyro name server"""
-        naming.startNSloop(host='0.0.0.0', port=9090, enableBroadcast=False)
+    def __init__(self):
+        Pyro4.config.USE_MSG_WAITALL = False
+        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.createSSLSocket
+        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.createBroadcastSSLSocket
 
-    def obtainConnection(self):
-        while 1:
-            try:
-                ns = naming.locateNS(host='127.0.0.1', port=9090, broadcast=False)
-                ns = None
-                return
-            except:
-                # Wait for 1 second for name server to come up
-                time.sleep(1)
+    def start(self):
+        """Start the Pyro name server"""
+        #self.daemon.requestLoop()
+        Pyro4.config.USE_MSG_WAITALL = False
+        Pyro4.naming.startNSloop(host='laptop02', port=9090, enableBroadcast=False)

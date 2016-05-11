@@ -18,6 +18,8 @@
 import Pyro4
 import exceptions
 
+from mcvirt.rpc.ssl_socket import SSLSocket
+
 class AuthenticationError(Exception):
     """Exception raiased on authentication error"""
     pass
@@ -25,12 +27,15 @@ class AuthenticationError(Exception):
 class Connection(object):
     """Connection class, providing connections to the Pyro MCVirt daemon"""
 
-    NS_ADDRESS = '127.0.0.1'
+    NS_ADDRESS = 'laptop02'
     NS_PORT = 9090
     SESSION_OBJECT = 'session'
 
     def __init__(self, username=None, password=None, session_id=None):
         """Store member variables for connecting"""
+        Pyro4.config.USE_MSG_WAITALL = False
+        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.createSSLSocket
+        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.createBroadcastSSLSocket
         self.__username = username
 
         # Store the passed session_id so that it may abe used for the initial connection
