@@ -27,15 +27,17 @@ class AuthenticationError(Exception):
 class Connection(object):
     """Connection class, providing connections to the Pyro MCVirt daemon"""
 
-    NS_ADDRESS = 'laptop02'
     NS_PORT = 9090
     SESSION_OBJECT = 'session'
 
-    def __init__(self, username=None, password=None, session_id=None):
+    def __init__(self, username=None, password=None, session_id=None, host=None):
         """Store member variables for connecting"""
+        # If the host is not provided, default to the local host
+        self.__host = host if host is not None else SSLSocket.get_hostname()
+
         Pyro4.config.USE_MSG_WAITALL = False
-        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.createSSLSocket
-        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.createBroadcastSSLSocket
+        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
+        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
         self.__username = username
 
         # Store the passed session_id so that it may abe used for the initial connection
@@ -67,7 +69,7 @@ class Connection(object):
     def getConnection(self, object_name, password=None):
         """Obtains a connection from pyro for a given object"""
         # Obtain a connection to the name server on the localhost
-        ns = Pyro4.naming.locateNS(host=self.NS_ADDRESS, port=self.NS_PORT, broadcast=False)
+        ns = Pyro4.naming.locateNS(host=self.__host, port=self.NS_PORT, broadcast=False)
 
         class AuthProxy(Pyro4.Proxy):
             def _pyroValidateHandshake(self, data):

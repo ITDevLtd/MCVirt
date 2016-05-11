@@ -109,8 +109,9 @@ class RpcNSMixinDaemon(object):
         atexit.register(self.destroy)
 
         Pyro4.config.USE_MSG_WAITALL = False
-        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.createSSLSocket
-        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.createBroadcastSSLSocket
+        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
+        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
+        self.hostname = SSLSocket.get_hostname()
 
         # Wait for nameserver
         self.obtainConnection()
@@ -125,7 +126,7 @@ class RpcNSMixinDaemon(object):
     def register(self, obj_or_class, objectId, *args, **kwargs):
         """Override register to register object with NS"""
         uri = self.daemon.register(obj_or_class, *args, **kwargs)
-        ns = Pyro4.naming.locateNS(host='laptop02', port=9090, broadcast=False)
+        ns = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
         ns.register(objectId, uri)
         ns = None
         return uri

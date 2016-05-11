@@ -25,11 +25,11 @@ class NameServer(object):
 
     def __init__(self):
         Pyro4.config.USE_MSG_WAITALL = False
-        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.createSSLSocket
-        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.createBroadcastSSLSocket
+        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
+        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
 
     def start(self):
         """Start the Pyro name server"""
         #self.daemon.requestLoop()
         Pyro4.config.USE_MSG_WAITALL = False
-        Pyro4.naming.startNSloop(host='laptop02', port=9090, enableBroadcast=False)
+        Pyro4.naming.startNSloop(host=SSLSocket.get_hostname(), port=9090, enableBroadcast=False)
