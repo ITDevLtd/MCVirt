@@ -21,6 +21,7 @@ import socket
 import base64
 import Pyro4
 from texttable import Texttable
+from mcvirt.rpc.ssl_socket import SSLSocket
 
 from mcvirt.auth.auth import Auth
 from mcvirt.mcvirt import MCVirtException
@@ -69,12 +70,16 @@ class Cluster(object):
         user_factory = UserFactory(self.mcvirt_instance)
         connection_username, connection_password = user_factory.generate_user(ConnectionUser)
 
+        with open(SSLSocket.get_ca_file(), 'r') as ca_fh:
+            ca_contents = ca_fh.read()
+
         # Generate dict with connection information. Convert to JSON and base64 encode
         connection_info = {
             'username': connection_username,
             'password': connection_password,
             'ip_address': self.getClusterIpAddress(),
-            'hostname': Cluster.getHostname()
+            'hostname': Cluster.getHostname(),
+            'ca_cert': ca_contents
         }
         connection_info_json = json.dumps(connection_info)
         return base64.b64encode(connection_info_json)

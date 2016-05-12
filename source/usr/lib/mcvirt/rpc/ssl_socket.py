@@ -26,6 +26,11 @@ from mcvirt.mcvirt import MCVirtException
 from mcvirt.mcvirt_config import MCVirtConfig
 
 
+class CACertificateNotFound(MCVirtException):
+    """CA certificate for host could not be found"""
+    pass
+
+
 class SSLSocket(object):
     """
     Class for providing SSL socket wrappers for Pyro.
@@ -48,10 +53,23 @@ class SSLSocket(object):
         return ssl_dir
 
     @staticmethod
-    def get_ca_file(server):
+    def get_ca_file(server, ensure_exists=True):
+        hostname = SSLSocket.get_hostname()
         if server == 'localhost' or server == '127.0.0.1':
-            server = SSLSocket.get_hostname()
-        return os.path.join(SSLSocket.get_ssl_directory(), '%s-CA.pem' % server)
+            server = hostname
+
+        if server == hostname:
+            ssl_directory = '/etc/mcvirt'
+        else:
+            ssl_directory = SSLSocket.get_ssl_directory()
+
+        file_path = os.path.join(ssl_directory, '%s-CA.pem' % server)
+        if ensure_exists and not os.path.isfile(file_path):
+            if server == SSLSocket.get_hostname():
+                SSLSocket.get_server_certificates()
+            else:
+                raise CACertificateNotFound('CA certificate could not be found for %s' % server)
+        return file_path
 
     @staticmethod
     def get_server_certificates():
@@ -59,7 +77,7 @@ class SSLSocket(object):
         ssl_directory = SSLSocket.get_ssl_directory()
         hostname = SSLSocket.get_hostname()
         ca_pass = None
-        ca_pub = os.path.join(ssl_directory, '%s-CA.pem' % hostname)
+        ca_pub = SSLSocket.get_ca_file(hostname, ensure_exists=False)
         ca_priv = os.path.join(ssl_directory, '%s-CA.key' % hostname)
         ssl_pass = None
         ssl_pub = os.path.join(ssl_directory, '%s.pem' % hostname)
@@ -110,7 +128,6 @@ class SSLSocket(object):
         else:
             ssl_kwargs['cert_reqs'] = cert_reqs=ssl.CERT_REQUIRED
             ssl_kwargs['ca_certs'] = SSLSocket.get_ca_file(kwargs['connect'][0])
-
         ssl_socket = ssl.wrap_socket(socket, **ssl_kwargs)
         return ssl_socket
 

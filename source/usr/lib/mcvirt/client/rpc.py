@@ -54,6 +54,7 @@ class Connection(object):
             session_id = session_object._pyroHandshake['SEID']
             return session_id
         except Pyro4.errors.CommunicationError, e:
+            raise
             raise AuthenticationError('Invalid credentials')
 
     def _getAuthObj(self, password=None):
