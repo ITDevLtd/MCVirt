@@ -49,6 +49,8 @@ class SSLSocket(object):
 
     @staticmethod
     def get_ca_file(server):
+        if server == 'localhost' or server == '127.0.0.1':
+            server = SSLSocket.get_hostname()
         return os.path.join(SSLSocket.get_ssl_directory(), '%s-CA.pem' % server)
 
     @staticmethod
@@ -108,8 +110,8 @@ class SSLSocket(object):
         else:
             ssl_kwargs['cert_reqs'] = cert_reqs=ssl.CERT_REQUIRED
             ssl_kwargs['ca_certs'] = SSLSocket.get_ca_file(kwargs['connect'][0])
-        ssl_socket = ssl.wrap_socket(socket, **ssl_kwargs)
 
+        ssl_socket = ssl.wrap_socket(socket, **ssl_kwargs)
         return ssl_socket
 
     @staticmethod
