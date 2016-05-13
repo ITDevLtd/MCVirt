@@ -24,12 +24,7 @@ from pbkdf2 import crypt
 import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.mcvirt import MCVirtException
-
-
-class UserDoesNotExistException(MCVirtException):
-    """The specified user does not exist"""
-    pass
+from mcvirt.exceptions import UserDoesNotExistException
 
 
 class UserBase(object):

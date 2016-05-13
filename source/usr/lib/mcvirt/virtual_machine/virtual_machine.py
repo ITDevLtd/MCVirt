@@ -24,7 +24,18 @@ from texttable import Texttable
 from enum import Enum
 import Pyro4
 
-from mcvirt.mcvirt import MCVirt, MCVirtException
+from mcvirt.mcvirt import MCVirt
+from mcvirt.exceptions import (MigrationFailureExcpetion, InvalidVirtualMachineNameException,
+                               VmAlreadyExistsException, VmDirectoryAlreadyExistsException,
+                               VmAlreadyStoppedException, VmAlreadyStartedException,
+                               VmAlreadyRegisteredException, VmRegisteredElsewhereException,
+                               VmRunningException, VmStoppedException, UnsuitableNodeException,
+                               VmNotRegistered, CannotStartClonedVmException,
+                               CannotCloneDrbdBasedVmsException, CannotDeleteClonedVmException,
+                               VirtualMachineLockException, InvalidArgumentException,
+                               VirtualMachineDoesNotExistException, VmIsCloneException,
+                               VncNotEnabledException, InsufficientPermissionsException,
+                               LibVirtConnectionException, LibvirtException)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
@@ -35,95 +46,6 @@ from mcvirt.node.network.network import Network
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
-
-
-class UnkownException(MCVirtException):
-    """An unkown error occurred whislt performing a LibVirt action"""
-    pass
-
-
-class MigrationFailureExcpetion(MCVirtException):
-    """A Libvirt Exception occurred whilst performing a migration"""
-    pass
-
-
-class InvalidVirtualMachineNameException(MCVirtException):
-    """VM is being created with an invalid name"""
-    pass
-
-
-class VmAlreadyExistsException(MCVirtException):
-    """VM is being created with a duplicate name"""
-    pass
-
-
-class VmDirectoryAlreadyExistsException(MCVirtException):
-    """Directory for a VM already exists"""
-    pass
-
-
-class VmAlreadyStoppedException(MCVirtException):
-    """VM is already stopped when attempting to stop it"""
-    pass
-
-
-class VmAlreadyStartedException(MCVirtException):
-    """VM is already started when attempting to start it"""
-    pass
-
-
-class VmAlreadyRegisteredException(MCVirtException):
-    """VM is already registered on a node"""
-    pass
-
-
-class VmRegisteredElsewhereException(MCVirtException):
-    """Attempt to perform an action on a VM registered on another node"""
-    pass
-
-
-class VmRunningException(MCVirtException):
-    """An offline migration can only be performed on a powered off VM"""
-    pass
-
-
-class VmStoppedException(MCVirtException):
-    """An online migraiton can only be performed on a powered on VM"""
-
-
-class UnsuitableNodeException(MCVirtException):
-    """The node is unsuitable to run the VM"""
-    pass
-
-
-class VmNotRegistered(MCVirtException):
-    """The virtual machine is not currently registered on a node"""
-    pass
-
-
-class CannotStartClonedVmException(MCVirtException):
-    """Cloned VMs cannot be started"""
-    pass
-
-
-class CannotCloneDrbdBasedVmsException(MCVirtException):
-    """Cannot clone DRBD-based VMs"""
-    pass
-
-
-class CannotDeleteClonedVmException(MCVirtException):
-    """Cannot delete a cloned VM"""
-    pass
-
-
-class VirtualMachineLockException(MCVirtException):
-    """Lock cannot be set to the current lock state"""
-    pass
-
-
-class InvalidArgumentException(MCVirtException):
-    """Argument given is not valid"""
-    pass
 
 
 class LockStates(Enum):
@@ -151,11 +73,13 @@ class VirtualMachine(PyroObject):
 
         # Ensure that the connection is alive
         if not self.mcvirt_object.getLibvirtConnection().isAlive():
-            raise UnkownException('Error: LibVirt connection not alive')
+            raise LibvirtCommandException('Error: LibVirt connection not alive')
 
         # Check that the domain exists
         if not VirtualMachine._checkExists(self.mcvirt_object, self.name):
-            raise MCVirtException('Error: Virtual Machine does not exist: %s' % self.name)
+            raise VirtualMachineDoesNotExistException(
+                'Error: Virtual Machine does not exist: %s' % self.name
+            )
 
     def getConfigObject(self):
         """Returns the configuration object for the VM"""
@@ -189,7 +113,7 @@ class VirtualMachine(PyroObject):
                     # Stop the VM
                     self._getLibvirtDomainObject().destroy()
                 except Exception, e:
-                    raise UnkownException('Failed to stop VM: %s' % e)
+                    raise LibvirtException('Failed to stop VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('The VM is already shutdown')
         elif self.mcvirt_object.initialiseNodes():
@@ -245,7 +169,7 @@ class VirtualMachine(PyroObject):
             try:
                 self._getLibvirtDomainObject().create()
             except Exception, e:
-                raise UnkownException('Failed to start VM: %s' % e)
+                raise LibvirtException('Failed to start VM: %s' % e)
 
         elif self.mcvirt_object.initialiseNodes():
             from mcvirt.cluster.cluster import Cluster
@@ -284,7 +208,7 @@ class VirtualMachine(PyroObject):
                     # Reset the VM
                     self._getLibvirtDomainObject().reset()
                 except Exception, e:
-                    raise UnkownException('Failed to reset VM: %s' % e)
+                    raise LibvirtException('Failed to reset VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('Cannot reset a stopped VM')
         elif self.mcvirt_object.initialiseNodes():
@@ -421,9 +345,10 @@ class VirtualMachine(PyroObject):
                 self.getCloneParent() and self.mcvirt_object.getAuthObject().checkPermission(
                 Auth.PERMISSIONS.DELETE_CLONE,
                 self))):
-            raise MCVirtException(
+            raise InsufficientPermissionsException(
                 'User does not have the required permission - ' +
-                'User must have MODIFY_VM permission or be the owner of the cloned VM')
+                'User must have MODIFY_VM permission or be the owner of the cloned VM'
+            )
 
         # Ensure the VM is not being removed from a machine that the VM is not being run on
         if ((self.isRegisteredRemotely() and self.mcvirt_object.initialiseNodes() and
@@ -436,7 +361,7 @@ class VirtualMachine(PyroObject):
         # Determine if VM is running
         if (self.isRegisteredLocally() and self._getLibvirtDomainObject().state()
                 [0] == libvirt.VIR_DOMAIN_RUNNING):
-            raise MCVirtException('Error: Can\'t delete running VM')
+            raise VmAlreadyStartedException('Error: Can\'t delete running VM')
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -456,7 +381,7 @@ class VirtualMachine(PyroObject):
             try:
                 self._getLibvirtDomainObject().undefine()
             except:
-                raise MCVirtException('Failed to delete VM from libvirt')
+                raise LibvirtException('Failed to delete VM from libvirt')
 
         # If VM is a clone of another VM, remove it from the configuration
         # of the parent
@@ -675,7 +600,7 @@ class VirtualMachine(PyroObject):
         try:
             self.mcvirt_object.getLibvirtConnection().defineXML(domain_xml_string)
         except:
-            raise MCVirtException('Error: An error occurred whilst updating the VM')
+            raise LibvirtException('Error: An error occurred whilst updating the VM')
 
     def getCloneParent(self):
         """Determines if a VM is a clone of another VM"""
@@ -938,7 +863,7 @@ class VirtualMachine(PyroObject):
 
         # Determine if VM is running
         if self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
-            raise MCVirtException('Can\'t clone running VM')
+            raise VmAlreadyStartedException('Can\'t clone running VM')
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -948,7 +873,7 @@ class VirtualMachine(PyroObject):
 
         # Ensure VM is not a clone, as cloning a cloned VM will cause issues
         if self.getCloneParent():
-            raise MCVirtException('Cannot clone from a clone VM')
+            raise VmIsCloneException('Cannot clone from a clone VM')
 
         # Create new VM for clone, without hard disks
         network_objects = self.getNetworkAdapterObjects()
@@ -998,7 +923,7 @@ class VirtualMachine(PyroObject):
 
         # Determine if VM is running
         if self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
-            raise MCVirtException('Can\'t duplicate running VM')
+            raise VmAlreadyStartedException('Can\'t duplicate running VM')
 
         # Ensure new VM name doesn't already exist
         VirtualMachine._checkExists(self.mcvirt_object, duplicate_vm_name)
@@ -1148,7 +1073,7 @@ class VirtualMachine(PyroObject):
         try:
             self.mcvirt_object.getLibvirtConnection().defineXML(domain_xml_string)
         except:
-            raise MCVirtException('Error: An error occurred whilst registering VM')
+            raise LibvirtException('Error: An error occurred whilst registering VM')
 
         if set_node:
             # Mark VM as being hosted on this machine
@@ -1175,7 +1100,7 @@ class VirtualMachine(PyroObject):
         try:
             self._getLibvirtDomainObject().undefine()
         except:
-            raise MCVirtException('Failed to delete VM from libvirt')
+            raise LibvirtException('Failed to delete VM from libvirt')
 
         # De-activate the disk objects
         for disk_object in self.getHardDriveObjects():
@@ -1255,7 +1180,7 @@ class VirtualMachine(PyroObject):
             self)
 
         if self._getPowerState() is not PowerStates.RUNNING:
-            raise MCVirtException('The VM is not running')
+            raise VmAlreadyStoppedException('The VM is not running')
         domain_xml = ET.fromstring(
             self._getLibvirtDomainObject().XMLDesc(
                 libvirt.VIR_DOMAIN_XML_SECURE
@@ -1263,7 +1188,7 @@ class VirtualMachine(PyroObject):
         )
 
         if domain_xml.find('./devices/graphics[@type="vnc"]') is None:
-            raise MCVirtException('VNC is not enabled on the VM')
+            raise VncNotEnabledException('VNC is not enabled on the VM')
         else:
             return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
 

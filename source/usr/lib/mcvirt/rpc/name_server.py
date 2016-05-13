@@ -18,12 +18,14 @@
 import Pyro4
 import time
 
+from mcvirt.utils import get_hostname
 from ssl_socket import SSLSocket
 
 class NameServer(object):
     """Thread for running the name server"""
 
     def __init__(self):
+        """Perform configuration of Pyro4"""
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
@@ -32,4 +34,4 @@ class NameServer(object):
         """Start the Pyro name server"""
         #self.daemon.requestLoop()
         Pyro4.config.USE_MSG_WAITALL = False
-        Pyro4.naming.startNSloop(host=SSLSocket.get_hostname(), port=9090, enableBroadcast=False)
+        Pyro4.naming.startNSloop(host=get_hostname(), port=9090, enableBroadcast=False)

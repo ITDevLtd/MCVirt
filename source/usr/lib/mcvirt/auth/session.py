@@ -19,18 +19,8 @@ import os
 from binascii import hexlify
 import Pyro4
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import AuthenticationError, CurrentUserError
 from factory import Factory as UserFactory
-
-
-class AuthenticationError(MCVirtException):
-    """Incorrect credentials"""
-    pass
-
-
-class CurrentUserError(MCVirtException):
-    """Error whilst obtaining current pyro user"""
-    pass
 
 
 class Session(object):

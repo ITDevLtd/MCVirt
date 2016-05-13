@@ -17,7 +17,7 @@
 
 import Pyro4
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import UnknownStorageTypeException, HardDriveDoesNotExistException
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import DRBD
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
@@ -25,11 +25,6 @@ from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 from mcvirt.auth.auth import Auth
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
-
-
-class UnknownStorageTypeException(MCVirtException):
-    """An hard drive object with an unknown disk type has been initialised"""
-    pass
 
 
 class Factory(PyroObject):
@@ -97,18 +92,18 @@ class Factory(PyroObject):
         #   not defined
         if vm_object.getStorageType():
             if storage_type and storage_type != vm_object.getStorageType():
-                raise InvalidStorageTypeException(
+                raise UnknownStorageTypeException(
                     'Storage type does not match VMs current storage type'
                 )
             storage_type = vm_object.getStorageType()
         else:
             available_storage_types = self._getAvailableStorageTypes()
             if len(available_storage_types) > 1 and not storage_type:
-                raise InvalidStorageTypeException('Storage type must be specified')
+                raise UnknownStorageTypeException('Storage type must be specified')
             elif len(available_storage_types) == 1:
                 storage_type = available_storage_types[0].__name__
             else:
-                raise InvalidStorageTypeException('There are no storage types available')
+                raise UnknownStorageTypeException('There are no storage types available')
         return Factory.getClass(storage_type).create(vm_object, size, driver)
 
     def _getAvailableStorageTypes(self):
@@ -142,7 +137,6 @@ class Factory(PyroObject):
         for hard_drive_object in NodeDRBD.getAllDrbdHardDriveObjects(mcvirt_instance):
             if (hard_drive_object.getConfigObject()._getResourceName() == resource_name):
                 return hard_drive_object
-        from mcvirt.virtual_machine.hard_drive.base import HardDriveDoesNotExistException
         raise HardDriveDoesNotExistException(
             'DRBD hard drive with resource name \'%s\' does not exist' %
             resource_name

@@ -18,19 +18,11 @@
 import xml.etree.ElementTree as ET
 import Pyro4
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import (LibvirtException,
+                               NetworkDoesNotExistException,
+                               NetworkUtilizedException)
 from mcvirt.auth.auth import Auth
 from mcvirt.rpc.lock import lockingMethod
-
-
-class NetworkDoesNotExistException(MCVirtException):
-    """Network does not exist"""
-    pass
-
-
-class NetworkUtilizedException(MCVirtException):
-    """Network is utilized by virtual machines"""
-    pass
 
 
 class Network(object):
@@ -72,7 +64,7 @@ class Network(object):
             self._getLibVirtObject().destroy()
             self._getLibVirtObject().undefine()
         except:
-            raise MCVirtException('Failed to delete network from libvirt')
+            raise LibvirtException('Failed to delete network from libvirt')
 
         if self.mcvirt_instance.initialiseNodes():
             # Update nodes

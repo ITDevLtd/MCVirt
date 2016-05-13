@@ -18,13 +18,8 @@
 import xml.etree.ElementTree as ET
 from enum import Enum
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import ReachedMaximumStorageDevicesException
 from mcvirt.mcvirt_config import MCVirtConfig
-
-
-class ReachedMaximumStorageDevicesException(MCVirtException):
-    """Reached the limit to number of hard disks attached to VM"""
-    pass
 
 
 class Driver(Enum):

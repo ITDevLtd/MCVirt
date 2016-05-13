@@ -18,42 +18,14 @@
 import os
 import stat
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import (IsoNotPresentOnDestinationNodeException,
+                               InvalidISOPathException, NameNotSpecifiedException,
+                               IsoAlreadyExistsException, FailedToRemoveFileException,
+                               IsoInUseException)
 from mcvirt.system import System
 
 
-class IsoNotPresentOnDestinationNodeException(MCVirtException):
-    """ISO attached to VM does not exist on destination node
-       whilst performing a migration"""
-    pass
-
-
-class InvalidISOPathException(MCVirtException):
-    """ISO to add does not exist"""
-    pass
-
-
-class NameNotSpecifiedException(MCVirtException):
-    """A name has not been specified and cannot be determined by the path/URL"""
-    pass
-
-
-class IsoAlreadyExistsException(MCVirtException):
-    """An ISO with the same name already exists"""
-    pass
-
-
-class FailedToRemoveFileException(MCVirtException):
-    """A failure occurred whilst trying to remove an ISO"""
-    pass
-
-
-class IsoInUseException(MCVirtException):
-    """The ISO is in use, so cannot be removed"""
-    pass
-
-
-class Iso:
+class Iso(object):
     """Provides management of ISOs for use in MCVirt"""
 
     def __init__(self, mcvirt_instance, name):

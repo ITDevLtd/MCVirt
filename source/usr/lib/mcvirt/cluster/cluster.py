@@ -23,32 +23,16 @@ import Pyro4
 from texttable import Texttable
 from mcvirt.rpc.ssl_socket import SSLSocket
 
+from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
+                               RemoteObjectConflict, ClusterNotInitialisedException,
+                               InvalidConnectionString, CAFileAlreadyExists,
+                               CouldNotConnectToNodeException)
 from mcvirt.auth.auth import Auth
-from mcvirt.mcvirt import MCVirtException
 from mcvirt.system import System
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.factory import Factory as UserFactory
 from mcvirt.auth.connection_user import ConnectionUser
-
-
-class NodeAlreadyPresent(MCVirtException):
-    """Node being added is already connected to cluster"""
-    pass
-
-
-class NodeDoesNotExistException(MCVirtException):
-    """The node does not exist"""
-    pass
-
-
-class RemoteObjectConflict(MCVirtException):
-    """The remote node contains an object that will cause conflict when syncing"""
-    pass
-
-
-class ClusterNotInitialisedException(MCVirtException):
-    """The cluster has not been initialised, so cannot connect to the remote node"""
-    pass
+from mcvirt.client.rpc import Connection
 
 
 class Cluster(object):
@@ -70,7 +54,7 @@ class Cluster(object):
         user_factory = UserFactory(self.mcvirt_instance)
         connection_username, connection_password = user_factory.generate_user(ConnectionUser)
 
-        with open(SSLSocket.get_ca_file(), 'r') as ca_fh:
+        with open(SSLSocket.get_ca_file(SSLSocket.get_hostname()), 'r') as ca_fh:
             ca_contents = ca_fh.read()
 
         # Generate dict with connection information. Convert to JSON and base64 encode
@@ -78,7 +62,7 @@ class Cluster(object):
             'username': connection_username,
             'password': connection_password,
             'ip_address': self.getClusterIpAddress(),
-            'hostname': Cluster.getHostname(),
+            'hostname': SSLSocket.get_hostname(),
             'ca_cert': ca_contents
         }
         connection_info_json = json.dumps(connection_info)
@@ -127,73 +111,97 @@ class Cluster(object):
         # Ensure the user has privileges to manage the cluster
         self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_CLUSTER)
 
+        try:
+            config_json = base64.b64decode(node_connection_string)
+            node_config = json.loads(config_json)
+            assert 'username' in node_config and node_config['username']
+            assert 'password' in node_config and node_config['password']
+            assert 'ip_address' in node_config and node_config['ip_address']
+            assert 'hostname' in node_config and node_config['hostname']
+            assert 'ca_cert' in node_config and node_config['ca_cert']
+        except:
+            raise InvalidConnectionString('Connection string is invalid')
+
         # Determine if node is already connected to cluster
-        if (self.checkNodeExists(remote_host)):
+        if self.checkNodeExists(node_config['hostname']):
             raise NodeAlreadyPresent('Node %s is already connected to the cluster' % remote_host)
+
+        # Create CA public key for machine
+        ca_file = SSLSocket.get_ca_file(server=node_config['hostname'], ensure_exists=False)
+        if os.path.isfile(ca_file):
+            raise CAFileAlreadyExists()
+
+        with open(ca_file, 'w') as ca_fh:
+            ca_fh.write(node_config['ca_cert'])
 
         # Check remote machine, to ensure it can be synced without any
         # conflicts
-        remote = Remote(self, remote_host, remote_ip=remote_ip, password=password,
-                        save_hostkey=True)
         try:
-            self.checkRemoteMachine(remote)
-        except:
+            remote = Connection(username=node_config['username'], password=node_config['password'],
+                                host=node_config['hostname'])
+            try:
+                self.checkRemoteMachine(remote)
+            except:
+                remote = None
+                raise
             remote = None
+
+            # Sync SSH keys
+            local_public_key = self.getSshPublicKey()
+            remote_public_key = self.configureRemoteMachine(remote_host, remote_ip,
+                                                            password, local_public_key)
+            all_pre_existing_cluster_nodes = self.getNodes(return_all=True)
+            all_active_pre_existing_cluster_nodes = self.getNodes()
+
+            # Add remote node to configuration
+            self.addNodeConfiguration(remote_host, remote_ip, remote_public_key)
+
+            # Connect to remote machine ensuring that it saves the host file
+            remote = Remote(self, remote_host)
+
+            # Add the local host key to the new remote node
+            remote.runRemoteCommand('cluster-cluster-addHostKey', {'node': self.getHostname()})
+
+            # Add the host key of current remote nodes to the new remote node
+            for pre_existing_remote_node in all_pre_existing_cluster_nodes:
+                node_config = self.getNodeConfig(pre_existing_remote_node)
+                remote.runRemoteCommand('cluster-cluster-addNodeRemote',
+                                        {'node': pre_existing_remote_node,
+                                         'ip_address': node_config['ip_address'],
+                                         'public_key': node_config['public_key']})
+
+                if (pre_existing_remote_node in all_active_pre_existing_cluster_nodes):
+                    # Add new remote node to pre-existing remote node
+                    pre_existing_node_object = self.getRemoteNode(pre_existing_remote_node)
+                    pre_existing_node_object.runRemoteCommand('cluster-cluster-addNodeRemote',
+                                                              {'node': remote_host,
+                                                               'ip_address': remote_ip,
+                                                               'public_key': remote_public_key})
+
+                    # Add hostkey of pre-existing remote node to new remote node
+                    remote.runRemoteCommand('cluster-cluster-addHostKey',
+                                            {'node': pre_existing_remote_node})
+
+                    # Add hostkey of new remote node to pre-existing remote node
+                    pre_existing_node_object.runRemoteCommand('cluster-cluster-addHostKey',
+                                                              {'node': remote_host})
+
+            # If DRBD is enabled on the local node, configure/enable it on the remote node
+            if (DRBD.isEnabled()):
+                remote.runRemoteCommand('node-drbd-enable', {'secret': DRBD.getConfig()['secret']})
+
+            # Sync networks
+            self.syncNetworks(remote)
+
+            # Sync global permissions
+            self.syncPermissions(remote)
+
+            # Sync VMs
+            self.syncVirtualMachines(remote)
+        except:
+            if os.path.exists(ca_file):
+                os.unlink(ca_file)
             raise
-        remote = None
-
-        # Sync SSH keys
-        local_public_key = self.getSshPublicKey()
-        remote_public_key = self.configureRemoteMachine(remote_host, remote_ip,
-                                                        password, local_public_key)
-        all_pre_existing_cluster_nodes = self.getNodes(return_all=True)
-        all_active_pre_existing_cluster_nodes = self.getNodes()
-
-        # Add remote node to configuration
-        self.addNodeConfiguration(remote_host, remote_ip, remote_public_key)
-
-        # Connect to remote machine ensuring that it saves the host file
-        remote = Remote(self, remote_host)
-
-        # Add the local host key to the new remote node
-        remote.runRemoteCommand('cluster-cluster-addHostKey', {'node': self.getHostname()})
-
-        # Add the host key of current remote nodes to the new remote node
-        for pre_existing_remote_node in all_pre_existing_cluster_nodes:
-            node_config = self.getNodeConfig(pre_existing_remote_node)
-            remote.runRemoteCommand('cluster-cluster-addNodeRemote',
-                                    {'node': pre_existing_remote_node,
-                                     'ip_address': node_config['ip_address'],
-                                     'public_key': node_config['public_key']})
-
-            if (pre_existing_remote_node in all_active_pre_existing_cluster_nodes):
-                # Add new remote node to pre-existing remote node
-                pre_existing_node_object = self.getRemoteNode(pre_existing_remote_node)
-                pre_existing_node_object.runRemoteCommand('cluster-cluster-addNodeRemote',
-                                                          {'node': remote_host,
-                                                           'ip_address': remote_ip,
-                                                           'public_key': remote_public_key})
-
-                # Add hostkey of pre-existing remote node to new remote node
-                remote.runRemoteCommand('cluster-cluster-addHostKey',
-                                        {'node': pre_existing_remote_node})
-
-                # Add hostkey of new remote node to pre-existing remote node
-                pre_existing_node_object.runRemoteCommand('cluster-cluster-addHostKey',
-                                                          {'node': remote_host})
-
-        # If DRBD is enabled on the local node, configure/enable it on the remote node
-        if (DRBD.isEnabled()):
-            remote.runRemoteCommand('node-drbd-enable', {'secret': DRBD.getConfig()['secret']})
-
-        # Sync networks
-        self.syncNetworks(remote)
-
-        # Sync global permissions
-        self.syncPermissions(remote)
-
-        # Sync VMs
-        self.syncVirtualMachines(remote)
 
     def syncNetworks(self, remote_object):
         """Add the local networks to the remote node"""
@@ -267,11 +275,12 @@ class Cluster(object):
                                            {'vm_name': vm_object.getName(),
                                             'node': vm_object.getNode()})
 
-    def checkRemoteMachine(self, remote_object):
+    def checkRemoteMachine(self, remote_connection):
         """Performs checks on the remote node to ensure that there will be
            no object conflicts when syncing the Network and VM configurations"""
         # Determine if any of the local networks/VMs exist on the remote node
-        remote_networks = remote_object.runRemoteCommand('node-network-getConfig', [])
+        remote_network_factory = remote_connection.getConnection('network_factory')
+        #remote_networks = remote_network_factory
         from mcvirt.node.network.network import Network
         for local_network in Network.getConfig().keys():
             if (local_network in remote_networks.keys()):
@@ -397,7 +406,6 @@ class Cluster(object):
 
     def connectNodes(self):
         """Obtains connection to each of the nodes"""
-        from remote import CouldNotConnectToNodeException
         nodes = self.getNodes()
         for node in nodes:
             try:

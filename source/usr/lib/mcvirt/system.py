@@ -19,15 +19,10 @@ import getpass
 import subprocess
 import sys
 
-from mcvirt import MCVirtException
+from exceptions import MCVirtCommandException
 
 
-class MCVirtCommandException(MCVirtException):
-    """Provides an exception to be thrown after errors whilst calling external commands"""
-    pass
-
-
-class System:
+class System(object):
 
     @staticmethod
     def runCommand(command_args, raise_exception_on_failure=True, cwd=None):

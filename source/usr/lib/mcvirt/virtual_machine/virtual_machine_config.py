@@ -17,7 +17,7 @@
 
 import os
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import ConfigFileCouldNotBeFoundException
 from mcvirt.config_file import ConfigFile
 
 
@@ -30,7 +30,9 @@ class VirtualMachineConfig(ConfigFile):
         self.vm_object = vm_object
         self.config_file = VirtualMachineConfig.getConfigPath(self.vm_object.name)
         if (not os.path.isfile(self.config_file)):
-            raise MCVirtException('Could not find config file for %s' % vm_object.name)
+            raise ConfigFileCouldNotBeFoundException(
+                'Could not find config file for %s' % vm_object.name
+            )
 
         # Perform upgrade of configuration
         self.upgrade(vm_object.mcvirt_object)

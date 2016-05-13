@@ -4,25 +4,22 @@ import re
 from os.path import exists as os_path_exists
 from os import makedirs
 
-from virtual_machine import VirtualMachine, InvalidVirtualMachineNameException, VmAlreadyExistsException
+from virtual_machine import VirtualMachine
 from virtual_machine_config import VirtualMachineConfig
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.cluster.cluster import (Cluster, ClusterNotInitialisedException,
-                                    NodeDoesNotExistException)
-from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
+from mcvirt.cluster.cluster import Cluster
+from mcvirt.node.drbd import DRBD as NodeDRBD
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.auth.auth import Auth
 from mcvirt.node.network.factory import Factory as NetworkFactory
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import (StorageTypeNotSpecified, InvalidNodesException,
+                               InvalidVirtualMachineNameException, VmAlreadyExistsException,
+                               ClusterNotInitialisedException, NodeDoesNotExistException,
+                               DRBDNotEnabledOnNode)
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
-
-
-class StorageTypeNotSpecified(MCVirtException):
-    """Storage type has not been specified"""
-    pass
 
 
 class Factory(PyroObject):
@@ -156,14 +153,14 @@ class Factory(PyroObject):
         # add an option that forces the user to specify the nodes for the DRBD VM
         # to be added to
         if (storage_type == 'DRBD' and len(available_nodes) != NodeDRBD.CLUSTER_SIZE):
-            raise MCVirtException('Exactly two nodes must be specified')
+            raise InvalidNodesException('Exactly two nodes must be specified')
 
         for check_node in available_nodes:
             if (check_node not in all_nodes):
                 raise NodeDoesNotExistException('Node \'%s\' does not exist' % check_node)
 
         if (Cluster.getHostname() not in available_nodes and self.mcvirt_instance.initialiseNodes()):
-            raise MCVirtException('One of the nodes must be the local node')
+            raise InvalidNodesException('One of the nodes must be the local node')
 
         # Create directory for VM
         makedirs(VirtualMachine.getVMDir(name))

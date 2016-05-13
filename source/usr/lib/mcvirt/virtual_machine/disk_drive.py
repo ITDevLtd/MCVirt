@@ -20,8 +20,9 @@ import xml.etree.ElementTree as ET
 import os
 import Pyro4
 
-from mcvirt.mcvirt import MCVirtException, MCVirt
-from mcvirt.iso.iso import Iso, IsoNotPresentOnDestinationNodeException
+from mcvirt.exceptions import LibvirtException
+from mcvirt.mcvirt import MCVirt
+from mcvirt.iso.iso import Iso
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.auth import Auth
@@ -57,7 +58,7 @@ class DiskDrive(PyroObject):
         # Update the libvirt cdrom device
         libvirt_object = self.vm_object._getLibvirtDomainObject()
         if libvirt_object.updateDeviceFlags(cdrom_xml_string, flags):
-            raise MCVirtException('An error occurred whilst attaching ISO')
+            raise LibvirtException('An error occurred whilst attaching ISO')
 
     def removeISO(self):
         """Removes ISO attached to the disk drive of a VM"""
@@ -75,7 +76,7 @@ class DiskDrive(PyroObject):
 
             # Update the libvirt cdrom device
             if (self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):
-                raise MCVirtException('An error occurred whilst detaching ISO')
+                raise LibvirtException('An error occurred whilst detaching ISO')
 
     def getCurrentDisk(self):
         """Returns the path of the disk currently attached to the VM"""

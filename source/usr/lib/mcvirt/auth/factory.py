@@ -18,23 +18,13 @@
 import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import IncorrectCredentials, InvalidUsernameException
 from user import User
 from mcvirt.rpc.pyro_object import PyroObject
 from user_base import UserBase
 from user import User
 from connection_user import ConnectionUser
 from auth import Auth
-
-
-class IncorrectCredentials(MCVirtException):
-    """The supplied credentials are incorrect"""
-    pass
-
-
-class InvalidUsernameException(MCVirtException):
-    """Username is within a reserved namespace"""
-    pass
 
 
 class Factory(PyroObject):
@@ -114,7 +104,11 @@ class Factory(PyroObject):
         raise InvalidUserType('Failed to determine user type for %s' %
                               generic_object.getUsername())
 
-    def get_all_users(self, user_class=None):
+    def get_all_users(self):
+        """Returns all the users, excluding built-in users"""
+        return self.get_all_user_objects(user_class=User)
+
+    def get_all_user_objects(self, user_class=None):
         """Returns the user objects for all users, optionally filtered by user type"""
         if user_class is not None:
             # Ensure valid user type
@@ -146,7 +140,7 @@ class Factory(PyroObject):
                                   user_type.__name__)
 
         # Delete any old connection users
-        for old_user_object in self.get_all_users(user_class=user_type):
+        for old_user_object in self.get_all_user_objects(user_class=user_type):
             old_user_object.delete()
 
         username = user_type.USER_PREFIX + user_type.generatePassword(32, numeric_only=True)

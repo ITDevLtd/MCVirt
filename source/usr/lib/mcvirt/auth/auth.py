@@ -21,25 +21,15 @@ from texttable import Texttable
 import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsException,
+                               UnprivilegedUserException, InvalidPermissionGroupException,
+                               DuplicatePermissionException)
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
 
 
-class UserNotPresentInGroup(MCVirtException):
-    """User to be removed from group is not in the group"""
-    pass
-
-
-class InsufficientPermissionsException(MCVirtException):
-    """User does not have the required permission"""
-    pass
-
-
 class Auth(PyroObject):
     """Provides authentication and permissions for performing functions within MCVirt"""
-
-    USER_SESSIONS = {}
 
     PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM',
                                        'MANAGE_VM_USERS', 'VIEW_VNC_CONSOLE', 'CLONE_VM',
@@ -82,7 +72,7 @@ class Auth(PyroObject):
         if (os.geteuid() == 0):
             return True
         else:
-            raise MCVirtException('MCVirt must be run using sudo')
+            raise UnprivilegedUserException('MCVirt must be run using sudo')
 
     def assertPermission(self, permission_enum, vm_object=None):
         """Uses checkPermission function to determine if a user has a given permission
@@ -132,8 +122,9 @@ class Auth(PyroObject):
 
             # Check that the group, defined in the VM, is defined in this class
             if (permission_group not in Auth.PERMISSION_GROUPS.keys()):
-                raise MCVirtException('Permissions group, defined in %s, %s, does not exist' %
-                                      (vm_object.getName(), permission_group))
+                raise InvalidPermissionGroupException(
+                    'Permissions group, %s, does not exist' % permission_group
+                )
 
             # Check if user is part of the group and the group contains
             # the required permission
@@ -164,7 +155,9 @@ class Auth(PyroObject):
 
         # Ensure the user is a superuser
         if (not self.isSuperuser()):
-            raise InsufficientPermissionsException('User must be a superuser to manage superusers')
+            raise InsufficientPermissionsException(
+                'User must be a superuser to manage superusers'
+            )
 
         user_object = self._convert_remote_object(user_object)
 
@@ -183,7 +176,9 @@ class Auth(PyroObject):
                 cluster_object.runRemoteCommand('auth-addSuperuser',
                                                 {'username': username})
         elif (not ignore_duplicate):
-            raise MCVirtException('User \'%s\' is already a superuser' % username)
+            raise DuplicatePermissionException(
+                'User \'%s\' is already a superuser' % username
+            )
 
     @Pyro4.expose()
     @lockingMethod()
@@ -193,7 +188,9 @@ class Auth(PyroObject):
 
         # Ensure the user is a superuser
         if (not self.isSuperuser()):
-            raise InsufficientPermissionsException('User must be a superuser to manage superusers')
+            raise InsufficientPermissionsException(
+                'User must be a superuser to manage superusers'
+            )
 
         user_object = self._convert_remote_object(user_object)
         username = user_object.getUsername()
@@ -258,8 +255,9 @@ class Auth(PyroObject):
                                                  'vm_name': vm_name})
 
         elif (not ignore_duplicate):
-            raise MCVirtException('User \'%s\' already in group \'%s\'' %
-                                  (username, permission_group))
+            raise DuplicatePermissionException(
+                'User \'%s\' already in group \'%s\'' % (username, permission_group)
+            )
 
     @Pyro4.expose()
     @lockingMethod()
@@ -279,8 +277,8 @@ class Auth(PyroObject):
 
         # Check if user exists in the group
         if (username not in self.getUsersInPermissionGroup(permission_group, vm_object)):
-            raise MCVirtException('User \'%s\' not in group \'%s\'' %
-                                  (username, permission_group))
+            raise UserNotPresentInGroup('User \'%s\' not in group \'%s\'' %
+                                        (username, permission_group))
 
         if (vm_object):
             config_object = vm_object.getConfigObject()
@@ -334,4 +332,6 @@ class Auth(PyroObject):
         if (permission_group in permission_config.keys()):
             return permission_config[permission_group]
         else:
-            raise MCVirtException('Permission group \'%s\' does not exist' % permission_group)
+            raise InvalidPermissionGroupException(
+                'Permission group \'%s\' does not exist' % permission_group
+            )

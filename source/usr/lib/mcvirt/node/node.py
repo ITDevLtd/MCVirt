@@ -17,18 +17,9 @@
 
 import re
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import (InvalidVolumeGroupNameException,
+                               InvalidIPAddressException)
 from mcvirt.mcvirt_config import MCVirtConfig
-
-
-class InvalidVolumeGroupNameException(MCVirtException):
-    """The specified name of the volume group is invalid"""
-    pass
-
-
-class InvalidIPAddressException(MCVirtException):
-    """The specified IP address is invalid"""
-    pass
 
 
 class Node(object):

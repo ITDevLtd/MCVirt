@@ -19,15 +19,10 @@ import Pyro4
 from texttable import Texttable
 import xml.etree.ElementTree as ET
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import NetworkAlreadyExistsException, LibvirtException
 from mcvirt.auth.auth import Auth
 from mcvirt.node.network.network import Network
 from mcvirt.rpc.lock import lockingMethod
-
-
-class NetworkAlreadyExistsException(MCVirtException):
-    """Network already exists with the same name"""
-    pass
 
 
 class Factory(object):
@@ -71,7 +66,7 @@ class Factory(object):
         try:
             self.mcvirt_instance.getLibvirtConnection().networkDefineXML(network_xml_string)
         except:
-            raise MCVirtException('An error occurred whilst registering network with LibVirt')
+            raise LibvirtException('An error occurred whilst registering network with LibVirt')
 
         if (self.mcvirt_instance.initialiseNodes()):
             # Update nodes

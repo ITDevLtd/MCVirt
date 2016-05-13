@@ -22,24 +22,10 @@ from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode, DRBDSocket
 from mcvirt.auth.auth import Auth
-from mcvirt.system import System, MCVirtCommandException
+from mcvirt.system import System
 from mcvirt.cluster.cluster import Cluster
-from mcvirt.mcvirt import MCVirtException
-
-
-class DrbdStateException(MCVirtException):
-    """The DRBD state is not OK"""
-    pass
-
-
-class DrbdBlockDeviceDoesNotExistException(MCVirtException):
-    """DRBD block device does not exist"""
-    pass
-
-
-class DrbdVolumeNotInSyncException(MCVirtException):
-    """The last DRBD verification of the volume failed"""
-    pass
+from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
+                               DrbdVolumeNotInSyncException, MCVirtCommandException)
 
 
 class DrbdConnectionState(Enum):

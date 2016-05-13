@@ -18,12 +18,12 @@
 import argparse
 import Pyro4
 
-from mcvirt import MCVirt, MCVirtException
+from mcvirt import MCVirt
+from exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
 from virtual_machine.virtual_machine import VirtualMachine, LockStates
 from virtual_machine.hard_drive.config.base import (Base as HardDriveConfigBase,
                                                     Driver as HardDriveDriver)
 from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-from virtual_machine.hard_drive.drbd import DrbdVolumeNotInSyncException
 from virtual_machine.network_adapter import NetworkAdapter
 from virtual_machine.disk_drive import DiskDrive
 from node.network.network import Network
@@ -43,7 +43,7 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
         """Overrides the error function - forcing the argument parser to throw
         an MCVirt exception on error
         """
-        raise MCVirtException(message)
+        raise ArgumentParserException(message)
 
 
 class Parser:
@@ -707,7 +707,7 @@ class Parser:
 
         elif action == 'permission':
             if (args.add_superuser or args.delete_superuser) and args.vm_name:
-                raise MCVirtException('Superuser groups are global-only roles')
+                raise ArgumentParserException('Superuser groups are global-only roles')
 
             if args.vm_name:
                 vm_factory = rpc.getConnection('virtual_machine_factory')

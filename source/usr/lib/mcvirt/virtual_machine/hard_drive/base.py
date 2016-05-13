@@ -18,33 +18,14 @@
 import Pyro4
 import os
 
-from mcvirt.mcvirt import MCVirtException
-from mcvirt.system import System, MCVirtCommandException
-
-
-class HardDriveDoesNotExistException(MCVirtException):
-    """The given hard drive does not exist"""
-    pass
-
-
-class StorageTypesCannotBeMixedException(MCVirtException):
-    """Storage types cannot be mixed within a single VM"""
-    pass
-
-
-class LogicalVolumeDoesNotExistException(MCVirtException):
-    """A required logical volume does not exist"""
-    pass
-
-
-class BackupSnapshotAlreadyExistsException(MCVirtException):
-    """The backup snapshot for the logical volume already exists"""
-    pass
-
-
-class BackupSnapshotDoesNotExistException(MCVirtException):
-    """The backup snapshot for the logical volume does not exist"""
-    pass
+from mcvirt.exceptions import (HardDriveDoesNotExistException,
+                               StorageTypesCannotBeMixedException,
+                               LogicalVolumeDoesNotExistException,
+                               BackupSnapshotAlreadyExistsException,
+                               BackupSnapshotDoesNotExistException,
+                               ExternalStorageCommandErrorException,
+                               MCVirtCommandException)
+from mcvirt.system import System
 
 
 class Base(object):
@@ -119,7 +100,9 @@ class Base(object):
             System.runCommand(command_args)
         except MCVirtCommandException, e:
             new_disk_object.delete()
-            raise MCVirtException("Error whilst duplicating disk logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst duplicating disk logical volume:\n" + str(e)
+            )
 
         return new_disk_object
 
@@ -280,7 +263,9 @@ class Base(object):
                 name,
                 ignore_non_existent=True,
                 perform_on_nodes=perform_on_nodes)
-            raise MCVirtException("Error whilst creating disk logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst creating disk logical volume:\n" + str(e)
+            )
 
     @staticmethod
     def _removeLogicalVolume(
@@ -313,7 +298,9 @@ class Base(object):
                     nodes=nodes
                 )
         except MCVirtCommandException, e:
-            raise MCVirtException("Error whilst removing disk logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst removing disk logical volume:\n" + str(e)
+            )
 
     @staticmethod
     def _getLogicalVolumeSize(config_object, name):
@@ -331,7 +318,7 @@ class Base(object):
         try:
             (_, command_output, _) = System.runCommand(command_args)
         except MCVirtCommandException, e:
-            raise MCVirtException(
+            raise ExternalStorageCommandErrorException(
                 "Error whilst obtaining the size of the logical volume:\n" +
                 str(e))
 
@@ -363,7 +350,9 @@ class Base(object):
                                           'name': name, 'size': size},
                                          nodes=nodes)
         except MCVirtCommandException, e:
-            raise MCVirtException("Error whilst zeroing logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst zeroing logical volume:\n" + str(e)
+            )
 
     @staticmethod
     def _ensureLogicalVolumeExists(config_object, name):
@@ -417,7 +406,9 @@ class Base(object):
                                           'name': name},
                                          nodes=nodes)
         except MCVirtCommandException, e:
-            raise MCVirtException("Error whilst activating logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst activating logical volume:\n" + str(e)
+            )
 
     def createBackupSnapshot(self):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""

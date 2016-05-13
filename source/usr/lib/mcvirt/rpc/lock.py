@@ -15,12 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import MCVirtException
 from mcvirt.logger import Logger, getLogNames
 import Pyro4
 from threading import Lock
 
-class MCVirtLock(object):
+class MethodLock(object):
     _lock = None
 
     @classmethod
@@ -28,6 +28,9 @@ class MCVirtLock(object):
         if cls._lock is None:
             cls._lock = Lock()
         return cls._lock
+
+class DaemonLock(object):
+    pass
 
 def lockingMethod(object_type=None, instance_method=True):
     def wrapper(callback):
@@ -40,7 +43,7 @@ def lockingMethod(object_type=None, instance_method=True):
                                                    wrapper.object_type,
                                                    args=args,
                                                    kwargs=kwargs)
-            lock = MCVirtLock.getLock()
+            lock = MethodLock.getLock()
             logger = Logger()
             log = logger.create_log(callback, user=Pyro4.current_context.username,
                                     object_name=object_name, object_type=object_type)

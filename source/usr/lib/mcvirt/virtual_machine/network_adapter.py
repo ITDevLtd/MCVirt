@@ -19,13 +19,8 @@ import Pyro4
 import libvirt
 import xml.etree.ElementTree as ET
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import NetworkAdapterDoesNotExistException
 from mcvirt.auth.auth import Auth
-
-
-class NetworkAdapterDoesNotExistException(MCVirtException):
-    """The network adapter does not exist"""
-    pass
 
 
 class NetworkAdapter(object):
@@ -73,7 +68,9 @@ class NetworkAdapter(object):
             self.mac_address)
 
         if (interface_config is None):
-            raise MCVirtException('Interface does not exist: %s' % self.mac_address)
+            raise NetworkAdapterDoesNotExistException(
+                'Interface does not exist: %s' % self.mac_address
+            )
 
         return interface_config
 

@@ -21,14 +21,10 @@ import socket
 import os
 from binascii import hexlify
 
+from mcvirt.utils import get_hostname
 from mcvirt.system import System
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import CACertificateNotFoundException, OpenSSLNotFoundException
 from mcvirt.mcvirt_config import MCVirtConfig
-
-
-class CACertificateNotFound(MCVirtException):
-    """CA certificate for host could not be found"""
-    pass
 
 
 class SSLSocket(object):
@@ -41,20 +37,15 @@ class SSLSocket(object):
     OPENSSL = '/usr/bin/openssl'
 
     @staticmethod
-    def get_hostname():
-        """Returns the hostname of the system"""
-        return socket.gethostname()
-
-    @staticmethod
     def get_ssl_directory():
-        ssl_dir = '/var/lib/mcvirt/%s/ssl' % SSLSocket.get_hostname()
+        ssl_dir = '/var/lib/mcvirt/%s/ssl' % get_hostname()
         if not os.path.isdir(ssl_dir):
             os.mkdir(ssl_dir)
         return ssl_dir
 
     @staticmethod
     def get_ca_file(server, ensure_exists=True):
-        hostname = SSLSocket.get_hostname()
+        hostname = get_hostname()
         if server == 'localhost' or server == '127.0.0.1':
             server = hostname
 
@@ -65,17 +56,19 @@ class SSLSocket(object):
 
         file_path = os.path.join(ssl_directory, '%s-CA.pem' % server)
         if ensure_exists and not os.path.isfile(file_path):
-            if server == SSLSocket.get_hostname():
+            if server == get_hostname():
                 SSLSocket.get_server_certificates()
             else:
-                raise CACertificateNotFound('CA certificate could not be found for %s' % server)
+                raise CACertificateNotFoundException(
+                    'CA certificate could not be found for %s' % server
+                )
         return file_path
 
     @staticmethod
     def get_server_certificates():
         MCVirtConfig()
         ssl_directory = SSLSocket.get_ssl_directory()
-        hostname = SSLSocket.get_hostname()
+        hostname = get_hostname()
         ca_pass = None
         ca_pub = SSLSocket.get_ca_file(hostname, ensure_exists=False)
         ca_priv = os.path.join(ssl_directory, '%s-CA.key' % hostname)
@@ -84,7 +77,7 @@ class SSLSocket(object):
         ssl_priv = os.path.join(ssl_directory, '%s.key' % hostname)
 
         if not os.path.isfile(SSLSocket.OPENSSL):
-            raise Exception('openssl not found: %s' % SSLSocket.OPENSSL)
+            raise OpenSSLNotFoundException('openssl not found: %s' % SSLSocket.OPENSSL)
 
         # Create private key for CA, if does not exist
         if (not os.path.isfile(ca_priv) or

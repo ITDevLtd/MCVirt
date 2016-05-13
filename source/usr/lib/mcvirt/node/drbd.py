@@ -21,28 +21,14 @@ import socket
 import thread
 from texttable import Texttable
 
-from mcvirt.mcvirt import MCVirt, MCVirtException
+from mcvirt.mcvirt import MCVirt
+from mcvirt.exceptions import DRBDNotInstalledException, DRBDAlreadyEnabled, DRBDNotEnabledOnNode
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.auth import Auth
 
 
-class DRBDNotInstalledException(MCVirtException):
-    """DRBD is not installed"""
-    pass
-
-
-class DRBDAlreadyEnabled(MCVirtException):
-    """DRBD has already been enabled on this node"""
-    pass
-
-
-class DRBDNotEnabledOnNode(MCVirtException):
-    """DRBD volumes cannot be created on a node that has not been configured to use DRBD"""
-    pass
-
-
-class DRBD:
+class DRBD(object):
     """Performs configuration of DRBD on the node"""
 
     CONFIG_DIRECTORY = '/etc/drbd.d'

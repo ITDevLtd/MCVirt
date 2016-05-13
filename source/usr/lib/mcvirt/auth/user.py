@@ -16,11 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from user_base import UserBase
-from mcvirt.mcvirt import MCVirtException
-
-class OldPasswordIncorrect(MCVirtException):
-    """The old password is not correct"""
-    pass
+from mcvirt.exceptions import OldPasswordIncorrect
 
 
 class User(UserBase):

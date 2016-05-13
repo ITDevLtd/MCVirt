@@ -16,8 +16,9 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
-import exceptions
+import mcvirt.exceptions
 
+from mcvirt.utils import get_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
 
 class AuthenticationError(Exception):
@@ -30,15 +31,17 @@ class Connection(object):
     NS_PORT = 9090
     SESSION_OBJECT = 'session'
 
-    def __init__(self, username=None, password=None, session_id=None, host=None):
+    def __init__(self, username=None, password=None, session_id=None,
+                 host=None, alt_username=None):
         """Store member variables for connecting"""
         # If the host is not provided, default to the local host
-        self.__host = host if host is not None else SSLSocket.get_hostname()
+        self.__host = host if host is not None else get_hostname()
 
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
         self.__username = username
+        self.__alt_username = alt_username
 
         # Store the passed session_id so that it may abe used for the initial connection
         self.__session_id = session_id
@@ -54,10 +57,10 @@ class Connection(object):
             session_id = session_object._pyroHandshake['SEID']
             return session_id
         except Pyro4.errors.CommunicationError, e:
-            raise
             raise AuthenticationError('Invalid credentials')
 
     def _getAuthObj(self, password=None):
+        """Setup annotations for authentication"""
         auth_dict = {
             'USER': self.__username
         }
@@ -65,6 +68,8 @@ class Connection(object):
             auth_dict['PASS'] = password
         elif self.__session_id:
             auth_dict['SEID'] = self.__session_id
+        if self.__alt_username:
+            auth_dict['ALTU'] = self.__alt_username
         return auth_dict
 
     def getConnection(self, object_name, password=None):

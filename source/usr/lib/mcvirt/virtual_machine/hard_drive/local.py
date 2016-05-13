@@ -20,16 +20,14 @@ import libvirt
 import os
 
 from mcvirt.system import System, MCVirtCommandException
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import (VmAlreadyStartedException, VmIsCloneException,
+                               ExternalStorageCommandErrorException,
+                               DiskAlreadyExistsException,
+                               CannotMigrateLocalDiskException)
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 from mcvirt.auth.auth import Auth
 from mcvirt.rpc.lock import lockingMethod
-
-
-class CannotMigrateLocalDiskException(MCVirtException):
-    """Local disks cannot be migrated"""
-    pass
 
 
 class Local(Base):
@@ -59,18 +57,20 @@ class Local(Base):
         # Ensure VM is stopped
         from mcvirt.virtual_machine.virtual_machine import PowerStates
         if (self.getVmObject()._getPowerState() is not PowerStates.STOPPED):
-            raise MCVirtException('VM must be stopped before increasing disk size')
+            raise VmAlreadyStartedException('VM must be stopped before increasing disk size')
 
         # Ensure that VM has not been cloned and is not a clone
         if (self.getVmObject().getCloneParent() or self.getVmObject().getCloneChildren()):
-            raise MCVirtException('Cannot increase the disk of a cloned VM or a clone.')
+            raise VmIsCloneException('Cannot increase the disk of a cloned VM or a clone.')
 
         command_args = ('lvextend', '-L', '+%sM' % increase_size,
                         self.getConfigObject()._getDiskPath())
         try:
             System.runCommand(command_args)
         except MCVirtCommandException, e:
-            raise MCVirtException("Error whilst extending logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst extending logical volume:\n" + str(e)
+            )
 
     def _checkExists(self):
         """Checks if a disk exists, which is required before any operations
@@ -108,7 +108,9 @@ class Local(Base):
         try:
             System.runCommand(command_args)
         except MCVirtCommandException, e:
-            raise MCVirtException("Error whilst cloning disk logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst cloning disk logical volume:\n" + str(e)
+            )
 
         Local._addToVirtualMachine(new_disk_config)
 
@@ -125,7 +127,7 @@ class Local(Base):
 
         # Ensure the disk doesn't already exist
         if (os.path.lexists(disk_path)):
-            raise MCVirtException('Disk already exists: %s' % disk_path)
+            raise DiskAlreadyExistsException('Disk already exists: %s' % disk_path)
 
         # Create the raw disk image
         Local._createLogicalVolume(disk_config_object, logical_volume_name, size)

@@ -20,31 +20,15 @@ from paramiko.client import SSHClient, AutoAddPolicy
 from paramiko.ssh_exception import AuthenticationException
 import os
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import (RemoteCommandExecutionFailedException,
+                               UnknownRemoteCommandException,
+                               NodeAuthenticationException,
+                               CouldNotConnectToNodeException,
+                               RemoteNodeLockedException)
 from cluster import Cluster
 
 
-class RemoteCommandExecutionFailedException(MCVirtException):
-    """A remote command execution fails"""
-    pass
-
-
-class UnknownRemoteCommandException(MCVirtException):
-    """An unknown command was passed to the remote machine"""
-    pass
-
-
-class NodeAuthenticationException(MCVirtException):
-    """Incorrect password supplied for remote node"""
-    pass
-
-
-class CouldNotConnectToNodeException(MCVirtException):
-    """Could not connect to remove cluster node"""
-    pass
-
-
-class Remote:
+class Remote(object):
     """A class to perform remote commands on MCVirt nodes"""
 
     REMOTE_MCVIRT_COMMAND = '/usr/lib/mcvirt/mcvirt-remote.py'
@@ -487,7 +471,7 @@ class Remote:
 
                 # Check the remote lock
                 if (self.runRemoteCommand('checkStatus', None) != ['0']):
-                    raise MCVirtException('Remote node locked: %s' % self.name)
+                    raise RemoteNodeLockedException('Remote node locked: %s' % self.name)
 
     def runRemoteCommand(self, action, arguments):
         """Prepare and run a remote command on a cluster node"""

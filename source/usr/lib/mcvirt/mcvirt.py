@@ -22,6 +22,7 @@ import socket
 import Pyro4
 import atexit
 
+from exceptions import MCVirtLockException, LibVirtConnectionException
 from mcvirt_config import MCVirtConfig
 
 
@@ -91,7 +92,7 @@ class MCVirt(object):
 
         # Check if lockfile object is already locked
         if (self.obtained_filelock or self.lockfile_object.is_locked()):
-            raise MCVirtException('An instance of MCVirt is already running')
+            raise MCVirtLockException('An instance of MCVirt is already running')
 
         try:
             self.lockfile_object.acquire(timeout=timeout)
@@ -102,7 +103,7 @@ class MCVirt(object):
 
             self.obtained_filelock = True
         except:
-            raise MCVirtException('An instance of MCVirt is already running')
+            raise MCVirtLockException('An instance of MCVirt is already running')
 
     def releaseLock(self, initialise_nodes=True):
         """Releases the MCVirt lock file"""
@@ -140,7 +141,9 @@ class MCVirt(object):
         if (self.connection is None):
             self.connection = libvirt.open(self.libvirt_uri)
             if (self.connection is None):
-                raise MCVirtException('Failed to open connection to the hypervisor')
+                raise LibVirtConnectionException(
+                    'Failed to open connection to the hypervisor'
+                )
         return self.connection
 
     def initialiseNodes(self):
@@ -166,12 +169,3 @@ class MCVirt(object):
             vm_objects.append(VirtualMachine(self, vm_name))
 
         return vm_objects
-
-
-class MCVirtException(Exception):
-    """Provides an exception to be thrown for errors in MCVirt"""
-    pass
-
-class ConnectionFailureToRemoteLibvirtInstance(MCVirtException):
-    """Connection failure whilst attempting to obtain a remote libvirt connection"""
-    pass

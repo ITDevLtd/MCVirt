@@ -21,7 +21,7 @@ import Pyro4
 import uuid
 import time
 
-from mcvirt.mcvirt import MCVirt, MCVirtException
+from mcvirt.mcvirt import MCVirt
 from mcvirt.auth.auth import Auth
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
 from mcvirt.iso.factory import Factory as IsoFactory
@@ -32,6 +32,7 @@ from mcvirt.auth.session import Session
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.logger import Logger
 from ssl_socket import SSLSocket
+from mcvirt.utils import get_hostname
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -58,6 +59,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         # Reset session_id for current context
         Pyro4.current_context.session_id = None
         Pyro4.current_context.username = None
+        Pyro4.current_context.user_for = None
 
         # Check and store username from connection
         if 'USER' not in data:
@@ -73,6 +75,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
             if session_id:
                 Pyro4.current_context.username = username
                 Pyro4.current_context.session_id = session_id
+                if 'ALTU' in data:
+                    Pyro4.current_context.user_for = data['ALTU']
                 return session_id
 
         # If a session id has been passed, store it and check the session_id/username against active sessions
@@ -82,6 +86,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
             if session_object.authenticateSession(username=username, session=session_id):
                 Pyro4.current_context.username = username
                 Pyro4.current_context.session_id = session_id
+                if 'ALTU' in data:
+                    Pyro4.current_context.user_for = data['ALTU']
                 return session_id
 
         # If no valid authentication was provided, raise an error
@@ -111,7 +117,7 @@ class RpcNSMixinDaemon(object):
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
-        self.hostname = SSLSocket.get_hostname()
+        self.hostname = get_hostname()
 
         # Wait for nameserver
         self.obtainConnection()
@@ -176,7 +182,7 @@ class RpcNSMixinDaemon(object):
     def obtainConnection(self):
         while 1:
             try:
-                Pyro4.naming.locateNS(host='laptop02', port=9090, broadcast=False)
+                Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
                 return
             except Exception as e:
                 # Wait for 1 second for name server to come up
