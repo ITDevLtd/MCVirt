@@ -19,7 +19,8 @@ import os
 from binascii import hexlify
 import Pyro4
 
-from mcvirt.exceptions import AuthenticationError, CurrentUserError
+from mcvirt.exceptions import (AuthenticationError, CurrentUserError,
+                               UserDoesNotExistException)
 from factory import Factory as UserFactory
 
 
@@ -61,6 +62,18 @@ class Session(object):
             return user_factory.get_user_by_username(username)
 
         raise AuthenticationError('Invalid session ID')
+
+    def getProxyUserObject(self):
+        """Returns the user that is being proxied as"""
+        current_user = self.getCurrentUserObject()
+        user_factory = UserFactory(self.mcvirt_instance)
+        if (current_user.ALLOW_PROXY_USER and 'PROXY_USER' in dir(Pyro4.current_context)
+                and Pyro4.current_context.proxy_user):
+            try:
+                return user_factory.get_user_by_username(Pyro4.current_context.proxy_user)
+            except UserDoesNotExistException:
+                pass
+        return current_user
 
     def getCurrentUserObject(self):
         """Returns the current user object, based on pyro session"""

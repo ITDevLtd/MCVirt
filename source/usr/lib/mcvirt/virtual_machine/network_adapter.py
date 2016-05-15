@@ -21,6 +21,7 @@ import xml.etree.ElementTree as ET
 
 from mcvirt.exceptions import NetworkAdapterDoesNotExistException
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 
 
 class NetworkAdapter(object):
@@ -150,7 +151,7 @@ class NetworkAdapter(object):
     def delete(self):
         """Remove the given interface from the VM, based on the given MAC address"""
         self.vm_object.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.MODIFY_VM,
+            PERMISSIONS.MODIFY_VM,
             self.vm_object
         )
 

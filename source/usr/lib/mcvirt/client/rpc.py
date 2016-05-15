@@ -16,14 +16,13 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
-import mcvirt.exceptions
 
+import mcvirt.exceptions
+from mcvirt.exceptions import AuthenticationError
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
-
-class AuthenticationError(Exception):
-    """Exception raiased on authentication error"""
-    pass
+from mcvirt.auth.session import Session
+from mcvirt.rpc.constants import Annotations
 
 class Connection(object):
     """Connection class, providing connections to the Pyro MCVirt daemon"""
@@ -32,7 +31,7 @@ class Connection(object):
     SESSION_OBJECT = 'session'
 
     def __init__(self, username=None, password=None, session_id=None,
-                 host=None, alt_username=None):
+                 host=None):
         """Store member variables for connecting"""
         # If the host is not provided, default to the local host
         self.__host = host if host is not None else get_hostname()
@@ -41,7 +40,10 @@ class Connection(object):
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
         self.__username = username
-        self.__alt_username = alt_username
+        if 'proxy_user' in dir(Pyro4.current_context):
+            self.__proxy_username = Pyro4.current_context.proxy_user
+        else:
+            self.__proxy_username = None
 
         # Store the passed session_id so that it may abe used for the initial connection
         self.__session_id = session_id
@@ -57,19 +59,19 @@ class Connection(object):
             session_id = session_object._pyroHandshake['SEID']
             return session_id
         except Pyro4.errors.CommunicationError, e:
-            raise AuthenticationError('Invalid credentials')
+            raise AuthenticationError(str(e))
 
     def _getAuthObj(self, password=None):
         """Setup annotations for authentication"""
         auth_dict = {
-            'USER': self.__username
+            Annotations.USERNAME: self.__username
         }
         if password:
-            auth_dict['PASS'] = password
+            auth_dict[Annotations.PASSWORD] = password
         elif self.__session_id:
-            auth_dict['SEID'] = self.__session_id
-        if self.__alt_username:
-            auth_dict['ALTU'] = self.__alt_username
+            auth_dict[Annotations.SESSION_ID] = self.__session_id
+        if self.__proxy_username:
+            auth_dict[Annotations.PROXY_USER] = self.__proxy_username
         return auth_dict
 
     def getConnection(self, object_name, password=None):
@@ -79,7 +81,7 @@ class Connection(object):
 
         class AuthProxy(Pyro4.Proxy):
             def _pyroValidateHandshake(self, data):
-                self._pyroHandshake['SEID'] = data
+                self._pyroHandshake[Annotations.SESSION_ID] = data
 
         # Create a Proxy object, using the overriden Proxy class and return.
         proxy = AuthProxy(ns.lookup(object_name))

@@ -16,7 +16,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import argparse
-import Pyro4
 
 from mcvirt import MCVirt
 from exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
@@ -416,20 +415,12 @@ class Parser:
             help='Adds a node to the MCVirt cluster',
             parents=[self.parent_parser])
         self.node_add_parser.add_argument(
-            '--node',
-            dest='node',
+            '--connect-string',
+            dest='connect_string',
             metavar='node',
             type=str,
             required=True,
-            help='Hostname of the remote node to add to the cluster')
-        self.node_add_parser.add_argument(
-            '--ip-address',
-            dest='ip_address',
-            metavar='IP Address',
-            type=str,
-            required=True,
-            help='Management IP address of the remote node'
-        )
+            help='Connect string from the target node')
         self.node_remove_parser = self.cluster_subparser.add_parser(
             'remove-node',
             help='Removes a node to the MCVirt cluster',
@@ -576,17 +567,6 @@ class Parser:
             ignore_failed_nodes = True
         else:
             ignore_failed_nodes = False
-
-        # Get an instance of MCVirt
-        # if (mcvirt_instance is None):
-        #     # Add corner-case to allow host info command to not start
-        #     # the MCVirt object, so that it can view the status of nodes in the cluster
-        #     if not (action == 'info' and args.vm_name is None):
-        #         mcvirt_instance = MCVirt(ignore_failed_nodes=ignore_failed_nodes)
-
-        # If the user has specified to ignore DRBD, set the global parameter
-        if args.ignore_drbd:
-            NodeDRBD.ignoreDrbd(mcvirt_instance)
 
         # Perform functions on the VM based on the action passed to the script
         if action == 'start':
@@ -830,11 +810,13 @@ class Parser:
                 cluster_object = rpc.getConnection('cluster')
                 self.printStatus(cluster_object.getConnectionString())
             if (args.cluster_action == 'add-node'):
-                password = System.getUserInput('Enter \'%s\' root password: ' % args.node,
-                                               password=True)
-                cluster_object = Cluster(mcvirt_instance)
-                cluster_object.addNode(args.node, args.ip_address, password)
-                self.printStatus('Successfully added node %s' % args.node)
+                cluster_object = rpc.getConnection('cluster')
+                if args.connect_string:
+                    connect_string = args.connect_string
+                else:
+                    connect_string = System.getUserInput('Enter Connect String: ')
+                cluster_object.addNode(connect_string)
+                self.printStatus('Successfully added node')
             if (args.cluster_action == 'remove-node'):
                 cluster_object = Cluster(mcvirt_instance)
                 cluster_object.removeNode(args.node)

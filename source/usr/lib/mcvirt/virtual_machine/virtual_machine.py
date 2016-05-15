@@ -41,6 +41,7 @@ from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.node.network.network import Network
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
@@ -102,7 +103,7 @@ class VirtualMachine(PyroObject):
         """Stops the VM"""
         # Check the user has permission to start/stop VMs
         self.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.CHANGE_VM_POWER_STATE,
+            PERMISSIONS.CHANGE_VM_POWER_STATE,
             self)
 
         # Determine if VM is registered on the local machine
@@ -134,7 +135,7 @@ class VirtualMachine(PyroObject):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
         self.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.CHANGE_VM_POWER_STATE,
+            PERMISSIONS.CHANGE_VM_POWER_STATE,
             self)
 
         # Ensure VM is unlocked
@@ -194,7 +195,7 @@ class VirtualMachine(PyroObject):
         """Resets the VM"""
         # Check the user has permission to start/stop VMs
         self.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.CHANGE_VM_POWER_STATE,
+            PERMISSIONS.CHANGE_VM_POWER_STATE,
             self)
 
         # Ensure VM is unlocked
@@ -340,10 +341,10 @@ class VirtualMachine(PyroObject):
         # that the user is the owner of the VM and the VM is a clone
         if not (
             self.mcvirt_object.getAuthObject().checkPermission(
-                Auth.PERMISSIONS.MODIFY_VM,
+                PERMISSIONS.MODIFY_VM,
                 self) or (
                 self.getCloneParent() and self.mcvirt_object.getAuthObject().checkPermission(
-                Auth.PERMISSIONS.DELETE_CLONE,
+                PERMISSIONS.DELETE_CLONE,
                 self))):
             raise InsufficientPermissionsException(
                 'User does not have the required permission - ' +
@@ -426,7 +427,7 @@ class VirtualMachine(PyroObject):
     def updateRAM(self, memory_allocation, old_value):
         """Updates the amount of RAM allocated to a VM"""
         # Check the user has permission to modify VMs
-        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
+        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MODIFY_VM, self)
 
         # Ensure memory_allocation is an interger, greater than 0
         try:
@@ -469,7 +470,7 @@ class VirtualMachine(PyroObject):
     def updateCPU(self, cpu_count, old_value):
         """Updates the number of CPU cores attached to a VM"""
         # Check the user has permission to modify VMs
-        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
+        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MODIFY_VM, self)
 
         # Ensure cpu count is an interger, greater than 0
         try:
@@ -504,10 +505,18 @@ class VirtualMachine(PyroObject):
         """Creates a network interface for a VM"""
         return self._createNetworkAdapter(*args, **kwargs)
 
-    def _createNetworkAdapter(self, network_object):
+    @Pyro4.expose()
+    def createNetworkAdapterNoLock(self, *args, **kwargs):
+        """
+        Creates a network interface for a VM
+        @TODO Remove once locking method doesn't lock for daemon user
+        """
+        return self._createNetworkAdapter(*args, **kwargs)
+
+    def _createNetworkAdapter(self, network_object, mac_address=None):
         """Creates a network interface for the local VM"""
-        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MODIFY_VM, self)
-        network_adapter = NetworkAdapter.create(self, network_object)
+        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MODIFY_VM, self)
+        network_adapter = NetworkAdapter.create(self, network_object, mac_address=mac_address)
         self._reegister_object(network_adapter)
         return network_adapter
 
@@ -619,7 +628,7 @@ class VirtualMachine(PyroObject):
         import time
         from mcvirt.cluster.cluster import Cluster
         # Ensure user has permission to migrate VM
-        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MIGRATE_VM, self)
+        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MIGRATE_VM, self)
 
         # Ensure the VM is locally registered
         self.ensureRegisteredLocally()
@@ -669,7 +678,7 @@ class VirtualMachine(PyroObject):
         factory = Factory(self.mcvirt_object)
 
         # Ensure user has permission to migrate VM
-        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MIGRATE_VM, self)
+        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MIGRATE_VM, self)
 
         # Ensure VM is registered locally and unlocked
         self.ensureRegisteredLocally()
@@ -852,7 +861,7 @@ class VirtualMachine(PyroObject):
            LVM snapshotting to duplicate the Hard disk. DRBD is not
            currently supported"""
         # Check the user has permission to create VMs
-        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.CLONE_VM, self)
+        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.CLONE_VM, self)
 
         # Ensure the storage type for the VM is not DRBD, as DRBD-based VMs cannot be cloned
         if self.getStorageType() == 'DRBD':
@@ -916,7 +925,7 @@ class VirtualMachine(PyroObject):
         """Duplicates a VM, creating an identical machine, making a
            copy of the storage"""
         # Check the user has permission to create VMs
-        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.DUPLICATE_VM, self)
+        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.DUPLICATE_VM, self)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -952,7 +961,7 @@ class VirtualMachine(PyroObject):
     def move(self, destination_node, source_node=None):
         """Move a VM from one node to another"""
         # Ensure user has the ability to move VMs
-        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.MOVE_VM, self)
+        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MOVE_VM, self)
 
         from mcvirt.cluster.cluster import Cluster
         cluster_instance = Cluster(self.mcvirt_object)
@@ -1021,7 +1030,7 @@ class VirtualMachine(PyroObject):
     def register(self):
         """Public method for permforming VM register"""
         self.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.SET_VM_NODE, self
+            PERMISSIONS.SET_VM_NODE, self
         )
         self._register()
 
@@ -1084,7 +1093,7 @@ class VirtualMachine(PyroObject):
     def unregister(self):
         """Public method for permforming VM unregister"""
         self.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.SET_VM_NODE, self
+            PERMISSIONS.SET_VM_NODE, self
         )
         self._unregister()
 
@@ -1108,6 +1117,11 @@ class VirtualMachine(PyroObject):
 
         # Remove node from VM configuration
         self._setNode(None)
+
+    def setNode(self, node):
+        self.mcvirt_object.getAuthObject().assertPermission(
+            PERMISSIONS.SET_VM_NODE, self
+        )
 
     def _setNode(self, node):
         from mcvirt.cluster.cluster import Cluster
@@ -1176,8 +1190,9 @@ class VirtualMachine(PyroObject):
         """Returns the port used by the VNC display for the VM"""
         # Check the user has permission to view the VM console
         self.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.VIEW_VNC_CONSOLE,
-            self)
+            PERMISSIONS.VIEW_VNC_CONSOLE,
+            self
+        )
 
         if self._getPowerState() is not PowerStates.RUNNING:
             raise VmAlreadyStoppedException('The VM is not running')
@@ -1204,7 +1219,7 @@ class VirtualMachine(PyroObject):
     def setLockState(self, lock_status):
         """Sets the lock status of the VM"""
         # Ensure the user has permission to set VM locks
-        self.mcvirt_object.getAuthObject().assertPermission(Auth.PERMISSIONS.SET_VM_LOCK, self)
+        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.SET_VM_LOCK, self)
 
         # Check if the lock is already set to this state
         if self.getLockState() == lock_status:

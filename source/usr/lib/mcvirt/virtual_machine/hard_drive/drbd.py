@@ -22,6 +22,7 @@ from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode, DRBDSocket
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.system import System
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
@@ -251,7 +252,7 @@ class DRBD(Base):
         in the VM configuration"""
         # Ensure user has privileges to create a DRBD volume
         vm_object.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.MANAGE_DRBD,
+            PERMISSIONS.MANAGE_DRBD,
             vm_object
         )
 
@@ -527,9 +528,10 @@ class DRBD(Base):
         self._checkDrbdStatus()
 
         # Ensure that role states are not unknown
+        node_drbd = NodeDRBD(self.getVmObject().mcvirt_object)
         if (local_role_state is DrbdRoleState.UNKNOWN or
             (remote_role_state is DrbdRoleState.UNKNOWN and
-             not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object))):
+             not node_drbd.isIgnored())):
             raise DrbdStateException('DRBD role is unknown for resource %s' %
                                      self.getConfigObject()._getResourceName())
 
@@ -537,7 +539,7 @@ class DRBD(Base):
         if (not allow_two_primaries and
             remote_role_state is not DrbdRoleState.SECONDARY and
             not (DrbdRoleState.UNKNOWN and
-                 NodeDRBD.isIgnored(self.getVmObject().mcvirt_object))):
+                 node_drbd.isIgnored())):
             raise DrbdStateException(
                 'Cannot make local DRBD primary if remote DRBD is not secondary: %s' %
                 self.getConfigObject()._getResourceName())
@@ -593,7 +595,7 @@ class DRBD(Base):
             # Ignore the state if it is in warning and the user has specified to ignore
             # the DRBD state
             if (state in DRBD.DRBD_STATES[state_name]['WARNING']):
-                if (not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object)):
+                if (not NodeDRBD(self.getVmObject().mcvirt_object).isIgnored()):
                     raise DrbdStateException(
                         ('DRBD connection state for the DRBD resource '
                          '%s is %s so cannot continue. Run MCVirt as a '
@@ -870,9 +872,9 @@ class DRBD(Base):
         self.getConfigObject()._generateDrbdConfig()
         dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-generateDrbdConfig',
                                           {'config': self.getConfigObject()._dumpConfig()})
-
-        NodeDRBD.adjustDRBDConfig(self.getVmObject().mcvirt_object,
-                                  self.getConfigObject()._getResourceName())
+        NodeDRBD(self.getVmObject().mcvirt_object).adjustDRBDConfig(
+            self.getConfigObject()._getResourceName()
+        )
 
         # Initialise meta-data on destination node
         dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-initialiseMetaData',

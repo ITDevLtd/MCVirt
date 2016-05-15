@@ -18,13 +18,15 @@
 import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.exceptions import IncorrectCredentials, InvalidUsernameException
+from mcvirt.exceptions import IncorrectCredentials, InvalidUsernameException, UserDoesNotExistException
 from user import User
 from mcvirt.rpc.pyro_object import PyroObject
 from user_base import UserBase
 from user import User
 from connection_user import ConnectionUser
+from cluster_user import ClusterUser
 from auth import Auth
+from permissions import PERMISSIONS
 
 
 class Factory(PyroObject):
@@ -46,7 +48,7 @@ class Factory(PyroObject):
     def create(self, username, password, user_type=User):
         """Creates a user"""
         self.mcvirt_instance.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.MANAGE_USERS
+            PERMISSIONS.MANAGE_USERS
         )
 
         # Ensure that username is not part of a reserved namespace
@@ -71,14 +73,24 @@ class Factory(PyroObject):
         hashed_password = UserBase._hashString(password, salt)
 
         # Create config for user and update MCVirt config
-        user_config = {
-            'password': hashed_password,
-            'salt': salt,
-            'user_type': user_type.__name__
-        }
+        user_config = user_type.getDefaultConfig()
+        user_config['password'] = hashed_password
+        user_config['salt'] = salt
+        user_config['user_type'] = user_type.__name__
         def updateConfig(config):
             config['users'][username] = user_config
         MCVirtConfig().updateConfig(updateConfig, 'Create user \'%s\'' % username)
+
+    @Pyro4.expose()
+    def addConfig(self, username, user_config):
+        """Adds a user config to the local node"""
+        # Ensure this is being run as a Cluster User
+        self.mcvirt_instance.getAuthObject().check_user_type('ClusterUser')
+
+        def updateConfig(config):
+            config['users'][username] = user_config
+        MCVirtConfig().updateConfig(updateConfig, 'Adding user %s' % username)
+
 
     def authenticate(self, username, password):
         """Attempts to authenticate a user, using username/password"""
@@ -104,10 +116,12 @@ class Factory(PyroObject):
         raise InvalidUserType('Failed to determine user type for %s' %
                               generic_object.getUsername())
 
+    @Pyro4.expose()
     def get_all_users(self):
         """Returns all the users, excluding built-in users"""
         return self.get_all_user_objects(user_class=User)
 
+    @Pyro4.expose()
     def get_all_user_objects(self, user_class=None):
         """Returns the user objects for all users, optionally filtered by user type"""
         if user_class is not None:
@@ -123,6 +137,7 @@ class Factory(PyroObject):
             # Is the user object is the same type as specified, or the user type
             # has not been specified, add to user objects list
             if user_class is None or user_object.getUserType() == user_class.__name__:
+                self._register_object(user_class)
                 user_objects.append(user_object)
 
         # Return found user objects

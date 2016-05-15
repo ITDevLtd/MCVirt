@@ -19,7 +19,6 @@ import libvirt
 import os
 from lockfile import FileLock
 import socket
-import Pyro4
 import atexit
 
 from exceptions import MCVirtLockException, LibVirtConnectionException

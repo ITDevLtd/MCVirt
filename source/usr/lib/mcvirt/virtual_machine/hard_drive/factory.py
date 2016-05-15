@@ -23,6 +23,7 @@ from mcvirt.virtual_machine.hard_drive.drbd import DRBD
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
 
@@ -61,13 +62,22 @@ class Factory(PyroObject):
             storage_type
         )
 
-    @staticmethod
-    def getRemoteConfigObject(mcvirt_instance, arguments):
+    @Pyro4.expose()
+    def getRemoteConfigObject(self, vm_object, arguments):
         """Returns a hard drive config object, using arguments sent to a remote machine"""
-        from mcvirt.virtual_machine.virtual_machine import VirtualMachine
-        vm_object = VirtualMachine(mcvirt_instance, arguments['vm_name'])
+        vm_object = self._convert_remote_object(vm_object)
         return Factory.getConfigObject(vm_object=vm_object, storage_type=arguments['storage_type'],
                                        config=arguments['config'])
+
+    @Pyro4.expose()
+    def addToVirtualMachine(self, config_object, register=True):
+        """Adds storage object to virtual machine"""
+        self._get_registered_object('auth').assertPermission(
+            PERMISSIONS.MODIFY_VM,
+            config_object.vm_object
+        )
+        config_object = self._convert_remote_object(config_object)
+        self.getClass(config_object._getType())._addToVirtualMachine(config_object, register)
 
     @Pyro4.expose()
     @lockingMethod()
@@ -81,7 +91,7 @@ class Factory(PyroObject):
 
         # Ensure that the user has permissions to add create storage
         self.vm_object.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.MODIFY_VM,
+            PERMISSIONS.MODIFY_VM,
             vm_object
         )
 
@@ -134,7 +144,7 @@ class Factory(PyroObject):
     def getDrbdObjectByResourceName(mcvirt_instance, resource_name):
         """Obtains a hard drive object for a DRBD drive, based on the resource name"""
         from mcvirt.node.drbd import DRBD as NodeDRBD
-        for hard_drive_object in NodeDRBD.getAllDrbdHardDriveObjects(mcvirt_instance):
+        for hard_drive_object in NodeDRBD(mcvirt_instance).getAllDrbdHardDriveObjects():
             if (hard_drive_object.getConfigObject()._getResourceName() == resource_name):
                 return hard_drive_object
         raise HardDriveDoesNotExistException(

@@ -18,14 +18,18 @@
 import Pyro4
 from texttable import Texttable
 import xml.etree.ElementTree as ET
+import netifaces
 
-from mcvirt.exceptions import NetworkAlreadyExistsException, LibvirtException
+from mcvirt.exceptions import (NetworkAlreadyExistsException, LibvirtException,
+                               InterfaceDoesNotExist)
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.network import Network
 from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.pyro_object import PyroObject
 
 
-class Factory(object):
+class Factory(PyroObject):
     """Class for obtaining network objects"""
 
     OBJECT_TYPE = 'network'
@@ -35,15 +39,37 @@ class Factory(object):
         self.mcvirt_instance = mcvirt_instance
 
     @Pyro4.expose()
+    def interfaceExists(self, interface):
+        """Public method for to determine if an interface exists"""
+        Auth(self.mcvirt_instance).assert_user_type('ConnectionUser')
+        return self._interfaceExists(interface)
+
+
+    def _interfaceExists(self, interface):
+        """Determines if a given network adapter exists on the node"""
+        if interface not in netifaces.interfaces():
+            return False
+
+        addr = netifaces.ifaddresses(interface)
+        return (netifaces.AF_INET in addr)
+
+
+    @Pyro4.expose()
     @lockingMethod()
     def create(self, name, physical_interface):
         """Creates a network on the node"""
         # Ensure user has permission to manage networks
-        Auth(self.mcvirt_instance).assertPermission(Auth.PERMISSIONS.MANAGE_HOST_NETWORKS)
+        Auth(self.mcvirt_instance).assertPermission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network does not already exist
-        if (Network._checkExists(name)):
+        if Network._checkExists(name):
             raise NetworkAlreadyExistsException('Network already exists: %s' % name)
+
+        # Ensure that the physical interface eixsts
+        if not self._interfaceExists(physical_interface):
+            raise InterfaceDoesNotExist(
+                'Physical interface %s does not exist' % physical_interface
+            )
 
         # Create XML for network
         network_xml = ET.Element('network')
@@ -68,14 +94,6 @@ class Factory(object):
         except:
             raise LibvirtException('An error occurred whilst registering network with LibVirt')
 
-        if (self.mcvirt_instance.initialiseNodes()):
-            # Update nodes
-            from mcvirt.cluster.cluster import Cluster
-            cluster = Cluster(self.mcvirt_instance)
-            cluster.runRemoteCommand('node-network-create',
-                                     {'network_name': name,
-                                      'physical_interface': physical_interface})
-
         # Update MCVirt config
         def updateConfig(config):
             config['networks'][name] = physical_interface
@@ -94,20 +112,19 @@ class Factory(object):
     @Pyro4.expose()
     def getNetworkByName(self, network_name):
         network_object = Network(self.mcvirt_instance, network_name)
-        if '_pyroDaemon' in self.__dict__:
-            self._pyroDaemon.register(network_object)
+        self._register_object(network_object)
         return network_object
 
     def getAllNetworkNames(self):
         """Returns a list of network names"""
         return Network.getNetworkConfig().keys()
 
+    @Pyro4.expose()
     def getAllNetworkObjects(self):
         """Returns all network objects"""
         network_objects = []
         for network_name in self.getAllNetworkNames():
             network_objects.append(self.getNetworkByName(network_name))
-
         return network_objects
 
     @Pyro4.expose()

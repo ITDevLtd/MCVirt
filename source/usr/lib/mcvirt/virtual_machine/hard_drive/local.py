@@ -27,6 +27,7 @@ from mcvirt.exceptions import (VmAlreadyStartedException, VmIsCloneException,
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import lockingMethod
 
 
@@ -48,7 +49,7 @@ class Local(Base):
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         self.getVmObject().mcvirt_instance.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.MODIFY_VM, self.getVmObject()
+            PERMISSIONS.MODIFY_VM, self.getVmObject()
         )
 
         # Ensure disk exists

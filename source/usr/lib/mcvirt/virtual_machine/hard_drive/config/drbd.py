@@ -62,7 +62,8 @@ class DRBD(Base):
     def _getAvailableDrbdPort(self):
         """Obtains the next available DRBD port"""
         # Obtain list of currently used DRBD ports
-        used_ports = NodeDRBD.getUsedDrbdPorts(self.vm_object.mcvirt_object)
+        node_drbd = NodeDBRD(self.vm_object.mcvirt_object)
+        used_ports = node_drbd.getUsedDrbdPorts()
         available_port = None
 
         # Determine a free port
@@ -79,7 +80,8 @@ class DRBD(Base):
     def _getAvailableDrbdMinor(self):
         """Obtains the next available DRBD minor"""
         # Obtain list of currently used DRBD minors
-        used_minor_ids = NodeDRBD.getUsedDrbdMinors(self.vm_object.mcvirt_object)
+        node_drbd = NodeDBRD(self.vm_object.mcvirt_object)
+        used_minor_ids = node_drbd.getUsedDrbdMinors()
         available_minor_id = None
 
         # Determine a free minor

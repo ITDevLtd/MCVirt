@@ -31,8 +31,10 @@ from mcvirt.auth.factory import Factory as UserFactory
 from mcvirt.auth.session import Session
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.logger import Logger
+from mcvirt.node.drbd import DRBD as NodeDRBD
 from ssl_socket import SSLSocket
 from mcvirt.utils import get_hostname
+from constants import Annotations
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -48,9 +50,13 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
         # Store MCVirt instance
         self.mcvirt_instance = mcvirt_instance
+        self.registered_factories = {}
         atexit.register(self.destroy)
 
     def destroy(self):
+        """Remove references to objects"""
+        for factory in self.registered_factories:
+            self.registered_factories[factory] = None
         # Create MCVirt instance
         self.mcvirt_instance = None
 
@@ -62,34 +68,41 @@ class BaseRpcDaemon(Pyro4.Daemon):
         Pyro4.current_context.user_for = None
 
         # Check and store username from connection
-        if 'USER' not in data:
+        if Annotations.USERNAME not in data:
             raise Pyro4.errors.SecurityError('Username and password or Session must be passed')
-        username = str(data['USER'])
+        username = str(data[Annotations.USERNAME])
 
         # If a password has been provided
-        if 'PASS' in data:
-            # Store the password and perform authentication check
-            password = str(data['PASS'])
-            session_object = Session(self.mcvirt_instance)
-            session_id = session_object.authenticateUser(username=username, password=password)
-            if session_id:
-                Pyro4.current_context.username = username
-                Pyro4.current_context.session_id = session_id
-                if 'ALTU' in data:
-                    Pyro4.current_context.user_for = data['ALTU']
-                return session_id
+        try:
+            if Annotations.PASSWORD in data:
+                # Store the password and perform authentication check
+                password = str(data[Annotations.PASSWORD])
+                session_instance = Session(self.mcvirt_instance)
+                session_id = session_instance.authenticateUser(username=username, password=password)
+                if session_id:
+                    Pyro4.current_context.username = username
+                    Pyro4.current_context.session_id = session_id
 
-        # If a session id has been passed, store it and check the session_id/username against active sessions
-        elif 'SEID' in data:
-            session_id = str(data['SEID'])
-            session_object = Session(self.mcvirt_instance)
-            if session_object.authenticateSession(username=username, session=session_id):
-                Pyro4.current_context.username = username
-                Pyro4.current_context.session_id = session_id
-                if 'ALTU' in data:
-                    Pyro4.current_context.user_for = data['ALTU']
-                return session_id
+                    user_object = session_instance.getCurrentUserObject()
+                    if user_object.ALLOW_PROXY_USER and Annotations.PROXY_USER in data:
+                        Pyro4.current_context.user_for = data[Annotations.PROXY_USER]
+                    return session_id
 
+            # If a session id has been passed, store it and check the session_id/username against active sessions
+            elif Annotations.SESSION_ID in data:
+                session_id = str(data[Annotations.SESSION_ID])
+                session_instance = Session(self.mcvirt_instance)
+                if session_instance.authenticateSession(username=username, session=session_id):
+                    Pyro4.current_context.username = username
+                    Pyro4.current_context.session_id = session_id
+
+                    # Determine if user can provide alternative users
+                    user_object = session_instance.getCurrentUserObject()
+                    if user_object.ALLOW_PROXY_USER and Annotations.PROXY_USER in data:
+                        Pyro4.current_context.user_for = data[Annotations.PROXY_USER]
+                    return session_id
+        except Exception, e:
+            print str(e)
         # If no valid authentication was provided, raise an error
         raise Pyro4.errors.SecurityError('Invalid username/password/session')
 
@@ -122,7 +135,8 @@ class RpcNSMixinDaemon(object):
         # Wait for nameserver
         self.obtainConnection()
 
-        self.daemon = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance)
+        self.daemon = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance,
+                                    host=self.hostname)
         self.registerFactories()
 
     def start(self):
@@ -135,6 +149,7 @@ class RpcNSMixinDaemon(object):
         ns = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
         ns.register(objectId, uri)
         ns = None
+        self.daemon.registered_factories[objectId] = obj_or_class
         return uri
 
     def registerFactories(self):
@@ -169,6 +184,10 @@ class RpcNSMixinDaemon(object):
         # Create cluster object and register with Daemon
         cluster = Cluster(self.mcvirt_instance)
         self.register(cluster, objectId='cluster', force=True)
+
+        # Create node DRBD object and register with daemon
+        node_drbd = NodeDRBD(self.mcvirt_instance)
+        self.register(node_drbd, objectId='node_drbd', force=True)
 
         # Create logger object and register with daemon
         logger = Logger()

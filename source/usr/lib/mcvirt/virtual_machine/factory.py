@@ -12,6 +12,7 @@ from mcvirt.node.drbd import DRBD as NodeDRBD
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.factory import Factory as NetworkFactory
 from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.exceptions import (StorageTypeNotSpecified, InvalidNodesException,
@@ -96,6 +97,7 @@ class Factory(PyroObject):
     @lockingMethod(instance_method=True)
     def create(self, *args, **kwargs):
         """Creates a VM and returns the virtual_machine object for it"""
+        self.mcvirt_instance.getAuthObject().assertPermission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
@@ -103,7 +105,7 @@ class Factory(PyroObject):
                auth_check=True, hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
         if (auth_check):
-            self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.CREATE_VM)
+            self.mcvirt_instance.getAuthObject().assertPermission(PERMISSIONS.CREATE_VM)
 
         # Validate the VM name
         valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search

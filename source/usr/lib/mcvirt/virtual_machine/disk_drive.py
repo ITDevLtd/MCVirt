@@ -26,6 +26,7 @@ from mcvirt.iso.iso import Iso
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 
 
 class DiskDrive(PyroObject):
@@ -42,7 +43,7 @@ class DiskDrive(PyroObject):
 
         # Ensure that the user has permissions to modifiy the VM
         self.vm_object.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.MODIFY_VM,
+            PERMISSIONS.MODIFY_VM,
             self.vm_object
         )
 

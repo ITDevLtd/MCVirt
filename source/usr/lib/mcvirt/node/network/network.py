@@ -22,10 +22,12 @@ from mcvirt.exceptions import (LibvirtException,
                                NetworkDoesNotExistException,
                                NetworkUtilizedException)
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.pyro_object import PyroObject
 
 
-class Network(object):
+class Network(PyroObject):
     """Provides an interface to LibVirt networks"""
 
     def __init__(self, mcvirt_instance, name):
@@ -49,7 +51,7 @@ class Network(object):
     def delete(self):
         """Deletes a network from the node"""
         # Ensure user has permission to manage networks
-        self.mcvirt_instance.getAuthObject().assertPermission(Auth.PERMISSIONS.MANAGE_HOST_NETWORKS)
+        self.mcvirt_instance.getAuthObject().assertPermission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network is not connected to any VMs
         connected_vms = self._getConnectedVirtualMachines()
@@ -66,12 +68,6 @@ class Network(object):
         except:
             raise LibvirtException('Failed to delete network from libvirt')
 
-        if self.mcvirt_instance.initialiseNodes():
-            # Update nodes
-            from mcvirt.cluster.cluster import Cluster
-            cluster = Cluster(self.mcvirt_instance)
-            cluster.runRemoteCommand('node-network-delete', {'network_name': self.getName()})
-
         # Update MCVirt config
         def updateConfig(config):
             del config['networks'][self.getName()]
@@ -83,8 +79,8 @@ class Network(object):
         connected_vms = []
 
         # Iterate over all VMs and determine if any use the network to be deleted
-        all_vm_objects = self.mcvirt_instance.getAllVirtualMachineObjects()
-        for vm_object in all_vm_objects:
+        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+        for vm_object in virtual_machine_factory.getAllVirtualMachines():
 
             # Iterate over each network interface for the VM and determine if it
             # is connected to this network
@@ -111,6 +107,7 @@ class Network(object):
         """Returns the name of the network"""
         return self.name
 
+    @Pyro4.expose()
     def getAdapter(self):
         """Returns the name of the physical bridge adapter for the network"""
         return Network.getNetworkConfig()[self.getName()]

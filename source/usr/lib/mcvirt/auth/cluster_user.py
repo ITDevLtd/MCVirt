@@ -18,28 +18,28 @@
 import Pyro4
 
 from user_base import UserBase
-from cluster_user import ClusterUser
-from permissions import PERMISSIONS
+from mcvirt.mcvirt_config import MCVirtConfig
 
-class ConnectionUser(UserBase):
-    """User type for initial connection users"""
+class ClusterUser(UserBase):
+    """User type for cluster daemon users"""
 
-    USER_PREFIX = 'mcv-connection-'
+    USER_PREFIX = 'mcv-cluster-'
     CAN_GENERATE = True
-    PERMISSIONS = [PERMISSIONS.MANAGE_USERS]
 
     @property
     def ALLOW_PROXY_USER(self):
         """Connection users can proxy for another user"""
         return True
 
-    @Pyro4.expose()
-    def createClusterUser(self, host):
-        assert self.getUsername() == Pyro4.current_context.username
-        auth = self._pyroDaemon.registered_factories['auth']
-        auth.assert_user_type('ConnectionUser')
-        user_factory = self._pyroDaemon.registered_factories['user_factory']
-        username, password = user_factory.generate_user(ClusterUser)
-        user_factory.get_user_by_username(username).updateHost(host)
-        self.delete()
-        return username, password
+    @staticmethod
+    def getDefaultConfig():
+        """Returns the default user config"""
+        default_config = UserBase.getDefaultConfig()
+        default_config['host'] = None
+        return default_config
+
+    def updateHost(self, host):
+        """Updates the host associated with the user"""
+        def updateConfig(config):
+            config['users'][self.getUsername()]['host'] = host
+        MCVirtConfig().updateConfig(updateConfig, 'Updated host for \'%s\'' % self.getUsername())

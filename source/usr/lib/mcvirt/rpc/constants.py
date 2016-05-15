@@ -1,4 +1,4 @@
-# Copyright (c) 2014 - I.T. Dev Ltd
+# Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
 #
@@ -15,16 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-
-from mcvirt.client.rpc import Connection
-
-
-class Node(Connection):
-    """A class to perform remote commands on MCVirt nodes"""
-
-    def __init__(self, name, node_config):
-        """Sets member variables"""
-        self.name = name
-        super(Node, self).__init__(username=node_config['username'],
-                                     password=node_config['password'],
-                                     host=self.name)
+class Annotations(object):
+    USERNAME = 'USER'
+    PASSWORD = 'PASS'
+    PROXY_USER = 'ALTU'
+    CLUSTER_MASTER = 'CLMA'
+    SESSION_ID = 'SEID'

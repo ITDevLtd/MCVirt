@@ -25,13 +25,21 @@ import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import UserDoesNotExistException
+from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.auth.permissions import PERMISSIONS
 
 
-class UserBase(object):
+class UserBase(PyroObject):
     """Base object for users (both user and automated)"""
 
     USER_PREFIX = None
     CAN_GENERATE = False
+    PERMISSIONS = []
+
+    @property
+    def ALLOW_PROXY_USER(self):
+        """Connection users can proxy for another user"""
+        return False
 
     @staticmethod
     def _checkExists(username):
@@ -58,6 +66,14 @@ class UserBase(object):
         if not self.__class__._checkExists(self.getUsername()):
             raise UserDoesNotExistException('User %s does not exist' %
                                             self.getUsername())
+
+    @Pyro4.expose()
+    def getConfig(self):
+        """Returns the configuration of the user"""
+        self._get_registered_object('auth').assertPermission(
+            PERMISSIONS.MANAGE_USERS
+        )
+        return self._getConfig()
 
     def _getConfig(self):
         """Returns the config hash for the current user"""
@@ -102,8 +118,20 @@ class UserBase(object):
         random.seed(os.urandom(1024))
         return ''.join(random.choice(characers) for i in range(length))
 
+    @Pyro4.expose()
     def delete(self):
         """Deletes current user from MCVirt config"""
+        self._get_registered_object('auth').assertPermission(
+            PERMISSIONS.MANAGE_USERS
+        )
         def updateConfig(config):
             del config['users'][self.getUsername()]
         MCVirtConfig().updateConfig(updateConfig, 'Deleted user \'%s\'' % self.getUsername())
+
+    @staticmethod
+    def getDefaultConfig():
+        return {
+            'password': None,
+            'salt': None,
+            'user_type': None
+        }

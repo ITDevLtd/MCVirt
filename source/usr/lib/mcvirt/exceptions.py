@@ -427,5 +427,25 @@ class MCVirtCommandException(MCVirtException):
     pass
 
 
+class InterfaceDoesNotExist(MCVirtException):
+    """Physical interface does not exist"""
+    pass
+
+
+class MissingConfigurationException(MCVirtException):
+    """Configuration is missing"""
+    pass
+
+
+class AuthenticationError(MCVirtException):
+    """Exception raiased on authentication error"""
+    pass
+
+
+class CACertificateAlreadyExists(MCVirtException):
+    """CA file for server already exists"""
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions['%s.%s' % (exception_class.__module__, exception_class.__name__)] = exception_class

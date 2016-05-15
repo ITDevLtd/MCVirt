@@ -23,7 +23,8 @@ from binascii import hexlify
 
 from mcvirt.utils import get_hostname
 from mcvirt.system import System
-from mcvirt.exceptions import CACertificateNotFoundException, OpenSSLNotFoundException
+from mcvirt.exceptions import (CACertificateNotFoundException, OpenSSLNotFoundException,
+                               CACertificateAlreadyExists)
 from mcvirt.mcvirt_config import MCVirtConfig
 
 
@@ -63,6 +64,24 @@ class SSLSocket(object):
                     'CA certificate could not be found for %s' % server
                 )
         return file_path
+
+    @staticmethod
+    def get_ca_contents():
+        """Obtains the local machine's CA file contents"""
+        with open(SSLSocket.get_ca_file(get_hostname()), 'r') as ca_fh:
+            ca_contents = ca_fh.read()
+        return ca_contents
+
+    @staticmethod
+    def add_ca_file(server, ca_contents, check_exists=True):
+        ca_path = SSLSocket.get_ca_file(server, ensure_exists=False)
+        if os.path.exists(ca_path):
+            if check_exists:
+                raise CACertificateAlreadyExists('CA key for %s already exists' % server)
+            else:
+                return
+        with open(ca_path, 'w') as ca_fh:
+            ca_fh.write(ca_contents)
 
     @staticmethod
     def get_server_certificates():

@@ -26,6 +26,7 @@ from mcvirt.exceptions import (HardDriveDoesNotExistException,
                                ExternalStorageCommandErrorException,
                                MCVirtCommandException)
 from mcvirt.system import System
+from mcvirt.auth.permissions import PERMISSIONS
 
 
 class Base(object):
@@ -417,7 +418,7 @@ class Base(object):
         from mcvirt.virtual_machine.virtual_machine import LockStates
         # Ensure the user has permission to delete snapshot backups
         self.getConfigObject().vm_object.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.BACKUP_VM,
+            PERMISSIONS.BACKUP_VM,
             self.getConfigObject().vm_object)
 
         # Ensure VM is registered locally
@@ -454,7 +455,7 @@ class Base(object):
         from mcvirt.virtual_machine.virtual_machine import LockStates
         # Ensure the user has permission to delete snapshot backups
         self.getConfigObject().vm_object.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.BACKUP_VM,
+            PERMISSIONS.BACKUP_VM,
             self.getConfigObject().vm_object
         )
 

@@ -26,40 +26,11 @@ from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsExc
                                DuplicatePermissionException)
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
+from permissions import PERMISSIONS, PERMISSION_GROUPS
 
 
 class Auth(PyroObject):
     """Provides authentication and permissions for performing functions within MCVirt"""
-
-    PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM',
-                                       'MANAGE_VM_USERS', 'VIEW_VNC_CONSOLE', 'CLONE_VM',
-                                       'DELETE_CLONE', 'MANAGE_HOST_NETWORKS', 'MANAGE_CLUSTER',
-                                       'MANAGE_DRBD', 'CAN_IGNORE_DRBD', 'MIGRATE_VM',
-                                       'DUPLICATE_VM', 'SET_VM_LOCK', 'BACKUP_VM',
-                                       'CAN_IGNORE_CLUSTER', 'MOVE_VM', 'SET_VM_NODE',
-                                       'MANAGE_USERS', 'TEST_SUPERUSER_PERMISSION', 'TEST_OWNER_PERMISSION',
-                                       'TEST_USER_PERMISSION'])
-
-    # Set the permissions for the permissions groups
-    PERMISSION_GROUPS = \
-        {
-            'user':
-            [
-                PERMISSIONS.CHANGE_VM_POWER_STATE,
-                PERMISSIONS.VIEW_VNC_CONSOLE,
-                PERMISSIONS.TEST_USER_PERMISSION
-            ],
-            'owner':
-            [
-                PERMISSIONS.CHANGE_VM_POWER_STATE,
-                PERMISSIONS.MANAGE_VM_USERS,
-                PERMISSIONS.VIEW_VNC_CONSOLE,
-                PERMISSIONS.CLONE_VM,
-                PERMISSIONS.DELETE_CLONE,
-                PERMISSIONS.DUPLICATE_VM,
-                PERMISSIONS.TEST_OWNER_PERMISSION
-            ]
-        }
 
     def __init__(self, mcvirt_instance):
         """Initiate object, storing MCVirt instance"""
@@ -73,6 +44,19 @@ class Auth(PyroObject):
             return True
         else:
             raise UnprivilegedUserException('MCVirt must be run using sudo')
+
+    def check_user_type(self, *user_type_names):
+        """Checks if the currently logged-in user is of a specified type"""
+        user_object = self.mcvirt_instance.getSessionObject().getCurrentUserObject()
+        if user_object.__class__.__name__ in user_type_names:
+            return True
+        else:
+            return False
+
+    def assert_user_type(self, *user_type_names):
+        """Ensures that the currently logged in user is of a specified type"""
+        if not self.check_user_type(*user_type_names):
+            raise InsufficientPermissionsException('User must be a %s user' % user_type_name)
 
     def assertPermission(self, permission_enum, vm_object=None):
         """Uses checkPermission function to determine if a user has a given permission
@@ -94,6 +78,10 @@ class Auth(PyroObject):
             return True
 
         user_object = self.mcvirt_instance.getSessionObject().getCurrentUserObject()
+
+        # Determine if the type of user has the permissions
+        if permission_enum in user_object.PERMISSIONS:
+            return True
 
         # Check the global permissions configuration to determine
         # if the user has been granted the permission
@@ -121,7 +109,7 @@ class Auth(PyroObject):
         for (permission_group, users) in permission_config.items():
 
             # Check that the group, defined in the VM, is defined in this class
-            if (permission_group not in Auth.PERMISSION_GROUPS.keys()):
+            if (permission_group not in PERMISSION_GROUPS.keys()):
                 raise InvalidPermissionGroupException(
                     'Permissions group, %s, does not exist' % permission_group
                 )
@@ -129,14 +117,17 @@ class Auth(PyroObject):
             # Check if user is part of the group and the group contains
             # the required permission
             if ((user in users) and
-                    (permission_enum in Auth.PERMISSION_GROUPS[permission_group])):
+                    (permission_enum in PERMISSION_GROUPS[permission_group])):
                 return True
 
         return False
 
     def isSuperuser(self):
         """Determines if the current user is a superuser of MCVirt"""
-        user_object = self.mcvirt_instance.getSessionObject().getCurrentUserObject()
+        # Cluster users can do anything
+        if self.check_user_type('ClusterUser'):
+            return True
+        user_object = self.mcvirt_instance.getSessionObject().getProxyUserObject()
         username = user_object.getUsername()
         superusers = self.getSuperusers()
 
@@ -158,10 +149,11 @@ class Auth(PyroObject):
             raise InsufficientPermissionsException(
                 'User must be a superuser to manage superusers'
             )
-
+        print user_object
         user_object = self._convert_remote_object(user_object)
-
+        print user_object
         username = user_object.getUsername()
+        print username
 
         mcvirt_config = MCVirtConfig()
 
@@ -171,10 +163,6 @@ class Auth(PyroObject):
                 config['superusers'].append(username)
             mcvirt_config.updateConfig(updateConfig, 'Added superuser \'%s\'' % username)
 
-            if (self.mcvirt_instance.initialiseNodes()):
-                cluster_object = Cluster(self.mcvirt_instance)
-                cluster_object.runRemoteCommand('auth-addSuperuser',
-                                                {'username': username})
         elif (not ignore_duplicate):
             raise DuplicatePermissionException(
                 'User \'%s\' is already a superuser' % username
@@ -219,7 +207,7 @@ class Auth(PyroObject):
 
         # Check if user running script is able to add users to permission group
         if not (self.isSuperuser() or
-                (vm_object and self.assertPermission(Auth.PERMISSIONS.MANAGE_VM_USERS,
+                (vm_object and self.assertPermission(PERMISSIONS.MANAGE_VM_USERS,
                                                      vm_object) and
                  permission_group == 'user')):
             raise InsufficientPermissionsException('VM owners cannot add manager other owners')
@@ -267,8 +255,8 @@ class Auth(PyroObject):
 
         # Check if user running script is able to remove users to permission group
         if not (self.isSuperuser() or
-                (self.assertPermission(Auth.PERMISSIONS.MANAGE_VM_USERS, vm_object) and
-                 permission_group == 'user')):
+                (self.assertPermission(PERMISSIONS.MANAGE_VM_USERS, vm_object) and
+                 permission_group == 'user') and vm_object):
             raise InsufficientPermissionsException('Does not have required permission')
 
         user_object = self._convert_remote_object(user_object)
@@ -304,7 +292,7 @@ class Auth(PyroObject):
 
     def getPermissionGroups(self):
         """Returns a list of user groups"""
-        return Auth.PERMISSION_GROUPS.keys()
+        return PERMISSION_GROUPS.keys()
 
     def copyPermissions(self, source_vm, dest_vm):
         """Copies the permissions from a given VM to this VM.
