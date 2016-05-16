@@ -41,7 +41,7 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def interfaceExists(self, interface):
         """Public method for to determine if an interface exists"""
-        Auth(self.mcvirt_instance).assert_user_type('ConnectionUser')
+        self._get_registered_object('auth').assert_user_type('ConnectionUser')
         return self._interfaceExists(interface)
 
 
@@ -59,7 +59,7 @@ class Factory(PyroObject):
     def create(self, name, physical_interface):
         """Creates a network on the node"""
         # Ensure user has permission to manage networks
-        Auth(self.mcvirt_instance).assertPermission(PERMISSIONS.MANAGE_HOST_NETWORKS)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network does not already exist
         if Network._checkExists(name):
