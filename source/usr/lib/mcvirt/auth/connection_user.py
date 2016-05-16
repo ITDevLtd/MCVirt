@@ -27,6 +27,7 @@ class ConnectionUser(UserBase):
     USER_PREFIX = 'mcv-connection-'
     CAN_GENERATE = True
     PERMISSIONS = [PERMISSIONS.MANAGE_USERS]
+    CLUSTER_USER = True
 
     @property
     def ALLOW_PROXY_USER(self):

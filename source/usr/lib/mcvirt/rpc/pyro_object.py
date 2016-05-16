@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import Pyro4
+
 class PyroObject(object):
     """Base class for providing Pyro-based methods for objects"""
 
@@ -22,6 +24,20 @@ class PyroObject(object):
     def _pyro_initialised(self):
         """Determines if object is registered with the Pyro deamon"""
         return ('_pyroDaemon' in self.__dict__.keys())
+
+    @property
+    def _cluster_disabled(self):
+        """Determines if the cluster has been actively disabled"""
+        # @TODO Implement this using Pyro annotations and current_context
+        return False
+
+    @property
+    def _is_cluster_master(self):
+        """Determines if the local node is acting as cluster master for the command"""
+        if self._pyro_initialised:
+            return Pyro4.current_context.cluster_master
+        else:
+            return True
 
     def _register_object(self, local_object):
         """Registers an object with the pyro daemon"""
@@ -31,11 +47,10 @@ class PyroObject(object):
     def _convert_remote_object(self, remote_object):
         """Returns a local instance of a remote object"""
         # Ensure that object is a remote object
-        if self._pyro_initialised:
+        if self._pyro_initialised and '_pyroUri' in dir(remote_object):
             # Obtain daemon instance of object
             return self._pyroDaemon.objectsById[remote_object._pyroUri.object]
-        else:
-            return remote_object
+        return remote_object
 
     def _get_registered_object(self, object_name):
         """Returns objects registered in the Pyro Daemon"""

@@ -91,7 +91,6 @@ class Factory(PyroObject):
             config['users'][username] = user_config
         MCVirtConfig().updateConfig(updateConfig, 'Adding user %s' % username)
 
-
     def authenticate(self, username, password):
         """Attempts to authenticate a user, using username/password"""
         try:

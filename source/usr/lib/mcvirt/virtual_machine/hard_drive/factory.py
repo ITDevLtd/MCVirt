@@ -51,12 +51,13 @@ class Factory(PyroObject):
 
         return hard_drive_object
 
-    @staticmethod
-    def getConfigObject(vm_object, storage_type, disk_id=None, config=None):
+    def getConfigObject(self, vm_object, storage_type, disk_id=None, config=None):
         """Returns the config object for a given disk"""
         for config_class in [ConfigLocal, ConfigDRBD]:
             if (storage_type == config_class.__name__):
-                return config_class(vm_object, disk_id, config=config)
+                config_object = config_class(vm_object, disk_id, config=config)
+                self._register_object(config_object)
+                return config_object
         raise UnknownStorageTypeException(
             'Attempted to initialise an unknown storage config type: %s' %
             storage_type
@@ -66,31 +67,28 @@ class Factory(PyroObject):
     def getRemoteConfigObject(self, vm_object, arguments):
         """Returns a hard drive config object, using arguments sent to a remote machine"""
         vm_object = self._convert_remote_object(vm_object)
-        return Factory.getConfigObject(vm_object=vm_object, storage_type=arguments['storage_type'],
-                                       config=arguments['config'])
+        return self.getConfigObject(vm_object=vm_object, storage_type=arguments['storage_type'],
+                                    config=arguments['config'])
 
     @Pyro4.expose()
+    @lockingMethod()
     def addToVirtualMachine(self, config_object, register=True):
         """Adds storage object to virtual machine"""
+        config_object = self._convert_remote_object(config_object)
         self._get_registered_object('auth').assertPermission(
             PERMISSIONS.MODIFY_VM,
             config_object.vm_object
         )
-        config_object = self._convert_remote_object(config_object)
         self.getClass(config_object._getType())._addToVirtualMachine(config_object, register)
 
     @Pyro4.expose()
     @lockingMethod()
-    def create(self, *args, **kwargs):
-        """Performs the creation of a hard drive"""
-        return self._create(*args, **kwargs)
-
-    def _create(self, vm_object, size, storage_type, driver):
+    def create(self, vm_object, size, storage_type, driver):
         """Performs the creation of a hard drive, using a given storage type"""
         vm_object = self._convert_remote_object(vm_object)
 
         # Ensure that the user has permissions to add create storage
-        self.vm_object.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.MODIFY_VM,
             vm_object
         )

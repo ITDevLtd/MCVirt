@@ -65,7 +65,9 @@ class BaseRpcDaemon(Pyro4.Daemon):
         # Reset session_id for current context
         Pyro4.current_context.session_id = None
         Pyro4.current_context.username = None
-        Pyro4.current_context.user_for = None
+        Pyro4.current_context.proxy_user = None
+        Pyro4.current_context.has_lock = False
+        Pyro4.current_context.cluster_master = True
 
         # Check and store username from connection
         if Annotations.USERNAME not in data:
@@ -83,9 +85,22 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     Pyro4.current_context.username = username
                     Pyro4.current_context.session_id = session_id
 
+                    # If the authenticated user can specify a proxy user, and a proxy user
+                    # has been specified, set this in the current context
                     user_object = session_instance.getCurrentUserObject()
                     if user_object.ALLOW_PROXY_USER and Annotations.PROXY_USER in data:
-                        Pyro4.current_context.user_for = data[Annotations.PROXY_USER]
+                        Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
+
+                    # If the user is a cluster/connection user, treat this connection
+                    # as a cluster client (the command as been executed on a remote node)
+                    # unless specified otherwise
+                    auth = self.registered_factories['auth']
+                    if user_object.CLUSTER_USER:
+                        if Annotations.CLUSTER_MASTER in data:
+                            Pyro4.current_context.cluster_master = data[Annotations.CLUSTER_MASTER]
+                        else:
+                            Pyro4.current_context.cluster_master = False
+
                     return session_id
 
             # If a session id has been passed, store it and check the session_id/username against active sessions
@@ -99,7 +114,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     # Determine if user can provide alternative users
                     user_object = session_instance.getCurrentUserObject()
                     if user_object.ALLOW_PROXY_USER and Annotations.PROXY_USER in data:
-                        Pyro4.current_context.user_for = data[Annotations.PROXY_USER]
+                        Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
                     return session_id
         except Exception, e:
             print str(e)

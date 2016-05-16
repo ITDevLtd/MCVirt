@@ -29,9 +29,6 @@ class MethodLock(object):
             cls._lock = Lock()
         return cls._lock
 
-class DaemonLock(object):
-    pass
-
 def lockingMethod(object_type=None, instance_method=True):
     def wrapper(callback):
         callback.OBJECT_TYPE = wrapper.object_type
@@ -44,25 +41,40 @@ def lockingMethod(object_type=None, instance_method=True):
                                                    args=args,
                                                    kwargs=kwargs)
             lock = MethodLock.getLock()
+
+            # If the current Pyro connection has the lock, then do not attempt
+            # to lock again, as this will be caused by a locking method calling
+            # another locking method, which should not attempt to re-obtain the lock
+            requires_lock = (not Pyro4.current_context.has_lock)
+
             logger = Logger()
             log = logger.create_log(callback, user=Pyro4.current_context.username,
                                     object_name=object_name, object_type=object_type)
-            lock.acquire()
+            if requires_lock:
+                lock.acquire()
+                Pyro4.current_context.has_lock = True
+
             log.start()
             response = None
             try:
                 reponse = callback(*args, **kwargs)
             except MCVirtException as e:
                 log.finish_error(e)
-                lock.release()
+                if requires_lock:
+                    lock.release()
+                    Pyro4.current_context.has_lock = False
                 raise
             except Exception as e:
                 log.finish_error_unknown(e)
-                lock.release()
+                if requires_lock:
+                    lock.release()
+                    Pyro4.current_context.has_lock = False
                 raise
 
             log.finish_success()
-            lock.release()
+            if requires_lock:
+                lock.release()
+                Pyro4.current_context.has_lock = False
             return response
 
         return lock_log_and_call

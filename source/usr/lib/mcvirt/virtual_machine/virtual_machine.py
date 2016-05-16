@@ -47,6 +47,7 @@ from mcvirt.node.network.network import Network
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.utils import get_hostname
 
 
 class LockStates(Enum):
@@ -77,7 +78,8 @@ class VirtualMachine(PyroObject):
             raise LibvirtCommandException('Error: LibVirt connection not alive')
 
         # Check that the domain exists
-        if not VirtualMachine._checkExists(self.mcvirt_object, self.name):
+        from factory import Factory as VirtualMachineFactory
+        if not VirtualMachineFactory(mcvirt_object).checkExists(self.name):
             raise VirtualMachineDoesNotExistException(
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
@@ -117,12 +119,13 @@ class VirtualMachine(PyroObject):
                     raise LibvirtException('Failed to stop VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('The VM is already shutdown')
-        elif self.mcvirt_object.initialiseNodes():
-            from mcvirt.cluster.cluster import Cluster
-            cluster_object = Cluster(self.mcvirt_object)
-            remote = cluster_object.getRemoteNode(self.getNode())
-            remote.runRemoteCommand('virtual_machine-stop',
-                                    {'vm_name': self.getName()})
+        elif not self._cluster_disabled:
+            cluster = self._get_registered_object('cluster')
+            remote_object = cluster.getRemoteNode(self.getNode())
+            vm_factory = remote_object.getConnection('virtual_machine_factory')
+            remote_vm = vm_factory.getVirtualMachineByName(self.getName())
+            remote_object.annotateObject(remote_vm)
+            remote_vm.stop()
 
         else:
             raise VmRegisteredElsewhereException(
@@ -172,17 +175,19 @@ class VirtualMachine(PyroObject):
             except Exception, e:
                 raise LibvirtException('Failed to start VM: %s' % e)
 
-        elif self.mcvirt_object.initialiseNodes():
-            from mcvirt.cluster.cluster import Cluster
-            cluster_object = Cluster(self.mcvirt_object)
-            remote = cluster_object.getRemoteNode(self.getNode())
+        elif not self._cluster_disabled:
+            cluster = self._get_registered_object('cluster')
+            remote_node = cluster.getRemoteNode(self.getNode())
+            vm_factory = remote_node.getConnection('virtual_machine_factory')
+            remote_vm = vm_factory.getVirtualMachineByName(self.getName())
+            remote_node.annotateObject(remote_vm)
             if iso_object:
-                iso_name = iso_object.getName()
+                remote_iso_factory = remote_node.getConnection('iso_factory')
+                remote_iso = remote_iso_factory.getIsoByName(iso_object.getName())
+                remote_node.annotateObject(remote_iso)
             else:
-                iso_name = None
-            remote.runRemoteCommand('virtual_machine-start',
-                                    {'vm_name': self.getName(),
-                                     'iso': iso_name})
+                remote_iso = None
+            remote_vm.start(iso_object=remote_iso)
 
         else:
             raise VmRegisteredElsewhereException(
@@ -213,11 +218,12 @@ class VirtualMachine(PyroObject):
             else:
                 raise VmAlreadyStoppedException('Cannot reset a stopped VM')
         elif self.mcvirt_object.initialiseNodes():
-            from mcvirt.cluster.cluster import Cluster
-            cluster_object = Cluster(self.mcvirt_object)
-            remote = cluster_object.getRemoteNode(self.getNode())
-            remote.runRemoteCommand('virtual_machine-reset',
-                                    {'vm_name': self.getName()})
+            cluster = self._get_registered_object('cluster')
+            remote_object = cluster.getRemoteNode(self.getNode())
+            vm_factory = remote_object.getConnection('virtual_machine_factory')
+            remote_vm = vm_factory.getVirtualMachineByName(self.getName())
+            remote_object.annotateObject(remote_vm)
+            remote_vm.reset()
 
         else:
             raise VmRegisteredElsewhereException(
@@ -236,13 +242,13 @@ class VirtualMachine(PyroObject):
             else:
                 return PowerStates.STOPPED
 
-        elif (self.isRegisteredRemotely() and
-              not self.getNode() in self.mcvirt_object.failed_nodes):
-            from mcvirt.cluster.cluster import Cluster
-            cluster_object = Cluster(self.mcvirt_object)
-            remote = cluster_object.getRemoteNode(self.getNode())
-            return PowerStates(remote.runRemoteCommand('virtual_machine-_getPowerState',
-                                                       {'vm_name': self.getName()}))
+        elif self.isRegisteredRemotely() and not self._cluster_disabled:
+            cluster = self._get_registered_object('cluster')
+            remote_object = cluster.getRemoteNode(self.getNode())
+            vm_factory = remote_object.getConnection('virtual_machine_factory')
+            remote_vm = vm_factory.getVirtualMachineByName(self.getName())
+            remote_object.annotateObject(remote_vm)
+            return PowerStates[remote_vm.getPowerstate()]
         else:
             return PowerStates.UNKNOWN
 
@@ -336,7 +342,6 @@ class VirtualMachine(PyroObject):
     @lockingMethod()
     def delete(self, remove_data=False, local_only=False):
         """Delete the VM - removing it from LibVirt and from the filesystem"""
-        from mcvirt.cluster.cluster import Cluster
         # Check the user has permission to modify VMs or
         # that the user is the owner of the VM and the VM is a clone
         if not (
@@ -373,7 +378,7 @@ class VirtualMachine(PyroObject):
 
         # If 'remove_data' has been passed as True, delete disks associated
         # with VM
-        if remove_data and Cluster.getHostname() in self.getAvailableNodes():
+        if remove_data and get_hostname() in self.getAvailableNodes():
             for disk_object in self.getHardDriveObjects():
                 disk_object.delete()
 
@@ -411,11 +416,14 @@ class VirtualMachine(PyroObject):
             'Removed VM \'%s\' from global MCVirt config' %
             self.name)
 
-        if self.mcvirt_object.initialiseNodes() and not local_only:
-            cluster_object = Cluster(self.mcvirt_object)
-            cluster_object.runRemoteCommand('virtual_machine-delete',
-                                            {'vm_name': self.name,
-                                             'remove_data': remove_data})
+        if self._is_cluster_master and not local_only:
+            def remote_command(remote_object):
+                vm_factory = remote_object.getConnection('virtual_machine_factory')
+                remote_vm = vm_factory.getVirtualMachineByName(self.getName())
+                remote_object.annotateObject(remote_vm)
+                remote_vm.delete(remote_data=remove_data)
+            cluster = self._get_registered_object('cluster')
+            remote_object = cluster.runRemoteCommand(remote_command)
 
     @Pyro4.expose()
     def getRAM(self):
@@ -501,21 +509,9 @@ class VirtualMachine(PyroObject):
 
     @Pyro4.expose()
     @lockingMethod()
-    def createNetworkAdapter(self, *args, **kwargs):
-        """Creates a network interface for a VM"""
-        return self._createNetworkAdapter(*args, **kwargs)
-
-    @Pyro4.expose()
-    def createNetworkAdapterNoLock(self, *args, **kwargs):
-        """
-        Creates a network interface for a VM
-        @TODO Remove once locking method doesn't lock for daemon user
-        """
-        return self._createNetworkAdapter(*args, **kwargs)
-
-    def _createNetworkAdapter(self, network_object, mac_address=None):
+    def createNetworkAdapter(self, network_object, mac_address=None):
         """Creates a network interface for the local VM"""
-        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MODIFY_VM, self)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MODIFY_VM, self)
         network_adapter = NetworkAdapter.create(self, network_object, mac_address=mac_address)
         self._reegister_object(network_adapter)
         return network_adapter
@@ -565,20 +561,15 @@ class VirtualMachine(PyroObject):
 
         self.getConfigObject().updateConfig(updateLocalConfig, reason)
 
-        if self.mcvirt_object.initialise_nodes:
-            from mcvirt.cluster.cluster import Cluster
-            cluster_instance = Cluster(self.mcvirt_object)
-            cluster_instance.runRemoteCommand('virtual_machine-virtual_machine-updateConfig',
-                                              {'vm_name': self.getName(),
-                                               'attribute_path': attribute_path, 'value': value,
-                                               'reason': reason})
-
-    @staticmethod
-    def _checkExists(mcvirt_instance, vm_name):
-        """Check if a domain exists"""
-        from factory import Factory
-        factory = Factory(mcvirt_instance)
-        return factory.checkExists(vm_name)
+        if self._is_cluster_master:
+            def remote_command(remote_object):
+                vm_factory = remote_object.getConnection('virtual_machine_factory')
+                remote_vm = vm_factory.getVirtualMachineByName(self.getName())
+                remote_object.annotateObject(remote_vm)
+                remote_vm.updateConfig(attribute_path=attribute_path, value=value,
+                                       reason=reason)
+            cluster = self._get_registered_object('cluster')
+            remote_object = cluster.runRemoteCommand(remote_command)
 
     @staticmethod
     def getVMDir(name):
@@ -878,7 +869,8 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Ensure new VM name doesn't already exist
-        VirtualMachine._checkExists(self.mcvirt_object, clone_vm_name)
+        if not self._get_registered_object('virtual_machine_factory').checkExists(clone_vm_name):
+            raise VirtualMachineDoesNotExistException('Parent VM %s does not exist' % clone_vm_name)
 
         # Ensure VM is not a clone, as cloning a cloned VM will cause issues
         if self.getCloneParent():
@@ -935,7 +927,8 @@ class VirtualMachine(PyroObject):
             raise VmAlreadyStartedException('Can\'t duplicate running VM')
 
         # Ensure new VM name doesn't already exist
-        VirtualMachine._checkExists(self.mcvirt_object, duplicate_vm_name)
+        if self._get_registered_object('virtual_machine_factory').checkExists(duplicate_vm_name):
+            raise VmAlreadyExistsException('VM already exists with name %s' % duplicate_vm_name)
 
         # Create new VM for clone, without hard disks
         network_objects = self.getNetworkAdapterObjects()
@@ -1044,7 +1037,7 @@ class VirtualMachine(PyroObject):
                 'VM \'%s\' already registered on node: %s' %
                 (self.name, current_node))
 
-        if Cluster.getHostname() not in self.getAvailableNodes():
+        if get_hostname() not in self.getAvailableNodes():
             raise UnsuitableNodeException(
                 'VM \'%s\' cannot be registered on node: %s' %
                 (self.name, Cluster.getHostname())
@@ -1086,7 +1079,7 @@ class VirtualMachine(PyroObject):
 
         if set_node:
             # Mark VM as being hosted on this machine
-            self._setNode(Cluster.getHostname())
+            self._setNode(get_hostname())
 
     @Pyro4.expose()
     @lockingMethod()
@@ -1124,12 +1117,16 @@ class VirtualMachine(PyroObject):
         )
 
     def _setNode(self, node):
-        from mcvirt.cluster.cluster import Cluster
-        if self.mcvirt_object.initialiseNodes():
-            cluster_instance = Cluster(self.mcvirt_object)
-            cluster_instance.runRemoteCommand('virtual_machine-setNode',
-                                              {'vm_name': self.getName(),
-                                               'node': node})
+        """Sets the node of the VM"""
+        if self._is_cluster_master:
+            # Update remote nodes
+            def remote_command(remote_connection):
+                vm_factory = remote_connection.getConnection('virtual_machine_factory')
+                remote_vm = vm_factory.getVirtualMachineByName(self.getName())
+                remote_connection.annotateObject(remote_vm)
+                remote_vm._setNode(node)
+            cluster = self._get_registered_object('cluster')
+            remote_object = cluster.runRemoteCommand(remote_command)
 
         # Update the node in the VM configuration
         def updateVmConfig(config):

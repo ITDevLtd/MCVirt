@@ -27,6 +27,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import UserDoesNotExistException
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.rpc.lock import lockingMethod
 
 
 class UserBase(PyroObject):
@@ -35,6 +36,7 @@ class UserBase(PyroObject):
     USER_PREFIX = None
     CAN_GENERATE = False
     PERMISSIONS = []
+    CLUSTER_USER = False
 
     @property
     def ALLOW_PROXY_USER(self):
@@ -119,11 +121,26 @@ class UserBase(PyroObject):
         return ''.join(random.choice(characers) for i in range(length))
 
     @Pyro4.expose()
+    @lockingMethod()
     def delete(self):
         """Deletes current user from MCVirt config"""
-        self._get_registered_object('auth').assertPermission(
+        auth_object = self._get_registered_object('auth')
+        auth_object.assertPermission(
             PERMISSIONS.MANAGE_USERS
         )
+
+        # Remove any global/VM-specific permissions
+        if self.getUsername() in auth_object.getSuperusers():
+            auth_object.deleteSuperuser(self)
+
+        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+        for virtual_machine in [None] + virtual_machine_factory.getAllVirtualMachines():
+            for permission_group in auth_object.getPermissionGroups():
+                if self.getUsername() in auth_object.getUsersInPermissionGroup(permission_group,
+                                                                               vm_object=virtual_machine):
+                    auth_object.deleteUserPermissionGroup(permission_group, self,
+                                                          vm_object=virtual_machine)
+
         def updateConfig(config):
             del config['users'][self.getUsername()]
         MCVirtConfig().updateConfig(updateConfig, 'Deleted user \'%s\'' % self.getUsername())

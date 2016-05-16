@@ -25,6 +25,7 @@ class ClusterUser(UserBase):
 
     USER_PREFIX = 'mcv-cluster-'
     CAN_GENERATE = True
+    CLUSTER_USER = True
 
     @property
     def ALLOW_PROXY_USER(self):

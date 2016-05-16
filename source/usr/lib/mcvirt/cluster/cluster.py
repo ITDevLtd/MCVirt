@@ -101,7 +101,7 @@ class Cluster(PyroObject):
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.header(('Node', 'IP Address', 'Status'))
         # Add this node to the table
-        table.add_row((Cluster.getHostname(), self.getClusterIpAddress(),
+        table.add_row((get_hostname(), self.getClusterIpAddress(),
                        'Local'))
 
         # Add remote nodes
@@ -266,8 +266,6 @@ class Cluster(PyroObject):
         remote_auth_instance = remote_object.getConnection('auth')
         remote_user_factory = remote_object.getConnection('user_factory')
 
-        # Remove any global permissions on the remote node
-
         # Sync superusers
         for superuser in auth_instance.getSuperusers():
             remote_user_object = remote_user_factory.get_user_by_username(superuser)
@@ -310,7 +308,7 @@ class Cluster(PyroObject):
             for network_adapter in vm_object.getNetworkObjects():
                 # Add network adapters to VM
                 remote_network = remote_network_factory.getNetworkByName(network_adapter.getConnectedNetwork())
-                remote_virtual_machine_object._createNetworkAdapterNoLock(
+                remote_virtual_machine_object.createNetworkAdapter(
                     remote_network, mac_address=network_adapter.getMacAddress()
                 )
 
@@ -410,7 +408,7 @@ class Cluster(PyroObject):
                                              'remove_data': True})
 
             # Remove all nodes in the cluster from the remote node
-            all_nodes.append(self.getHostname())
+            all_nodes.append(get_hostname())
             for node in all_nodes:
                 remote.runRemoteCommand('cluster-cluster-removeNodeConfiguration',
                                         {'node': node})
@@ -431,25 +429,18 @@ class Cluster(PyroObject):
         cluster_config = self.getClusterConfig()
         return cluster_config['cluster_ip']
 
-    def connectNodes(self):
-        """Obtains connection to each of the nodes"""
-        nodes = self.getNodes()
-        for node in nodes:
-            try:
-                self.getRemoteNode(node)
-            except CouldNotConnectToNodeException, e:
-                if (self.mcvirt_instance.ignore_failed_nodes):
-                    self.mcvirt_instance.failed_nodes.append(node)
-                else:
-                    raise
-
     def getRemoteNode(self, node):
         """Obtains a Remote object for a node, caching the object"""
-        if (not self.mcvirt_instance.initialise_nodes):
+        if not self._is_cluster_master:
             raise ClusterNotInitialisedException('Cannot get remote node %s' % node +
                                                  ' as the cluster is not initialised')
 
         node_config = self.getNodeConfig(node)
+        try:
+            node_object = Node(node, node_config)
+        except:
+            if not self._cluster_disabled:
+                raise
         return Node(node, node_config)
 
     def getClusterConfig(self):
@@ -466,27 +457,22 @@ class Cluster(PyroObject):
         """Returns an array of node configurations"""
         cluster_config = self.getClusterConfig()
         nodes = cluster_config['nodes'].keys()
-        if (self.mcvirt_instance.ignore_failed_nodes and not return_all):
+        if self._cluster_disabled and not return_all:
             for node in nodes:
                 if node in self.getFailedNodes():
                     nodes.remove(node)
         return nodes
-
-    def getFailedNodes(self):
-        """Returns an array of nodes that have failed to initialise and have been ignored"""
-        return self.mcvirt_instance.failed_nodes
 
     def runRemoteCommand(self, callback_method, nodes=None):
         """Runs a remote command on all (or a given list of) remote nodes"""
         return_data = {}
 
         # If the user has not specified a list of nodes, obtain all remote nodes
-        if (nodes is None):
+        if nodes is None:
             nodes = self.getNodes()
         for node in nodes:
-            if (node not in self.getFailedNodes()):
-                node_object = self.getRemoteNode(node)
-                return_data[node] = callback_method(node)
+            node_object = self.getRemoteNode(node)
+            return_data[node] = callback_method(node)
         return return_data
 
     def checkNodeExists(self, node_name):
@@ -495,7 +481,7 @@ class Cluster(PyroObject):
 
     def ensureNodeExists(self, node):
         """Checks if node exists and throws exception if it does not"""
-        if (not self.checkNodeExists(node)):
+        if not self.checkNodeExists(node):
             raise NodeDoesNotExistException('Node %s does not exist' % node)
 
     def removeNodeConfiguration(self, node_name):
