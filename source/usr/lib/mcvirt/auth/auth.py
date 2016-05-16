@@ -139,7 +139,6 @@ class Auth(PyroObject):
         return mcvirt_config.getConfig()['superusers']
 
     @Pyro4.expose()
-    @lockingMethod()
     def addSuperuser(self, user_object, ignore_duplicate=None):
         """Adds a new superuser"""
         from mcvirt.cluster.cluster import Cluster
@@ -149,9 +148,7 @@ class Auth(PyroObject):
             raise InsufficientPermissionsException(
                 'User must be a superuser to manage superusers'
             )
-        print user_object
         user_object = self._convert_remote_object(user_object)
-        print user_object
         username = user_object.getUsername()
         print username
 
@@ -169,7 +166,6 @@ class Auth(PyroObject):
             )
 
     @Pyro4.expose()
-    @lockingMethod()
     def deleteSuperuser(self, user_object):
         """Removes a superuser"""
         from mcvirt.cluster.cluster import Cluster

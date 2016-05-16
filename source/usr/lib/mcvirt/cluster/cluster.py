@@ -162,83 +162,77 @@ class Cluster(PyroObject):
             raise InvalidConnectionString('Connection string is invalid')
 
         # Determine if node is already connected to cluster
-        # if self.checkNodeExists(node_config['hostname']):
-        #     raise NodeAlreadyPresent('Node %s is already connected to the cluster' % remote_host)
-        #
-        # # Create CA public key for machine
-        # SSLSocket.add_ca_file(node_config['hostname'], node_config['ca_cert'])
+        if self.checkNodeExists(node_config['hostname']):
+            raise NodeAlreadyPresent('Node %s is already connected to the cluster' % remote_host)
 
+        # Create CA public key for machine
+        SSLSocket.add_ca_file(node_config['hostname'], node_config['ca_cert'])
+
+        # Check remote machine, to ensure it can be synced without any
+        # conflicts
+        remote = Connection(username=node_config['username'], password=node_config['password'],
+                            host=node_config['hostname'])
         try:
-            # Check remote machine, to ensure it can be synced without any
-            # conflicts
-            # remote = Connection(username=node_config['username'], password=node_config['password'],
-            #                     host=node_config['hostname'])
-            # try:
-            #     self.checkRemoteMachine(remote)
-            # except:
-            #     raise
-            # remote = None
-            # original_cluster_nodes = self.getNodes()
-            #
-            # # Add remote node
-            # self.addNodeConfiguration(node_name=node_config['hostname'],
-            #                           ip_address=node_config['ip_address'],
-            #                           connection_user=node_config['username'],
-            #                           connection_password=node_config['password'],
-            #                           ca_key=node_config['ca_cert'],
-            #                           ca_check=False)
-
-            # Obtain node connection to new node
-            remote_node = self.getRemoteNode(node_config['hostname'])
-
-            # Generate local connection user for new remote node
-            # local_connection_info = self.generateConnectionInfo()
-            #
-            # # Add the local node to the new remote node
-            # remote_cluster_instance = remote_node.getConnection('cluster')
-            # remote_cluster_instance.addNodeConfiguration(node_name=local_connection_info[0],
-            #                                              ip_address=local_connection_info[1],
-            #                                              connection_user=local_connection_info[2],
-            #                                              connection_password=local_connection_info[3],
-            #                                              ca_key=local_connection_info[4])
-
-            # Sync credentials to/from old nodes in the clsuter
-            # for original_node in original_cluster_nodes:
-            #     original_cluster = original_node.getConnection('cluster')
-            #     original_node_con_info = original_cluster.generateConnectionInfo()
-            #     remote_cluster_instance.addNodeConfiguration(node_name=original_node_con_info[0],
-            #                                                  ip_address=original_node_con_info[1],
-            #                                                  connection_user=original_node_con_info[2],
-            #                                                  connection_password=original_node_con_info[3],
-            #                                                  ca_key=original_node_con_info[4])
-            #     new_node_con_info = remote_cluster_instance.generateConnectionInfo()
-            #     original_cluster.addNodeConfiguration(node_name=new_node_con_info[0],
-            #                                           ip_address=new_node_con_info[1],
-            #                                           connection_user=new_node_con_info[2],
-            #                                           connection_password=new_node_con_info[3],
-            #                                           ca_key=new_node_con_info[4])
-
-            # If DRBD is enabled on the local node, configure/enable it on the remote node
-            if (self._get_registered_object('node_drbd').isEnabled()):
-                remote_drbd = remote_node.getConnection('node_drbd')
-                remote_drbd.enable()
-
-            # Sync users
-            self.sync_users(remote_node)
-
-            # Sync networks
-            self.sync_networks(remote_node)
-
-            # Sync global permissions
-            self.sync_permissions(remote_node)
-
-            # Sync VMs
-            self.sync_virtual_machines(remote_node)
+            self.checkRemoteMachine(remote)
         except:
-            import Pyro4.util
-            print("Pyro traceback:")
-            print("".join(Pyro4.util.getPyroTraceback()))
+            raise
+        remote = None
+        original_cluster_nodes = self.getNodes()
 
+        # Add remote node
+        self.addNodeConfiguration(node_name=node_config['hostname'],
+                                  ip_address=node_config['ip_address'],
+                                  connection_user=node_config['username'],
+                                  connection_password=node_config['password'],
+                                  ca_key=node_config['ca_cert'],
+                                  ca_check=False)
+
+        # Obtain node connection to new node
+        remote_node = self.getRemoteNode(node_config['hostname'])
+
+        # Generate local connection user for new remote node
+        local_connection_info = self.generateConnectionInfo()
+
+        # Add the local node to the new remote node
+        remote_cluster_instance = remote_node.getConnection('cluster')
+        remote_cluster_instance.addNodeConfiguration(node_name=local_connection_info[0],
+                                                     ip_address=local_connection_info[1],
+                                                     connection_user=local_connection_info[2],
+                                                     connection_password=local_connection_info[3],
+                                                     ca_key=local_connection_info[4])
+
+        # Sync credentials to/from old nodes in the clsuter
+        for original_node in original_cluster_nodes:
+            original_cluster = original_node.getConnection('cluster')
+            original_node_con_info = original_cluster.generateConnectionInfo()
+            remote_cluster_instance.addNodeConfiguration(node_name=original_node_con_info[0],
+                                                         ip_address=original_node_con_info[1],
+                                                         connection_user=original_node_con_info[2],
+                                                         connection_password=original_node_con_info[3],
+                                                         ca_key=original_node_con_info[4])
+            new_node_con_info = remote_cluster_instance.generateConnectionInfo()
+            original_cluster.addNodeConfiguration(node_name=new_node_con_info[0],
+                                                  ip_address=new_node_con_info[1],
+                                                  connection_user=new_node_con_info[2],
+                                                  connection_password=new_node_con_info[3],
+                                                  ca_key=new_node_con_info[4])
+
+        # If DRBD is enabled on the local node, configure/enable it on the remote node
+        if (self._get_registered_object('node_drbd').isEnabled()):
+            remote_drbd = remote_node.getConnection('node_drbd')
+            remote_drbd.enable()
+
+        # Sync users
+        self.sync_users(remote_node)
+
+        # Sync networks
+        self.sync_networks(remote_node)
+
+        # Sync global permissions
+        self.sync_permissions(remote_node)
+
+        # Sync VMs
+        self.sync_virtual_machines(remote_node)
 
     def sync_users(self, remote_node):
         """Syncronises the local users with the remote node"""
@@ -272,16 +266,18 @@ class Cluster(PyroObject):
         remote_auth_instance = remote_object.getConnection('auth')
         remote_user_factory = remote_object.getConnection('user_factory')
 
+        # Remove any global permissions on the remote node
+
         # Sync superusers
         for superuser in auth_instance.getSuperusers():
-            user_object = remote_user_factory.get_user_by_username(superuser)
-            remote_object.annotateObject(user_object)
-            remote_auth_instance.addSuperuser(user_object)
+            remote_user_object = remote_user_factory.get_user_by_username(superuser)
+            remote_object.annotateObject(remote_user_object)
+            remote_auth_instance.addSuperuser(remote_user_object)
 
         # Iterate over the permission groups, adding all of the members to the group
         # on the remote node
         for group in auth_instance.getPermissionGroups():
-            users = auth_object.getUsersInPermissionGroup(group)
+            users = auth_instance.getUsersInPermissionGroup(group)
             for user in users:
                 user_object = remote_user_factory.get_user_by_username(user)
                 remote_object.annotateObject(user_object)

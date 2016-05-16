@@ -53,13 +53,13 @@ class UserBase(PyroObject):
 
     def __init__(self, username):
         """Stores member variables and ensures that the user exists"""
-        self._username = username
+        self.username = username
         self._ensureExists()
 
     @Pyro4.expose()
     def getUsername(self):
         """Returns the username of the current user"""
-        return self._username
+        return self.username
 
     def _ensureExists(self):
         """Ensure that the current user exists in the MCVirt configuration"""

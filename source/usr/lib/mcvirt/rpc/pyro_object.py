@@ -25,7 +25,7 @@ class PyroObject(object):
 
     def _register_object(self, local_object):
         """Registers an object with the pyro daemon"""
-        if self._pyro_initialised and not hasattr(local_object, "_pyroId"):
+        if self._pyro_initialised:
             self._pyroDaemon.register(local_object)
 
     def _convert_remote_object(self, remote_object):

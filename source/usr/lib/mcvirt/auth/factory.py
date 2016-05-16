@@ -106,7 +106,6 @@ class Factory(PyroObject):
     def get_user_by_username(self, username):
         """Obtains a user object for the given username"""
         generic_object = UserBase(username=username)
-        user_object = None
         for user_class in UserBase.__subclasses__():
             if str(user_class.__name__) == str(generic_object.getUserType()):
                 user_object = user_class(username=username)
@@ -137,7 +136,6 @@ class Factory(PyroObject):
             # Is the user object is the same type as specified, or the user type
             # has not been specified, add to user objects list
             if user_class is None or user_object.getUserType() == user_class.__name__:
-                self._register_object(user_class)
                 user_objects.append(user_object)
 
         # Return found user objects
