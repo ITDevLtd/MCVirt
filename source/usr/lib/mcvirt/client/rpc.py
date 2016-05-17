@@ -72,6 +72,9 @@ class Connection(object):
             auth_dict[Annotations.SESSION_ID] = self.__session_id
         if self.__proxy_username:
             auth_dict[Annotations.PROXY_USER] = self.__proxy_username
+
+        if 'has_lock' in dir(Pyro4.current_context):
+            auth_dict[annotations.HAS_LOCK] = Pyro4.current_context.has_lock
         return auth_dict
 
     def getConnection(self, object_name, password=None):
