@@ -13,7 +13,6 @@ from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfi
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.factory import Factory as NetworkFactory
-from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.exceptions import (StorageTypeNotSpecified, InvalidNodesException,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                ClusterNotInitialisedException, NodeDoesNotExistException,
@@ -211,10 +210,11 @@ class Factory(PyroObject):
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML
+            network_adapter_factory = self._get_registered_object('network_adapter_factory')
+            network_factory = self._get_registered_object('network_factory')
             if network_interfaces is not None:
                 for network in network_interfaces:
-                    network_factory = self._get_registered_object('network_factory')
                     network_object = network_factory.getNetworkByName(network)
-                    vm_object.createNetworkAdapter(network_object)
+                    network_adapter_factory.create(self, network_object)
 
         return vm_object

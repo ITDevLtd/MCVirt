@@ -38,7 +38,6 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InvalidVirtualMachineN
                                LibVirtConnectionException, LibvirtException)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
-from mcvirt.virtual_machine.network_adapter import NetworkAdapter
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
@@ -317,7 +316,8 @@ class VirtualMachine(PyroObject):
             warnings += "No hard disks present on machine\n"
 
         # Create info table for network adapters
-        network_adapters = self.getNetworkAdapterObjects()
+        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         if len(network_adapters) != 0:
             table.add_row(('-- MAC Address --', '-- Network --'))
             for network_adapter in network_adapters:
@@ -506,32 +506,6 @@ class VirtualMachine(PyroObject):
         # Update the MCVirt configuration
         self.updateConfig(['cpu_cores'], str(cpu_count), 'CPU count has been changed to %s' %
                                                          cpu_count)
-
-    @Pyro4.expose()
-    @lockingMethod()
-    def createNetworkAdapter(self, network_object, mac_address=None):
-        """Creates a network interface for the local VM"""
-        self._get_registered_object('auth').assertPermission(PERMISSIONS.MODIFY_VM, self)
-        network_adapter = NetworkAdapter.create(self, network_object, mac_address=mac_address)
-        self._reegister_object(network_adapter)
-        return network_adapter
-
-    def getNetworkAdapterObjects(self):
-        """Returns an array of network interface objects for each of the
-        interfaces attached to the VM"""
-        interfaces = []
-        for mac_address in self.getConfigObject().getConfig()['network_interfaces'].keys():
-            interface_object = NetworkAdapter(mac_address, self)
-            interfaces.append(interface_object)
-        return interfaces
-
-    @Pyro4.expose()
-    def getNetworkAdapterByMacAdress(self, mac_address):
-        """Returns the network adapter by a given MAC address"""
-        # Ensure that MAC address is a valid network adapter for the VM
-        interface_object = NetworkAdapter(mac_address, self)
-        self._register_object(interface_object)
-        return interface_object
 
     @Pyro4.expose()
     def get_disk_drive(self):
@@ -819,7 +793,9 @@ class VirtualMachine(PyroObject):
 
         # Check the remote node to ensure that the networks, that the VM is connected to,
         # exist on the remote node
-        for network_object in self.getNetworkAdapterObjects():
+        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
+        for network_object in network_adapters:
             connected_network = network_object.getConnectedNetwork()
             exists_on_remote_node = remote_node.runRemoteCommand(
                 'node-network-checkExists', {'network_name': connected_network})
@@ -877,10 +853,11 @@ class VirtualMachine(PyroObject):
             raise VmIsCloneException('Cannot clone from a clone VM')
 
         # Create new VM for clone, without hard disks
-        network_objects = self.getNetworkAdapterObjects()
+        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         networks = []
-        for network_object in network_objects:
-            networks.append(network_object.getConnectedNetwork())
+        for network_adapter in network_adapters:
+            networks.append(network_adapter.getConnectedNetwork())
         new_vm_object = VirtualMachine.create(mcvirt_instance, clone_vm_name, self.getCPU(),
                                               self.getRAM(), [], networks, auth_check=False,
                                               available_nodes=self.getAvailableNodes(),
@@ -931,10 +908,11 @@ class VirtualMachine(PyroObject):
             raise VmAlreadyExistsException('VM already exists with name %s' % duplicate_vm_name)
 
         # Create new VM for clone, without hard disks
-        network_objects = self.getNetworkAdapterObjects()
+        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         networks = []
-        for network_object in network_objects:
-            networks.append(network_object.getConnectedNetwork())
+        for network_adapter in network_adapters:
+            networks.append(network_adapter.getConnectedNetwork())
         new_vm_object = VirtualMachine.create(mcvirt_instance, duplicate_vm_name, self.getCPU(),
                                               self.getRAM(), [], networks, auth_check=False,
                                               available_nodes=self.getAvailableNodes(),
@@ -1066,7 +1044,9 @@ class VirtualMachine(PyroObject):
             device_xml.append(drive_xml)
 
         # Add network adapter configurations
-        for network_adapter_object in self.getNetworkAdapterObjects():
+        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
+        for network_adapter_object in network_adapters:
             network_interface_xml = network_adapter_object._generateLibvirtXml()
             device_xml.append(network_interface_xml)
 

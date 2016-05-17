@@ -21,3 +21,4 @@ class Annotations(object):
     PROXY_USER = 'ALTU'
     CLUSTER_MASTER = 'CLMA'
     SESSION_ID = 'SEID'
+    HAS_LOCK = 'HASL'

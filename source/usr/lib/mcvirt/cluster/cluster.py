@@ -54,7 +54,7 @@ class Cluster(PyroObject):
     def generateConnectionInfo(self):
         """Generates required information to connect to this node from a remote node"""
         # Ensure user has required permissions
-        self.mcvirt_instance.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.MANAGE_CLUSTER
         )
 
@@ -64,7 +64,7 @@ class Cluster(PyroObject):
             raise MissingConfigurationException('IP address has not yet been configured')
 
         # Create connection user
-        user_factory = UserFactory(self.mcvirt_instance)
+        user_factory = self._get_registered_object('user_factory')
         connection_username, connection_password = user_factory.generate_user(ConnectionUser)
         return [get_hostname(), self.getClusterIpAddress(),
                 connection_username, connection_password,
@@ -74,7 +74,7 @@ class Cluster(PyroObject):
     def getConnectionString(self):
         """Generate a string to connect to this node from a remote cluster"""
         # Only superusers can generate a connection string
-        self.mcvirt_instance.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.MANAGE_CLUSTER
         )
 
@@ -123,6 +123,8 @@ class Cluster(PyroObject):
                              ca_key, ca_check=True):
         """Adds MCVirt node to configuration and generates SSH
         authorized_keys file"""
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
+
         # Create CA file
         SSLSocket.add_ca_file(node_name, ca_key, check_exists=ca_check)
 
@@ -148,7 +150,7 @@ class Cluster(PyroObject):
     def addNode(self, node_connection_string):
         """Connects to a remote MCVirt machine, shares SSH keys and clusters the machines"""
         # Ensure the user has privileges to manage the cluster
-        self.mcvirt_instance.getAuthObject().assertPermission(PERMISSIONS.MANAGE_CLUSTER)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
 
         try:
             config_json = base64.b64decode(node_connection_string)
@@ -284,6 +286,7 @@ class Cluster(PyroObject):
     def sync_virtual_machines(self, remote_object):
         """Duplicates the VM configurations on the local node onto the remote node"""
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
         remote_virtual_machine_factory = remote_object.getConnection('virtual_machine_factory')
 
         # Obtain list of local VMs
@@ -305,12 +308,14 @@ class Cluster(PyroObject):
                 remote_hard_drive_factory.addToVirtualMachine(remote_hard_drive_object)
 
             remote_network_factory = remote_object.getconnection('network_factory')
-            for network_adapter in vm_object.getNetworkObjects():
+            remote_network_adapter_factory = remote_object.getConnection('network_adapter_factory')
+            network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(vm_object)
+            for network_adapter in network_adapters:
                 # Add network adapters to VM
                 remote_network = remote_network_factory.getNetworkByName(network_adapter.getConnectedNetwork())
-                remote_virtual_machine_object.createNetworkAdapter(
-                    remote_network, mac_address=network_adapter.getMacAddress()
-                )
+                remote_network_adapter_factory.create(remote_virtual_machine_object,
+                                                      remote_network,
+                                                      mac_address=network_adapter.getMacAddress())
 
             # Sync permissions to VM on remote node
             auth_instance = self._get_registered_object('auth')
@@ -472,7 +477,7 @@ class Cluster(PyroObject):
             nodes = self.getNodes()
         for node in nodes:
             node_object = self.getRemoteNode(node)
-            return_data[node] = callback_method(node)
+            return_data[node] = callback_method(node_object)
         return return_data
 
     def checkNodeExists(self, node_name):

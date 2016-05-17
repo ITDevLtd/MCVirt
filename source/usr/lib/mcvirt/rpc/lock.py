@@ -59,12 +59,14 @@ def lockingMethod(object_type=None, instance_method=True):
             try:
                 reponse = callback(*args, **kwargs)
             except MCVirtException as e:
+                print "".join(Pyro4.util.getPyroTraceback())
                 log.finish_error(e)
                 if requires_lock:
                     lock.release()
                     Pyro4.current_context.has_lock = False
                 raise
             except Exception as e:
+                print "".join(Pyro4.util.getPyroTraceback())
                 log.finish_error_unknown(e)
                 if requires_lock:
                     lock.release()

@@ -23,7 +23,6 @@ from virtual_machine.virtual_machine import VirtualMachine, LockStates
 from virtual_machine.hard_drive.config.base import (Base as HardDriveConfigBase,
                                                     Driver as HardDriveDriver)
 from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-from virtual_machine.network_adapter import NetworkAdapter
 from virtual_machine.disk_drive import DiskDrive
 from node.network.network import Network
 from cluster.cluster import Cluster
@@ -655,15 +654,19 @@ class Parser:
                 )
 
             if args.remove_network:
-                network_adapter_object = vm_object.getNetworkAdapterByMacAdress(args.remove_network)
+                network_adapter_factory = rpc.getConnection('network_adapter_factory')
+                network_adapter_object = network_adapter_factory.getNetworkAdapterByMacAdress(
+                    vm_object, args.remove_network
+                )
                 rpc.annotateObject(network_adapter_object)
                 network_adapter_object.delete()
 
             if (args.add_network):
                 network_factory = rpc.getConnection('network_factory')
+                network_adapter_factory = rpc.getConnection('network_adapter_factory')
                 network_object = network_factory.getNetworkByName(args.add_network)
                 rpc.annotateObject(network_object)
-                vm_object.createNetworkAdapter(network_object)
+                network_adapter_factory.create(vm_object, network_object)
 
             if args.add_disk:
                 hard_drive_factory = rpc.getConnection('hard_drive_factory')

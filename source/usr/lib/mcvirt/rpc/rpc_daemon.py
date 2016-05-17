@@ -30,6 +30,7 @@ from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactor
 from mcvirt.auth.factory import Factory as UserFactory
 from mcvirt.auth.session import Session
 from mcvirt.cluster.cluster import Cluster
+from mcvirt.virtual_machine.network_adapter.factory import Factory as NetworkAdapterFactory
 from mcvirt.logger import Logger
 from mcvirt.node.drbd import DRBD as NodeDRBD
 from ssl_socket import SSLSocket
@@ -101,6 +102,9 @@ class BaseRpcDaemon(Pyro4.Daemon):
                         else:
                             Pyro4.current_context.cluster_master = False
 
+                        if Annotations.HAS_LOCK in data:
+                            Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
+
                     return session_id
 
             # If a session id has been passed, store it and check the session_id/username against active sessions
@@ -115,6 +119,20 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     user_object = session_instance.getCurrentUserObject()
                     if user_object.ALLOW_PROXY_USER and Annotations.PROXY_USER in data:
                         Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
+
+                    # If the user is a cluster/connection user, treat this connection
+                    # as a cluster client (the command as been executed on a remote node)
+                    # unless specified otherwise
+                    auth = self.registered_factories['auth']
+                    if user_object.CLUSTER_USER:
+                        if Annotations.CLUSTER_MASTER in data:
+                            Pyro4.current_context.cluster_master = data[Annotations.CLUSTER_MASTER]
+                        else:
+                            Pyro4.current_context.cluster_master = False
+
+                        if Annotations.HAS_LOCK in data:
+                            Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
+
                     return session_id
         except Exception, e:
             print str(e)
@@ -203,6 +221,10 @@ class RpcNSMixinDaemon(object):
         # Create node DRBD object and register with daemon
         node_drbd = NodeDRBD(self.mcvirt_instance)
         self.register(node_drbd, objectId='node_drbd', force=True)
+
+        # Create network adapter factory and register with daemon
+        network_adapter_factory = NetworkAdapterFactory(self.mcvirt_instance)
+        self.register(network_adapter_factory, objectId='network_adapter_factory', force=True)
 
         # Create logger object and register with daemon
         logger = Logger()
