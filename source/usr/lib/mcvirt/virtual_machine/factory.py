@@ -215,6 +215,6 @@ class Factory(PyroObject):
             if network_interfaces is not None:
                 for network in network_interfaces:
                     network_object = network_factory.getNetworkByName(network)
-                    network_adapter_factory.create(self, network_object)
+                    network_adapter_factory.create(vm_object, network_object)
 
         return vm_object

@@ -115,7 +115,7 @@ class Parser:
                                         required=True, type=int,
                                         help='Amount of memory to allocate to the VM (MiB)')
         self.create_parser.add_argument('--disk-size', dest='disk_size', metavar='Disk Size',
-                                        type=int, required=True,
+                                        type=int, default=None,
                                         help='Size of disk to be created for the VM (MB)')
         self.create_parser.add_argument(
             '--cpu-count', dest='cpu_count', metavar='CPU Count',
@@ -602,11 +602,12 @@ class Parser:
             # Convert memory allocation from MiB to KiB
             memory_allocation = int(args.memory) * 1024
             vm_factory = rpc.getConnection('virtual_machine_factory')
+            hard_disks = [args.disk_size] if args.disk_size is not None else []
             vm_object = vm_factory.create(
                 name=args.vm_name,
                 cpu_cores=args.cpu_count,
                 memory_allocation=memory_allocation,
-                hard_drives=[args.disk_size],
+                hard_drives=hard_disks,
                 network_interfaces=args.networks,
                 storage_type=storage_type,
                 hard_drive_driver=args.hard_disk_driver,

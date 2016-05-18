@@ -216,7 +216,7 @@ class VirtualMachine(PyroObject):
                     raise LibvirtException('Failed to reset VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('Cannot reset a stopped VM')
-        elif self.mcvirt_object.initialiseNodes():
+        elif self._is_cluster_master:
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.getRemoteNode(self.getNode())
             vm_factory = remote_object.getConnection('virtual_machine_factory')
@@ -247,7 +247,7 @@ class VirtualMachine(PyroObject):
             vm_factory = remote_object.getConnection('virtual_machine_factory')
             remote_vm = vm_factory.getVirtualMachineByName(self.getName())
             remote_object.annotateObject(remote_vm)
-            return PowerStates[remote_vm.getPowerstate()]
+            return PowerStates(remote_vm.getPowerState())
         else:
             return PowerStates.UNKNOWN
 
@@ -316,7 +316,7 @@ class VirtualMachine(PyroObject):
             warnings += "No hard disks present on machine\n"
 
         # Create info table for network adapters
-        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         if len(network_adapters) != 0:
             table.add_row(('-- MAC Address --', '-- Network --'))
@@ -345,24 +345,28 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to modify VMs or
         # that the user is the owner of the VM and the VM is a clone
         if not (
-            self.mcvirt_object.getAuthObject().checkPermission(
-                PERMISSIONS.MODIFY_VM,
-                self) or (
-                self.getCloneParent() and self.mcvirt_object.getAuthObject().checkPermission(
-                PERMISSIONS.DELETE_CLONE,
-                self))):
+            self._get_registered_object('auth').checkPermission(PERMISSIONS.MODIFY_VM, self) or
+                (
+                    self.getCloneParent() and
+                    self._get_registered_object('auth').checkPermission(
+                        PERMISSIONS.DELETE_CLONE,
+                        self
+                    )
+                )
+            ):
             raise InsufficientPermissionsException(
                 'User does not have the required permission - ' +
                 'User must have MODIFY_VM permission or be the owner of the cloned VM'
             )
 
         # Ensure the VM is not being removed from a machine that the VM is not being run on
-        if ((self.isRegisteredRemotely() and self.mcvirt_object.initialiseNodes() and
-             not local_only)):
+        if ((self.isRegisteredRemotely() and self._is_cluster_master and
+                not local_only)):
             remote_node = self.getConfigObject().getConfig()['node']
             raise VmRegisteredElsewhereException(
                 'The VM \'%s\' is registered on the remote node: %s' %
-                (self.getName(), remote_node))
+                (self.getName(), remote_node)
+            )
 
         # Determine if VM is running
         if (self.isRegisteredLocally() and self._getLibvirtDomainObject().state()
@@ -421,7 +425,7 @@ class VirtualMachine(PyroObject):
                 vm_factory = remote_object.getConnection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.getName())
                 remote_object.annotateObject(remote_vm)
-                remote_vm.delete(remote_data=remove_data)
+                remote_vm.delete(remove_data=remove_data)
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.runRemoteCommand(remote_command)
 
@@ -793,7 +797,7 @@ class VirtualMachine(PyroObject):
 
         # Check the remote node to ensure that the networks, that the VM is connected to,
         # exist on the remote node
-        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         for network_object in network_adapters:
             connected_network = network_object.getConnectedNetwork()
@@ -853,7 +857,7 @@ class VirtualMachine(PyroObject):
             raise VmIsCloneException('Cannot clone from a clone VM')
 
         # Create new VM for clone, without hard disks
-        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         networks = []
         for network_adapter in network_adapters:
@@ -908,7 +912,7 @@ class VirtualMachine(PyroObject):
             raise VmAlreadyExistsException('VM already exists with name %s' % duplicate_vm_name)
 
         # Create new VM for clone, without hard disks
-        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         networks = []
         for network_adapter in network_adapters:
@@ -1044,7 +1048,7 @@ class VirtualMachine(PyroObject):
             device_xml.append(drive_xml)
 
         # Add network adapter configurations
-        network_adapter_factory = self._register_object('network_adapter_factory')
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         for network_adapter_object in network_adapters:
             network_interface_xml = network_adapter_object._generateLibvirtXml()
@@ -1096,6 +1100,14 @@ class VirtualMachine(PyroObject):
             PERMISSIONS.SET_VM_NODE, self
         )
 
+    @Pyro4.expose()
+    @lockingMethod()
+    def setNodeRemote(self, node):
+        """Set node from remote _setNode command"""
+        # @TODO Merge with setNode and check either user type or permissions
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+        self._setNode(node)
+
     def _setNode(self, node):
         """Sets the node of the VM"""
         if self._is_cluster_master:
@@ -1104,7 +1116,7 @@ class VirtualMachine(PyroObject):
                 vm_factory = remote_connection.getConnection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.getName())
                 remote_connection.annotateObject(remote_vm)
-                remote_vm._setNode(node)
+                remote_vm.setNodeRemote(node)
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.runRemoteCommand(remote_command)
 

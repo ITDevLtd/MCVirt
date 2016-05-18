@@ -189,7 +189,7 @@ class Auth(PyroObject):
             config['superusers'].remove(username)
         mcvirt_config.updateConfig(updateConfig, 'Removed \'%s\' from superuser group' % username)
 
-        if (self.mcvirt_instance.initialiseNodes()):
+        if self._is_cluster_master:
             cluster_object = Cluster(self.mcvirt_instance)
             cluster_object.runRemoteCommand('auth-deleteSuperuser',
                                             {'username': username})
@@ -227,7 +227,7 @@ class Auth(PyroObject):
             config_object.updateConfig(addUserToConfig, 'Added user \'%s\' to group \'%s\'' %
                                                         (username, permission_group))
 
-            if (self.mcvirt_instance.initialiseNodes()):
+            if self._is_cluster_master:
                 cluster_object = Cluster(self.mcvirt_instance)
                 if (vm_object):
                     vm_name = vm_object.getName()
@@ -279,7 +279,7 @@ class Auth(PyroObject):
                                    'Removed user \'%s\' from group \'%s\'' %
                                    (username, permission_group))
 
-        if (self.mcvirt_instance.initialiseNodes()):
+        if self._is_cluster_master:
             cluster_object = Cluster(self.mcvirt_instance)
             cluster_object.runRemoteCommand('auth-deleteUserPermissionGroup',
                                             {'permission_group': permission_group,

@@ -52,7 +52,7 @@ class Base(object):
 
         # If the disk is configured on a VM, obtain
         # the details from the VM configuration
-        if (registered):
+        if registered:
             disk_config = self.getDiskConfig()
             for config_key in disk_config:
                 self.config[config_key] = disk_config[config_key]

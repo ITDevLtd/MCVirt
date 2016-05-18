@@ -395,11 +395,13 @@ class Cluster(PyroObject):
         for vm_object in all_vm_objects:
             if ((vm_object.getStorageType() == 'Local' and
                  vm_object.getAvailableNodes() == [remote_host])):
+                def remove_vms(remote_connection):
+                    remote_vm_factory = remote_connection.getConnection('virtual_machine_factory')
+                    remote_vm = remote_vm_factory.getVirtualMachineByName(vm_object.getName())
+                    remote_connection.annotateObject(remote_vm)
+                    remote_vm.delete(remove_data=True)
+                cluster.runRemoteCommand(remove_vms)
                 vm_object.delete(remove_data=True, local_only=True)
-                cluster.runRemoteCommand('virtual_machine-delete',
-                                         {'vm_name': vm_object.getName(),
-                                          'remove_data': True},
-                                         nodes=all_nodes)
 
         if (remote_host not in self.getFailedNodes()):
             remote = self.getRemoteNode(remote_host)

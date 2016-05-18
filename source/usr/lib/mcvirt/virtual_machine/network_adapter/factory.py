@@ -3,6 +3,7 @@ import Pyro4
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import lockingMethod
 from network_adapter import NetworkAdapter
+from mcvirt.auth.permissions import PERMISSIONS
 
 class Factory(PyroObject):
     """Factory method to create/obtain network adapter instances"""
@@ -49,14 +50,14 @@ class Factory(PyroObject):
         network_adapter_object = self.getNetworkAdapterByMacAdress(virtual_machine, mac_address)
 
         # Only update the LibVirt configuration if VM is registered on this node
-        if (virtual_machine.isRegisteredLocally()):
+        if virtual_machine.isRegisteredLocally():
             def updateXML(domain_xml):
                 network_xml = network_adapter_object._generateLibvirtXml()
                 device_xml = domain_xml.find('./devices')
                 device_xml.append(network_xml)
 
             virtual_machine.editConfig(updateXML)
-        return network_adapter
+        return network_adapter_object
 
     @Pyro4.expose()
     def getNetworkAdaptersByVirtualMachine(self, virtual_machine):
@@ -64,7 +65,7 @@ class Factory(PyroObject):
         interfaces attached to the VM"""
         interfaces = []
         vm_config = virtual_machine.getConfigObject().getConfig()
-        for mac_address in cm_config['network_interfaces'].keys():
+        for mac_address in vm_config['network_interfaces'].keys():
             interface_object = NetworkAdapter(mac_address, self)
             self._register_object(interface_object)
             interfaces.append(interface_object)
