@@ -15,10 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from mcvirt.exceptions import MCVirtException
-from mcvirt.logger import Logger, getLogNames
 import Pyro4
 from threading import Lock
+
+from mcvirt.exceptions import MCVirtException
+from mcvirt.logger import Logger, getLogNames
+from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
+
 
 class MethodLock(object):
     _lock = None
@@ -50,8 +53,13 @@ def lockingMethod(object_type=None, instance_method=True):
             logger = Logger()
             log = logger.create_log(callback, user=Pyro4.current_context.username,
                                     object_name=object_name, object_type=object_type)
+
+            cluster = RpcNSMixinDaemon.DAEMON.registered_factories['cluster']
+
             if requires_lock:
                 lock.acquire()
+                # @TODO: lock entire cluster - raise exception if it cannot
+                # be obtained in short period (~5 seconds)
                 Pyro4.current_context.has_lock = True
 
             log.start()

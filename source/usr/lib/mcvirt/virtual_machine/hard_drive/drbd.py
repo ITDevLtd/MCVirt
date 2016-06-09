@@ -658,10 +658,10 @@ class DRBD(Base):
         """Determines if the given type of state is OK or not. An exception
            is thrown in the event of a bad state"""
         # Determine if connection state is not OK
-        if (state not in DRBD.DRBD_STATES[state_name]['OK']):
+        if state not in DRBD.DRBD_STATES[state_name]['OK']:
             # Ignore the state if it is in warning and the user has specified to ignore
             # the DRBD state
-            if (state in DRBD.DRBD_STATES[state_name]['WARNING']):
+            if state in DRBD.DRBD_STATES[state_name]['WARNING']:
                 if not self._ignore_drbd:
                     raise DrbdStateException(
                         ('DRBD connection state for the DRBD resource '
@@ -672,7 +672,8 @@ class DRBD(Base):
             else:
                 raise DrbdStateException(
                     'DRBD connection state for the DRBD resource %s is %s so cannot continue. ' %
-                    (self.resource_name, state.value))
+                    (self.resource_name, state.value)
+                )
 
     def _drbdGetConnectionState(self):
         """Returns the connection state of the DRBD resource"""
@@ -720,10 +721,8 @@ class DRBD(Base):
         self._setTwoPrimariesConfig(allow=True)
 
         # Set remote node as primary
-        destination_node.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdSetPrimary',
-                                          {'vm_name': self.vm_object.getName(),
-                                           'disk_id': self.disk_id,
-                                           'allow_two_primaries': True})
+        remote_disk = self.getRemoteObject(remote_node=destination_node)
+        remote_disk.drbdSetPrimary(allow_two_primaries=True)
 
     def postOnlineMigration(self):
         """Performs post tasks after a VM
@@ -738,7 +737,7 @@ class DRBD(Base):
         # an appropriate exception
         for i in range(1, 3):
             local_role, _ = self._drbdGetRole()
-            if (local_role is DrbdRoleState.SECONDARY):
+            if local_role is DrbdRoleState.SECONDARY:
                 break
             else:
                 time.sleep(5)
@@ -749,7 +748,7 @@ class DRBD(Base):
     def _ensureBlockDeviceExists(self):
         """Ensures that the DRBD block device exists"""
         drbd_block_device = self._getDrbdDevice()
-        if (not os.path.exists(drbd_block_device)):
+        if not os.path.exists(drbd_block_device):
             raise DrbdBlockDeviceDoesNotExistException(
                 'DRBD block device %s for resource %s does not exist' %
                 (drbd_block_device, self.resource_name))
@@ -769,7 +768,7 @@ class DRBD(Base):
         vm_config = self.vm_object.getConfigObject().getConfig()
 
         # If the hard drive configuration exists, read the current state of the disk
-        if (self.disk_id in vm_config['hard_disks']):
+        if self.disk_id in vm_config['hard_disks']:
             return vm_config['hard_disks'][self.disk_id]['sync_state']
         else:
             # Otherwise, if the hard drive configuration does not exist in the VM configuration,
@@ -781,10 +780,6 @@ class DRBD(Base):
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
         obtained_lock = False
-        if (not self.vm_object.mcvirt_object.obtained_filelock):
-            obtained_lock = True
-            self.vm_object.mcvirt_object.obtainLock(timeout=10, initialise_nodes=update_remote)
-
         def updateConfig(config):
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.getConfigObject().updateConfig(
@@ -797,16 +792,13 @@ class DRBD(Base):
         # Update remote nodes
         if self._is_cluster_master and update_remote:
             cluster = self._get_registered_object('cluster')
-            for node in self.vm_object._getRemoteNodes():
-                remote_object = cluster_instance.getRemoteNode(node)
-                remote_object.runRemoteCommand('virtual_machine-hard_drive-drbd-setSyncState',
-                                               {'vm_name': self.vm_object.getName(),
-                                                'disk_id': self.disk_id,
-                                                'sync_state': sync_state})
+            def remoteCommand(node):
+                remote_disk = self.getRemoteObject(remote_node=node)
+                remote_disk.setSyncState(sync_state=sync_state)
+            cluster.runRemoteCommand(callback_method=remoteCommand,
+                                     nodes=self.vm_object._getRemoteNodes())
 
-        if obtained_lock:
-            self.vm_object.mcvirt_object.releaseLock(initialise_nodes=update_remote)
-
+    @Pyro4.expose()
     def verify(self):
         """Performs a verification of a DRBD hard drive"""
         import time
@@ -817,52 +809,30 @@ class DRBD(Base):
                 'DRBD resource must be connected before performing a verification: %s' %
                 self.resource_name)
 
-        self.vm_object.mcvirt_object.releaseLock()
-
         # Reset the disk to be marked in a consistent state
         self.setSyncState(True)
 
         try:
-            # Create a socket, to receive errors from DRBD about out-of-sync blocks
-            drbd_socket = DRBDSocket(self.vm_object.mcvirt_object)
-
             # Perform a drbdadm verification
             System.runCommand([NodeDRBD.DRBDADM, 'verify',
                                self.resource_name])
 
             # Monitor the DRBD status, until the VM has started syncing
             while True:
-                if (self._drbdGetConnectionState() == DrbdConnectionState.VERIFY_S):
+                if self._drbdGetConnectionState() == DrbdConnectionState.VERIFY_S:
                     break
                 time.sleep(5)
 
             # Monitor the DRBD status, until the VM has finished syncing
             while True:
-                if (self._drbdGetConnectionState() != DrbdConnectionState.VERIFY_S):
+                if self._drbdGetConnectionState() != DrbdConnectionState.VERIFY_S:
                     break
                 time.sleep(5)
-
-            # Provide DRBD 10 seconds to run the mcvirt_drbd command, if necessary
-            time.sleep(10)
-
-            # Stop the DRBD connection socket
-            drbd_socket.stop()
-            time.sleep(10)
-            drbd_socket.mcvirt_instance = None
-            drbd_socket = None
 
         except Exception:
             # If an exception is thrown during the verify, mark the VM as
             # not in-sync
             self.setSyncState(False)
-
-            # Tear down the socket
-            if drbd_socket:
-                drbd_socket.mcvirt_instance = None
-                drbd_socket = None
-            raise
-
-        self.vm_object.mcvirt_object.obtainLock()
 
         if self._isInSync():
             return True
@@ -998,7 +968,7 @@ class DRBD(Base):
         test_minor_id = DRBD.INITIAL_MINOR
 
         while (available_minor_id is None):
-            if (test_minor_id in used_minor_ids):
+            if test_minor_id in used_minor_ids:
                 test_minor_id += 1
             else:
                 available_minor_id = test_minor_id

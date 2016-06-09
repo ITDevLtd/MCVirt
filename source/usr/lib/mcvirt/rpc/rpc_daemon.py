@@ -188,6 +188,8 @@ class RpcNSMixinDaemon(object):
        Pyro daemon class overrides get/setattr and other
        built-in object methods"""
 
+    DAEMON = None
+
     def __init__(self):
         """Store required object member variables and create MCVirt object"""
         # Store nameserver, MCVirt instance and create daemon
@@ -202,21 +204,21 @@ class RpcNSMixinDaemon(object):
         # Wait for nameserver
         self.obtainConnection()
 
-        self.daemon = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance,
+        RpcNSMixinDaemon.DAEMON = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance,
                                     host=self.hostname)
         self.registerFactories()
 
     def start(self):
         """Start the Pyro daemon"""
-        self.daemon.requestLoop()
+        RpcNSMixinDaemon.DAEMON.requestLoop()
 
     def register(self, obj_or_class, objectId, *args, **kwargs):
         """Override register to register object with NS"""
-        uri = self.daemon.register(obj_or_class, *args, **kwargs)
+        uri = RpcNSMixinDaemon.DAEMON.register(obj_or_class, *args, **kwargs)
         ns = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
         ns.register(objectId, uri)
         ns = None
-        self.daemon.registered_factories[objectId] = obj_or_class
+        RpcNSMixinDaemon.DAEMON.registered_factories[objectId] = obj_or_class
         return uri
 
     def registerFactories(self):

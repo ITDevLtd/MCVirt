@@ -662,12 +662,12 @@ class VirtualMachine(PyroObject):
         self._preOnlineMigrationChecks(destination_node_name)
 
         # Obtain cluster instance
-        cluster_instance = Cluster(self.mcvirt_object)
+        cluster = self._get_registered_object('cluster')
 
         # Begin pre-migration tasks
         try:
             # Obtain node object for destination node
-            destination_node = cluster_instance.getRemoteNode(destination_node_name)
+            destination_node = cluster.getRemoteNode(destination_node_name)
 
             # Obtain libvirt connection to destination node
             destination_libvirt_connection = self.mcvirt_object.getRemoteLibvirtConnection(
