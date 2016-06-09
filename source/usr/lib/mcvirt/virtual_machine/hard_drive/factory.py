@@ -53,7 +53,6 @@ class Factory(PyroObject):
                 storage_type = config['storage_type']
             del(config['storage_type'])
 
-
         hard_drive_object = self.getClass(storage_type)(vm_object=vm_object, disk_id=disk_id, **config)
         self._register_object(hard_drive_object)
 
@@ -85,7 +84,7 @@ class Factory(PyroObject):
 
         available_storage_types = self._getAvailableStorageTypes()
         if storage_type:
-            if storage_type not in available_storage_types:
+            if storage_type not in [available_storage.__name__ for available_storage in available_storage_types]:
                 raise UnknownStorageTypeException('%s is not supported by this node' % storage_type)
         else:
             if len(available_storage_types) > 1:

@@ -86,7 +86,9 @@ class DRBD(PyroObject):
             cluster = self._get_registered_object('cluster')
             def remoteCommand(node):
                 remote_drbd = node.getConnection('node_drbd')
-                remote_drbd.enabble(secret=secret)
+                remote_drbd.enable(secret=secret)
+
+            cluster.runRemoteCommand(callback_method=remoteCommand)
 
         # Generate the global DRBD configuration
         self.generateConfig()

@@ -40,6 +40,8 @@ class Connection(object):
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
         self.__username = username
+        self.__ignore_drbd = False
+        self.__ignore_cluster = False
         if 'proxy_user' in dir(Pyro4.current_context):
             self.__proxy_username = Pyro4.current_context.proxy_user
         else:
@@ -75,6 +77,14 @@ class Connection(object):
 
         if 'has_lock' in dir(Pyro4.current_context):
             auth_dict[Annotations.HAS_LOCK] = Pyro4.current_context.has_lock
+
+        auth_dict[Annotations.IGNORE_CLUSTER] = self.__ignore_cluster
+        if 'ignore_cluster' in dir(Pyro4.current_context):
+            auth_dict[Annotations.IGNORE_CLUSTER] |= Pyro4.current_context.ignore_cluster
+        auth_dict[Annotations.IGNORE_DRBD] = self.__ignore_drbd
+        if 'ignore_drbd' in dir(Pyro4.current_context):
+            auth_dict[Annotations.IGNORE_DRBD] |= Pyro4.current_context.ignore_drbd
+
         return auth_dict
 
     def getConnection(self, object_name, password=None):
@@ -91,6 +101,12 @@ class Connection(object):
         proxy._pyroHandshake = self._getAuthObj(password=password)
         proxy._pyroBind()
         return proxy
+
+    def ignore_drbd(self):
+        self.__ignore_drbd = True
+
+    def ignore_cluster(self):
+        self.__ignore_cluster = True
 
     def annotateObject(self, object_ref):
         object_ref._pyroHandshake = self._getAuthObj()

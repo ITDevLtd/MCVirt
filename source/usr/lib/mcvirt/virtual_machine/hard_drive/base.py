@@ -33,7 +33,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import ReachedMaximumStorageDevicesException
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
-
+from mcvirt.rpc.lock import lockingMethod
 
 
 class Driver(Enum):
@@ -202,6 +202,7 @@ class Base(PyroObject):
         return new_disk_object
 
     @Pyro4.expose()
+    @lockingMethod()
     def addToVirtualMachine(self, register=True):
         """Add the hard drive to the virtual machine,
            and performs the base function on all nodes in the cluster"""
@@ -247,6 +248,7 @@ class Base(PyroObject):
         raise NotImplementedError
 
     @Pyro4.expose()
+    @lockingMethod()
     def removeFromVirtualMachine(self, unregister=False, all_nodes=True):
         """Remove the hard drive from a VM configuration and perform all nodes
            in the cluster"""
@@ -315,6 +317,7 @@ class Base(PyroObject):
                 (self.vm_object.getName(), self.getType()))
 
     @Pyro4.expose()
+    @lockingMethod()
     def createLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _createLogicalVolume
            with permission checking"""
@@ -352,6 +355,7 @@ class Base(PyroObject):
             )
 
     @Pyro4.expose()
+    @lockingMethod()
     def removeLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _removeLogicalVolume
            with permission checking"""
@@ -374,7 +378,7 @@ class Base(PyroObject):
 
             if perform_on_nodes and self._is_cluster_master:
                 def remoteCommand(node):
-                    remote_disk = self.getRemoteObject(remote_node=node)
+                    remote_disk = self.getRemoteObject(remote_node=node, registered=False)
                     remote_disk.removeLogicalVolume(
                         name=name, ignore_non_existent=ignore_non_existent
                     )
@@ -411,13 +415,13 @@ class Base(PyroObject):
         return int(lv_size)
 
     @Pyro4.expose()
+    @lockingMethod()
     def zeroLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _zeroLogicalVolume
            with permission checking"""
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._zeroLogicalVolume(*args, **kwargs)
-
 
     def _zeroLogicalVolume(self, name, size, perform_on_nodes=False):
         """Blanks a logical volume by filling it with null data"""
@@ -431,7 +435,7 @@ class Base(PyroObject):
             # Create logical volume on local node
             System.runCommand(command_args)
 
-            if perform_on_nodes and self.vm_object.mcvirt_object.initialiseNodes():
+            if perform_on_nodes and self._is_cluster_master:
                 def remoteCommand(node):
                     remote_disk = self.getRemoteObject(remote_node=node, registered=False)
                     remote_disk.zeroLogicalVolume(name=name, size=size)
@@ -468,6 +472,7 @@ class Base(PyroObject):
         return os.path.exists(self._getLogicalVolumePath(name))
 
     @Pyro4.expose()
+    @lockingMethod()
     def activateLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _activateLogicalVolume
            with permission checking"""
@@ -488,7 +493,7 @@ class Base(PyroObject):
 
             if perform_on_nodes and self._is_cluster_master:
                 def remoteCommand(node):
-                    remote_disk = self.getRemoteObject(remote_node=node)
+                    remote_disk = self.getRemoteObject(remote_node=node, registered=False)
                     remote_disk.activateLogicalVolume(name=name)
 
                 cluster = self._get_registered_object('cluster')
@@ -561,6 +566,7 @@ class Base(PyroObject):
         self.vm_object.setLockState(LockStates.UNLOCKED)
 
     @Pyro4.expose()
+    @lockingMethod()
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         raise NotImplementedError

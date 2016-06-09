@@ -17,6 +17,7 @@
 
 from enum import Enum
 import os
+import Pyro4
 
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
@@ -25,6 +26,7 @@ from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.system import System
 from mcvirt.cluster.cluster import Cluster
+from mcvirt.rpc.lock import lockingMethod
 from mcvirt.mcvirt import MCVirt
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
                                DrbdVolumeNotInSyncException, MCVirtCommandException)
@@ -162,22 +164,38 @@ class DRBD(Base):
 
     DRBD_STATES = {
         'CONNECTION': {
-            'OK': [DrbdConnectionState.CONNECTED,
-                   DrbdConnectionState.VERIFY_S,
-                   DrbdConnectionState.VERIFY_T,
-                   DrbdConnectionState.PAUSED_SYNC_S,
-                   DrbdConnectionState.STARTING_SYNC_S,
-                   DrbdConnectionState.SYNC_SOURCE,
-                   DrbdConnectionState.WF_BIT_MAP_S,
-                   DrbdConnectionState.WF_BIT_MAP_T,
-                   DrbdConnectionState.WF_SYNC_UUID],
-            'WARNING': [DrbdConnectionState.STAND_ALONE,
-                        DrbdConnectionState.DISCONNECTING,
-                        DrbdConnectionState.UNCONNECTED,
-                        DrbdConnectionState.BROKEN_PIPE,
-                        DrbdConnectionState.NETWORK_FAILURE,
-                        DrbdConnectionState.WF_CONNECTION,
-                        DrbdConnectionState.WF_REPORT_PARAMS]
+            'OK': [
+                DrbdConnectionState.CONNECTED,
+                DrbdConnectionState.VERIFY_S,
+                DrbdConnectionState.VERIFY_T,
+                DrbdConnectionState.PAUSED_SYNC_S,
+                DrbdConnectionState.STARTING_SYNC_S,
+                DrbdConnectionState.SYNC_SOURCE,
+                DrbdConnectionState.WF_BIT_MAP_S,
+                DrbdConnectionState.WF_BIT_MAP_T,
+                DrbdConnectionState.WF_SYNC_UUID
+            ],
+            'CONNECTED': [
+                DrbdConnectionState.CONNECTED,
+                DrbdConnectionState.VERIFY_S,
+                DrbdConnectionState.VERIFY_T,
+                DrbdConnectionState.PAUSED_SYNC_S,
+                DrbdConnectionState.STARTING_SYNC_S,
+                DrbdConnectionState.SYNC_SOURCE,
+                DrbdConnectionState.SYNC_TARGET,
+                DrbdConnectionState.WF_BIT_MAP_S,
+                DrbdConnectionState.WF_BIT_MAP_T,
+                DrbdConnectionState.WF_SYNC_UUID
+            ],
+            'WARNING': [
+                DrbdConnectionState.STAND_ALONE,
+                DrbdConnectionState.DISCONNECTING,
+                DrbdConnectionState.UNCONNECTED,
+                DrbdConnectionState.BROKEN_PIPE,
+                DrbdConnectionState.NETWORK_FAILURE,
+                DrbdConnectionState.WF_CONNECTION,
+                DrbdConnectionState.WF_REPORT_PARAMS
+            ]
         },
         'ROLE': {
             'OK': [DrbdRoleState.PRIMARY],
@@ -198,7 +216,7 @@ class DRBD(Base):
 
     def __init__(self, drbd_minor=None, drbd_port=None, *args, **kwargs):
         """Sets member variables"""
-        # Get DRBD configuration from disk configuration
+        # Get DRBDe configuration from disk configuration
         self._sync_state = False
         self._drbd_port = None
         self._drbd_minor = None
@@ -254,7 +272,7 @@ class DRBD(Base):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
         in the VM configuration"""
         # Ensure user has privileges to create a DRBD volume
-        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_DRBD, vm_object)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_DRBD, self.vm_object)
 
         # Ensure DRBD is enabled on the host
         if not self._get_registered_object('node_drbd').isEnabled():
@@ -312,7 +330,7 @@ class DRBD(Base):
             self._initialiseMetaData()
             def remoteCommand(node):
                 remote_disk = self.getRemoteObject(remote_node=node, registered=False)
-                remote_disk._initialiseMetaData()
+                remote_disk.initialiseMetaData()
             cluster.runRemoteCommand(callback_method=remoteCommand,
                                      nodes=remote_nodes)
 
@@ -326,7 +344,8 @@ class DRBD(Base):
                                      nodes=remote_nodes)
             progress = DRBD.CREATE_PROGRESS.DRBD_UP_R
 
-            # Wait for 5 seconds to let DRBD connect
+            # Wait for 5 seconds to let DRBD initialise
+            # TODO: Monitor DRBD status instead.
             import time
             time.sleep(5)
 
@@ -435,14 +454,40 @@ class DRBD(Base):
         self._removeLogicalVolume(self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX),
                                   perform_on_nodes=True)
 
-    def _initialiseMetaData(self, resource_name):
-        """Performs an initialisation of the meta data, using drbdadm"""
-        System.runCommand([NodeDRBD.DRBDADM, 'create-md', resource_name])
+    @Pyro4.expose()
+    @lockingMethod()
+    def initialiseMetaData(self, *args, **kwargs):
+        """Provides an exposed method for _initialiseMetaData
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
-    @staticmethod
+        return self._initialiseMetaData(*args, **kwargs)
+
+    def _initialiseMetaData(self):
+        """Performs an initialisation of the meta data, using drbdadm"""
+        System.runCommand([NodeDRBD.DRBDADM, 'create-md', self.resource_name])
+
+    @Pyro4.expose()
+    @lockingMethod()
+    def drbdUp(self, *args, **kwargs):
+        """Provides an exposed method for _drbdUp
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdUp(*args, **kwargs)
+
     def _drbdUp(self):
         """Performs a DRBD 'up' on the hard drive DRBD resource"""
         System.runCommand([NodeDRBD.DRBDADM, 'up', self.resource_name])
+
+    @Pyro4.expose()
+    @lockingMethod()
+    def drbdDown(self, *args, **kwargs):
+        """Provides an exposed method for _drbdDown
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdDown(*args, **kwargs)
 
     def _drbdDown(self):
         """Performs a DRBD 'down' on the hard drive DRBD resource"""
@@ -454,10 +499,29 @@ class DRBD(Base):
             time.sleep(5)
             System.runCommand([NodeDRBD.DRBDADM, 'down', self.resource_name])
 
+    @Pyro4.expose()
+    @lockingMethod()
+    def drbdConnect(self, *args, **kwargs):
+        """Provides an exposed method for _drbdConnect
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdConnect(*args, **kwargs)
+
     def _drbdConnect(self):
         """Performs a DRBD 'connect' on the hard drive DRBD resource"""
-        if self._drbdGetConnectionState() not in DRBD.DRBD_STATES['CONNECTION']['OK']:
+        if self._drbdGetConnectionState() not in DRBD.DRBD_STATES['CONNECTION']['CONNECTED']:
+            print self._drbdGetConnectionState()
             System.runCommand([NodeDRBD.DRBDADM, 'connect', self.resource_name])
+
+    @Pyro4.expose()
+    @lockingMethod()
+    def drbdDisconnect(self, *args, **kwargs):
+        """Provides an exposed method for _drbdDisconnect
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdDisconnect(*args, **kwargs)
 
     def _drbdDisconnect(self):
         """Performs a DRBD 'disconnect' on the hard drive DRBD resource"""
@@ -505,6 +569,15 @@ class DRBD(Base):
                 nodes=self.vm_object._getRemoteNodes()
             )
 
+    @Pyro4.expose()
+    @lockingMethod()
+    def drbdSetPrimary(self, *args, **kwargs):
+        """Provides an exposed method for _drbdSetPrimary
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdSetPrimary(*args, **kwargs)
+
     def _drbdSetPrimary(self, allow_two_primaries=False):
         """Performs a DRBD 'primary' on the hard drive DRBD resource"""
         local_role_state, remote_role_state = self._drbdGetRole()
@@ -516,7 +589,7 @@ class DRBD(Base):
         node_drbd = self._get_registered_object('node_drbd')
         if (local_role_state is DrbdRoleState.UNKNOWN or
             (remote_role_state is DrbdRoleState.UNKNOWN and
-             not node_drbd.isIgnored())):
+             not self._ignore_drbd)):
             raise DrbdStateException('DRBD role is unknown for resource %s' %
                                      self.resource_name)
 
@@ -524,13 +597,22 @@ class DRBD(Base):
         if (not allow_two_primaries and
             remote_role_state is not DrbdRoleState.SECONDARY and
             not (DrbdRoleState.UNKNOWN and
-                 node_drbd.isIgnored())):
+                 self._ignore_drbd)):
             raise DrbdStateException(
                 'Cannot make local DRBD primary if remote DRBD is not secondary: %s' %
                 self.resource_name)
 
         # Set DRBD resource to primary
         System.runCommand([NodeDRBD.DRBDADM, 'primary', self.resource_name])
+
+    @Pyro4.expose()
+    @lockingMethod()
+    def drbdSetSecondary(self, *args, **kwargs):
+        """Provides an exposed method for _drbdSetSecondary
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdSetSecondary(*args, **kwargs)
 
     def _drbdSetSecondary(self):
         """Performs a DRBD 'secondary' on the hard drive DRBD resource"""
@@ -580,7 +662,7 @@ class DRBD(Base):
             # Ignore the state if it is in warning and the user has specified to ignore
             # the DRBD state
             if (state in DRBD.DRBD_STATES[state_name]['WARNING']):
-                if (not NodeDRBD(self.vm_object.mcvirt_object).isIgnored()):
+                if not self._ignore_drbd:
                     raise DrbdStateException(
                         ('DRBD connection state for the DRBD resource '
                          '%s is %s so cannot continue. Run MCVirt as a '
@@ -674,7 +756,7 @@ class DRBD(Base):
 
     def _ensureInSync(self):
         """Ensures that the DRBD volume was marked as in sync during the last verification"""
-        if (not self._isInSync() and not NodeDRBD.isIgnored(self.vm_object.mcvirt_object)):
+        if not self._isInSync() and not self._ignore_drbd:
             raise DrbdVolumeNotInSyncException(
                 'The last DRBD verification of the DRBD volume failed: %s. ' %
                 self.resource_name +
@@ -694,6 +776,8 @@ class DRBD(Base):
             # assume the disk is being created and is in-sync
             return True
 
+    @Pyro4.expose()
+    @lockingMethod()
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
         obtained_lock = False
@@ -711,8 +795,8 @@ class DRBD(Base):
              sync_state))
 
         # Update remote nodes
-        if (self.vm_object.mcvirt_object.initialiseNodes() and update_remote):
-            cluster_instance = Cluster(self.vm_object.mcvirt_object)
+        if self._is_cluster_master and update_remote:
+            cluster = self._get_registered_object('cluster')
             for node in self.vm_object._getRemoteNodes():
                 remote_object = cluster_instance.getRemoteNode(node)
                 remote_object.runRemoteCommand('virtual_machine-hard_drive-drbd-setSyncState',
@@ -954,6 +1038,15 @@ class DRBD(Base):
         """Returns the path of the raw disk image"""
         return self._getDrbdDevice()
 
+    @Pyro4.expose()
+    @lockingMethod()
+    def generateDrbdConfig(self, *args, **kwargs):
+        """Provides an exposed method for _generateDrbdConfig
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._generateDrbdConfig(*args, **kwargs)
+
     def _generateDrbdConfig(self):
         """Generates the DRBD resource configuration"""
         from Cheetah.Template import Template
@@ -1000,6 +1093,15 @@ class DRBD(Base):
         fh.write(config_content.respond())
         fh.close()
 
+    @Pyro4.expose()
+    @lockingMethod()
+    def removeDrbdConfig(self, *args, **kwargs):
+        """Provides an exposed method for _removeDrbdConfig
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._removeDrbdConfig(*args, **kwargs)
+
     def _removeDrbdConfig(self):
         """Remove the DRBD resource configuration from the node"""
         os.remove(self._getDrbdConfigFile())
@@ -1040,7 +1142,7 @@ class DRBD(Base):
         config = super(DRBD, self)._getMCVirtConfig()
         config['drbd_port'] = self.drbd_port
         config['drbd_minor'] = self.drbd_minor
-        config['sync_state'] = self.sync_state
+        config['sync_state'] = self._sync_state
         return config
 
     def _getBackupLogicalVolume(self):

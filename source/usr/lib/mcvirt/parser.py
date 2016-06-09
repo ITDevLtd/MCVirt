@@ -540,7 +540,6 @@ class Parser:
             Parser.SESSION_ID = rpc.SESSION_ID
             Parser.USERNAME = username
 
-
         if args.ignore_failed_nodes:
             # If the user has specified to ignore the cluster,
             # print a warning and confirm the user's answer
@@ -552,9 +551,10 @@ class Parser:
                 if (continue_answer.strip() is not 'Y'):
                     self.printStatus('Cancelled...')
                     return
-            ignore_failed_nodes = True
-        else:
-            ignore_failed_nodes = False
+            rpc.ignore_cluster()
+
+        if args.ignore_drbd:
+            rpc.ignore_drbd()
 
         # Perform functions on the VM based on the action passed to the script
         if action == 'start':

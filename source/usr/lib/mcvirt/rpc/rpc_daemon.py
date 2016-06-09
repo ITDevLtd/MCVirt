@@ -119,9 +119,9 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
                     if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_DRBD, user_object=user_object)
                             and Annotations.IGNORE_DRBD in data):
-                        Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_DRBD]
+                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
                     else:
-                        Pyro4.current_context.ignore_cluster = False
+                        Pyro4.current_context.ignore_drbd = False
 
                     return session_id
 
@@ -163,9 +163,9 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
                     if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_DRBD, user_object=user_object)
                             and Annotations.IGNORE_DRBD in data):
-                        Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_DRBD]
+                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
                     else:
-                        Pyro4.current_context.ignore_cluster = False
+                        Pyro4.current_context.ignore_drbd = False
 
                     return session_id
         except Exception, e:
