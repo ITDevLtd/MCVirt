@@ -23,9 +23,11 @@ from mcvirt.exceptions import (IsoNotPresentOnDestinationNodeException,
                                IsoAlreadyExistsException, FailedToRemoveFileException,
                                IsoInUseException)
 from mcvirt.system import System
+from mcvirt.utils import get_hostname
+from mcvirt.rpc.pyro_object import PyroObject
 
 
-class Iso(object):
+class Iso(PyroObject):
     """Provides management of ISOs for use in MCVirt"""
 
     def __init__(self, mcvirt_instance, name):
@@ -116,10 +118,10 @@ class Iso(object):
         """Determines if the ISO is currently in use by a VM"""
         from virtual_machine.disk_drive import DiskDrive
         from cluster.cluster import Cluster
-        from virtual_machine.virtual_machine import VirtualMachine
-        for vm_name in VirtualMachine.getAllVms(self.mcvirt_instance,
-                                                node=Cluster.getHostname()):
-            disk_drive_object = DiskDrive(VirtualMachine(self.mcvirt_instance, vm_name))
+        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+        for vm_name in virtual_machine_factory.getAllVmNames(node=get_hostname()):
+            vm_object = virtual_machine_factory.getVirtualMachineByName(vm_name)
+            disk_drive_object = DiskDrive(vm_object)
             vm_current_iso = disk_drive_object.getCurrentDisk()
 
             # If the VM has an iso attached, check if the ISO is this one

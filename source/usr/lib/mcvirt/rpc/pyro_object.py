@@ -29,7 +29,17 @@ class PyroObject(object):
     def _cluster_disabled(self):
         """Determines if the cluster has been actively disabled"""
         # @TODO Implement this using Pyro annotations and current_context
-        return False
+        if self._pyro_initialised:
+            return Pyro4.current_context.ignore_cluster
+        else:
+            return False
+
+    @property
+    def _ignore_drbd(self):
+        if self._pyro_initialised:
+            return Pyro4.current_context.ignore_drbd
+        else:
+            return False
 
     @property
     def _is_cluster_master(self):

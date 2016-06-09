@@ -112,7 +112,7 @@ class NetworkAdapter(object):
     @lockingMethod()
     def delete(self):
         """Remove the given interface from the VM, based on the given MAC address"""
-        self.vm_object.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
         )

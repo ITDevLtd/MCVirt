@@ -274,7 +274,7 @@ class BackupSnapshotDoesNotExistException(MCVirtException):
 
 
 class ExternalStorageCommandErrorException(MCVirtException):
-    """An error ocurred whilst performing an external command"""
+    """An error occurred whilst performing an external command"""
     pass
 
 
@@ -438,7 +438,7 @@ class MissingConfigurationException(MCVirtException):
 
 
 class AuthenticationError(MCVirtException):
-    """Exception raiased on authentication error"""
+    """Exception raised on authentication error"""
     pass
 
 

@@ -19,19 +19,9 @@ import argparse
 
 from mcvirt import MCVirt
 from exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
-from virtual_machine.virtual_machine import VirtualMachine, LockStates
-from virtual_machine.hard_drive.config.base import (Base as HardDriveConfigBase,
-                                                    Driver as HardDriveDriver)
-from virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-from virtual_machine.disk_drive import DiskDrive
-from node.network.network import Network
-from cluster.cluster import Cluster
-from system import System
-from node.drbd import DRBD as NodeDRBD
-from node.node import Node
 from auth.auth import Auth
 from client.rpc import Connection
-from iso.iso import Iso
+from system import System
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -135,10 +125,9 @@ class Parser:
 
         self.create_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
         # Determine if machine is configured to use DRBD
-        hard_drive_storage_types = [n.__name__ for n in HardDriveFactory.getStorageTypes()]
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
-                                        type=str, default=None, choices=hard_drive_storage_types)
+                                        type=str, default=None, choices=['Local', 'DRBD'])
         self.create_parser.add_argument('--driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
@@ -526,7 +515,7 @@ class Parser:
     def printStatus(self, status):
         """Prints if the user has specified that the parser should
            print statuses"""
-        if (self.print_status):
+        if self.print_status:
             print status
 
     def parse_arguments(self, script_args=None, mcvirt_instance=None):
@@ -771,7 +760,7 @@ class Parser:
                 vm_factory = rpc.getConnection('virtual_machine_factory')
                 vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
                 rpc.annotateObject(vm_object)
-                if (args.vnc_port):
+                if args.vnc_port:
                     self.printStatus(vm_object.getVncPort())
                 elif args.node:
                     self.printStatus(vm_object.getNode())
@@ -792,29 +781,33 @@ class Parser:
             elif args.network_action == 'list':
                 self.printStatus(network_factory.getNetworkListTable())
 
-        elif (action == 'migrate'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-            if (args.online_migration):
+        elif action == 'migrate':
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
+            if args.online_migration:
                 vm_object.onlineMigrate(args.destination_node)
             else:
                 vm_object.offlineMigrate(
                     args.destination_node,
                     wait_for_vm_shutdown=args.wait_for_shutdown,
-                    start_after_migration=args.start_after_migration)
+                    start_after_migration=args.start_after_migration
+                )
             self.printStatus('Successfully migrated \'%s\' to %s' %
                              (vm_object.getName(), args.destination_node))
 
-        elif (action == 'move'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
+        elif action == 'move':
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
             vm_object.move(destination_node=args.destination_node,
                            source_node=args.source_node)
 
-        elif (action == 'cluster'):
+        elif action == 'cluster':
+            cluster_object = rpc.getConnection('cluster')
             if args.cluster_action == 'get-connect-string':
-                cluster_object = rpc.getConnection('cluster')
                 self.printStatus(cluster_object.getConnectionString())
             if (args.cluster_action == 'add-node'):
-                cluster_object = rpc.getConnection('cluster')
                 if args.connect_string:
                     connect_string = args.connect_string
                 else:
@@ -822,38 +815,43 @@ class Parser:
                 cluster_object.addNode(connect_string)
                 self.printStatus('Successfully added node')
             if (args.cluster_action == 'remove-node'):
-                cluster_object = Cluster(mcvirt_instance)
                 cluster_object.removeNode(args.node)
                 self.printStatus('Successfully removed node %s' % args.node)
 
-        elif (action == 'node'):
-            if (args.volume_group):
-                Node.setStorageVolumeGroup(mcvirt_instance, args.volume_group)
+        elif action == 'node':
+            node = rpc.getConnection('node')
+            if args.volume_group:
+                node.setStorageVolumeGroup(args.volume_group)
                 self.printStatus('Successfully set VM storage volume group to %s' %
                                  args.volume_group)
 
-            if (args.ip_address):
-                Node.setClusterIpAddress(mcvirt_instance, args.ip_address)
+            if args.ip_address:
+                node.setClusterIpAddress(args.ip_address)
                 self.printStatus('Successfully set cluster IP address to %s' % args.ip_address)
 
-        elif (action == 'verify'):
-            if (args.vm_name):
-                vm_objects = [VirtualMachine(mcvirt_instance, args.vm_name)]
-            elif (args.all):
-                vm_objects = mcvirt_instance.getAllVirtualMachineObjects()
+        elif action == 'verify':
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            if args.vm_name:
+                vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+                rpc.annotateObject(vm_object)
+                vm_objects = [vm_object]
+            elif args.all:
+                vm_objects = vm_factory.getAllVirtualMachines()
 
             # Iterate over the VMs and check each disk
             failures = []
             for vm_object in vm_objects:
+                rpc.annotateObject(vm_object)
                 for disk_object in vm_object.getHardDriveObjects():
-                    if (disk_object.getType() == 'DRBD'):
+                    rpc.annotateObject(disk_object)
+                    if disk_object.getType() == 'DRBD':
                         # Catch any exceptions due to the DRBD volume not being in-sync
                         try:
                             disk_object.verify()
                             self.printStatus(
                                 ('DRBD verification for %s (%s) completed '
                                  'without out-of-sync blocks') %
-                                (disk_object.getConfigObject()._getResourceName(),
+                                (disk_object.resource_name,
                                  vm_object.getName())
                             )
                         except DrbdVolumeNotInSyncException, e:
@@ -863,39 +861,50 @@ class Parser:
 
             # If there were any failures during the verification, raise the exception and print
             # all exception messages
-            if (failures):
+            if failures:
                 raise DrbdVolumeNotInSyncException("\n".join(failures))
 
-        elif (action == 'drbd'):
-            if (args.enable):
-                NodeDRBD.enable(mcvirt_instance)
+        elif action == 'drbd':
+            node_drbd = rpc.getConnection('node_drbd')
+            if args.enable:
+                node_drbd.enable()
             if (args.list):
-                self.printStatus(NodeDRBD.list(mcvirt_instance))
+                self.printStatus(node_drbd.list())
 
-        elif (action == 'backup'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-            hard_drive_object = HardDriveFactory.getObject(vm_object, args.disk_id)
-            if (args.create_snapshot):
+        elif action == 'backup':
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
+            hard_drive_factory = rpc.getConnection('hard_drive_factory')
+            hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+            rpc.annotateObject(hard_drive_object)
+            if args.create_snapshot:
                 self.printStatus(hard_drive_object.createBackupSnapshot())
             elif (args.delete_snapshot):
                 hard_drive_object.deleteBackupSnapshot()
 
-        elif (action == 'lock'):
-            vm_object = VirtualMachine(mcvirt_instance, args.vm_name)
-            if (args.lock):
+        elif action == 'lock':
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
+            if args.lock:
                 vm_object.setLockState(LockStates(LockStates.LOCKED))
-            if (args.unlock):
+            if args.unlock:
                 vm_object.setLockState(LockStates(LockStates.UNLOCKED))
-            if (args.check_lock):
+            if args.check_lock:
                 self.printStatus(LockStates(vm_object.getLockState()).name)
 
-        elif (action == 'clone'):
-            vm_object = VirtualMachine(mcvirt_instance, args.template)
-            vm_object.clone(mcvirt_instance, args.vm_name)
+        elif action == 'clone':
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
+            vm_object.clone(args.vm_name)
 
-        elif (action == 'duplicate'):
-            vm_object = VirtualMachine(mcvirt_instance, args.template)
-            vm_object.duplicate(mcvirt_instance, args.vm_name)
+        elif action == 'duplicate':
+            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            rpc.annotateObject(vm_object)
+            vm_object.duplicate(args.vm_name)
 
         elif action == 'list':
             vm_factory = rpc.getConnection('virtual_machine_factory')
@@ -918,6 +927,6 @@ class Parser:
                 iso_object.delete()
                 self.printStatus('Successfully removed iso: %s' % args.delete_path)
 
-            if (args.add_url):
+            if args.add_url:
                 iso_object = iso_factory.addFromUrl(mcvirt_instance, args.add_url)
                 self.printStatus('Successfully added ISO: %s' % iso_object.getName())

@@ -40,46 +40,24 @@ class Factory(PyroObject):
         self.mcvirt_instance = mcvirt_instance
 
     @Pyro4.expose()
-    def getObject(self, vm_object, disk_id):
+    def getObject(self, vm_object, disk_id, **config):
         """Returns the storage object for a given disk"""
         vm_object = self._convert_remote_object(vm_object)
         vm_config = vm_object.getConfigObject().getConfig()
-        storage_type = vm_config['storage_type']
+        storage_type = None
+        if vm_config['storage_type']:
+            storage_type = vm_config['storage_type']
 
-        hard_drive_object = Factory.getClass(storage_type)(vm_object, disk_id)
+        if 'storage_type' in config:
+            if storage_type is None:
+                storage_type = config['storage_type']
+            del(config['storage_type'])
+
+
+        hard_drive_object = self.getClass(storage_type)(vm_object=vm_object, disk_id=disk_id, **config)
         self._register_object(hard_drive_object)
 
         return hard_drive_object
-
-    def getConfigObject(self, vm_object, storage_type, disk_id=None, config=None):
-        """Returns the config object for a given disk"""
-        for config_class in [ConfigLocal, ConfigDRBD]:
-            if (storage_type == config_class.__name__):
-                config_object = config_class(vm_object, disk_id, config=config)
-                self._register_object(config_object)
-                return config_object
-        raise UnknownStorageTypeException(
-            'Attempted to initialise an unknown storage config type: %s' %
-            storage_type
-        )
-
-    @Pyro4.expose()
-    def getRemoteConfigObject(self, vm_object, arguments):
-        """Returns a hard drive config object, using arguments sent to a remote machine"""
-        vm_object = self._convert_remote_object(vm_object)
-        return self.getConfigObject(vm_object=vm_object, storage_type=arguments['storage_type'],
-                                    config=arguments['config'])
-
-    @Pyro4.expose()
-    @lockingMethod()
-    def addToVirtualMachine(self, config_object, register=True):
-        """Adds storage object to virtual machine"""
-        config_object = self._convert_remote_object(config_object)
-        self._get_registered_object('auth').assertPermission(
-            PERMISSIONS.MODIFY_VM,
-            config_object.vm_object
-        )
-        self.getClass(config_object._getType())._addToVirtualMachine(config_object, register)
 
     @Pyro4.expose()
     @lockingMethod()
@@ -112,25 +90,26 @@ class Factory(PyroObject):
                 storage_type = available_storage_types[0].__name__
             else:
                 raise UnknownStorageTypeException('There are no storage types available')
-        return Factory.getClass(storage_type).create(vm_object, size, driver)
+        hdd_object = self.getClass(storage_type)(vm_object=vm_object, driver=driver)
+        self._register_object(hdd_object)
+        hdd_object.create(size=size)
+        return hdd_object
 
     def _getAvailableStorageTypes(self):
         """Returns a list of storage types that are available on the node"""
         available_storage_types = []
         for storage_type in self.STORAGE_TYPES:
-            if storage_type.isAvailable():
+            if storage_type.isAvailable(self):
                 available_storage_types.append(storage_type)
         return available_storage_types
 
-    @staticmethod
-    def getStorageTypes():
+    def getStorageTypes(self):
         """Returns the available storage types that MCVirt provides"""
-        return Factory.STORAGE_TYPES
+        return self.STORAGE_TYPES
 
-    @staticmethod
-    def getClass(storage_type):
+    def getClass(self, storage_type):
         """Obtains the hard drive class for a given storage type"""
-        for hard_drive_class in Factory.getStorageTypes():
+        for hard_drive_class in self.getStorageTypes():
             if (storage_type == hard_drive_class.__name__):
                 return hard_drive_class
         raise UnknownStorageTypeException(
@@ -138,12 +117,11 @@ class Factory(PyroObject):
             (storage_type)
         )
 
-    @staticmethod
-    def getDrbdObjectByResourceName(mcvirt_instance, resource_name):
+    def getDrbdObjectByResourceName(self, resource_name):
         """Obtains a hard drive object for a DRBD drive, based on the resource name"""
-        from mcvirt.node.drbd import DRBD as NodeDRBD
-        for hard_drive_object in NodeDRBD(mcvirt_instance).getAllDrbdHardDriveObjects():
-            if (hard_drive_object.getConfigObject()._getResourceName() == resource_name):
+        node_drbd = self._get_registered_object('node_drbd')
+        for hard_drive_object in node_drbd.getAllDrbdHardDriveObjects():
+            if hard_drive_object.resource_name == resource_name:
                 return hard_drive_object
         raise HardDriveDoesNotExistException(
             'DRBD hard drive with resource name \'%s\' does not exist' %

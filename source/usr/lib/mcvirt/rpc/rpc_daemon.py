@@ -23,6 +23,7 @@ import time
 
 from mcvirt.mcvirt import MCVirt
 from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
 from mcvirt.iso.factory import Factory as IsoFactory
 from mcvirt.node.network.factory import Factory as NetworkFactory
@@ -33,6 +34,7 @@ from mcvirt.cluster.cluster import Cluster
 from mcvirt.virtual_machine.network_adapter.factory import Factory as NetworkAdapterFactory
 from mcvirt.logger import Logger
 from mcvirt.node.drbd import DRBD as NodeDRBD
+from mcvirt.node.node import Node
 from ssl_socket import SSLSocket
 from mcvirt.utils import get_hostname
 from constants import Annotations
@@ -97,13 +99,29 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     # unless specified otherwise
                     auth = self.registered_factories['auth']
                     if user_object.CLUSTER_USER:
-                        if Annotations.CLUSTER_MASTER in data:
+                        if user_object.CLUSTER_USER and Annotations.CLUSTER_MASTER in data:
                             Pyro4.current_context.cluster_master = data[Annotations.CLUSTER_MASTER]
                         else:
                             Pyro4.current_context.cluster_master = False
+                    else:
+                        Pyro4.current_context.cluster_master = True
 
-                        if Annotations.HAS_LOCK in data:
-                            Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
+                    if user_object.CLUSTER_USER and Annotations.HAS_LOCK in data:
+                        Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
+                    else:
+                        Pyro4.current_context.has_lock = False
+
+                    if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_CLUSTER, user_object=user_object)
+                            and Annotations.IGNORE_CLUSTER in data):
+                        Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_CLUSTER]
+                    else:
+                        Pyro4.current_context.ignore_cluster = False
+
+                    if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_DRBD, user_object=user_object)
+                            and Annotations.IGNORE_DRBD in data):
+                        Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_DRBD]
+                    else:
+                        Pyro4.current_context.ignore_cluster = False
 
                     return session_id
 
@@ -125,13 +143,29 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     # unless specified otherwise
                     auth = self.registered_factories['auth']
                     if user_object.CLUSTER_USER:
-                        if Annotations.CLUSTER_MASTER in data:
+                        if user_object.CLUSTER_USER and Annotations.CLUSTER_MASTER in data:
                             Pyro4.current_context.cluster_master = data[Annotations.CLUSTER_MASTER]
                         else:
                             Pyro4.current_context.cluster_master = False
+                    else:
+                        Pyro4.current_context.cluster_master = True
 
-                        if Annotations.HAS_LOCK in data:
-                            Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
+                    if user_object.CLUSTER_USER and Annotations.HAS_LOCK in data:
+                        Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
+                    else:
+                        Pyro4.current_context.has_lock = False
+
+                    if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_CLUSTER, user_object=user_object)
+                            and Annotations.IGNORE_CLUSTER in data):
+                        Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_CLUSTER]
+                    else:
+                        Pyro4.current_context.ignore_cluster = False
+
+                    if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_DRBD, user_object=user_object)
+                            and Annotations.IGNORE_DRBD in data):
+                        Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_DRBD]
+                    else:
+                        Pyro4.current_context.ignore_cluster = False
 
                     return session_id
         except Exception, e:
@@ -225,6 +259,10 @@ class RpcNSMixinDaemon(object):
         # Create network adapter factory and register with daemon
         network_adapter_factory = NetworkAdapterFactory(self.mcvirt_instance)
         self.register(network_adapter_factory, objectId='network_adapter_factory', force=True)
+
+        # Create node instance and register with daemon
+        node = Node(self.mcvirt_instance)
+        self.register(node, objectId='node', force=True)
 
         # Create logger object and register with daemon
         logger = Logger()

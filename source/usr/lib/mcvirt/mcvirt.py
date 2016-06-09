@@ -93,16 +93,7 @@ class MCVirt(object):
         if (self.obtained_filelock or self.lockfile_object.is_locked()):
             raise MCVirtLockException('An instance of MCVirt is already running')
 
-        try:
-            self.lockfile_object.acquire(timeout=timeout)
-            if (self.initialise_nodes and initialise_nodes):
-                for remote_node in self.remote_nodes:
-                    self.remote_nodes[remote_node].runRemoteCommand('mcvirt-obtainLock',
-                                                                    {'timeout': timeout})
-
-            self.obtained_filelock = True
-        except:
-            raise MCVirtLockException('An instance of MCVirt is already running')
+        self.obtained_filelock = True
 
     def releaseLock(self, initialise_nodes=True):
         """Releases the MCVirt lock file"""
@@ -145,26 +136,8 @@ class MCVirt(object):
                 )
         return self.connection
 
-    def initialiseNodes(self):
-        """Returns the status of the MCVirt 'initialise_nodes' flag"""
-        return self.initialise_nodes
-
-    def getAuthObject(self):
-        """Returns an instance of the Auth class"""
-        from auth.auth import Auth
-        return Auth(self)
-
     def getSessionObject(self):
         """Returns an instance of the Session class"""
         from auth.session import Session
         return Session(self)
 
-    def getAllVirtualMachineObjects(self):
-        """Obtain array of all domains from libvirt"""
-        from virtual_machine.virtual_machine import VirtualMachine
-        all_vms = VirtualMachine.getAllVms(self)
-        vm_objects = []
-        for vm_name in all_vms:
-            vm_objects.append(VirtualMachine(self, vm_name))
-
-        return vm_objects

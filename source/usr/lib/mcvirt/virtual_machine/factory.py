@@ -34,7 +34,7 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
-        vm_object = VirtualMachine(self.mcvirt_instance, vm_name)
+        vm_object = VirtualMachine(self, self.mcvirt_instance, vm_name)
         self._register_object(vm_object)
         return vm_object
 
@@ -101,7 +101,7 @@ class Factory(PyroObject):
                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
                auth_check=True, hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
-        self.mcvirt_instance.getAuthObject().assertPermission(PERMISSIONS.CREATE_VM)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.CREATE_VM)
 
         # Validate the VM name
         valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
@@ -135,7 +135,7 @@ class Factory(PyroObject):
         # If available nodes has not been passed, assume the local machine is the only
         # available node if local storage is being used. Use the machines in the cluster
         # if DRBD is being used
-        cluster_object = Cluster(self.mcvirt_instance)
+        cluster_object = self._get_registered_object('cluster')
         all_nodes = cluster_object.getNodes(return_all=True)
         all_nodes.append(get_hostname())
 

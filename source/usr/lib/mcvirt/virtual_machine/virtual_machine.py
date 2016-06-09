@@ -67,7 +67,7 @@ class VirtualMachine(PyroObject):
 
     OBJECT_TYPE = 'virtual machine'
 
-    def __init__(self, mcvirt_object, name):
+    def __init__(self, virtual_machine_factory, mcvirt_object, name):
         """Sets member variables and obtains LibVirt domain object"""
         self.name = name
         self.mcvirt_object = mcvirt_object
@@ -77,8 +77,7 @@ class VirtualMachine(PyroObject):
             raise LibvirtCommandException('Error: LibVirt connection not alive')
 
         # Check that the domain exists
-        from factory import Factory as VirtualMachineFactory
-        if not VirtualMachineFactory(mcvirt_object).checkExists(self.name):
+        if not virtual_machine_factory.checkExists(self.name):
             raise VirtualMachineDoesNotExistException(
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
@@ -103,9 +102,10 @@ class VirtualMachine(PyroObject):
     def stop(self):
         """Stops the VM"""
         # Check the user has permission to start/stop VMs
-        self.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.CHANGE_VM_POWER_STATE,
-            self)
+            self
+        )
 
         # Determine if VM is registered on the local machine
         if self.isRegisteredLocally():
@@ -136,9 +136,10 @@ class VirtualMachine(PyroObject):
     def start(self, iso_object=None):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
-        self.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.CHANGE_VM_POWER_STATE,
-            self)
+            self
+        )
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -198,9 +199,10 @@ class VirtualMachine(PyroObject):
     def reset(self):
         """Resets the VM"""
         # Check the user has permission to start/stop VMs
-        self.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.CHANGE_VM_POWER_STATE,
-            self)
+            self
+        )
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -260,14 +262,14 @@ class VirtualMachine(PyroObject):
             warnings += 'Warning: Some details are not available' + \
                         " as the VM is not registered on a node\n"
 
-        if ((self.isRegisteredRemotely() and
-                not self.getNode() in self.mcvirt_object.failed_nodes)):
-
-            from mcvirt.cluster.cluster import Cluster
-            cluster_instance = Cluster(self.mcvirt_object)
-            remote_object = cluster_instance.getRemoteNode(self.getNode())
-            return remote_object.runRemoteCommand('virtual_machine-getInfo',
-                                                  {'vm_name': self.getName()})
+        if self.isRegisteredRemotely():
+            print 'registeed remoely'
+            cluster = self._get_registered_object('cluster')
+            remote_object = cluster.getRemoteNode(self.getNode())
+            remote_vm_factory = remote_object.getConnection('virtual_machine_factory')
+            remote_vm = remote_vm_factory.getVirtualMachineByName(self.getName())
+            remote_object.annotateObject(remote_vm)
+            return remote_vm.getInfo()
 
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
@@ -309,7 +311,7 @@ class VirtualMachine(PyroObject):
             table.add_row(('-- Disk ID --', '-- Disk Size --'))
             for disk_object in disk_objects:
                 table.add_row(
-                    (str(disk_object.getConfigObject().getId()),
+                    (str(disk_object.disk_id),
                      str(int(disk_object.getSize()) / 1000) + 'GB')
                 )
         else:
@@ -329,13 +331,13 @@ class VirtualMachine(PyroObject):
 
         # Get information about the permissions for the VM
         table.add_row(('-- Group --', '-- Users --'))
-        for permission_group in self.mcvirt_object.getAuthObject().getPermissionGroups():
-            users = self.mcvirt_object.getAuthObject().getUsersInPermissionGroup(
+        for permission_group in self._get_registered_object('auth').getPermissionGroups():
+            users = self._get_registered_object('auth').getUsersInPermissionGroup(
                 permission_group,
-                self)
+                self
+            )
             users_string = ','.join(users)
             table.add_row((permission_group, users_string))
-
         return table.draw() + "\n" + warnings
 
     @Pyro4.expose()
@@ -400,7 +402,8 @@ class VirtualMachine(PyroObject):
                 """Remove a given child VM from a parent VM configuration"""
                 vm_config['clone_children'].remove(self.getName())
 
-            parent_vm_object = VirtualMachine(self.mcvirt_object, self.getCloneParent())
+            vm_factory = self._get_registered_object('virtual_machine_factory')
+            parent_vm_object = vm_factory.getVirtualMachineByName(self.getCloneParent())
             parent_vm_object.getConfigObject().updateConfig(
                 removeCloneChildConfig, 'Removed clone child \'%s\' from \'%s\'' %
                 (self.getName(), self.getCloneParent()))
@@ -439,7 +442,7 @@ class VirtualMachine(PyroObject):
     def updateRAM(self, memory_allocation, old_value):
         """Updates the amount of RAM allocated to a VM"""
         # Check the user has permission to modify VMs
-        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MODIFY_VM, self)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MODIFY_VM, self)
 
         # Ensure memory_allocation is an interger, greater than 0
         try:
@@ -482,7 +485,7 @@ class VirtualMachine(PyroObject):
     def updateCPU(self, cpu_count, old_value):
         """Updates the number of CPU cores attached to a VM"""
         # Check the user has permission to modify VMs
-        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MODIFY_VM, self)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MODIFY_VM, self)
 
         # Ensure cpu count is an interger, greater than 0
         try:
@@ -521,7 +524,7 @@ class VirtualMachine(PyroObject):
     def getHardDriveObjects(self):
         """Returns an array of disk objects for the disks attached to the VM"""
         disks = self.getConfigObject().getConfig()['hard_disks']
-        hard_drive_factory = HardDriveFactory(self.mcvirt_object)
+        hard_drive_factory = self._get_registered_object('hard_drive_factory')
         disk_objects = []
         for disk_id in disks:
             disk_objects.append(hard_drive_factory.getObject(self, disk_id))
@@ -597,7 +600,7 @@ class VirtualMachine(PyroObject):
         import time
         from mcvirt.cluster.cluster import Cluster
         # Ensure user has permission to migrate VM
-        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MIGRATE_VM, self)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MIGRATE_VM, self)
 
         # Ensure the VM is locally registered
         self.ensureRegisteredLocally()
@@ -643,11 +646,10 @@ class VirtualMachine(PyroObject):
     def onlineMigrate(self, destination_node_name):
         """Performs an online migration of a VM to another node in the cluster"""
         from mcvirt.cluster.cluster import Cluster
-        from factory import Factory
-        factory = Factory(self.mcvirt_object)
+        factory = self._get_registered_object('virtual_machine_factory')
 
         # Ensure user has permission to migrate VM
-        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MIGRATE_VM, self)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MIGRATE_VM, self)
 
         # Ensure VM is registered locally and unlocked
         self.ensureRegisteredLocally()
@@ -832,7 +834,7 @@ class VirtualMachine(PyroObject):
            LVM snapshotting to duplicate the Hard disk. DRBD is not
            currently supported"""
         # Check the user has permission to create VMs
-        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.CLONE_VM, self)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.CLONE_VM, self)
 
         # Ensure the storage type for the VM is not DRBD, as DRBD-based VMs cannot be cloned
         if self.getStorageType() == 'DRBD':
@@ -885,7 +887,7 @@ class VirtualMachine(PyroObject):
 
         # Set current user as an owner of the new VM, so that they have permission
         # to perform functions on the VM
-        self.mcvirt_object.getAuthObject().copyPermissions(self, new_vm_object)
+        self._get_registered_object('auth').copyPermissions(self, new_vm_object)
 
         # Clone the hard drives of the VM
         disk_objects = self.getHardDriveObjects()
@@ -898,7 +900,7 @@ class VirtualMachine(PyroObject):
         """Duplicates a VM, creating an identical machine, making a
            copy of the storage"""
         # Check the user has permission to create VMs
-        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.DUPLICATE_VM, self)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.DUPLICATE_VM, self)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -924,7 +926,7 @@ class VirtualMachine(PyroObject):
 
         # Set current user as an owner of the new VM, so that they have permission
         # to perform functions on the VM
-        self.mcvirt_object.getAuthObject().copyPermissions(self, new_vm_object)
+        self._get_registered_object('auth').copyPermissions(self, new_vm_object)
 
         # Clone the hard drives of the VM
         disk_objects = self.getHardDriveObjects()
@@ -936,7 +938,7 @@ class VirtualMachine(PyroObject):
     def move(self, destination_node, source_node=None):
         """Move a VM from one node to another"""
         # Ensure user has the ability to move VMs
-        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.MOVE_VM, self)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MOVE_VM, self)
 
         from mcvirt.cluster.cluster import Cluster
         cluster_instance = Cluster(self.mcvirt_object)
@@ -1004,7 +1006,7 @@ class VirtualMachine(PyroObject):
     @lockingMethod()
     def register(self):
         """Public method for permforming VM register"""
-        self.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.SET_VM_NODE, self
         )
         self._register()
@@ -1044,7 +1046,7 @@ class VirtualMachine(PyroObject):
 
         # Add hard drive configurations
         for hard_drive_object in self.getHardDriveObjects():
-            drive_xml = hard_drive_object.getConfigObject()._generateLibvirtXml()
+            drive_xml = hard_drive_object._generateLibvirtXml()
             device_xml.append(drive_xml)
 
         # Add network adapter configurations
@@ -1069,7 +1071,7 @@ class VirtualMachine(PyroObject):
     @lockingMethod()
     def unregister(self):
         """Public method for permforming VM unregister"""
-        self.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.SET_VM_NODE, self
         )
         self._unregister()
@@ -1096,7 +1098,7 @@ class VirtualMachine(PyroObject):
         self._setNode(None)
 
     def setNode(self, node):
-        self.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.SET_VM_NODE, self
         )
 
@@ -1178,7 +1180,7 @@ class VirtualMachine(PyroObject):
     def getVncPort(self):
         """Returns the port used by the VNC display for the VM"""
         # Check the user has permission to view the VM console
-        self.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.VIEW_VNC_CONSOLE,
             self
         )
@@ -1208,7 +1210,7 @@ class VirtualMachine(PyroObject):
     def setLockState(self, lock_status):
         """Sets the lock status of the VM"""
         # Ensure the user has permission to set VM locks
-        self.mcvirt_object.getAuthObject().assertPermission(PERMISSIONS.SET_VM_LOCK, self)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.SET_VM_LOCK, self)
 
         # Check if the lock is already set to this state
         if self.getLockState() == lock_status:

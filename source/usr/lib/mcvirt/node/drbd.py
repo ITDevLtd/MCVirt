@@ -26,99 +26,79 @@ from mcvirt.mcvirt import MCVirt
 from mcvirt.exceptions import DRBDNotInstalledException, DRBDAlreadyEnabled, DRBDNotEnabledOnNode
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
-from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.rpc.pyro_object import PyroObject
 
 
-class DRBD(object):
+class DRBD(PyroObject):
     """Performs configuration of DRBD on the node"""
 
     CONFIG_DIRECTORY = '/etc/drbd.d'
     GLOBAL_CONFIG = CONFIG_DIRECTORY + '/global_common.conf'
     GLOBAL_CONFIG_TEMPLATE = MCVirt.TEMPLATE_DIR + '/drbd_global.conf'
     DRBDADM = '/sbin/drbdadm'
-    INITIAL_PORT = 7789
-    INITIAL_MINOR_ID = 1
     CLUSTER_SIZE = 2
 
     def __init__(self, mcvirt_instance):
         """Create object and store MCVirt instance"""
         self.mcvirt_instance = mcvirt_instance
 
-    @staticmethod
     @Pyro4.expose()
-    def isEnabled():
+    def isEnabled(self):
         """Determines whether DRBD is enabled on the node or not"""
-        return DRBD.getConfig()['enabled']
+        return self.getConfig()['enabled']
 
-    def isIgnored(self):
-        """Determines if the user has specified for DRBD state to be ignored"""
-        return self.mcvirt_instance.ignore_drbd
-
-    def ignoreDrbd(self):
-        """Sets a global parameter for ignoring DRBD state"""
-        self.mcvirt_instance.getAuthObject().assertPermission(PERMISSIONS.CAN_IGNORE_DRBD)
-        self.mcvirt_instance.ignore_drbd = True
-
-    @staticmethod
     @Pyro4.expose()
-    def isInstalled():
+    def isInstalled(self):
         """Determines if the 'drbdadm' command is present to determine if the
            'drbd8-utils' package is installed"""
-        import os
-        return (os.path.isfile(DRBD.DRBDADM))
+        return os.path.isfile(self.DRBDADM)
 
-    @staticmethod
     def ensureInstalled():
         """Ensures that DRBD is installed on the node"""
-        if (not DRBD.isInstalled()):
+        if not self.isInstalled():
             raise DRBDNotInstalledException('drbdadm not found' +
                                             ' (Is the drbd8-utils package installed?)')
 
     def enable(self, secret=None):
         """Ensures the machine is suitable to run DRBD"""
-        import os.path
-        from mcvirt.cluster.cluster import Cluster
         # Ensure user has the ability to manage DRBD
-        self.mcvirt_instance.getAuthObject().assertPermission(PERMISSIONS.MANAGE_DRBD)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_DRBD)
 
         # Ensure that DRBD is installed
-        DRBD.ensureInstalled()
+        self.ensureInstalled()
 
-        if (DRBD.isEnabled() and self.mcvirt_instance.initialiseNodes()):
+        if self.isEnabled() and self._is_cluster_master:
             raise DRBDAlreadyEnabled('DRBD has already been enabled on this node')
 
-        if (secret is None):
-            secret = DRBD.generateSecret()
+        if secret is None:
+            secret = self.generateSecret()
 
         # Set the secret in the local configuration
-        DRBD.setSecret(secret)
+        self.setSecret(secret)
 
-        if (self.mcvirt_instance.initialiseNodes()):
+        if self._is_cluster_master:
             # Enable DRBD on the remote nodes
-            cluster_object = Cluster(mcvirt_instance)
-            cluster_object.runRemoteCommand('node-drbd-enable', {'secret': secret})
+            cluster = self._get_registered_object('cluster')
+            cluster.runRemoteCommand('node-drbd-enable', {'secret': secret})
 
         # Generate the global DRBD configuration
-        DRBD.generateConfig(mcvirt_instance)
+        self.generateConfig()
 
         # Update the local configuration
         def updateConfig(config):
             config['drbd']['enabled'] = 1
-        mcvirt_config = MCVirtConfig()
-        mcvirt_config.updateConfig(updateConfig, 'Enabled DRBD')
+        MCVirtConfig().updateConfig(updateConfig, 'Enabled DRBD')
 
-    @staticmethod
-    def getConfig():
+    def getConfig(self):
         """Returns the global DRBD configuration"""
         mcvirt_config = MCVirtConfig()
-        if ('drbd' in mcvirt_config.getConfig().keys()):
+        if 'drbd' in mcvirt_config.getConfig().keys():
             return mcvirt_config.getConfig()['drbd']
         else:
-            return DRBD.getDefaultConfig()
+            return self.getDefaultConfig()
 
-    @staticmethod
-    def getDefaultConfig():
+    def getDefaultConfig(self):
         default_config = \
             {
                 'enabled': 0,
@@ -131,39 +111,35 @@ class DRBD(object):
     def generateConfig(self):
         """Generates the DRBD configuration"""
         # Obtain the MCVirt DRBD config
-        drbd_config = DRBD.getConfig()
+        drbd_config = self.getConfig()
 
         # Replace the variables in the template with the local DRBD configuration
-        config_content = Template(file=DRBD.GLOBAL_CONFIG_TEMPLATE, searchList=[drbd_config])
+        config_content = Template(file=self.GLOBAL_CONFIG_TEMPLATE, searchList=[drbd_config])
 
         # Write the DRBD configuration
-        fh = open(DRBD.GLOBAL_CONFIG, 'w')
+        fh = open(self.GLOBAL_CONFIG, 'w')
         fh.write(config_content.respond())
         fh.close()
 
         # Update DRBD running configuration
-        DRBD.adjustDRBDConfig(self.mcvirt_instance)
+        self.adjustDRBDConfig()
 
-    @staticmethod
-    def generateSecret():
+    def generateSecret(self):
         """Generates a random secret for DRBD"""
         import random
         import string
 
         return ''.join([random.choice(string.ascii_letters + string.digits) for _ in xrange(16)])
 
-    @staticmethod
-    def setSecret(secret):
+    def setSecret(self, secret):
         """Sets the DRBD configuration in the global MCVirt config file"""
         def updateConfig(config):
             config['drbd']['secret'] = secret
-
-        mcvirt_config = MCVirtConfig()
-        mcvirt_config.updateConfig(updateConfig, 'Set DRBD secret')
+        MCVirtConfig().updateConfig(updateConfig, 'Set DRBD secret')
 
     def adjustDRBDConfig(self, resource='all'):
         """Performs a DRBD adjust, which updates the DRBD running configuration"""
-        if (len(DRBD.getAllDrbdHardDriveObjects(self.mcvirt_instance))):
+        if (len(self.getAllDrbdHardDriveObjects())):
             System.runCommand([DRBD.DRBDADM, 'adjust', resource])
 
     def getAllDrbdHardDriveObjects(include_remote=False):
@@ -171,9 +147,8 @@ class DRBD(object):
         from mcvirt.cluster.cluster import Cluster
 
         hard_drive_objects = []
-        all_vms = VirtualMachine.getAllVms(self.mcvirt_instance)
-        for vm_name in all_vms:
-            vm_object = VirtualMachine(mcvirt_object=self.mcvirt_instance, name=vm_name)
+        vm_factory = self._get_registered_object('virtual_machine_factory')
+        for vm_object in vm_factory.getAllVirtualMachines():
             if (Cluster.getHostname() in vm_object.getAvailableNodes() or include_remote):
                 all_hard_drive_objects = vm_object.getHardDriveObjects()
 
@@ -185,19 +160,11 @@ class DRBD(object):
 
     def getUsedDrbdPorts(self):
         """Returns a list of used DRBD ports"""
-        used_ports = []
-        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(self.mcvirt_instance,
-                                                                 include_remote=True):
-            used_ports.append(hard_drive_object.getConfigObject()._getDrbdPort())
-        return used_ports
+        return [hdd.drbd_port for hdd in self.getAllDrbdHardDriveObjects(include_remote=True)]
 
     def getUsedDrbdMinors(self):
         """Returns a list of used DRBD minor IDs"""
-        used_minors = []
-        for hard_drive_object in DRBD.getAllDrbdHardDriveObjects(self.mcvirt_instance,
-                                                                 include_remote=True):
-            used_minors.append(hard_drive_object.getConfigObject()._getDrbdMinor())
-        return used_minors
+        return [hdd.drbd_minor for hdd in self.getAllDrbdHardDriveObjects(include_remote=True)]
 
     def list(self):
         """Lists the DRBD volumes and statuses"""
@@ -212,11 +179,11 @@ class DRBD(object):
         table.set_cols_align(('l', 'l', 'c', 'c', 'l', 'c', 'l', 'c'))
 
         # Iterate over DRBD objects, adding to the table
-        for drbd_object in DRBD.getAllDrbdHardDriveObjects(self.mcvirt_instance, True):
-            table.add_row((drbd_object.getConfigObject()._getResourceName(),
-                           drbd_object.getVmObject().getName(),
-                           drbd_object.getConfigObject()._getDrbdMinor(),
-                           drbd_object.getConfigObject()._getDrbdPort(),
+        for drbd_object in self.getAllDrbdHardDriveObjects(True):
+            table.add_row((drbd_object.resource_name,
+                           drbd_object.vm_object.getName(),
+                           drbd_object.drbd_minor,
+                           drbd_object.drbd_port,
                            'Local: %s, Remote: %s' % (drbd_object._drbdGetRole()[0].name,
                                                       drbd_object._drbdGetRole()[1].name),
                            drbd_object._drbdGetConnectionState().name,

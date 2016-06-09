@@ -28,7 +28,8 @@ from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
                                RemoteObjectConflict, ClusterNotInitialisedException,
                                InvalidConnectionString, CAFileAlreadyExists,
                                CouldNotConnectToNodeException,
-                               MissingConfigurationException)
+                               MissingConfigurationException,
+                               DRBDNotInstalledException, DRBDAlreadyEnabled)
 from mcvirt.auth.auth import Auth
 from mcvirt.system import System
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -301,10 +302,8 @@ class Cluster(PyroObject):
             # Add each of the disks to the VM
             remote_hard_drive_factory = remote_object.getConnection('hard_drive_factory')
             for hard_disk in vm_object.getHardDriveObjects():
-                remote_hard_drive_object = remote_hard_drive_factory.getRemoteConfigObject(
-                    hard_disk.getConfigObject()._dumpConfig()
-                )
-                remote_object.annotateObject(remote_hard_drive_object)
+                remote_hard_drive_object = hard_disk.getRemoteObject(remote_node=remote_object,
+                                                                     registered=False)
                 remote_hard_drive_factory.addToVirtualMachine(remote_hard_drive_object)
 
             remote_network_factory = remote_object.getconnection('network_factory')
@@ -360,11 +359,8 @@ class Cluster(PyroObject):
         # If DRBD is enabled on the local machine, ensure it is installed on the remote machine
         # and is not already enabled
         remote_node_drbd = remote_connection.getConnection('node_drbd')
-        from mcvirt.node.drbd import (DRBD as NodeDRBD,
-                                      DRBDNotInstalledException,
-                                      DRBDAlreadyEnabled)
 
-        if NodeDRBD.isEnabled():
+        if self._get_registered_object('node_drbd').isEnabled():
             if not remote_node_drbd.isInstalled():
                 raise DRBDNotInstalledException('DRBD is not installed on the remote node')
 
@@ -372,9 +368,10 @@ class Cluster(PyroObject):
             raise DRBDNotInstalledException('DRBD is already enabled on the remote node')
 
     def removeNode(self, remote_host):
+        # TODO: Needs updating to support RPC
         """Removes a node from the MCVirt cluster"""
         # Ensure the user has privileges to manage the cluster
-        self.mcvirt_instance.getAuthObject().assertPermission(PERMISSIONS.MANAGE_CLUSTER)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
 
         # Ensure node exists
         self.ensureNodeExists(remote_host)
@@ -448,7 +445,8 @@ class Cluster(PyroObject):
         except:
             if not self._cluster_disabled:
                 raise
-        return Node(node, node_config)
+            node_object = None
+        return node_object
 
     def getClusterConfig(self):
         """Gets the MCVirt cluster configuration"""
@@ -479,7 +477,8 @@ class Cluster(PyroObject):
             nodes = self.getNodes()
         for node in nodes:
             node_object = self.getRemoteNode(node)
-            return_data[node] = callback_method(node_object)
+            if node_object is not None:
+                return_data[node] = callback_method(node_object)
         return return_data
 
     def checkNodeExists(self, node_name):

@@ -51,7 +51,7 @@ class Network(PyroObject):
     def delete(self):
         """Deletes a network from the node"""
         # Ensure user has permission to manage networks
-        self.mcvirt_instance.getAuthObject().assertPermission(PERMISSIONS.MANAGE_HOST_NETWORKS)
+        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network is not connected to any VMs
         connected_vms = self._getConnectedVirtualMachines()

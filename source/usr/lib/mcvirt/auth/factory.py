@@ -47,7 +47,7 @@ class Factory(PyroObject):
 
     def create(self, username, password, user_type=User):
         """Creates a user"""
-        self.mcvirt_instance.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.MANAGE_USERS
         )
 
@@ -85,7 +85,7 @@ class Factory(PyroObject):
     def addConfig(self, username, user_config):
         """Adds a user config to the local node"""
         # Ensure this is being run as a Cluster User
-        self.mcvirt_instance.getAuthObject().check_user_type('ClusterUser')
+        self._get_registered_object('auth').check_user_type('ClusterUser')
 
         def updateConfig(config):
             config['users'][username] = user_config

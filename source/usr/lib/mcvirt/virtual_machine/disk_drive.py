@@ -42,7 +42,7 @@ class DiskDrive(PyroObject):
         iso_object = self._convert_remote_object(iso_object)
 
         # Ensure that the user has permissions to modifiy the VM
-        self.vm_object.mcvirt_object.getAuthObject().assertPermission(
+        self._get_registered_object('auth').assertPermission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
         )

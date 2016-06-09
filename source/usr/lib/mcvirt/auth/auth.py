@@ -40,7 +40,7 @@ class Auth(PyroObject):
     def checkRootPrivileges():
         """Ensures that the user is either running as root
         or using sudo"""
-        if (os.geteuid() == 0):
+        if os.geteuid() == 0:
             return True
         else:
             raise UnprivilegedUserException('MCVirt must be run using sudo')
@@ -61,7 +61,7 @@ class Auth(PyroObject):
     def assertPermission(self, permission_enum, vm_object=None):
         """Uses checkPermission function to determine if a user has a given permission
         and throws an exception if the permission is not present"""
-        if (self.checkPermission(permission_enum, vm_object)):
+        if self.checkPermission(permission_enum, vm_object):
             return True
         else:
             # If the permission has not been found, throw an exception explaining that
@@ -70,14 +70,15 @@ class Auth(PyroObject):
                                                    ' required permission: %s' %
                                                    permission_enum.name)
 
-    def checkPermission(self, permission_enum, vm_object=None):
+    def checkPermission(self, permission_enum, vm_object=None, user_object=None):
         """Checks if the user has a given permission, either globally through MCVirt or for a
            given VM"""
         # If the user is a superuser, all permissions are attached to the user
-        if (self.isSuperuser()):
+        if self.isSuperuser():
             return True
 
-        user_object = self.mcvirt_instance.getSessionObject().getCurrentUserObject()
+        if user_object is None:
+            user_object = self.mcvirt_instance.getSessionObject().getCurrentUserObject()
 
         # Determine if the type of user has the permissions
         if permission_enum in user_object.PERMISSIONS:
@@ -87,12 +88,12 @@ class Auth(PyroObject):
         # if the user has been granted the permission
         mcvirt_config = MCVirtConfig()
         mcvirt_permissions = mcvirt_config.getPermissionConfig()
-        if (self.checkPermissionInConfig(mcvirt_permissions, user_object.getUsername(), permission_enum)):
+        if self.checkPermissionInConfig(mcvirt_permissions, user_object.getUsername(), permission_enum):
             return True
 
         # If a vm_object has been passed, check the VM
         # configuration file for the required permissions
-        if (vm_object):
+        if vm_object:
             vm_config_object = vm_object.getConfigObject()
             vm_config = vm_config_object.getPermissionConfig()
 
@@ -109,7 +110,7 @@ class Auth(PyroObject):
         for (permission_group, users) in permission_config.items():
 
             # Check that the group, defined in the VM, is defined in this class
-            if (permission_group not in PERMISSION_GROUPS.keys()):
+            if permission_group not in PERMISSION_GROUPS.keys():
                 raise InvalidPermissionGroupException(
                     'Permissions group, %s, does not exist' % permission_group
                 )
@@ -141,8 +142,6 @@ class Auth(PyroObject):
     @Pyro4.expose()
     def addSuperuser(self, user_object, ignore_duplicate=None):
         """Adds a new superuser"""
-        from mcvirt.cluster.cluster import Cluster
-
         # Ensure the user is a superuser
         if (not self.isSuperuser()):
             raise InsufficientPermissionsException(
@@ -150,7 +149,6 @@ class Auth(PyroObject):
             )
         user_object = self._convert_remote_object(user_object)
         username = user_object.getUsername()
-        print username
 
         mcvirt_config = MCVirtConfig()
 
@@ -160,10 +158,20 @@ class Auth(PyroObject):
                 config['superusers'].append(username)
             mcvirt_config.updateConfig(updateConfig, 'Added superuser \'%s\'' % username)
 
-        elif (not ignore_duplicate):
+        elif not ignore_duplicate:
             raise DuplicatePermissionException(
                 'User \'%s\' is already a superuser' % username
             )
+
+        if self._is_cluster_master:
+            def remoteCommand(connection):
+                remote_user_factory = connection.getConnection('user_factory')
+                remote_user = remote_user_factory.get_user_by_username(user_object.getUsername())
+                remote_auth = connection.getConnection('auth')
+                remote_auth.addSuperuser(remote_user, ignore_duplicate=ignore_duplicate)
+
+            cluster = self._get_registered_object('cluster')
+            cluster.runRemoteCommand(remoteCommand)
 
     @Pyro4.expose()
     def deleteSuperuser(self, user_object):
@@ -190,9 +198,14 @@ class Auth(PyroObject):
         mcvirt_config.updateConfig(updateConfig, 'Removed \'%s\' from superuser group' % username)
 
         if self._is_cluster_master:
-            cluster_object = Cluster(self.mcvirt_instance)
-            cluster_object.runRemoteCommand('auth-deleteSuperuser',
-                                            {'username': username})
+            def remoteCommand(connection):
+                remote_user_factory = connection.getConnection('user_factory')
+                remote_user = remote_user_factory.get_user_by_username(user_object.getUsername())
+                remote_auth = connection.getConnection('auth')
+                remote_auth.deleteSuperuser(remote_user)
+
+            cluster = self._get_registered_object('cluster')
+            cluster.runRemoteCommand(remoteCommand)
 
     @Pyro4.expose()
     @lockingMethod()

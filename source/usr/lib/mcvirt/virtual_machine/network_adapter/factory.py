@@ -66,7 +66,7 @@ class Factory(PyroObject):
         interfaces = []
         vm_config = virtual_machine.getConfigObject().getConfig()
         for mac_address in vm_config['network_interfaces'].keys():
-            interface_object = NetworkAdapter(mac_address, self)
+            interface_object = NetworkAdapter(mac_address, virtual_machine)
             self._register_object(interface_object)
             interfaces.append(interface_object)
         return interfaces
