@@ -28,6 +28,8 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.lock import lockingMethod
+from mcvirt.utils import get_hostname
 
 
 class DRBD(PyroObject):
@@ -54,12 +56,14 @@ class DRBD(PyroObject):
            'drbd8-utils' package is installed"""
         return os.path.isfile(self.DRBDADM)
 
-    def ensureInstalled():
+    def ensureInstalled(self):
         """Ensures that DRBD is installed on the node"""
         if not self.isInstalled():
             raise DRBDNotInstalledException('drbdadm not found' +
                                             ' (Is the drbd8-utils package installed?)')
 
+    @Pyro4.expose()
+    @lockingMethod()
     def enable(self, secret=None):
         """Ensures the machine is suitable to run DRBD"""
         # Ensure user has the ability to manage DRBD
@@ -80,7 +84,9 @@ class DRBD(PyroObject):
         if self._is_cluster_master:
             # Enable DRBD on the remote nodes
             cluster = self._get_registered_object('cluster')
-            cluster.runRemoteCommand('node-drbd-enable', {'secret': secret})
+            def remoteCommand(node):
+                remote_drbd = node.getConnection('node_drbd')
+                remote_drbd.enabble(secret=secret)
 
         # Generate the global DRBD configuration
         self.generateConfig()
@@ -142,14 +148,11 @@ class DRBD(PyroObject):
         if (len(self.getAllDrbdHardDriveObjects())):
             System.runCommand([DRBD.DRBDADM, 'adjust', resource])
 
-    def getAllDrbdHardDriveObjects(include_remote=False):
-        from mcvirt.virtual_machine.virtual_machine import VirtualMachine
-        from mcvirt.cluster.cluster import Cluster
-
+    def getAllDrbdHardDriveObjects(self, include_remote=False):
         hard_drive_objects = []
         vm_factory = self._get_registered_object('virtual_machine_factory')
         for vm_object in vm_factory.getAllVirtualMachines():
-            if (Cluster.getHostname() in vm_object.getAvailableNodes() or include_remote):
+            if (get_hostname() in vm_object.getAvailableNodes() or include_remote):
                 all_hard_drive_objects = vm_object.getHardDriveObjects()
 
                 for hard_drive_object in all_hard_drive_objects:

@@ -82,9 +82,13 @@ class Factory(PyroObject):
                     'Storage type does not match VMs current storage type'
                 )
             storage_type = vm_object.getStorageType()
+
+        available_storage_types = self._getAvailableStorageTypes()
+        if storage_type:
+            if storage_type not in available_storage_types:
+                raise UnknownStorageTypeException('%s is not supported by this node' % storage_type)
         else:
-            available_storage_types = self._getAvailableStorageTypes()
-            if len(available_storage_types) > 1 and not storage_type:
+            if len(available_storage_types) > 1:
                 raise UnknownStorageTypeException('Storage type must be specified')
             elif len(available_storage_types) == 1:
                 storage_type = available_storage_types[0].__name__

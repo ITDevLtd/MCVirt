@@ -7,8 +7,6 @@ from os import makedirs
 from virtual_machine import VirtualMachine
 from virtual_machine_config import VirtualMachineConfig
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.cluster.cluster import Cluster
-from mcvirt.node.drbd import DRBD as NodeDRBD
 from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
@@ -46,7 +44,6 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def getAllVmNames(self, node=None):
         """Returns a list of all VMs within the cluster or those registered on a specific node"""
-        from mcvirt.cluster.cluster import Cluster
         # If no node was defined, check the local configuration for all VMs
         if (node is None):
             return MCVirtConfig().getConfig()['virtual_machines']
@@ -125,7 +122,8 @@ class Factory(PyroObject):
             node = get_hostname()
 
         # If DRBD has been chosen as a storage type, ensure it is enabled on the node
-        if storage_type == 'DRBD' and not NodeDRBD.isEnabled():
+        node_drbd = self._get_registered_object('node_drbd')
+        if storage_type == 'DRBD' and not node_drbd.isEnabled():
             raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
 
         # Create directory for VM on the local and remote nodes
@@ -151,7 +149,7 @@ class Factory(PyroObject):
         # If there are more than the maximum number of DRBD machines in the cluster,
         # add an option that forces the user to specify the nodes for the DRBD VM
         # to be added to
-        if storage_type == 'DRBD' and len(available_nodes) != NodeDRBD.CLUSTER_SIZE:
+        if storage_type == 'DRBD' and len(available_nodes) != node_drbd.CLUSTER_SIZE:
             raise InvalidNodesException('Exactly two nodes must be specified')
 
         for check_node in available_nodes:
