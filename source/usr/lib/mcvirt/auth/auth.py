@@ -47,7 +47,7 @@ class Auth(PyroObject):
 
     def check_user_type(self, *user_type_names):
         """Checks if the currently logged-in user is of a specified type"""
-        user_object = self.mcvirt_instance.getSessionObject().getCurrentUserObject()
+        user_object = self._get_registered_object('mcvirt_session').getCurrentUserObject()
         if user_object.__class__.__name__ in user_type_names:
             return True
         else:
@@ -78,7 +78,7 @@ class Auth(PyroObject):
             return True
 
         if user_object is None:
-            user_object = self.mcvirt_instance.getSessionObject().getCurrentUserObject()
+            user_object = self._get_registered_object('mcvirt_session').getCurrentUserObject()
 
         # Determine if the type of user has the permissions
         if permission_enum in user_object.PERMISSIONS:
@@ -128,7 +128,7 @@ class Auth(PyroObject):
         # Cluster users can do anything
         if self.check_user_type('ClusterUser'):
             return True
-        user_object = self.mcvirt_instance.getSessionObject().getProxyUserObject()
+        user_object = self._get_registered_object('mcvirt_session').getProxyUserObject()
         username = user_object.getUsername()
         superusers = self.getSuperusers()
 

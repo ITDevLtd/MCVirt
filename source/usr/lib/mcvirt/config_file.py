@@ -17,6 +17,10 @@
 
 import json
 import os
+import stat
+import pwd
+
+from utils import get_hostname
 
 
 class ConfigFile(object):
@@ -58,7 +62,6 @@ class ConfigFile(object):
     @staticmethod
     def _writeJSON(data, file_name):
         """Parses and writes the JSON VM config file"""
-        import stat
         json_data = json.dumps(data, indent=2, separators=(',', ': '))
 
         # Open the config file and write to contents
@@ -78,8 +81,6 @@ class ConfigFile(object):
     def setConfigPermissions(self):
         """Sets file permissions for config directories"""
         from mcvirt import MCVirt
-        import stat
-        import pwd
 
         def setPermission(path, directory=True, owner=0):
             permission_mode = stat.S_IRUSR
@@ -143,9 +144,8 @@ class ConfigFile(object):
         from system import System
         from mcvirt import MCVirt
         from auth.session import Session
-        from cluster.cluster import Cluster
         if (self._checkGitRepo()):
-            message += "\nUser: %s\nNode: %s" % (Session.getCurrentUserObject().getUsername(), Cluster.getHostname())
+            message += "\nUser: %s\nNode: %s" % (Session.getCurrentUserObject().getUsername(), get_hostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file], cwd=MCVirt.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT,
@@ -166,9 +166,9 @@ class ConfigFile(object):
         from system import System
         from mcvirt import MCVirt
         from auth.session import Session
-        from cluster.cluster import Cluster
-        if (self._checkGitRepo()):
-            message += "\nUser: %s\nNode: %s" % (Session.getCurrentUserObject().getUsername(), Cluster.getHostname())
+        if self._checkGitRepo():
+            message += "\nUser: %s\nNode: %s" % (Session.getCurrentUserObject().getUsername(),
+                                                 get_hostname())
             try:
                 System.runCommand([self.GIT,
                                    'rm',
@@ -192,11 +192,11 @@ class ConfigFile(object):
         # Only attempt to create a git repository if the git
         # URL has been set in the MCVirt configuration
         mcvirt_config = MCVirtConfig().getConfig()
-        if (mcvirt_config['git']['repo_domain'] == ''):
+        if mcvirt_config['git']['repo_domain'] == '':
             return False
 
         # Attempt to create git object, if it does not already exist
-        if (not os.path.isdir(MCVirt.BASE_STORAGE_DIR + '/.git')):
+        if not os.path.isdir(MCVirt.BASE_STORAGE_DIR + '/.git'):
 
             # Initialise git repository
             System.runCommand([self.GIT, 'init'], cwd=MCVirt.BASE_STORAGE_DIR)

@@ -20,7 +20,6 @@ from threading import Lock
 
 from mcvirt.exceptions import MCVirtException
 from mcvirt.logger import Logger, getLogNames
-from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
 
 
 class MethodLock(object):
@@ -53,8 +52,6 @@ def lockingMethod(object_type=None, instance_method=True):
             logger = Logger()
             log = logger.create_log(callback, user=Pyro4.current_context.username,
                                     object_name=object_name, object_type=object_type)
-
-            cluster = RpcNSMixinDaemon.DAEMON.registered_factories['cluster']
 
             if requires_lock:
                 lock.acquire()

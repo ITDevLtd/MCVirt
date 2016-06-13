@@ -41,7 +41,7 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def interfaceExists(self, interface):
         """Public method for to determine if an interface exists"""
-        self._get_registered_object('auth').assert_user_type('ConnectionUser')
+        self._get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')
         return self._interfaceExists(interface)
 
 
@@ -115,6 +115,7 @@ class Factory(PyroObject):
         self._register_object(network_object)
         return network_object
 
+    @Pyro4.expose()
     def getAllNetworkNames(self):
         """Returns a list of network names"""
         return Network.getNetworkConfig().keys()

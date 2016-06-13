@@ -120,6 +120,7 @@ class Factory(PyroObject):
             (storage_type)
         )
 
+    @Pyro4.expose()
     def getDrbdObjectByResourceName(self, resource_name):
         """Obtains a hard drive object for a DRBD drive, based on the resource name"""
         node_drbd = self._get_registered_object('node_drbd')

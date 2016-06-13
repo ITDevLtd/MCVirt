@@ -82,7 +82,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
             if Annotations.PASSWORD in data:
                 # Store the password and perform authentication check
                 password = str(data[Annotations.PASSWORD])
-                session_instance = Session(self.mcvirt_instance)
+                session_instance = self.registered_factories['mcvirt_session']
                 session_id = session_instance.authenticateUser(username=username, password=password)
                 if session_id:
                     Pyro4.current_context.username = username
@@ -128,7 +128,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
             # If a session id has been passed, store it and check the session_id/username against active sessions
             elif Annotations.SESSION_ID in data:
                 session_id = str(data[Annotations.SESSION_ID])
-                session_instance = Session(self.mcvirt_instance)
+                session_instance = self.registered_factories['mcvirt_session']
                 if session_instance.authenticateSession(username=username, session=session_id):
                     Pyro4.current_context.username = username
                     Pyro4.current_context.session_id = session_id
@@ -269,6 +269,9 @@ class RpcNSMixinDaemon(object):
         # Create logger object and register with daemon
         logger = Logger()
         self.register(logger, objectId='logger', force=True)
+
+        # Create an MCVirt session
+        RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session'] = Session(self.mcvirt_instance)
 
     def destroy(self):
         """Destroy the MCVirt instance on destruction of object"""

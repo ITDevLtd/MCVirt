@@ -91,7 +91,6 @@ class SSLSocket(object):
         ca_pass = None
         ca_pub = SSLSocket.get_ca_file(hostname, ensure_exists=False)
         ca_priv = os.path.join(ssl_directory, '%s-CA.key' % hostname)
-        ssl_pass = None
         ssl_pub = os.path.join(ssl_directory, '%s.pem' % hostname)
         ssl_priv = os.path.join(ssl_directory, '%s.key' % hostname)
 
@@ -109,20 +108,20 @@ class SSLSocket(object):
             # Generate public key for CA
             System.runCommand([SSLSocket.OPENSSL, 'req', '-x509', '-new', '-nodes', '-key', ca_priv,
                                '-sha256', '-days', '10240', '-out', ca_pub, '-passin', 'pass:%s' % ca_pass,
-                               '-subj', '/C=/ST=/L=/O=MCVirt CA/CN=server'])
+                               '-subj', '/C=/ST=/L=/O=MCVirt CA/CN=%s' % get_hostname()])
             # Generate new SSL private key
             System.runCommand([SSLSocket.OPENSSL, 'genrsa', '-out', ssl_priv, '2048'])
 
             # Generate certificate request
             ssl_csr = os.path.join(ssl_directory, '%s.csr' % hostname)
             System.runCommand([SSLSocket.OPENSSL, 'req', '-new', '-key', ssl_priv, '-out', ssl_csr,
-                               '-subj', '/C=/ST=/L=/O=MCVirt/CN=server'])
+                               '-subj', '/C=/ST=/L=/O=MCVirt/CN=%s' % get_hostname()])
 
             # Generate public key
             System.runCommand([SSLSocket.OPENSSL, 'x509', '-req', '-in', ssl_csr, '-CA', ca_pub,
                                '-CAkey', ca_priv, '-CAcreateserial', '-passin', 'pass:%s' % ca_pass,
                                '-out', ssl_pub, '-outform', 'PEM', '-days', '10240', '-sha256'])
-        return ssl_pub, ssl_priv
+        return ssl_pub, ssl_priv, ca_pass
 
     @staticmethod
     def create_ssl_socket(*args, **kwargs):

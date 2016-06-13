@@ -366,8 +366,6 @@ class Base(PyroObject):
     def _removeLogicalVolume(self, name, ignore_non_existent=False,
                              perform_on_nodes=False):
         """Removes a logical volume from the node/cluster"""
-        from mcvirt.cluster.cluster import Cluster
-
         # Create command arguments
         command_args = ['lvremove', '-f', self._getLogicalVolumePath(name)]
         try:

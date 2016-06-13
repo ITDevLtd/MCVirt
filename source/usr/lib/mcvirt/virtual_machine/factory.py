@@ -56,7 +56,7 @@ class Factory(PyroObject):
             cluster = self._get_registered_object('cluster')
             def remote_command(node_connection):
                 virtual_machine_factory = node_connection.getConnection('virtual_machine_factory')
-                return virtual_machine_factory.getallVmNames(node=node)
+                return virtual_machine_factory.getAllVmNames(node=node)
             return cluster.runRemoteCommand(callback_method=remote_command, nodes=[node])[node]
 
     @Pyro4.expose()
@@ -92,14 +92,19 @@ class Factory(PyroObject):
 
         return True
 
+
     @Pyro4.expose()
     @lockingMethod(instance_method=True)
-    def create(self, name, cpu_cores, memory_allocation, hard_drives=[],
-               network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-               auth_check=True, hard_drive_driver=None):
-        """Creates a VM and returns the virtual_machine object for it"""
+    def create(self, *args, **kwargs):
+        """Exposed method for creating a VM, that performs a permission check"""
         self._get_registered_object('auth').assertPermission(PERMISSIONS.CREATE_VM)
+        self._create(*args, **kwargs)
 
+    @lockingMethod(instance_method=True)
+    def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
+               network_interfaces=[], node=None, available_nodes=[], storage_type=None,
+               hard_drive_driver=None):
+        """Creates a VM and returns the virtual_machine object for it"""
         # Validate the VM name
         valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
         if (bool(valid_name_re(name))):

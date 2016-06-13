@@ -17,7 +17,10 @@
 
 from enum import Enum
 import os
+import math
 import Pyro4
+import time
+from Cheetah.Template import Template
 
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
@@ -28,6 +31,7 @@ from mcvirt.system import System
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.mcvirt import MCVirt
+from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
                                DrbdVolumeNotInSyncException, MCVirtCommandException)
 
@@ -217,7 +221,7 @@ class DRBD(Base):
     def __init__(self, drbd_minor=None, drbd_port=None, *args, **kwargs):
         """Sets member variables"""
         # Get DRBDe configuration from disk configuration
-        self._sync_state = False
+        self._sync_state = True
         self._drbd_port = None
         self._drbd_minor = None
         super(DRBD, self).__init__(*args, **kwargs)
@@ -346,7 +350,6 @@ class DRBD(Base):
 
             # Wait for 5 seconds to let DRBD initialise
             # TODO: Monitor DRBD status instead.
-            import time
             time.sleep(5)
 
             # Add to virtual machine
@@ -494,7 +497,6 @@ class DRBD(Base):
         try:
             System.runCommand([NodeDRBD.DRBDADM, 'down', self.resource_name])
         except MCVirtCommandException:
-            import time
             # If the DRBD down fails, attempt to wait 5 seconds and try again
             time.sleep(5)
             System.runCommand([NodeDRBD.DRBDADM, 'down', self.resource_name])
@@ -527,6 +529,15 @@ class DRBD(Base):
         """Performs a DRBD 'disconnect' on the hard drive DRBD resource"""
         System.runCommand([NodeDRBD.DRBDADM, 'disconnect', self.resource_name])
 
+    @Pyro4.expose()
+    @lockingMethod()
+    def setTwoPrimariesConfig(self, *args, **kwargs):
+        """Provides an exposed method for _setTwoPrimariesConfig
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._setTwoPrimariesConfig(*args, **kwargs)
+
     def _setTwoPrimariesConfig(self, allow=False):
         """Configures DRBD to temporarily allow or re-disable whether
            two allow two primaries"""
@@ -558,16 +569,14 @@ class DRBD(Base):
                                self.resource_name,
                                '--allow-two-primaries=no'])
 
-        # Config remote node(s)
+        # Configure remote node(s)
         if self._is_cluster_master:
             cluster_instance = self._get_registered_object('cluster')
-            cluster_instance.runRemoteCommand(
-                'virtual_machine-hard_drive-drbd-setTwoPrimariesConfig',
-                {'vm_name': self.vm_object.getName(),
-                 'disk_id': self.disk_id,
-                 'allow': allow},
-                nodes=self.vm_object._getRemoteNodes()
-            )
+            def remoteCommand(node):
+                remote_disk = self.getRemoteObject(remote_node=node)
+                remote_disk.setTwoPrimariesConfig(allow=allow)
+            cluster_instance.runRemoteCommand(callback_method=remoteCommand,
+                                              nodes=self.vm_object._getRemoteNodes())
 
     @Pyro4.expose()
     @lockingMethod()
@@ -623,8 +632,7 @@ class DRBD(Base):
             System.runCommand(set_secondary_command)
         except MCVirtCommandException:
             # If this fails, wait for 5 seconds, and attempt once more
-            from time import sleep
-            sleep(5)
+            time.sleep(5)
             System.runCommand(set_secondary_command)
 
     def _drbdOverwritePeer(self):
@@ -727,7 +735,6 @@ class DRBD(Base):
     def postOnlineMigration(self):
         """Performs post tasks after a VM
            has performed an online migration"""
-        import time
         # Set DRBD on local node as secondary
         self._drbdSetSecondary()
 
@@ -801,8 +808,6 @@ class DRBD(Base):
     @Pyro4.expose()
     def verify(self):
         """Performs a verification of a DRBD hard drive"""
-        import time
-
         # Check DRBD state of disk
         if (self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
             raise DrbdStateException(
@@ -1019,8 +1024,6 @@ class DRBD(Base):
 
     def _generateDrbdConfig(self):
         """Generates the DRBD resource configuration"""
-        from Cheetah.Template import Template
-
         # Create configuration for use with the template
         raw_lv_path = self._getLogicalVolumePath(self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX))
         meta_lv_path = self._getLogicalVolumePath(
@@ -1040,7 +1043,7 @@ class DRBD(Base):
         cluster_object = self._get_registered_object('cluster')
         node_template_conf = \
             {
-                'name': Cluster.getHostname(),
+                'name': get_hostname(),
                 'ip_address': cluster_object.getClusterIpAddress()
             }
         drbd_config['nodes'].append(node_template_conf)
@@ -1082,8 +1085,6 @@ class DRBD(Base):
 
     def _calculateMetaDataSize(self):
         """Determines the size of the DRBD meta volume"""
-        import math
-
         raw_logical_volume_name = self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX)
         logical_volume_path = self._getLogicalVolumePath(raw_logical_volume_name)
 
