@@ -26,7 +26,7 @@ from utils import get_hostname
 class ConfigFile(object):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    CURRENT_VERSION = 2
+    CURRENT_VERSION = 4
     GIT = '/usr/bin/git'
 
     def __init__(self):

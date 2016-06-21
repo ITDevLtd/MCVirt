@@ -84,7 +84,8 @@ class Network(PyroObject):
 
             # Iterate over each network interface for the VM and determine if it
             # is connected to this network
-            all_vm_interfaces = vm_object.getNetworkObjects()
+            network_adapter_factory = self._get_registered_object('network_adapter_factory')
+            all_vm_interfaces = network_adapter_factory.getNetworkAdaptersByVirtualMachine(vm_object)
             contains_connected_interface = False
             for network_interface in all_vm_interfaces:
                 if network_interface.getConnectedNetwork() == self.getName():
@@ -100,7 +101,9 @@ class Network(PyroObject):
 
     def _getLibVirtObject(self):
         """Returns the LibVirt object for the network"""
-        return self.mcvirt_instance.getLibvirtConnection().networkLookupByName(self.name)
+        return self._get_registered_object(
+            'libvirt_connector'
+        ).get_connection().networkLookupByName(self.name)
 
     @Pyro4.expose()
     def getName(self):

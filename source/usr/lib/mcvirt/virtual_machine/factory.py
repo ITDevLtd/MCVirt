@@ -65,7 +65,7 @@ class Factory(PyroObject):
             return MCVirtConfig().getConfig()['virtual_machines']
         elif node == get_hostname():
             # Obtain array of all domains from libvirt
-            all_domains = self.mcvirt_instance.getLibvirtConnection().listAllDomains()
+            all_domains = self._get_registered_object('libvirt_connector').get_connection().listAllDomains()
             return [vm.name() for vm in all_domains]
         else:
             # Return list of VMs registered on remote node
@@ -85,7 +85,8 @@ class Factory(PyroObject):
         for vm_object in self.getAllVirtualMachines():
             table.add_row((vm_object.getName(), vm_object._getPowerState().name,
                            vm_object.getNode() or 'Unregistered'))
-        return table.draw()
+        table_output = table.draw()
+        return table_output
 
     @Pyro4.expose()
     def checkExists(self, vm_name):
@@ -114,7 +115,7 @@ class Factory(PyroObject):
     def create(self, *args, **kwargs):
         """Exposed method for creating a VM, that performs a permission check"""
         self._get_registered_object('auth').assertPermission(PERMISSIONS.CREATE_VM)
-        self._create(*args, **kwargs)
+        return self._create(*args, **kwargs)
 
     @lockingMethod(instance_method=True)
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],

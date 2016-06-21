@@ -72,10 +72,6 @@ class VirtualMachine(PyroObject):
         self.name = name
         self.mcvirt_object = mcvirt_object
 
-        # Ensure that the connection is alive
-        if not self.mcvirt_object.getLibvirtConnection().isAlive():
-            raise LibvirtCommandException('Error: LibVirt connection not alive')
-
         # Check that the domain exists
         if not virtual_machine_factory.checkExists(self.name):
             raise VirtualMachineDoesNotExistException(
@@ -95,7 +91,7 @@ class VirtualMachine(PyroObject):
         """Looks up LibVirt domain object, based on VM name,
         and return object"""
         # Get the domain object.
-        return self.mcvirt_object.getLibvirtConnection().lookupByName(self.name)
+        return self._get_registered_object('libvirt_connector').get_connection().lookupByName(self.name)
 
     @Pyro4.expose()
     @lockingMethod()
@@ -579,7 +575,7 @@ class VirtualMachine(PyroObject):
         domain_xml_string = ET.tostring(domain_xml, encoding='utf8', method='xml')
 
         try:
-            self.mcvirt_object.getLibvirtConnection().defineXML(domain_xml_string)
+            self._get_registered_object('libvirt_connector').get_connection().defineXML(domain_xml_string)
         except:
             raise LibvirtException('Error: An error occurred whilst updating the VM')
 
@@ -1055,7 +1051,7 @@ class VirtualMachine(PyroObject):
         domain_xml_string = ET.tostring(domain_xml.getroot(), encoding='utf8', method='xml')
 
         try:
-            self.mcvirt_object.getLibvirtConnection().defineXML(domain_xml_string)
+            self._get_registered_object('libvirt_connector').get_connection().defineXML(domain_xml_string)
         except:
             raise LibvirtException('Error: An error occurred whilst registering VM')
 

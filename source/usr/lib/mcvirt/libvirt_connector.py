@@ -19,22 +19,22 @@ import libvirt
 
 from rpc.ssl_socket import SSLSocket
 from utils import get_hostname
+from rpc.pyro_object import PyroObject
 
 
-class LibvirtConnector(object):
+class LibvirtConnector(PyroObject):
     """Obtains/manages Libvirt connections"""
 
-    @staticmethod
-    def get_connection(server=None):
+    def get_connection(self, server=None):
         """Obtains a Libvirt connection for a given server"""
         if server is None:
             server = get_hostname()
 
-        ssl_object = SSLSocket(server)
-        libvirt_url = 'qemu://%s/system?pkipath=%s' (ssl_object.server, ssl_object.SSL_DIRECTORY)
-        self.connection = libvirt.open(self.libvirt_uri)
-        if self.connection is None:
+        ssl_object = self._get_registered_object('certificate_generator_factory').get_cert_generator(server)
+        libvirt_url = 'qemu://%s/system?pkipath=%s' % (ssl_object.server, ssl_object.SSL_DIRECTORY)
+        connection = libvirt.open(libvirt_url)
+        if connection is None:
             raise LibVirtConnectionException(
                 'Failed to open connection to the hypervisor on %s' % ssl_object.server
             )
-        return self.connection
+        return connection

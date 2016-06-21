@@ -35,10 +35,12 @@ from mcvirt.virtual_machine.network_adapter.factory import Factory as NetworkAda
 from mcvirt.logger import Logger
 from mcvirt.node.drbd import DRBD as NodeDRBD
 from mcvirt.node.node import Node
-from ssl_socket import SSLSocket, Factory as SSLSocketFactory
+from mcvirt.rpc.ssl_socket import SSLSocket
+from mcvirt.rpc.certificate_generator_factory import CertificateGeneratorFactory
 from mcvirt.node.libvirt_config import LibvirtConfig
+from mcvirt.libvirt_connector import LibvirtConnector
 from mcvirt.utils import get_hostname
-from constants import Annotations
+from mcvirt.rpc.constants import Annotations
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -67,6 +69,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
     def validateHandshake(self, conn, data):
         """Perform authentication on new connections"""
         # Reset session_id for current context
+        Pyro4.current_context.STARTUP_PERIOD = False
         Pyro4.current_context.session_id = None
         Pyro4.current_context.username = None
         Pyro4.current_context.proxy_user = None
@@ -193,6 +196,9 @@ class RpcNSMixinDaemon(object):
 
     def __init__(self):
         """Store required object member variables and create MCVirt object"""
+        # Initialise Pyro4 with flag to showing that the daemon is being started
+        Pyro4.current_context.STARTUP_PERIOD = True
+
         # Store nameserver, MCVirt instance and create daemon
         self.mcvirt_instance = MCVirt()
         atexit.register(self.destroy)
@@ -203,8 +209,8 @@ class RpcNSMixinDaemon(object):
         self.hostname = get_hostname()
 
         # Ensure that the required SSL certificates exist
-        ssl_socket = SSLSocket('localhost')
-        ssl_socket.check_certificates()
+        ssl_socket = CertificateGeneratorFactory().get_cert_generator('localhost')
+        ssl_socket.check_certificates(check_client=False)
         ssl_socket = None
 
         # Wait for nameserver
@@ -215,10 +221,15 @@ class RpcNSMixinDaemon(object):
         self.registerFactories()
 
         # Ensure libvirt is configured
-        RpcNSMixinDaemon.DAEMON.registered_factories['libvirt_config'].generate_config(initial_run=True)
+        cert_gen_factory = RpcNSMixinDaemon.DAEMON.registered_factories['certificate_generator_factory']
+        cert_gen = cert_gen_factory.get_cert_generator('localhost')
+        cert_gen.check_certificates()
+        cert_gen = None
+        cert_gen_factory = None
 
     def start(self):
         """Start the Pyro daemon"""
+        Pyro4.current_context.STARTUP_PERIOD = False
         RpcNSMixinDaemon.DAEMON.requestLoop()
 
     def register(self, obj_or_class, objectId, *args, **kwargs):
@@ -280,12 +291,16 @@ class RpcNSMixinDaemon(object):
         self.register(logger, objectId='logger', force=True)
 
         # Create and register SSLSocketFactory object
-        ssl_socket_factory = SSLSocketFactory()
-        self.register(ssl_socket_factory, objectId='ssl_socket_factory', force=True)
+        certificate_generator_factory = CertificateGeneratorFactory()
+        self.register(certificate_generator_factory, objectId='certificate_generator_factory', force=True)
 
         # Create libvirt config object and register with daemon
         libvirt_config = LibvirtConfig()
         self.register(libvirt_config, objectId='libvirt_config', force=True)
+
+        # Create and register libvirt connector object
+        libvirt_connector = LibvirtConnector()
+        self.register(libvirt_connector, objectId='libvirt_connector', force=True)
 
         # Create an MCVirt session
         RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session'] = Session(self.mcvirt_instance)

@@ -47,6 +47,9 @@ class Auth(PyroObject):
 
     def check_user_type(self, *user_type_names):
         """Checks if the currently logged-in user is of a specified type"""
+        if Pyro4.current_context.STARTUP_PERIOD:
+            return True
+
         user_object = self._get_registered_object('mcvirt_session').getCurrentUserObject()
         if user_object.__class__.__name__ in user_type_names:
             return True
@@ -73,6 +76,9 @@ class Auth(PyroObject):
     def checkPermission(self, permission_enum, vm_object=None, user_object=None):
         """Checks if the user has a given permission, either globally through MCVirt or for a
            given VM"""
+        if Pyro4.current_context.STARTUP_PERIOD:
+            return True
+
         # If the user is a superuser, all permissions are attached to the user
         if self.isSuperuser():
             return True

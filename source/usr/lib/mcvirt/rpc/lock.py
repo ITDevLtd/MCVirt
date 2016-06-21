@@ -62,7 +62,7 @@ def lockingMethod(object_type=None, instance_method=True):
             log.start()
             response = None
             try:
-                reponse = callback(*args, **kwargs)
+                response = callback(*args, **kwargs)
             except MCVirtException as e:
                 print "".join(Pyro4.util.getPyroTraceback())
                 log.finish_error(e)

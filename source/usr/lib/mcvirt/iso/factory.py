@@ -46,7 +46,7 @@ class Factory(PyroObject):
     def addIso(self, path):
         """Copy an ISO to ISOs directory"""
         # Check that file exists
-        if (not os.path.isfile(path)):
+        if not os.path.isfile(path):
             raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
 
         filename = Iso.getFilenameFromPath(path)

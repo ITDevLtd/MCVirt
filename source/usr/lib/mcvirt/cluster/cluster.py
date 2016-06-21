@@ -22,7 +22,6 @@ import base64
 import Pyro4
 from texttable import Texttable
 
-from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
                                RemoteObjectConflict, ClusterNotInitialisedException,
@@ -67,7 +66,7 @@ class Cluster(PyroObject):
         # Create connection user
         user_factory = self._get_registered_object('user_factory')
         connection_username, connection_password = user_factory.generate_user(ConnectionUser)
-        ssl_object = SSLSocket(get_hostname())
+        ssl_object = self._get_registered_object('certificate_generator_factory').get_cert_generator(get_hostname())
         return [get_hostname(), self.getClusterIpAddress(),
                 connection_username, connection_password,
                 ssl_object.get_ca_contents()]
@@ -120,18 +119,19 @@ class Cluster(PyroObject):
         return table.draw()
 
     @Pyro4.expose()
+    @lockingMethod()
     def addNodeConfiguration(self, node_name, ip_address,
                              connection_user, connection_password,
-                             ca_key, ca_check=True):
+                             ca_key):
         """Adds MCVirt node to configuration and generates SSH
         authorized_keys file"""
         self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
 
         # Create CA file
-        ssl_object = SSLSocket(node_name)
-        ssl_object.CA_PUB_KEY = ca_key
+        ssl_object = self._get_registered_object('certificate_generator_factory').get_cert_generator(node_name)
+        ssl_object.CA_PUB_FILE = ca_key
 
-        # Connec to node and obtain cluster user
+        # Connect to node and obtain cluster user
         remote = Connection(username=connection_user, password=connection_password,
                             host=node_name)
         remote_user_factory = remote.getConnection('user_factory')
@@ -168,11 +168,13 @@ class Cluster(PyroObject):
 
         # Determine if node is already connected to cluster
         if self.checkNodeExists(node_config['hostname']):
-            raise NodeAlreadyPresent('Node %s is already connected to the cluster' % remote_host)
+            raise NodeAlreadyPresent('Node %s is already connected to the cluster' % node_config['hostname'])
 
         # Create CA public key for machine
-        ssl_object = SSLSocket(node_config['hostname'])
-        ssl_object.CA_PUB_KEY = node_config['ca_cert']
+        ssl_object = self._get_registered_object(
+            'certificate_generator_factory'
+        ).get_cert_generator(node_config['hostname'])
+        ssl_object.CA_PUB_FILE = node_config['ca_cert']
 
         # Check remote machine, to ensure it can be synced without any
         # conflicts
@@ -190,8 +192,7 @@ class Cluster(PyroObject):
                                   ip_address=node_config['ip_address'],
                                   connection_user=node_config['username'],
                                   connection_password=node_config['password'],
-                                  ca_key=node_config['ca_cert'],
-                                  ca_check=False)
+                                  ca_key=node_config['ca_cert'])
 
         # Obtain node connection to new node
         remote_node = self.getRemoteNode(node_config['hostname'])
@@ -207,15 +208,52 @@ class Cluster(PyroObject):
                                                      connection_password=local_connection_info[3],
                                                      ca_key=local_connection_info[4])
 
+        new_node_cert_gen_factory = remote_node.getConnection('certificate_generator_factory')
+
+        # Create client certificates for libvirt for the new node to connect to the
+        # current cluster node
+        new_node_cert_gen = new_node_cert_gen_factory.get_cert_generator(get_hostname())
+        remote_node.annotateObject(new_node_cert_gen)
+
+        # Generate CSR
+        csr = new_node_cert_gen.generate_csr()
+
+        # Sign CSR
+        cert_gen_factory = self._get_registered_object('certificate_generator_factory')
+        cert_gen = cert_gen_factory.get_cert_generator(node_config['hostname'],
+                                                       remote=True)
+        pub_key = cert_gen.sign_csr(csr)
+
+        # Add public key to new node
+        new_node_cert_gen.add_public_key(pub_key)
+
+        # Create client certificate for libvirt for the current cluster node to connect
+        # to the new node
+        cert_gen = cert_gen_factory.get_cert_generator(node_config['hostname'])
+
+        # Generate CSR
+        csr = cert_gen.generate_csr()
+
+        # Sign CSR
+        new_node_cert_gen = new_node_cert_gen_factory.get_cert_generator(get_hostname(), remote=True)
+        remote_node.annotateObject(new_node_cert_gen)
+        pub_key = new_node_cert_gen.sign_csr(csr)
+
+        # Add public key to local node
+        cert_gen.add_public_key(pub_key)
+
         # Sync credentials to/from old nodes in the clsuter
         for original_node in original_cluster_nodes:
-            original_cluster = original_node.getConnection('cluster')
+            # Share connection information between cluster node and new node
+            original_node_remote = self.getRemoteNode(original_node)
+            original_cluster = original_node_remote.getConnection('cluster')
             original_node_con_info = original_cluster.generateConnectionInfo()
             remote_cluster_instance.addNodeConfiguration(node_name=original_node_con_info[0],
                                                          ip_address=original_node_con_info[1],
                                                          connection_user=original_node_con_info[2],
                                                          connection_password=original_node_con_info[3],
                                                          ca_key=original_node_con_info[4])
+
             new_node_con_info = remote_cluster_instance.generateConnectionInfo()
             original_cluster.addNodeConfiguration(node_name=new_node_con_info[0],
                                                   ip_address=new_node_con_info[1],
@@ -223,8 +261,36 @@ class Cluster(PyroObject):
                                                   connection_password=new_node_con_info[3],
                                                   ca_key=new_node_con_info[4])
 
+            # Create client certificates for libvirt for the new node to connect to the
+            # current cluster node
+            new_node_cert_gen = new_node_cert_gen_factory.get_cert_generator(original_node)
+            remote_node.annotateObject(new_node_cert_gen)
+            csr = new_node_cert_gen.generate_csr()
+            original_node_cert_gen_factory = original_node_remote.getConnection('certificate_generator_factory')
+            original_node_cert_gen = original_node_cert_gen_factory.get_cert_generator(node_config['hostname'],
+                                                                                       remote=True)
+            original_node_remote.annotateObject(original_node_cert_gen)
+            pub_key = original_node_cert_gen.sign_csr(csr)
+            new_node_cert_gen.add_public_key(pub_key)
+
+            # Create client certificate for libvirt for the current cluster node to connect
+            # to the new node
+            original_node_cert_gen = original_node_cert_gen_factory.get_cert_generator(node_config['hostname'])
+            original_node_remote.annotateObject(original_node_cert_gen)
+
+            # Generate CSR
+            csr = original_node_cert_gen.generate_csr()
+
+            # Sign CSR
+            new_node_cert_gen = new_node_cert_gen_factory.get_cert_generator(original_node, remote=True)
+            remote_node.annotateObject(new_node_cert_gen)
+            pub_key = new_node_cert_gen.sign_csr(csr)
+
+            # Add public key to original node
+            original_node_cert_gen.add_public_key(pub_key)
+
         # If DRBD is enabled on the local node, configure/enable it on the remote node
-        if (self._get_registered_object('node_drbd').isEnabled()):
+        if self._get_registered_object('node_drbd').isEnabled():
             remote_drbd = remote_node.getConnection('node_drbd')
             remote_drbd.enable()
 
@@ -307,9 +373,9 @@ class Cluster(PyroObject):
             for hard_disk in vm_object.getHardDriveObjects():
                 remote_hard_drive_object = hard_disk.getRemoteObject(remote_node=remote_object,
                                                                      registered=False)
-                remote_hard_drive_factory.addToVirtualMachine(remote_hard_drive_object)
+                remote_hard_drive_object.addToVirtualMachine()
 
-            remote_network_factory = remote_object.getconnection('network_factory')
+            remote_network_factory = remote_object.getConnection('network_factory')
             remote_network_adapter_factory = remote_object.getConnection('network_adapter_factory')
             network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(vm_object)
             for network_adapter in network_adapters:
@@ -332,7 +398,7 @@ class Cluster(PyroObject):
                                                                 remote_virtual_machine_object)
 
             # Set the VM node
-            remote_virtual_machine_object.setNode(vm_object.getNode())
+            remote_virtual_machine_object.setNodeRemote(vm_object.getNode())
 
     def checkRemoteMachine(self, remote_connection):
         """Performs checks on the remote node to ensure that there will be

@@ -20,43 +20,52 @@ from Cheetah.Template import Template
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.utils import get_hostname
 
 
 class LibvirtConfig(PyroObject):
     """Provides configuration for libvirtd"""
 
-    CONFIG_FILE = '/etc/libvirt/libvrtd.conf'
+    CONFIG_FILE = '/etc/libvirt/libvirtd.conf'
     CONFIG_TEMPLATE = '/usr/lib/mcvirt/templates/libvirtd.conf'
+    DEFAULT_FILE = '/etc/default/libvirtd'
+    DEFAULT_CONFIG = """
+# Defaults for libvirtd initscript (/etc/init.d/libvirtd)
+# This is a POSIX shell fragment
 
-    def generate_config(self, initial_run=False):
+# Start libvirtd to handle qemu/kvm:
+start_libvirtd="yes"
+
+# options passed to libvirtd, add "-l" to listen on tcp
+libvirtd_opts=" --listen --verbose "
+"""
+
+    def __init__(self):
+        self.hard_restart = False
+
+    def generate_config(self):
         """Generates the libvirtd configuration"""
-        if initial_run and MCVirtConfig().getConfig()['libvirt_configured']:
-            return
-
         libvirt_config = self.get_config()
 
         # Replace the variables in the template with the local libvirtd configuration
         config_content = Template(file=self.CONFIG_TEMPLATE, searchList=[libvirt_config])
 
-        # Write the DRBD configuration
-        fh = open(self.CONFIG_FILE, 'w')
-        fh.write(config_content.respond())
-        fh.close()
+        # Write the libvirt configurations
+        with open(self.CONFIG_FILE, 'w') as fh:
+            fh.write(config_content.respond())
+
+        with open(self.DEFAULT_FILE, 'w') as default_fh:
+            default_fh.write(self.DEFAULT_CONFIG)
 
         # Update DRBD running configuration
         self._reload_libvirt()
 
-        # Update MCVirt config, marking libvirt as having been configured
-        if initial_run:
-            def updateConfig(config):
-                config['libvirt_configured'] = True
-            MCVirtConfig().updateConfig(updateConfig, 'Configured libvirtd')
-
     def get_config(self):
-        ssl_socket_factory = self._get_registered_object('ssl_socket_factory')
-        ssl_socket = ssl_socket_factory.get_ssl_socket('localhost')
+        cert_gen_factory = self._get_registered_object('certificate_generator_factory')
+        ssl_socket = cert_gen_factory.get_cert_generator('localhost')
         nodes = self._get_registered_object('cluster').getNodes(return_all=True)
-        allowed_dns = [ssl_socket_factory.get_ssl_socket(node).SSL_DN for node in nodes]
+        nodes.append(get_hostname())
+        allowed_dns = [cert_gen_factory.get_cert_generator(node).SSL_SUBJ for node in nodes]
 
         return {
             'ip_address': MCVirtConfig().getListenAddress(),
@@ -68,4 +77,6 @@ class LibvirtConfig(PyroObject):
 
     def _reload_libvirt(self):
         """Forces libvirt to reload it's configuration"""
-        System.runCommand(['killall', '-SIGHUP', 'libvirtd'])
+        action = 'restart' if self.hard_restart else 'force-reload'
+        System.runCommand(['service', 'libvirtd', action])
+        self.hard_restart = False

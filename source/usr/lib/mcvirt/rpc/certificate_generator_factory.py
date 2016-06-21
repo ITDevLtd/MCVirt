@@ -16,22 +16,15 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
-import time
 
-from mcvirt.utils import get_hostname
-from ssl_socket import SSLSocket
+from mcvirt.rpc.certificate_generator import CertificateGenerator
+from mcvirt.rpc.pyro_object import PyroObject
 
-class NameServer(object):
-    """Thread for running the name server"""
 
-    def __init__(self):
-        """Perform configuration of Pyro4"""
-        Pyro4.config.USE_MSG_WAITALL = False
-        Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
-        Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
+class CertificateGeneratorFactory(PyroObject):
 
-    def start(self):
-        """Start the Pyro name server"""
-        #self.daemon.requestLoop()
-        Pyro4.config.USE_MSG_WAITALL = False
-        Pyro4.naming.startNSloop(host=get_hostname(), port=9090, enableBroadcast=False)
+    @Pyro4.expose
+    def get_cert_generator(self, server, remote=False):
+        cert_generator = CertificateGenerator(server, remote=False)
+        self._register_object(cert_generator)
+        return cert_generator

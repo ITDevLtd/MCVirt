@@ -29,14 +29,14 @@ class MCVirtConfig(ConfigFile):
 
         self.config_file = MCVirt.NODE_STORAGE_DIR + '/config.json'
 
-        if (not os.path.isdir(MCVirt.BASE_STORAGE_DIR)):
+        if not os.path.isdir(MCVirt.BASE_STORAGE_DIR):
             self._createConfigDirectories()
 
-        if (not os.path.isfile(self.config_file)):
+        if not os.path.isfile(self.config_file):
             self.create()
 
         # If performing an upgrade has been specified, do so
-        if (perform_upgrade and mcvirt_instance):
+        if perform_upgrade and mcvirt_instance:
             self.upgrade(mcvirt_instance)
 
     def _createConfigDirectories(self):
@@ -104,45 +104,4 @@ class MCVirtConfig(ConfigFile):
 
     def _upgrade(self, mcvirt_instance, config):
         """Perform an upgrade of the configuration file"""
-        if (self._getVersion() < 1):
-            # Add new global permission groups
-            for new_permission_goup in ['user', 'owner']:
-                if (new_permission_goup not in config['permissions'].keys()):
-                    config['permissions'][new_permission_goup] = []
-
-            # Add cluster configuration to config
-            config['cluster'] = {
-                'cluster_ip': '',
-                'nodes': {}
-            }
-
-            # Obtain list of virtual machines from LibVirt
-            all_domains = mcvirt_instance.getLibvirtConnection().listAllDomains()
-
-            # Add virtual machines to global configuration
-            config['virtual_machines'] = [vm.name() for vm in all_domains]
-
-            # Obtain list of networks from LibVirt
-            all_networks = mcvirt_instance.getLibvirtConnection().listAllNetworks()
-            config['networks'] = {}
-            for network in all_networks:
-                config['networks'][network.name()] = network.bridgeName()
-
-            # Add default DRBD configuration
-            config['drbd'] = {
-                'enabled': 0,
-                'secret': '',
-                'sync_rate': '10M',
-                'protocol': 'C'
-            }
-
-            # Create git configuration
-            config['git'] = {
-                'repo_domain': '',
-                'repo_path': '',
-                'repo_protocol': '',
-                'username': '',
-                'password': '',
-                'commit_name': '',
-                'commit_email': ''
-            }
+        pass

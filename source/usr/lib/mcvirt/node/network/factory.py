@@ -90,7 +90,7 @@ class Factory(PyroObject):
 
         # Attempt to register network with LibVirt
         try:
-            self.mcvirt_instance.getLibvirtConnection().networkDefineXML(network_xml_string)
+            self._get_registered_object('libvirt_connector').get_connection().networkDefineXML(network_xml_string)
         except:
             raise LibvirtException('An error occurred whilst registering network with LibVirt')
 
