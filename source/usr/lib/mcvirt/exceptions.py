@@ -447,5 +447,10 @@ class CACertificateAlreadyExists(MCVirtException):
     pass
 
 
+class MustGenerateCertificateException(MCVirtException):
+    """The certificate cannot be manually added and must be generated"""
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions['%s.%s' % (exception_class.__module__, exception_class.__name__)] = exception_class

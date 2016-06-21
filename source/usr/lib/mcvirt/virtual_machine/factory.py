@@ -1,3 +1,20 @@
+# Copyright (c) 2016 - I.T. Dev Ltd
+#
+# This file is part of MCVirt.
+#
+# MCVirt is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# MCVirt is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
+
 import Pyro4
 from texttable import Texttable
 import re
@@ -7,7 +24,6 @@ from os import makedirs
 from virtual_machine import VirtualMachine
 from virtual_machine_config import VirtualMachineConfig
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.virtual_machine.hard_drive.config.base import Base as HardDriveConfigBase
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.factory import Factory as NetworkFactory
@@ -79,7 +95,7 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def checkName(self, name):
         valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
-        if (bool(valid_name_re(name))):
+        if bool(valid_name_re(name)):
             raise InvalidVirtualMachineNameException(
                 'Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes'
             )

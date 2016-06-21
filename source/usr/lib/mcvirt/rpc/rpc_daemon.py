@@ -35,7 +35,8 @@ from mcvirt.virtual_machine.network_adapter.factory import Factory as NetworkAda
 from mcvirt.logger import Logger
 from mcvirt.node.drbd import DRBD as NodeDRBD
 from mcvirt.node.node import Node
-from ssl_socket import SSLSocket
+from ssl_socket import SSLSocket, Factory as SSLSocketFactory
+from mcvirt.node.libvirt_config import LibvirtConfig
 from mcvirt.utils import get_hostname
 from constants import Annotations
 
@@ -201,12 +202,20 @@ class RpcNSMixinDaemon(object):
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
         self.hostname = get_hostname()
 
+        # Ensure that the required SSL certificates exist
+        ssl_socket = SSLSocket('localhost')
+        ssl_socket.check_certificates()
+        ssl_socket = None
+
         # Wait for nameserver
         self.obtainConnection()
 
         RpcNSMixinDaemon.DAEMON = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance,
-                                    host=self.hostname)
+                                                host=self.hostname)
         self.registerFactories()
+
+        # Ensure libvirt is configured
+        RpcNSMixinDaemon.DAEMON.registered_factories['libvirt_config'].generate_config(initial_run=True)
 
     def start(self):
         """Start the Pyro daemon"""
@@ -270,6 +279,14 @@ class RpcNSMixinDaemon(object):
         logger = Logger()
         self.register(logger, objectId='logger', force=True)
 
+        # Create and register SSLSocketFactory object
+        ssl_socket_factory = SSLSocketFactory()
+        self.register(ssl_socket_factory, objectId='ssl_socket_factory', force=True)
+
+        # Create libvirt config object and register with daemon
+        libvirt_config = LibvirtConfig()
+        self.register(libvirt_config, objectId='libvirt_config', force=True)
+
         # Create an MCVirt session
         RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session'] = Session(self.mcvirt_instance)
 
@@ -284,5 +301,6 @@ class RpcNSMixinDaemon(object):
                 Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
                 return
             except Exception as e:
+                print e
                 # Wait for 1 second for name server to come up
                 time.sleep(1)

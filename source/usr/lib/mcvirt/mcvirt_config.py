@@ -53,6 +53,13 @@ class MCVirtConfig(ConfigFile):
         # Set permission on MCVirt directory
         self.setConfigPermissions()
 
+    def getListenAddress(self):
+        """Returns the address that should be used for listening
+           for connections - the stored IP address, if configured, else
+           all interfaces"""
+        config_ip = self.getConfig()['cluster']['cluster_ip']
+        return config_ip if config_ip else '0.0.0.0'
+
     def create(self):
         """Creates a basic VM configuration for new VMs"""
         from node.drbd import DRBD as NodeDRBD
@@ -88,7 +95,8 @@ class MCVirtConfig(ConfigFile):
                     'commit_name': '',
                     'commit_email': ''
                 },
-                'users': {}
+                'users': {},
+                'libvirt_configured': False
             }
 
         # Write the configuration to disk

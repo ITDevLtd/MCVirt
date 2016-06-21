@@ -20,8 +20,6 @@ import Pyro4
 from mcvirt.exceptions import UnknownStorageTypeException, HardDriveDoesNotExistException
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import DRBD
-from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
-from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import lockingMethod

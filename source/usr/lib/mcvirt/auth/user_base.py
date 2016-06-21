@@ -16,7 +16,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os
-import os
 import random
 import string
 from binascii import hexlify

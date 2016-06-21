@@ -26,6 +26,9 @@ class NameServer(object):
 
     def __init__(self):
         """Perform configuration of Pyro4"""
+        ssl_socket = SSLSocket('localhost')
+        ssl_socket.check_certificates()
+        ssl_socket = None
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket

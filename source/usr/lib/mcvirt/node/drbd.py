@@ -106,7 +106,8 @@ class DRBD(PyroObject):
         else:
             return self.getDefaultConfig()
 
-    def getDefaultConfig(self):
+    @staticmethod
+    def getDefaultConfig():
         default_config = \
             {
                 'enabled': 0,

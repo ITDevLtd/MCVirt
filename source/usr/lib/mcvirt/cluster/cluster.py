@@ -67,9 +67,10 @@ class Cluster(PyroObject):
         # Create connection user
         user_factory = self._get_registered_object('user_factory')
         connection_username, connection_password = user_factory.generate_user(ConnectionUser)
+        ssl_object = SSLSocket(get_hostname())
         return [get_hostname(), self.getClusterIpAddress(),
                 connection_username, connection_password,
-                SSLSocket.get_ca_contents()]
+                ssl_object.get_ca_contents()]
 
     @Pyro4.expose()
     def getConnectionString(self):
@@ -127,7 +128,8 @@ class Cluster(PyroObject):
         self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
 
         # Create CA file
-        SSLSocket.add_ca_file(node_name, ca_key, check_exists=ca_check)
+        ssl_object = SSLSocket(node_name)
+        ssl_object.CA_PUB_KEY = ca_key
 
         # Connec to node and obtain cluster user
         remote = Connection(username=connection_user, password=connection_password,
@@ -169,7 +171,8 @@ class Cluster(PyroObject):
             raise NodeAlreadyPresent('Node %s is already connected to the cluster' % remote_host)
 
         # Create CA public key for machine
-        SSLSocket.add_ca_file(node_config['hostname'], node_config['ca_cert'])
+        ssl_object = SSLSocket(node_config['hostname'])
+        ssl_object.CA_PUB_KEY = node_config['ca_cert']
 
         # Check remote machine, to ensure it can be synced without any
         # conflicts

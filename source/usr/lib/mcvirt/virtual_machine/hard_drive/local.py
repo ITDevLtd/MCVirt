@@ -25,7 +25,6 @@ from mcvirt.exceptions import (VmAlreadyStartedException, VmIsCloneException,
                                DiskAlreadyExistsException,
                                CannotMigrateLocalDiskException)
 from mcvirt.virtual_machine.hard_drive.base import Base
-from mcvirt.virtual_machine.hard_drive.config.local import Local as ConfigLocal
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import lockingMethod
@@ -95,11 +94,9 @@ class Local(Base):
     def clone(self, destination_vm_object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
         self._ensureExists()
-        new_disk_config = ConfigLocal(
-            vm_object=destination_vm_object,
-            disk_id=self.disk_id,
-            driver=self.driver)
-        new_logical_volume_name = new_disk_config._getDiskName()
+        new_disk = Local(vm_object=destination_vm_object, driver=self.driver,
+                         disk_id=self.disk_id)
+        new_logical_volume_name = new_disk._getDiskName()
         disk_size = self.getSize()
 
         # Perform a logical volume snapshot
@@ -112,9 +109,8 @@ class Local(Base):
                 "Error whilst cloning disk logical volume:\n" + str(e)
             )
 
-        Local._addToVirtualMachine(new_disk_config)
-
-        new_disk_object = Local(destination_vm_object, self.disk_id)
+        new_disk._addToVirtualMachine()
+        self._register_object(new_disk)
         return new_disk_object
 
     def create(self, size):
