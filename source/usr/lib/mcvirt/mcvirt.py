@@ -46,13 +46,6 @@ class MCVirt(object):
         # Create an MCVirt config instance and force an upgrade
         MCVirtConfig(perform_upgrade=True, mcvirt_instance=self)
 
-        # Cluster configuration
-        self.initialise_nodes = initialise_nodes
-        self.ignore_failed_nodes = ignore_failed_nodes
-        self.remote_nodes = {}
-        self.failed_nodes = []
-        self.ignore_drbd = False
-
         self.obtained_filelock = False
         self.lockfile_object = None
         self.obtainLock()
