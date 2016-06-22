@@ -36,10 +36,10 @@ class Node(PyroObject):
                                                   volume_group)
 
         # Update global MCVirt configuration
-        def updateConfig(config):
+        def update_config(config):
             config['vm_storage_vg'] = volume_group
         mcvirt_config = MCVirtConfig()
-        mcvirt_config.updateConfig(updateConfig, 'Set virtual machine storage volume group to %s' %
+        mcvirt_config.update_config(update_config, 'Set virtual machine storage volume group to %s' %
                                                  volume_group)
 
     def setClusterIpAddress(self, ip_address):
@@ -51,8 +51,8 @@ class Node(PyroObject):
             raise InvalidIPAddressException('%s is not a valid IP address' % ip_address)
 
         # Update global MCVirt configuration
-        def updateConfig(config):
+        def update_config(config):
             config['cluster']['cluster_ip'] = ip_address
         mcvirt_config = MCVirtConfig()
-        mcvirt_config.updateConfig(updateConfig, 'Set node cluster IP address to %s' %
+        mcvirt_config.update_config(update_config, 'Set node cluster IP address to %s' %
                                                  ip_address)

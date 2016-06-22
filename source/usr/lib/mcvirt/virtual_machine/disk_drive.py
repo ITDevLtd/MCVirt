@@ -26,7 +26,7 @@ from mcvirt.cluster.cluster import Cluster
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.constants import Constants
+from mcvirt.constants import DirectoryLocation
 
 
 class DiskDrive(PyroObject):
@@ -42,13 +42,13 @@ class DiskDrive(PyroObject):
         iso_object = self._convert_remote_object(iso_object)
 
         # Ensure that the user has permissions to modifiy the VM
-        self._get_registered_object('auth').assertPermission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
         )
 
         # Import cdrom XML template
-        cdrom_xml = ET.parse(Constants.TEMPLATE_DIR + '/cdrom.xml')
+        cdrom_xml = ET.parse(DirectoryLocation.TEMPLATE_DIR + '/cdrom.xml')
 
         # Add iso image path to cdrom XML
         cdrom_xml.find('source').set('file', iso_object.getPath())
@@ -65,7 +65,7 @@ class DiskDrive(PyroObject):
         """Removes ISO attached to the disk drive of a VM"""
 
         # Import cdrom XML template
-        cdrom_xml = ET.parse(Constants.TEMPLATE_DIR + '/cdrom.xml')
+        cdrom_xml = ET.parse(DirectoryLocation.TEMPLATE_DIR + '/cdrom.xml')
 
         # Add iso image path to cdrom XML
         cdrom_xml = cdrom_xml.getroot()
@@ -97,11 +97,11 @@ class DiskDrive(PyroObject):
         if self.getCurrentDisk():
             # @TODO Update
             cluster_instance = self._get_registered_object('cluster')
-            return_data = cluster_instance.runRemoteCommand('iso-getIsos', {},
+            return_data = cluster_instance.run_remote_command('iso-getIsos', {},
                                                             nodes=[destination_node_name])
-            if (self.getCurrentDisk().getName() not in return_data[destination_node_name]):
+            if (self.getCurrentDisk().get_name() not in return_data[destination_node_name]):
                 raise IsoNotPresentOnDestinationNodeException(
                     'The ISO attached to \'%s\' (%s) is not present on %s' %
-                    (self.vm_object.getName(), self.getCurrentDisk().getName(),
+                    (self.vm_object.get_name(), self.getCurrentDisk().get_name(),
                      destination_node_name)
                 )

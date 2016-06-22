@@ -59,7 +59,7 @@ class NetworkAdapter(object):
 
     def _checkExists(self):
         """Determines if the network interface is present on the VM"""
-        vm_config = self.vm_object.getConfigObject().getConfig()
+        vm_config = self.vm_object.get_config_object().get_config()
         return (self.getMacAddress() in vm_config['network_interfaces'])
 
     def getLibvirtConfig(self):
@@ -76,9 +76,9 @@ class NetworkAdapter(object):
 
         return interface_config
 
-    def getConfig(self):
+    def get_config(self):
         """Returns a dict of the MCVirt configuration for the network interface"""
-        vm_config = self.vm_object.getConfigObject().getConfig()
+        vm_config = self.vm_object.get_config_object().get_config()
         network_config = \
             {
                 'mac_address': self.getMacAddress(),
@@ -89,7 +89,7 @@ class NetworkAdapter(object):
     @Pyro4.expose()
     def getConnectedNetwork(self):
         """Returns the network that a given interface is connected to"""
-        interface_config = self.getConfig()
+        interface_config = self.get_config()
         return interface_config['network']
 
     @staticmethod
@@ -112,7 +112,7 @@ class NetworkAdapter(object):
     @lockingMethod()
     def delete(self):
         """Remove the given interface from the VM, based on the given MAC address"""
-        self._get_registered_object('auth').assertPermission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
         )
@@ -135,6 +135,6 @@ class NetworkAdapter(object):
         # Update the VM configuration
         def updateVmConfig(config):
             del config['network_interfaces'][self.getMacAddress()]
-        self.vm_object.getConfigObject().updateConfig(
+        self.vm_object.get_config_object().update_config(
             updateVmConfig, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
-            (self.vm_object.getName(), self.getConnectedNetwork(), self.getMacAddress()))
+            (self.vm_object.get_name(), self.getConnectedNetwork(), self.getMacAddress()))

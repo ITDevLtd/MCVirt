@@ -58,7 +58,7 @@ class Connection(object):
         """Obtains a session ID"""
         try:
             # Attempt to obtain a connection and obtain a session ID
-            session_object = self.getConnection(object_name=self.SESSION_OBJECT, password=password)
+            session_object = self.get_connection(object_name=self.SESSION_OBJECT, password=password)
             session_id = session_object._pyroHandshake['SEID']
             return session_id
         except Pyro4.errors.CommunicationError, e:
@@ -82,13 +82,13 @@ class Connection(object):
         auth_dict[Annotations.IGNORE_CLUSTER] = self.__ignore_cluster
         if 'ignore_cluster' in dir(Pyro4.current_context):
             auth_dict[Annotations.IGNORE_CLUSTER] |= Pyro4.current_context.ignore_cluster
-        auth_dict[Annotations.IGNORE_DRBD] = self.__ignore_drbd
+        auth_dict[Annotations.IGNORE_Drbd] = self.__ignore_drbd
         if 'ignore_drbd' in dir(Pyro4.current_context):
-            auth_dict[Annotations.IGNORE_DRBD] |= Pyro4.current_context.ignore_drbd
+            auth_dict[Annotations.IGNORE_Drbd] |= Pyro4.current_context.ignore_drbd
 
         return auth_dict
 
-    def getConnection(self, object_name, password=None):
+    def get_connection(self, object_name, password=None):
         """Obtains a connection from pyro for a given object"""
         # Obtain a connection to the name server on the localhost
         ns = Pyro4.naming.locateNS(host=self.__host, port=self.NS_PORT, broadcast=False)

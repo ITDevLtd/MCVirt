@@ -25,7 +25,7 @@ from mcvirt.exceptions import (IsoNotPresentOnDestinationNodeException,
 from mcvirt.system import System
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.constants import Constants
+from mcvirt.constants import DirectoryLocation
 
 
 class Iso(PyroObject):
@@ -37,17 +37,17 @@ class Iso(PyroObject):
         self.name = name
 
         if not os.path.isfile(self.getPath()):
-            raise InvalidISOPathException('Error: \'%s\' does not exist' % self.getName())
+            raise InvalidISOPathException('Error: \'%s\' does not exist' % self.get_name())
 
         self.setIsoPermissions()
 
-    def getName(self):
+    def get_name(self):
         """Returns the name of the ISO"""
         return self.name
 
     def getPath(self):
         """Returns the full path of the ISO"""
-        return Constants.ISO_STORAGE_DIR + '/' + self.getName()
+        return DirectoryLocation.ISO_STORAGE_DIR + '/' + self.get_name()
 
     @staticmethod
     def getFilenameFromPath(path, append_iso=True):
@@ -94,7 +94,7 @@ class Iso(PyroObject):
             return True
         else:
             raise FailedToRemoveFileException(
-                'A failure occurred whilst attempting to remove ISO: %s' % self.getName()
+                'A failure occurred whilst attempting to remove ISO: %s' % self.get_name()
             )
 
     def inUse(self):
@@ -107,6 +107,6 @@ class Iso(PyroObject):
 
             # If the VM has an iso attached, check if the ISO is this one
             if vm_current_iso and vm_current_iso.getPath() == self.getPath():
-                return vm_object.getName()
+                return vm_object.get_name()
 
         return False

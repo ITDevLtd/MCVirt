@@ -57,7 +57,7 @@ libvirtd_opts=" --listen --verbose "
         with open(self.DEFAULT_FILE, 'w') as default_fh:
             default_fh.write(self.DEFAULT_CONFIG)
 
-        # Update DRBD running configuration
+        # Update Drbd running configuration
         self._reload_libvirt()
 
     def get_config(self):

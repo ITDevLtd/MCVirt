@@ -45,8 +45,8 @@ class NodeTests(unittest.TestCase):
         # Get an MCVirt instance
         self.mcvirt = MCVirt()
 
-        self.original_ip_address = MCVirtConfig().getConfig()['cluster']['cluster_ip']
-        self.original_volume_group = MCVirtConfig().getConfig()['vm_storage_vg']
+        self.original_ip_address = MCVirtConfig().get_config()['cluster']['cluster_ip']
+        self.original_volume_group = MCVirtConfig().get_config()['vm_storage_vg']
 
     def tearDown(self):
         """Resets any values changed to the MCVirt config"""
@@ -60,7 +60,7 @@ class NodeTests(unittest.TestCase):
         self.parser.parse_arguments('node --set-ip-address %s' %
                                     test_ip_address,
                                     mcvirt_instance=self.mcvirt)
-        self.assertEqual(MCVirtConfig().getConfig()['cluster']['cluster_ip'], test_ip_address)
+        self.assertEqual(MCVirtConfig().get_config()['cluster']['cluster_ip'], test_ip_address)
 
     def test_set_invalid_ip_address(self):
         test_fake_ip_addresses = [
@@ -77,7 +77,7 @@ class NodeTests(unittest.TestCase):
         test_vg = 'test-vg_name'
         self.parser.parse_arguments('node --set-vm-vg %s' % test_vg,
                                     mcvirt_instance=self.mcvirt)
-        self.assertEqual(MCVirtConfig().getConfig()['vm_storage_vg'], test_vg)
+        self.assertEqual(MCVirtConfig().get_config()['vm_storage_vg'], test_vg)
 
     def test_set_invalid_volume_group(self):
         test_fake_volume_groups = ('[adg', 'vg;', '@vg_name')

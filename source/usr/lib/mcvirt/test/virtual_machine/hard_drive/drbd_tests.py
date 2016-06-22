@@ -20,7 +20,7 @@ import os
 import time
 
 from mcvirt.test.common import stop_and_delete
-from mcvirt.node.drbd import DRBD as NodeDRBD
+from mcvirt.node.drbd import Drbd as NodeDrbd
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdConnectionState, DrbdVolumeNotInSyncException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.parser import Parser
@@ -29,7 +29,7 @@ from mcvirt.system import System
 
 
 class DrbdTests(unittest.TestCase):
-    """Provides unit tests for the DRBD hard drive class"""
+    """Provides unit tests for the Drbd hard drive class"""
 
     @staticmethod
     def suite():
@@ -69,31 +69,31 @@ class DrbdTests(unittest.TestCase):
         stop_and_delete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
         self.mcvirt = None
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_verify(self):
-        """Test the DRBD verification for both in-sync and out-of-sync DRBD volumes"""
+        """Test the Drbd verification for both in-sync and out-of-sync Drbd volumes"""
         # Create Virtual machine
         test_vm_object = VirtualMachine.create(self.mcvirt, self.test_vms['TEST_VM_1']['name'],
                                                self.test_vms['TEST_VM_1']['cpu_count'],
                                                self.test_vms['TEST_VM_1']['memory_allocation'],
                                                self.test_vms['TEST_VM_1']['disk_size'],
                                                self.test_vms['TEST_VM_1']['networks'],
-                                               storage_type='DRBD')
+                                               storage_type='Drbd')
         self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
                                                     self.test_vms['TEST_VM_1']['name']))
 
-        # Wait for 10 seconds after creation to ensure that DRBD
+        # Wait for 10 seconds after creation to ensure that Drbd
         # goes into connection -> Resyncing state
         time.sleep(10)
 
-        # Wait until the DRBD resource is synced
+        # Wait until the Drbd resource is synced
         for disk_object in test_vm_object.getHardDriveObjects():
             wait_timeout = 6
             while (disk_object._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
-                # If the DRBD volume has not connected within 1 minute, throw an exception
+                # If the Drbd volume has not connected within 1 minute, throw an exception
                 if (not wait_timeout):
-                    raise DrbdVolumeNotInSyncException('Wait for DRBD connection timed out')
+                    raise DrbdVolumeNotInSyncException('Wait for Drbd connection timed out')
 
                 time.sleep(10)
                 wait_timeout -= 1
@@ -106,10 +106,10 @@ class DrbdTests(unittest.TestCase):
         for disk_object in test_vm_object.getHardDriveObjects():
             self.assertTrue(disk_object._isInSync())
 
-        # Obtain the DRBD raw volume for the VM and write random data to it
+        # Obtain the Drbd raw volume for the VM and write random data to it
         for disk_object in test_vm_object.getHardDriveObjects():
-            config_object = disk_object.getConfigObject()
-            drbd_raw_suffix = config_object.DRBD_RAW_SUFFIX
+            config_object = disk_object.get_config_object()
+            drbd_raw_suffix = config_object.Drbd_RAW_SUFFIX
             raw_logical_volume_name = config_object._getLogicalVolumeName(drbd_raw_suffix)
             raw_logical_volume_path = config_object._getLogicalVolumePath(raw_logical_volume_name)
             System.runCommand(['dd', 'if=/dev/urandom',

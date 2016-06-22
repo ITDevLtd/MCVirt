@@ -63,7 +63,7 @@ class Session(object):
         """Returns the user that is being proxied as"""
         current_user = self.getCurrentUserObject()
         user_factory = UserFactory()
-        if (current_user.ALLOW_PROXY_USER and 'proxy_user' in dir(Pyro4.current_context)
+        if (current_user.allow_proxy_user and 'proxy_user' in dir(Pyro4.current_context)
                 and Pyro4.current_context.proxy_user):
             try:
                 return user_factory.get_user_by_username(Pyro4.current_context.proxy_user)

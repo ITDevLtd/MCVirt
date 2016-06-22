@@ -1,3 +1,5 @@
+"""Provide class for managing connection users."""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -31,17 +33,18 @@ class ConnectionUser(UserBase):
     CLUSTER_USER = True
 
     @property
-    def ALLOW_PROXY_USER(self):
-        """Connection users can proxy for another user"""
+    def allow_proxy_user(self):
+        """Connection users can proxy for another user."""
         return True
 
     @Pyro4.expose()
-    def createClusterUser(self, host):
+    def create_cluster_user(self, host):
+        """Create a cluster user for the remote node."""
         assert self.getUsername() == Pyro4.current_context.username
         auth = self._pyroDaemon.registered_factories['auth']
         auth.assert_user_type('ConnectionUser')
         user_factory = self._pyroDaemon.registered_factories['user_factory']
         username, password = user_factory.generate_user(ClusterUser)
-        user_factory.get_user_by_username(username).updateHost(host)
+        user_factory.get_user_by_username(username).update_host(host)
         self.delete()
         return username, password

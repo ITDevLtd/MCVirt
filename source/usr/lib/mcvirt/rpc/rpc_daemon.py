@@ -1,3 +1,5 @@
+"""Provide class for RPC daemon."""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -15,10 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import ssl
 import atexit
 import Pyro4
-import uuid
 import time
 
 from mcvirt.auth.auth import Auth
@@ -32,7 +32,7 @@ from mcvirt.auth.session import Session
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.virtual_machine.network_adapter.factory import Factory as NetworkAdapterFactory
 from mcvirt.logger import Logger
-from mcvirt.node.drbd import DRBD as NodeDRBD
+from mcvirt.node.drbd import Drbd as NodeDrbd
 from mcvirt.node.node import Node
 from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.rpc.certificate_generator_factory import CertificateGeneratorFactory
@@ -93,7 +93,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     # If the authenticated user can specify a proxy user, and a proxy user
                     # has been specified, set this in the current context
                     user_object = session_instance.getCurrentUserObject()
-                    if user_object.ALLOW_PROXY_USER and Annotations.PROXY_USER in data:
+                    if user_object.allow_proxy_user and Annotations.PROXY_USER in data:
                         Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
 
                     # If the user is a cluster/connection user, treat this connection
@@ -113,15 +113,15 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     else:
                         Pyro4.current_context.has_lock = False
 
-                    if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_CLUSTER, user_object=user_object)
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER, user_object=user_object)
                             and Annotations.IGNORE_CLUSTER in data):
                         Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_CLUSTER]
                     else:
                         Pyro4.current_context.ignore_cluster = False
 
-                    if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_DRBD, user_object=user_object)
-                            and Annotations.IGNORE_DRBD in data):
-                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_Drbd, user_object=user_object)
+                            and Annotations.IGNORE_Drbd in data):
+                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
                     else:
                         Pyro4.current_context.ignore_drbd = False
 
@@ -138,7 +138,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
                     # Determine if user can provide alternative users
                     user_object = session_instance.getCurrentUserObject()
-                    if user_object.ALLOW_PROXY_USER and Annotations.PROXY_USER in data:
+                    if user_object.allow_proxy_user and Annotations.PROXY_USER in data:
                         Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
 
                     # If the user is a cluster/connection user, treat this connection
@@ -158,15 +158,15 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     else:
                         Pyro4.current_context.has_lock = False
 
-                    if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_CLUSTER, user_object=user_object)
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER, user_object=user_object)
                             and Annotations.IGNORE_CLUSTER in data):
                         Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_CLUSTER]
                     else:
                         Pyro4.current_context.ignore_cluster = False
 
-                    if (auth.checkPermission(PERMISSIONS.CAN_IGNORE_DRBD, user_object=user_object)
-                            and Annotations.IGNORE_DRBD in data):
-                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_Drbd, user_object=user_object)
+                            and Annotations.IGNORE_Drbd in data):
+                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
                     else:
                         Pyro4.current_context.ignore_drbd = False
 
@@ -273,8 +273,8 @@ class RpcNSMixinDaemon(object):
         cluster = Cluster()
         self.register(cluster, objectId='cluster', force=True)
 
-        # Create node DRBD object and register with daemon
-        node_drbd = NodeDRBD()
+        # Create node Drbd object and register with daemon
+        node_drbd = NodeDrbd()
         self.register(node_drbd, objectId='node_drbd', force=True)
 
         # Create network adapter factory and register with daemon

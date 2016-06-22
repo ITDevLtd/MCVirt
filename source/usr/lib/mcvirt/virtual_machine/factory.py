@@ -30,7 +30,7 @@ from mcvirt.node.network.factory import Factory as NetworkFactory
 from mcvirt.exceptions import (StorageTypeNotSpecified, InvalidNodesException,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                ClusterNotInitialisedException, NodeDoesNotExistException,
-                               DRBDNotEnabledOnNode)
+                               DrbdNotEnabledOnNode)
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
@@ -58,7 +58,7 @@ class Factory(PyroObject):
         """Returns a list of all VMs within the cluster or those registered on a specific node"""
         # If no node was defined, check the local configuration for all VMs
         if (node is None):
-            return MCVirtConfig().getConfig()['virtual_machines']
+            return MCVirtConfig().get_config()['virtual_machines']
         elif node == get_hostname():
             # Obtain array of all domains from libvirt
             all_domains = self._get_registered_object(
@@ -69,9 +69,9 @@ class Factory(PyroObject):
             cluster = self._get_registered_object('cluster')
 
             def remote_command(node_connection):
-                virtual_machine_factory = node_connection.getConnection('virtual_machine_factory')
+                virtual_machine_factory = node_connection.get_connection('virtual_machine_factory')
                 return virtual_machine_factory.getAllVmNames(node=node)
-            return cluster.runRemoteCommand(callback_method=remote_command, nodes=[node])[node]
+            return cluster.run_remote_command(callback_method=remote_command, nodes=[node])[node]
 
     @Pyro4.expose()
     def listVms(self):
@@ -81,7 +81,7 @@ class Factory(PyroObject):
         table.header(('VM Name', 'State', 'Node'))
 
         for vm_object in self.getAllVirtualMachines():
-            table.add_row((vm_object.getName(), vm_object._getPowerState().name,
+            table.add_row((vm_object.get_name(), vm_object._getPowerState().name,
                            vm_object.getNode() or 'Unregistered'))
         table_output = table.draw()
         return table_output
@@ -111,7 +111,7 @@ class Factory(PyroObject):
     @lockingMethod(instance_method=True)
     def create(self, *args, **kwargs):
         """Exposed method for creating a VM, that performs a permission check"""
-        self._get_registered_object('auth').assertPermission(PERMISSIONS.CREATE_VM)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
     @lockingMethod(instance_method=True)
@@ -140,10 +140,10 @@ class Factory(PyroObject):
         if node is None:
             node = get_hostname()
 
-        # If DRBD has been chosen as a storage type, ensure it is enabled on the node
+        # If Drbd has been chosen as a storage type, ensure it is enabled on the node
         node_drbd = self._get_registered_object('node_drbd')
-        if storage_type == 'DRBD' and not node_drbd.isEnabled():
-            raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
+        if storage_type == 'Drbd' and not node_drbd.isEnabled():
+            raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
 
         # Create directory for VM on the local and remote nodes
         if os_path_exists(VirtualMachine.getVMDir(name)):
@@ -151,13 +151,13 @@ class Factory(PyroObject):
 
         # If available nodes has not been passed, assume the local machine is the only
         # available node if local storage is being used. Use the machines in the cluster
-        # if DRBD is being used
+        # if Drbd is being used
         cluster_object = self._get_registered_object('cluster')
         all_nodes = cluster_object.getNodes(return_all=True)
         all_nodes.append(get_hostname())
 
         if len(available_nodes) == 0:
-            if storage_type == 'DRBD':
+            if storage_type == 'Drbd':
                 # If the available nodes are not specified, use the
                 # nodes in the cluster
                 available_nodes = all_nodes
@@ -165,10 +165,10 @@ class Factory(PyroObject):
                 # For local VMs, only use the local node as the available nodes
                 available_nodes = [get_hostname()]
 
-        # If there are more than the maximum number of DRBD machines in the cluster,
-        # add an option that forces the user to specify the nodes for the DRBD VM
+        # If there are more than the maximum number of Drbd machines in the cluster,
+        # add an option that forces the user to specify the nodes for the Drbd VM
         # to be added to
-        if storage_type == 'DRBD' and len(available_nodes) != node_drbd.CLUSTER_SIZE:
+        if storage_type == 'Drbd' and len(available_nodes) != node_drbd.CLUSTER_SIZE:
             raise InvalidNodesException('Exactly two nodes must be specified')
 
         for check_node in available_nodes:
@@ -184,7 +184,7 @@ class Factory(PyroObject):
         # Add VM to MCVirt configuration
         def updateMCVirtConfig(config):
             config['virtual_machines'].append(name)
-        MCVirtConfig().updateConfig(
+        MCVirtConfig().update_config(
             updateMCVirtConfig,
             'Adding new VM \'%s\' to global MCVirt configuration' %
             name)
@@ -195,18 +195,18 @@ class Factory(PyroObject):
         # Add VM to remote nodes
         if self._is_cluster_master:
             def remote_command(remote_connection):
-                virtual_machine_factory = remote_connection.getConnection(
+                virtual_machine_factory = remote_connection.get_connection(
                     'virtual_machine_factory'
                 )
                 virtual_machine_factory.create(
                     name=name, memory_allocation=memory_allocation, cpu_cores=cpu_cores,
                     node=node, available_nodes=available_nodes
                 )
-            cluster_object.runRemoteCommand(callback_method=remote_command)
+            cluster_object.run_remote_command(callback_method=remote_command)
 
         # Obtain an object for the new VM, to use to create disks/network interfaces
         vm_object = self.getVirtualMachineByName(name)
-        vm_object.getConfigObject().gitAdd('Created VM \'%s\'' % vm_object.getName())
+        vm_object.get_config_object().gitAdd('Created VM \'%s\'' % vm_object.get_name())
 
         if node == get_hostname():
             # Register VM with LibVirt. If MCVirt has not been initialised on this node,

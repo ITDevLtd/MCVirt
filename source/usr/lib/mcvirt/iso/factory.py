@@ -9,7 +9,7 @@ import Pyro4
 from mcvirt.iso.iso import Iso
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import lockingMethod
-from mcvirt.constants import Constants
+from mcvirt.constants import DirectoryLocation
 
 
 class Factory(PyroObject):
@@ -18,11 +18,11 @@ class Factory(PyroObject):
     def getIsos(self):
         """Returns a list of a ISOs"""
         # Get files in ISO directory
-        file_list = os.listdir(Constants.ISO_STORAGE_DIR)
+        file_list = os.listdir(DirectoryLocation.ISO_STORAGE_DIR)
         iso_list = []
 
         for iso_name in file_list:
-            iso_path = os.path.join(Constants.ISO_STORAGE_DIR, iso_name)
+            iso_path = os.path.join(DirectoryLocation.ISO_STORAGE_DIR, iso_name)
             if os.path.isfile(iso_path):
                 iso_list.append(iso_name)
         return iso_list
@@ -50,10 +50,10 @@ class Factory(PyroObject):
             raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
 
         filename = Iso.getFilenameFromPath(path)
-        Iso.overwriteCheck(filename, Constants.ISO_STORAGE_DIR + '/' + filename)
+        Iso.overwriteCheck(filename, DirectoryLocation.ISO_STORAGE_DIR + '/' + filename)
 
-        shutil.copy(path, Constants.ISO_STORAGE_DIR)
-        full_path = Constants.ISO_STORAGE_DIR + '/' + filename
+        shutil.copy(path, DirectoryLocation.ISO_STORAGE_DIR)
+        full_path = DirectoryLocation.ISO_STORAGE_DIR + '/' + filename
 
         return self.getIsoByName(filename)
 

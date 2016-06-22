@@ -7,9 +7,9 @@ def stop_and_delete(mcvirt_instance, vm_name):
     if (VirtualMachine._checkExists(mcvirt_instance.getLibvirtConnection(), vm_name)):
         vm_object = VirtualMachine(mcvirt_instance, vm_name)
 
-        # Reset sync state for any DRBD disks
+        # Reset sync state for any Drbd disks
         for disk_object in vm_object.getHardDriveObjects():
-            if disk_object.getType() == 'DRBD':
+            if disk_object.getType() == 'Drbd':
                 disk_object.setSyncState(True)
 
         if (vm_object.isRegisteredRemotely()):
@@ -19,11 +19,11 @@ def stop_and_delete(mcvirt_instance, vm_name):
 
             # Stop the VM if it is running
             if (vm_object.getState() is PowerStates.RUNNING):
-                remote_node.runRemoteCommand('virtual_machine-stop',
-                                             {'vm_name': vm_object.getName()})
+                remote_node.run_remote_command('virtual_machine-stop',
+                                             {'vm_name': vm_object.get_name()})
             # Remove VM from remote node
-            remote_node.runRemoteCommand('virtual_machine-unregister',
-                                         {'vm_name': vm_object.getName()})
+            remote_node.run_remote_command('virtual_machine-unregister',
+                                         {'vm_name': vm_object.get_name()})
             vm_object._setNode(None)
 
             # Manually register VM on local node

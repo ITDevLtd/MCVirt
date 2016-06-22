@@ -1,3 +1,5 @@
+"""Provides argument parser."""
+
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -19,29 +21,28 @@ import argparse
 import binascii
 
 from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
-from mcvirt.auth.auth import Auth
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
+from mcvirt.constants import LockStates
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
-    """Overrides the ArgumentParser class, in order to change the handling of errors"""
+    """Override the ArgumentParser class, in order to change the handling of errors."""
 
     def error(self, message):
-        """Overrides the error function - forcing the argument parser to throw
-        an MCVirt exception on error
-        """
+        """Override the error function."""
+        # Force the argument parser to throw an MCVirt exception on error.
         raise ArgumentParserException(message)
 
 
-class Parser:
-    """Provides an argument parser for MCVirt"""
+class Parser(object):
+    """Provides an argument parser for MCVirt."""
 
     SESSION_ID = None
     USERNAME = None
 
     def __init__(self, print_status=True, auth_object=None):
-        """Configures the argument parser object"""
+        """Configure the argument parser object."""
         self.print_status = print_status
         self.parent_parser = ThrowingArgumentParser(add_help=False)
 
@@ -56,7 +57,7 @@ class Parser:
                                         dest='accept_failed_nodes_warning',
                                         help=argparse.SUPPRESS, action='store_true')
         self.parent_parser.add_argument('--ignore-drbd', dest='ignore_drbd',
-                                        help='Ignores DRBD state', action='store_true')
+                                        help='Ignores Drbd state', action='store_true')
 
         argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n\n" + \
                                 'Manage the MCVirt host'
@@ -119,15 +120,15 @@ class Parser:
         )
         self.create_parser.add_argument('--nodes', dest='nodes', action='append',
                                         help='Specify the nodes that the VM will be' +
-                                             ' hosted on, if a DRBD storage-type' +
+                                             ' hosted on, if a Drbd storage-type' +
                                              ' is specified',
                                         default=[])
 
         self.create_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
-        # Determine if machine is configured to use DRBD
+        # Determine if machine is configured to use Drbd
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
-                                        type=str, default=None, choices=['Local', 'DRBD'])
+                                        type=str, default=None, choices=['Local', 'Drbd'])
         self.create_parser.add_argument('--driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
@@ -144,7 +145,8 @@ class Parser:
         self.register_parser = self.subparsers.add_parser('register', help='Registers a VM on' +
                                                                            ' the local node',
                                                           parents=[self.parent_parser])
-        self.register_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        self.register_parser.add_argument('vm_name', metavar='VM Name', type=str,
+                                          help='Name of VM')
 
         # Get arguments for unregistering a VM
         self.unregister_parser = self.subparsers.add_parser('unregister',
@@ -370,19 +372,19 @@ class Parser:
         self.migrate_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Create sub-parser for moving VMs
-        self.move_parser = self.subparsers.add_parser('move', help='Move a VM and related storage' +
-                                                                   ' to another node',
+        self.move_parser = self.subparsers.add_parser('move', help=('Move a VM and related storage'
+                                                                    ' to another node'),
                                                       parents=[self.parent_parser])
         self.move_parser.add_argument('--source-node', dest='source_node',
                                       help="The node that the VM will be moved from.\n" +
-                                      'For DRBD VMs, the source node must not be' +
+                                      'For Drbd VMs, the source node must not be' +
                                       " the local node.\nFor Local VMs, the node" +
                                       " must be the local node, but may be omitted.")
         self.move_parser.add_argument('--destination-node', dest='destination_node',
                                       help='The node that the VM will be moved to')
         self.move_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
-        # Create subparser for cluster-related commands
+        # Create sub-parser for cluster-related commands
         self.cluster_parser = self.subparsers.add_parser(
             'cluster',
             help='Manage an MCVirt cluster and the connected nodes',
@@ -428,15 +430,16 @@ class Parser:
             help='Modify configurations relating to the local node',
             parents=[self.parent_parser]
         )
-        self.node_parser.add_argument('--set-vm-vg', dest='volume_group', metavar='VM Volume Group',
+        self.node_parser.add_argument('--set-vm-vg', dest='volume_group',
+                                      metavar='VM Volume Group',
                                       help=('Sets the local volume group used for Virtual'
                                             ' machine HDD logical volumes'))
         self.node_parser.add_argument('--set-ip-address', dest='ip_address',
                                       metavar='Cluster IP Address',
                                       help=('Sets the cluster IP address for the local node,'
-                                            ' used for DRBD and cluster management.'))
+                                            ' used for Drbd and cluster management.'))
 
-        # Create subparser for VM verification
+        # Create sub-parser for VM verification
         self.verify_parser = self.subparsers.add_parser(
             'verify',
             help='Perform verification of VMs',
@@ -450,22 +453,22 @@ class Parser:
         self.verify_mutual_exclusive_group.add_argument('vm_name', metavar='VM Name', nargs='?',
                                                         help='Specify a single VM to verify')
 
-        # Create subparser for drbd-related commands
-        self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage DRBD clustering',
+        # Create sub-parser for Drbd-related commands
+        self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage Drbd clustering',
                                                       parents=[self.parent_parser])
         self.drbd_mutually_exclusive_group = self.drbd_parser.add_mutually_exclusive_group(
             required=True
         )
         self.drbd_mutually_exclusive_group.add_argument(
             '--enable', dest='enable', action='store_true',
-            help='Enable DRBD support on the cluster'
+            help='Enable Drbd support on the cluster'
         )
         self.drbd_mutually_exclusive_group.add_argument(
             '--list', dest='list', action='store_true',
-            help='List DRBD volumes on the system'
+            help='List Drbd volumes on the system'
         )
 
-        # Create subparser for backup commands
+        # Create sub-parser for backup commands
         self.backup_parser = self.subparsers.add_parser('backup',
                                                         help='Performs backup-related tasks',
                                                         parents=[self.parent_parser])
@@ -475,13 +478,13 @@ class Parser:
         self.backup_mutual_exclusive_group.add_argument(
             '--create-snapshot',
             dest='create_snapshot',
-            help='Enable DRBD support on the cluster',
+            help='Enable Drbd support on the cluster',
             action='store_true'
         )
         self.backup_mutual_exclusive_group.add_argument(
             '--delete-snapshot',
             dest='delete_snapshot',
-            help='Enable DRBD support on the cluster',
+            help='Enable Drbd support on the cluster',
             action='store_true'
         )
         self.backup_parser.add_argument(
@@ -494,7 +497,7 @@ class Parser:
         )
         self.backup_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
-        # Create subparser for managing VM locks
+        # Create sub-parser for managing VM locks
         self.lock_parser = self.subparsers.add_parser('lock', help='Perform verification of VMs',
                                                       parents=[self.parent_parser])
         self.lock_mutual_exclusive_group = self.lock_parser.add_mutually_exclusive_group(
@@ -512,14 +515,13 @@ class Parser:
         self.exit_parser = self.subparsers.add_parser('exit', help='Exits the MCVirt shell',
                                                       parents=[self.parent_parser])
 
-    def printStatus(self, status):
-        """Prints if the user has specified that the parser should
-           print statuses"""
+    def print_status(self, status):
+        """Print if the user has specified that the parser should print statuses."""
         if self.print_status:
             print status
 
     def parse_arguments(self, script_args=None):
-        """Parses arguments and performs actions based on the arguments"""
+        """Parse arguments and performs actions based on the arguments."""
         # If arguments have been specified, split, so that
         # an array is sent to the argument parser
         if (script_args is not None):
@@ -534,9 +536,14 @@ class Parser:
         else:
             # Check if user/password have been passed. Else, ask for them.
             username = args.username if args.username else System.getUserInput(
-                'Username: ').rstrip()
-            password = args.password if args.password else System.getUserInput('Password: ',
-                                                                               password=True).rstrip()
+                'Username: '
+            ).rstrip()
+            if args.password:
+                password = args.password
+            else:
+                password = System.getUserInput(
+                    'Password: ', password=True
+                ).rstrip()
             rpc = Connection(username=username, password=password)
             Parser.SESSION_ID = rpc.SESSION_ID
             Parser.USERNAME = username
@@ -545,12 +552,12 @@ class Parser:
             # If the user has specified to ignore the cluster,
             # print a warning and confirm the user's answer
             if (not args.accept_failed_nodes_warning):
-                self.printStatus('WARNING: Running MCVirt with --ignore-failed-nodes' +
-                                 ' can leave the cluster in an inconsistent state!')
+                self.print_status(('WARNING: Running MCVirt with --ignore-failed-nodes'
+                                   ' can leave the cluster in an inconsistent state!'))
                 continue_answer = System.getUserInput('Would you like to continue? (Y/n): ')
 
                 if (continue_answer.strip() is not 'Y'):
-                    self.printStatus('Cancelled...')
+                    self.print_status('Cancelled...')
                     return
             rpc.ignore_cluster()
 
@@ -559,39 +566,39 @@ class Parser:
 
         # Perform functions on the VM based on the action passed to the script
         if action == 'start':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
 
             if args.iso:
-                iso_factory = rpc.getConnection('iso_factory')
+                iso_factory = rpc.get_connection('iso_factory')
                 iso_object = iso_factory.getIsoByName(args.iso)
                 rpc.annotateObject(iso_object)
             else:
                 iso_object = None
             vm_object.start(iso_object=iso_object)
-            self.printStatus('Successfully started VM')
+            self.print_status('Successfully started VM')
 
         elif action == 'stop':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.stop()
-            self.printStatus('Successfully stopped VM')
+            self.print_status('Successfully stopped VM')
 
         elif action == 'reset':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.reset()
-            self.printStatus('Successfully reset VM')
+            self.print_status('Successfully reset VM')
 
         elif action == 'create':
             storage_type = args.storage_type or None
 
             # Convert memory allocation from MiB to KiB
             memory_allocation = int(args.memory) * 1024
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             hard_disks = [args.disk_size] if args.disk_size is not None else []
             vm_object = vm_factory.create(
                 name=args.vm_name,
@@ -604,25 +611,25 @@ class Parser:
                 available_nodes=args.nodes)
 
         elif action == 'delete':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.delete(args.remove_data)
 
         elif action == 'register':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.register()
 
         elif action == 'unregister':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.unregister()
 
         elif action == 'update':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
 
@@ -631,7 +638,7 @@ class Parser:
                 old_ram_allocation = int(old_ram_allocation_kib) / 1024
                 new_ram_allocation = int(args.memory) * 1024
                 vm_object.updateRAM(new_ram_allocation, old_value=old_ram_allocation_kib)
-                self.printStatus(
+                self.print_status(
                     'RAM allocation will be changed from %sMiB to %sMiB.' %
                     (old_ram_allocation, args.memory)
                 )
@@ -639,13 +646,13 @@ class Parser:
             if args.cpu_count:
                 old_cpu_count = vm_object.getCPU()
                 vm_object.updateCPU(args.cpu_count, old_value=old_cpu_count)
-                self.printStatus(
+                self.print_status(
                     'Number of virtual cores will be changed from %s to %s.' %
                     (old_cpu_count, args.cpu_count)
                 )
 
             if args.remove_network:
-                network_adapter_factory = rpc.getConnection('network_adapter_factory')
+                network_adapter_factory = rpc.get_connection('network_adapter_factory')
                 network_adapter_object = network_adapter_factory.getNetworkAdapterByMacAdress(
                     vm_object, args.remove_network
                 )
@@ -653,26 +660,26 @@ class Parser:
                 network_adapter_object.delete()
 
             if (args.add_network):
-                network_factory = rpc.getConnection('network_factory')
-                network_adapter_factory = rpc.getConnection('network_adapter_factory')
+                network_factory = rpc.get_connection('network_factory')
+                network_adapter_factory = rpc.get_connection('network_adapter_factory')
                 network_object = network_factory.getNetworkByName(args.add_network)
                 rpc.annotateObject(network_object)
                 network_adapter_factory.create(vm_object, network_object)
 
             if args.add_disk:
-                hard_drive_factory = rpc.getConnection('hard_drive_factory')
+                hard_drive_factory = rpc.get_connection('hard_drive_factory')
                 hard_drive_factory.create(vm_object, size=args.add_disk,
                                           storage_type=args.storage_type,
                                           driver=args.hard_disk_driver)
 
             if (args.increase_disk and args.disk_id):
-                hard_drive_factory = rpc.getConnection('hard_drive_factory')
+                hard_drive_factory = rpc.get_connection('hard_drive_factory')
                 hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
                 rpc.annotateObject(hard_drive_object)
                 hard_drive_object.increaseSize(args.increase_disk)
 
             if args.iso:
-                iso_factory = rpc.getConnection('iso_factory')
+                iso_factory = rpc.get_connection('iso_factory')
                 iso_object = iso_factory.getIsoByName(args.iso)
                 rpc.annotateObject(iso_object)
                 disk_drive = vm_object.get_disk_drive()
@@ -684,95 +691,95 @@ class Parser:
                 raise ArgumentParserException('Superuser groups are global-only roles')
 
             if args.vm_name:
-                vm_factory = rpc.getConnection('virtual_machine_factory')
+                vm_factory = rpc.get_connection('virtual_machine_factory')
                 vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
                 rpc.annotateObject(vm_object)
-                permission_destination_string = 'role on VM %s' % vm_object.getName()
+                permission_destination_string = 'role on VM %s' % vm_object.get_name()
             else:
                 vm_object = None
                 permission_destination_string = 'global role'
 
-            auth_object = rpc.getConnection('auth')
+            auth_object = rpc.get_connection('auth')
             rpc.annotateObject(auth_object)
-            user_factory = rpc.getConnection('user_factory')
+            user_factory = rpc.get_connection('user_factory')
             rpc.annotateObject(user_factory)
 
             if args.add_user:
                 user_object = user_factory.get_user_by_username(args.add_user)
                 rpc.annotateObject(user_object)
-                auth_object.addUserPermissionGroup(
+                auth_object.add_user_permission_group(
                     permission_group='user',
                     user_object=user_object,
                     vm_object=vm_object)
-                self.printStatus(
+                self.print_status(
                     'Successfully added \'%s\' to \'user\' %s' %
                     (args.add_user, permission_destination_string))
 
             if args.delete_user:
                 user_object = user_factory.get_user_by_username(args.delete_user)
                 rpc.annotateObject(user_object)
-                auth_object.deleteUserPermissionGroup(
+                auth_object.delete_user_permission_group(
                     permission_group='user',
                     user_object=user_object,
                     vm_object=vm_object)
-                self.printStatus(
+                self.print_status(
                     'Successfully removed \'%s\' from \'user\' %s' %
                     (args.delete_user, permission_destination_string))
 
             if args.add_owner:
                 user_object = user_factory.get_user_by_username(args.add_owner)
                 rpc.annotateObject(user_object)
-                auth_object.addUserPermissionGroup(
+                auth_object.add_user_permission_group(
                     permission_group='owner',
                     user_object=user_object,
                     vm_object=vm_object)
-                self.printStatus(
+                self.print_status(
                     'Successfully added \'%s\' to \'owner\' %s' %
                     (args.add_owner, permission_destination_string))
 
             if args.delete_owner:
                 user_object = user_factory.get_user_by_username(args.delete_owner)
                 rpc.annotateObject(user_object)
-                auth_object.deleteUserPermissionGroup(
+                auth_object.delete_user_permission_group(
                     permission_group='owner',
                     user_object=user_object,
                     vm_object=vm_object)
-                self.printStatus(
+                self.print_status(
                     'Successfully removed \'%s\' from \'owner\' %s' %
                     (args.delete_owner, permission_destination_string))
 
             if args.add_superuser:
                 user_object = user_factory.get_user_by_username(args.add_superuser)
                 rpc.annotateObject(user_object)
-                auth_object.addSuperuser(user_object=user_object)
-                self.printStatus('Successfully added %s to the global superuser group' %
-                                 args.add_superuser)
+                auth_object.add_superuser(user_object=user_object)
+                self.print_status('Successfully added %s to the global superuser group' %
+                                  args.add_superuser)
             if args.delete_superuser:
                 user_object = user_factory.get_user_by_username(args.delete_superuser)
                 rpc.annotateObject(user_object)
-                auth_object.deleteSuperuser(user_object=user_object)
-                self.printStatus('Successfully removed %s from the global superuser group ' %
-                                 args.delete_superuser)
+                auth_object.delete_superuser(user_object=user_object)
+                self.print_status('Successfully removed %s from the global superuser group ' %
+                                  args.delete_superuser)
 
         elif action == 'info':
             if not args.vm_name and (args.vnc_port or args.node):
                 self.parser.error('Must provide a VM Name')
             if args.vm_name:
-                vm_factory = rpc.getConnection('virtual_machine_factory')
+                vm_factory = rpc.get_connection('virtual_machine_factory')
                 vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
                 rpc.annotateObject(vm_object)
                 if args.vnc_port:
-                    self.printStatus(vm_object.getVncPort())
+                    self.print_status(vm_object.getVncPort())
                 elif args.node:
-                    self.printStatus(vm_object.getNode())
+                    self.print_status(vm_object.getNode())
                 else:
-                    self.printStatus(vm_object.getInfo())
+                    self.print_status(vm_object.getInfo())
             else:
-                cluster_object = rpc.getConnection('cluster')
-                self.printStatus(cluster_object.printInfo())
+                cluster_object = rpc.get_connection('cluster')
+                self.print_status(cluster_object.printInfo())
 
         elif action == 'network':
-            network_factory = rpc.getConnection('network_factory')
+            network_factory = rpc.get_connection('network_factory')
             if args.network_action == 'create':
                 network_factory.create(args.network, physical_interface=args.interface)
             elif args.network_action == 'delete':
@@ -780,10 +787,10 @@ class Parser:
                 rpc.annotateObject(network_object)
                 network_object.delete()
             elif args.network_action == 'list':
-                self.printStatus(network_factory.getNetworkListTable())
+                self.print_status(network_factory.getNetworkListTable())
 
         elif action == 'migrate':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             if args.online_migration:
@@ -794,44 +801,44 @@ class Parser:
                     wait_for_vm_shutdown=args.wait_for_shutdown,
                     start_after_migration=args.start_after_migration
                 )
-            self.printStatus('Successfully migrated \'%s\' to %s' %
-                             (vm_object.getName(), args.destination_node))
+            self.print_status('Successfully migrated \'%s\' to %s' %
+                              (vm_object.get_name(), args.destination_node))
 
         elif action == 'move':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.move(destination_node=args.destination_node,
                            source_node=args.source_node)
 
         elif action == 'cluster':
-            cluster_object = rpc.getConnection('cluster')
+            cluster_object = rpc.get_connection('cluster')
             if args.cluster_action == 'get-connect-string':
-                self.printStatus(cluster_object.getConnectionString())
+                self.print_status(cluster_object.get_connectionString())
             if (args.cluster_action == 'add-node'):
                 if args.connect_string:
                     connect_string = args.connect_string
                 else:
                     connect_string = System.getUserInput('Enter Connect String: ')
                 cluster_object.addNode(connect_string)
-                self.printStatus('Successfully added node')
+                self.print_status('Successfully added node')
             if (args.cluster_action == 'remove-node'):
                 cluster_object.removeNode(args.node)
-                self.printStatus('Successfully removed node %s' % args.node)
+                self.print_status('Successfully removed node %s' % args.node)
 
         elif action == 'node':
-            node = rpc.getConnection('node')
+            node = rpc.get_connection('node')
             if args.volume_group:
                 node.setStorageVolumeGroup(args.volume_group)
-                self.printStatus('Successfully set VM storage volume group to %s' %
-                                 args.volume_group)
+                self.print_status('Successfully set VM storage volume group to %s' %
+                                  args.volume_group)
 
             if args.ip_address:
                 node.setClusterIpAddress(args.ip_address)
-                self.printStatus('Successfully set cluster IP address to %s' % args.ip_address)
+                self.print_status('Successfully set cluster IP address to %s' % args.ip_address)
 
         elif action == 'verify':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             if args.vm_name:
                 vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
                 rpc.annotateObject(vm_object)
@@ -845,15 +852,15 @@ class Parser:
                 rpc.annotateObject(vm_object)
                 for disk_object in vm_object.getHardDriveObjects():
                     rpc.annotateObject(disk_object)
-                    if disk_object.getType() == 'DRBD':
-                        # Catch any exceptions due to the DRBD volume not being in-sync
+                    if disk_object.getType() == 'Drbd':
+                        # Catch any exceptions due to the Drbd volume not being in-sync
                         try:
                             disk_object.verify()
-                            self.printStatus(
-                                ('DRBD verification for %s (%s) completed '
+                            self.print_status(
+                                ('Drbd verification for %s (%s) completed '
                                  'without out-of-sync blocks') %
                                 (disk_object.resource_name,
-                                 vm_object.getName())
+                                 vm_object.get_name())
                             )
                         except DrbdVolumeNotInSyncException, e:
                             # Append the not-in-sync exception message to an array,
@@ -866,26 +873,26 @@ class Parser:
                 raise DrbdVolumeNotInSyncException("\n".join(failures))
 
         elif action == 'drbd':
-            node_drbd = rpc.getConnection('node_drbd')
+            node_drbd = rpc.get_connection('node_drbd')
             if args.enable:
                 node_drbd.enable()
             if (args.list):
-                self.printStatus(node_drbd.list())
+                self.print_status(node_drbd.list())
 
         elif action == 'backup':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
-            hard_drive_factory = rpc.getConnection('hard_drive_factory')
+            hard_drive_factory = rpc.get_connection('hard_drive_factory')
             hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
             rpc.annotateObject(hard_drive_object)
             if args.create_snapshot:
-                self.printStatus(hard_drive_object.createBackupSnapshot())
+                self.print_status(hard_drive_object.createBackupSnapshot())
             elif (args.delete_snapshot):
                 hard_drive_object.deleteBackupSnapshot()
 
         elif action == 'lock':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             if args.lock:
@@ -893,28 +900,28 @@ class Parser:
             if args.unlock:
                 vm_object.setLockState(LockStates(LockStates.UNLOCKED))
             if args.check_lock:
-                self.printStatus(LockStates(vm_object.getLockState()).name)
+                self.print_status(LockStates(vm_object.getLockState()).name)
 
         elif action == 'clone':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.clone(args.vm_name)
 
         elif action == 'duplicate':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
+            vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotateObject(vm_object)
             vm_object.duplicate(args.vm_name)
 
         elif action == 'list':
-            vm_factory = rpc.getConnection('virtual_machine_factory')
-            self.printStatus(vm_factory.listVms())
+            vm_factory = rpc.get_connection('virtual_machine_factory')
+            self.print_status(vm_factory.listVms())
 
         elif action == 'iso':
-            iso_factory = rpc.getConnection('iso_factory')
+            iso_factory = rpc.get_connection('iso_factory')
             if args.list:
-                self.printStatus(iso_factory.getIsoList())
+                self.print_status(iso_factory.getIsoList())
 
             if args.add_path:
                 iso_writer = iso_factory.addIsoFromStream(args.add_path)
@@ -929,15 +936,15 @@ class Parser:
                             break
                 iso_object = iso_writer.write_end()
                 rpc.annotateObject(iso_object)
-                self.printStatus('Successfully added ISO: %s' % iso_object.getName())
+                self.print_status('Successfully added ISO: %s' % iso_object.get_name())
 
             if args.add_url:
                 iso_object = iso_factory.addFromUrl(args.add_url)
                 rpc.annotateObject(iso_object)
-                self.printStatus('Successfully added ISO: %s' % iso_object.getName())
+                self.print_status('Successfully added ISO: %s' % iso_object.get_name())
 
             if args.delete_path:
                 iso_object = iso_factory.getIsoByName(args.delete_path)
                 rpc.annotateObject(iso_object)
                 iso_object.delete()
-                self.printStatus('Successfully removed iso: %s' % args.delete_path)
+                self.print_status('Successfully removed iso: %s' % args.delete_path)

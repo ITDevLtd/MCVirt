@@ -36,7 +36,7 @@ from mcvirt.virtual_machine.virtual_machine import (VirtualMachine,
                                                     VirtualMachineLockException)
 from mcvirt.node.network.network import NetworkDoesNotExistException
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdStateException
-from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
+from mcvirt.node.drbd import Drbd as NodeDrbd, DrbdNotEnabledOnNode
 from mcvirt.iso import Iso
 from mcvirt.test.common import stop_and_delete
 
@@ -67,7 +67,7 @@ class VirtualMachineTests(unittest.TestCase):
         suite.addTest(VirtualMachineTests('test_create_alternative_driver'))
         suite.addTest(VirtualMachineTests('test_live_iso_change'))
 
-        # Add tests for DRBD
+        # Add tests for Drbd
         suite.addTest(VirtualMachineTests('test_create_drbd'))
         suite.addTest(VirtualMachineTests('test_delete_drbd'))
         suite.addTest(VirtualMachineTests('test_start_drbd'))
@@ -124,11 +124,11 @@ class VirtualMachineTests(unittest.TestCase):
         """Perform the test_create test with Local storage"""
         self.test_create('Local')
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_create_drbd(self):
-        """Perform the test_create test with DRBD storage"""
-        self.test_create('DRBD')
+        """Perform the test_create test with Drbd storage"""
+        self.test_create('Drbd')
 
     def test_create(self, storage_type):
         """Tests the creation of VMs through the argument parser"""
@@ -183,30 +183,30 @@ class VirtualMachineTests(unittest.TestCase):
         vm_object_2 = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
         vm_object_2.delete(True)
 
-    @unittest.skipIf(NodeDRBD.isEnabled(),
-                     'DRBD is enabled on this node')
+    @unittest.skipIf(NodeDrbd.isEnabled(),
+                     'Drbd is enabled on this node')
     def test_create_drbd_not_enabled(self):
-        """Attempt to create a VM with DRBD storage on a node that doesn't have DRBD enabled"""
+        """Attempt to create a VM with Drbd storage on a node that doesn't have Drbd enabled"""
         # Attempt to create VM and ensure exception is thrown
-        with self.assertRaises(DRBDNotEnabledOnNode):
+        with self.assertRaises(DrbdNotEnabledOnNode):
             self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
                                         ' --cpu-count %s --disk-size %s --memory %s' %
                                         (self.test_vms['TEST_VM_1']['cpu_count'],
                                          self.test_vms['TEST_VM_1']['disk_size'][0],
                                          self.test_vms['TEST_VM_1']['memory_allocation']) +
                                         ' --network %s --storage-type %s' %
-                                        (self.test_vms['TEST_VM_1']['networks'][0], 'DRBD'),
+                                        (self.test_vms['TEST_VM_1']['networks'][0], 'Drbd'),
                                         mcvirt_instance=self.mcvirt)
 
     def test_delete_local(self):
         """Perform the test_delete test with Local storage"""
         self.test_delete('Local')
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_delete_drbd(self):
-        """Perform the test_delete test with DRBD storage"""
-        self.test_delete('DRBD')
+        """Perform the test_delete test with Drbd storage"""
+        self.test_delete('Drbd')
 
     def test_delete(self, storage_type):
         """Tests the deletion of a VM through the argument parser"""
@@ -244,7 +244,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Obtain the disk path for the VM and write random data to it
         for disk_object in test_vm_parent.getHardDriveObjects():
-            fh = open(disk_object.getConfigObject()._getDiskPath(), 'w')
+            fh = open(disk_object.get_config_object()._getDiskPath(), 'w')
             fh.write(test_data)
             fh.close()
 
@@ -258,7 +258,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Check data is present on target VM
         for disk_object in test_vm_clone.getHardDriveObjects():
-            fh = open(disk_object.getConfigObject()._getDiskPath(), 'r')
+            fh = open(disk_object.get_config_object()._getDiskPath(), 'r')
             self.assertEqual(fh.read(8), test_data)
             fh.close()
 
@@ -282,10 +282,10 @@ class VirtualMachineTests(unittest.TestCase):
         # Remove parent
         test_vm_parent.delete(True)
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_clone_drbd(self):
-        """Attempts to clone a DRBD-based VM"""
+        """Attempts to clone a Drbd-based VM"""
         # Create parent VM
         test_vm_parent = VirtualMachine.create(
             self.mcvirt,
@@ -294,7 +294,7 @@ class VirtualMachineTests(unittest.TestCase):
             self.test_vms['TEST_VM_1']['memory_allocation'],
             self.test_vms['TEST_VM_1']['disk_size'],
             self.test_vms['TEST_VM_1']['networks'],
-            storage_type='DRBD')
+            storage_type='Drbd')
 
         # Attempt to clone VM
         with self.assertRaises(CannotCloneDrbdBasedVmsException):
@@ -310,11 +310,11 @@ class VirtualMachineTests(unittest.TestCase):
         """Performs test_duplicate test with Local storage"""
         self.test_duplicate('Local')
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_duplicate_drbd(self):
-        """Performs the test_duplicate test with DRBD storage"""
-        self.test_duplicate('DRBD')
+        """Performs the test_duplicate test with Drbd storage"""
+        self.test_duplicate('Drbd')
 
     def test_duplicate(self, storage_type):
         """Attempts to duplicate a VM using the argument parser and perform tests
@@ -333,7 +333,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Obtain the disk path for the VM and write random data to it
         for disk_object in test_vm_parent.getHardDriveObjects():
-            fh = open(disk_object.getConfigObject()._getDiskPath(), 'w')
+            fh = open(disk_object.get_config_object()._getDiskPath(), 'w')
             fh.write(test_data)
             fh.close()
 
@@ -347,7 +347,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Check data is present on target VM
         for disk_object in test_vm_duplicate.getHardDriveObjects():
-            fh = open(disk_object.getConfigObject()._getDiskPath(), 'r')
+            fh = open(disk_object.get_config_object()._getDiskPath(), 'r')
             self.assertEqual(fh.read(8), test_data)
             fh.close()
 
@@ -465,10 +465,10 @@ class VirtualMachineTests(unittest.TestCase):
         """Perform the test_start test with Local storage"""
         self.test_start('Local')
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_start_drbd(self):
-        """Perform the test_start test with DRBD storage"""
+        """Perform the test_start test with Drbd storage"""
         self.test_start('DRDB')
 
     def test_start(self, storage_type):
@@ -551,11 +551,11 @@ class VirtualMachineTests(unittest.TestCase):
         """Perform the test_stop test with Local storage"""
         self.test_stop('Local')
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_stop_drbd(self):
-        """Perform the test_stop test with DRBD storage"""
-        self.test_stop('DRBD')
+        """Perform the test_stop test with Drbd storage"""
+        self.test_stop('Drbd')
 
     def test_stop(self, storage_type):
         """Tests stopping VMs through the argument parser"""
@@ -601,8 +601,8 @@ class VirtualMachineTests(unittest.TestCase):
                 self.test_vms['TEST_VM_1']['name'],
                 mcvirt_instance=self.mcvirt)
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_offline_migrate(self):
         from mcvirt.virtual_machine.hard_drive.drbd import DrbdDiskState
         from mcvirt.cluster.cluster import Cluster
@@ -614,7 +614,7 @@ class VirtualMachineTests(unittest.TestCase):
             self.test_vms['TEST_VM_1']['memory_allocation'],
             self.test_vms['TEST_VM_1']['disk_size'],
             self.test_vms['TEST_VM_1']['networks'],
-            storage_type='DRBD')
+            storage_type='Drbd')
 
         # Get the first available remote node for the VM
         node_name = test_vm_object._getRemoteNodes()[0]
@@ -635,7 +635,7 @@ class VirtualMachineTests(unittest.TestCase):
             self.parser.parse_arguments(
                 'migrate --node %s %s' %
                 (node_name,
-                 test_vm_object.getName()),
+                 test_vm_object.get_name()),
                 mcvirt_instance=self.mcvirt)
         except DrbdStateException:
             # If the migration fails, attempt to manually register locally before failing
@@ -649,22 +649,22 @@ class VirtualMachineTests(unittest.TestCase):
         remote_node = cluster_instance.getRemoteNode(node_name)
 
         # Attempt to start the VM on the remote node
-        remote_node.runRemoteCommand('virtual_machine-start',
-                                     {'vm_name': test_vm_object.getName()})
+        remote_node.run_remote_command('virtual_machine-start',
+                                     {'vm_name': test_vm_object.get_name()})
 
         # Ensure VM is running
         self.assertTrue(test_vm_object.getState() is PowerStates.RUNNING)
 
         # Attempt to stop the VM on the remote node
-        remote_node.runRemoteCommand('virtual_machine-stop',
-                                     {'vm_name': test_vm_object.getName()})
+        remote_node.run_remote_command('virtual_machine-stop',
+                                     {'vm_name': test_vm_object.get_name()})
 
         # Ensure VM is stopped
         self.assertTrue(test_vm_object.getState() is PowerStates.STOPPED)
 
         # Manually unregister VM from remote node
-        remote_node.runRemoteCommand('virtual_machine-unregister',
-                                     {'vm_name': test_vm_object.getName()})
+        remote_node.run_remote_command('virtual_machine-unregister',
+                                     {'vm_name': test_vm_object.get_name()})
         test_vm_object._setNode(None)
 
         # Manually register VM on local node
@@ -698,7 +698,7 @@ class VirtualMachineTests(unittest.TestCase):
         # Lock the VM, using the argument parser
         self.parser.parse_arguments(
             'lock --lock %s' %
-            test_vm_object.getName(),
+            test_vm_object.get_name(),
             mcvirt_instance=self.mcvirt)
 
         # Ensure the VM is reported as locked
@@ -711,7 +711,7 @@ class VirtualMachineTests(unittest.TestCase):
         # Attempt to unlock using the argument parser
         self.parser.parse_arguments(
             'lock --unlock %s' %
-            test_vm_object.getName(),
+            test_vm_object.get_name(),
             mcvirt_instance=self.mcvirt)
 
         # Ensure the VM can be started
@@ -722,11 +722,11 @@ class VirtualMachineTests(unittest.TestCase):
         with self.assertRaises(VirtualMachineLockException):
             self.parser.parse_arguments(
                 'lock --unlock %s' %
-                test_vm_object.getName(),
+                test_vm_object.get_name(),
                 mcvirt_instance=self.mcvirt)
 
-    @unittest.skipIf(NodeDRBD.isEnabled(),
-                     'DRBD is enabled on this node')
+    @unittest.skipIf(NodeDrbd.isEnabled(),
+                     'Drbd is enabled on this node')
     def test_unspecified_storage_type_local(self):
         """Create a VM without specifying the storage type"""
         # Create virtual machine using parser, without specifying the storage_type
@@ -743,8 +743,8 @@ class VirtualMachineTests(unittest.TestCase):
             VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
                                         self.test_vms['TEST_VM_1']['name']))
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_unspecified_storage_type_drbd(self):
         """Create a VM without specifying the storage type"""
         # Create virtual machine using parser, without specifying the storage_type.
@@ -825,7 +825,7 @@ class VirtualMachineTests(unittest.TestCase):
         try:
             self.parser.parse_arguments('update %s --attach-iso %s' %
                                         (self.test_vms['TEST_VM_1']['name'],
-                                         iso_object.getName()),
+                                         iso_object.get_name()),
                                         mcvirt_instance=self.mcvirt)
 
             domain_xml_string = test_vm_object._getLibvirtDomainObject().XMLDesc()

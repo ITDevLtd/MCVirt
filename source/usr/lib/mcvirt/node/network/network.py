@@ -42,7 +42,7 @@ class Network(PyroObject):
     def getNetworkConfig():
         """Returns the network configuration for the node"""
         from mcvirt.mcvirt_config import MCVirtConfig
-        mcvirt_config = MCVirtConfig().getConfig()
+        mcvirt_config = MCVirtConfig().get_config()
         return mcvirt_config['networks']
 
     @Pyro4.expose()
@@ -50,15 +50,15 @@ class Network(PyroObject):
     def delete(self):
         """Deletes a network from the node"""
         # Ensure user has permission to manage networks
-        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_HOST_NETWORKS)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network is not connected to any VMs
         connected_vms = self._getConnectedVirtualMachines()
         if len(connected_vms):
-            connected_vm_name_string = ', '.join(vm.getName() for vm in connected_vms)
+            connected_vm_name_string = ', '.join(vm.get_name() for vm in connected_vms)
             raise NetworkUtilizedException(
                 'Network \'%s\' cannot be removed as it is used by the following VMs: %s' %
-                (self.getName(), connected_vm_name_string))
+                (self.get_name(), connected_vm_name_string))
 
         # Undefine object from libvirt
         try:
@@ -68,10 +68,10 @@ class Network(PyroObject):
             raise LibvirtException('Failed to delete network from libvirt')
 
         # Update MCVirt config
-        def updateConfig(config):
-            del config['networks'][self.getName()]
+        def update_config(config):
+            del config['networks'][self.get_name()]
         from mcvirt.mcvirt_config import MCVirtConfig
-        MCVirtConfig().updateConfig(updateConfig, 'Deleted network \'%s\'' % self.getName())
+        MCVirtConfig().update_config(update_config, 'Deleted network \'%s\'' % self.get_name())
 
     def _getConnectedVirtualMachines(self):
         """Returns an array of VM objects that have an interface connected to the network"""
@@ -88,7 +88,7 @@ class Network(PyroObject):
                 vm_object)
             contains_connected_interface = False
             for network_interface in all_vm_interfaces:
-                if network_interface.getConnectedNetwork() == self.getName():
+                if network_interface.getConnectedNetwork() == self.get_name():
                     contains_connected_interface = True
 
             # If the VM contains at least one interface connected to the network,
@@ -106,14 +106,14 @@ class Network(PyroObject):
         ).get_connection().networkLookupByName(self.name)
 
     @Pyro4.expose()
-    def getName(self):
+    def get_name(self):
         """Returns the name of the network"""
         return self.name
 
     @Pyro4.expose()
     def getAdapter(self):
         """Returns the name of the physical bridge adapter for the network"""
-        return Network.getNetworkConfig()[self.getName()]
+        return Network.getNetworkConfig()[self.get_name()]
 
     @staticmethod
     def _checkExists(name):

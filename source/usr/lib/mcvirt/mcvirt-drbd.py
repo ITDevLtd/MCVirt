@@ -21,19 +21,19 @@ import os
 
 sys.path.insert(0, '/usr/lib')
 
-from mcvirt.node.drbd import DRBDSocket
+from mcvirt.node.drbd import DrbdSocket
 
-# Obtain DRBD resource name from argument
-drbd_resource = os.environ['DRBD_RESOURCE']
+# Obtain Drbd resource name from argument
+drbd_resource = os.environ['Drbd_RESOURCE']
 
-# Determine if DRBD socket exists
-if (os.path.exists(DRBDSocket.SOCKET_PATH)):
+# Determine if Drbd socket exists
+if (os.path.exists(DrbdSocket.SOCKET_PATH)):
     import socket
 
-    # Connect to socket and send DRBD resource name to be set as out-of-sync
+    # Connect to socket and send Drbd resource name to be set as out-of-sync
     socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
-    socket.connect(DRBDSocket.SOCKET_PATH)
+    socket.connect(DrbdSocket.SOCKET_PATH)
     socket.send(drbd_resource)
     socket.close()
 else:

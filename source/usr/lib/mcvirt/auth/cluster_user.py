@@ -1,3 +1,5 @@
+"""Provide class for managing cluster users."""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -15,33 +17,31 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
-
 from mcvirt.auth.user_base import UserBase
 from mcvirt.mcvirt_config import MCVirtConfig
 
 
 class ClusterUser(UserBase):
-    """User type for cluster daemon users"""
+    """User type for cluster daemon users."""
 
     USER_PREFIX = 'mcv-cluster-'
     CAN_GENERATE = True
     CLUSTER_USER = True
 
     @property
-    def ALLOW_PROXY_USER(self):
-        """Connection users can proxy for another user"""
+    def allow_proxy_user(self):
+        """Connection users can proxy for another user."""
         return True
 
     @staticmethod
-    def getDefaultConfig():
-        """Returns the default user config"""
-        default_config = UserBase.getDefaultConfig()
+    def get_default_config():
+        """Return the default user config."""
+        default_config = UserBase.get_default_config()
         default_config['host'] = None
         return default_config
 
-    def updateHost(self, host):
-        """Updates the host associated with the user"""
-        def updateConfig(config):
+    def update_host(self, host):
+        """Update the host associated with the user."""
+        def update_config(config):
             config['users'][self.getUsername()]['host'] = host
-        MCVirtConfig().updateConfig(updateConfig, 'Updated host for \'%s\'' % self.getUsername())
+        MCVirtConfig().update_config(update_config, 'Updated host for \'%s\'' % self.getUsername())

@@ -53,7 +53,7 @@ class Factory(PyroObject):
     def create(self, name, physical_interface):
         """Creates a network on the node"""
         # Ensure user has permission to manage networks
-        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_HOST_NETWORKS)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network does not already exist
         if Network._checkExists(name):
@@ -90,10 +90,10 @@ class Factory(PyroObject):
             raise LibvirtException('An error occurred whilst registering network with LibVirt')
 
         # Update MCVirt config
-        def updateConfig(config):
+        def update_config(config):
             config['networks'][name] = physical_interface
         from mcvirt.mcvirt_config import MCVirtConfig
-        MCVirtConfig().updateConfig(updateConfig, 'Created network \'%s\'' % name)
+        MCVirtConfig().update_config(update_config, 'Created network \'%s\'' % name)
 
         # Obtain instance of the network object
         network_instance = self.getNetworkByName(name)
@@ -133,5 +133,5 @@ class Factory(PyroObject):
 
         # Obtain network configurations and add to table
         for network_object in self.getAllNetworkObjects():
-            table.add_row((network_object.getName(), network_object.getAdapter()))
+            table.add_row((network_object.get_name(), network_object.getAdapter()))
         return table.draw()

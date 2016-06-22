@@ -96,7 +96,7 @@ class NetworkTests(unittest.TestCase):
         network_object = Network(self.mcvirt, self.test_network_name)
 
         # Ensure the name is correct
-        self.assertEqual(network_object.getName(), self.test_network_name)
+        self.assertEqual(network_object.get_name(), self.test_network_name)
 
         # Remove test network
         network_object.delete()

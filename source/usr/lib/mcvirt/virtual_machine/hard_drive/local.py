@@ -50,7 +50,7 @@ class Local(Base):
     @lockingMethod()
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
-        self._get_registered_object('auth').assertPermission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM, self.vm_object
         )
 
@@ -90,7 +90,7 @@ class Local(Base):
     def getSize(self):
         """Gets the size of the disk (in MB)"""
         self._ensureExists()
-        return self._getLogicalVolumeSize(self._getDiskName())
+        return self._get_logical_volume_size(self._getDiskName())
 
     def clone(self, destination_vm_object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
@@ -149,7 +149,7 @@ class Local(Base):
 
     def _getDiskName(self):
         """Returns the name of a disk logical volume, for a given VM"""
-        vm_name = self.vm_object.getName()
+        vm_name = self.vm_object.get_name()
         return 'mcvirt_vm-%s-disk-%s' % (vm_name, self.disk_id)
 
     def _getMCVirtConfig(self):

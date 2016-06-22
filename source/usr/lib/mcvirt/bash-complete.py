@@ -38,7 +38,7 @@ class NonSuperuserAuth(Auth):
            root privilege check"""
         pass
 
-    def checkPermission(self, *args, **kwargs):
+    def check_permission(self, *args, **kwargs):
         """Return all permissions as false as they
            cannot be determined without running as root"""
         return False

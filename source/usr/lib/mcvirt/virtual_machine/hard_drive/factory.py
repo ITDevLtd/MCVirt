@@ -19,7 +19,7 @@ import Pyro4
 
 from mcvirt.exceptions import UnknownStorageTypeException, HardDriveDoesNotExistException
 from mcvirt.virtual_machine.hard_drive.local import Local
-from mcvirt.virtual_machine.hard_drive.drbd import DRBD
+from mcvirt.virtual_machine.hard_drive.drbd import Drbd
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import lockingMethod
@@ -29,7 +29,7 @@ from mcvirt.rpc.pyro_object import PyroObject
 class Factory(PyroObject):
     """Provides a factory for creating hard drive/hard drive config objects"""
 
-    STORAGE_TYPES = [Local, DRBD]
+    STORAGE_TYPES = [Local, Drbd]
     DEFAULT_STORAGE_TYPE = 'Local'
     OBJECT_TYPE = 'hard disk'
 
@@ -37,7 +37,7 @@ class Factory(PyroObject):
     def getObject(self, vm_object, disk_id, **config):
         """Returns the storage object for a given disk"""
         vm_object = self._convert_remote_object(vm_object)
-        vm_config = vm_object.getConfigObject().getConfig()
+        vm_config = vm_object.get_config_object().get_config()
         storage_type = None
         if vm_config['storage_type']:
             storage_type = vm_config['storage_type']
@@ -60,7 +60,7 @@ class Factory(PyroObject):
         vm_object = self._convert_remote_object(vm_object)
 
         # Ensure that the user has permissions to add create storage
-        self._get_registered_object('auth').assertPermission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             vm_object
         )
@@ -117,12 +117,12 @@ class Factory(PyroObject):
 
     @Pyro4.expose()
     def getDrbdObjectByResourceName(self, resource_name):
-        """Obtains a hard drive object for a DRBD drive, based on the resource name"""
+        """Obtains a hard drive object for a Drbd drive, based on the resource name"""
         node_drbd = self._get_registered_object('node_drbd')
         for hard_drive_object in node_drbd.getAllDrbdHardDriveObjects():
             if hard_drive_object.resource_name == resource_name:
                 return hard_drive_object
         raise HardDriveDoesNotExistException(
-            'DRBD hard drive with resource name \'%s\' does not exist' %
+            'Drbd hard drive with resource name \'%s\' does not exist' %
             resource_name
         )

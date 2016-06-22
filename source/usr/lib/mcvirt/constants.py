@@ -1,3 +1,5 @@
+"""Provide constants used throughout MCVirt."""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -16,9 +18,12 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from mcvirt.utils import get_hostname
+from enum import Enum
 
 
-class Constants(object):
+class DirectoryLocation(object):
+    """Provides directory/file path constants."""
+
     TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
     BASE_STORAGE_DIR = '/var/lib/mcvirt'
     NODE_STORAGE_DIR = BASE_STORAGE_DIR + '/' + get_hostname()
@@ -26,3 +31,18 @@ class Constants(object):
     ISO_STORAGE_DIR = NODE_STORAGE_DIR + '/iso'
     LOCK_FILE_DIR = '/var/run/lock/mcvirt'
     LOCK_FILE = LOCK_FILE_DIR + '/lock'
+
+
+class LockStates(Enum):
+    """Library of virtual machine lock states."""
+
+    UNLOCKED = 0
+    LOCKED = 1
+
+
+class PowerStates(Enum):
+    """Library of virtual machine power states."""
+
+    STOPPED = 0
+    RUNNING = 1
+    UNKNOWN = 2

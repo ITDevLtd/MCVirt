@@ -19,17 +19,18 @@ import stat
 import os
 
 from mcvirt.config_file import ConfigFile
-from mcvirt.constants import Constants
+from mcvirt.constants import DirectoryLocation
 
 
 class MCVirtConfig(ConfigFile):
-    """Provides operations to obtain and set the MCVirt configuration for a VM"""
+    """Provides operations to obtain and set the MCVirt
+       configuration for a VM"""
 
     def __init__(self):
         """Sets member variables and obtains libvirt domain object"""
-        self.config_file = Constants.NODE_STORAGE_DIR + '/config.json'
+        self.config_file = DirectoryLocation.NODE_STORAGE_DIR + '/config.json'
 
-        if not os.path.isdir(Constants.BASE_STORAGE_DIR):
+        if not os.path.isdir(DirectoryLocation.BASE_STORAGE_DIR):
             self._createConfigDirectories()
 
         if not os.path.isfile(self.config_file):
@@ -41,10 +42,10 @@ class MCVirtConfig(ConfigFile):
     def _createConfigDirectories(self):
         """Creates the configuration directories for the node"""
         # Initialise the git repository
-        os.mkdir(Constants.BASE_STORAGE_DIR)
-        os.mkdir(Constants.NODE_STORAGE_DIR)
-        os.mkdir(Constants.BASE_VM_STORAGE_DIR)
-        os.mkdir(Constants.ISO_STORAGE_DIR)
+        os.mkdir(DirectoryLocation.BASE_STORAGE_DIR)
+        os.mkdir(DirectoryLocation.NODE_STORAGE_DIR)
+        os.mkdir(DirectoryLocation.BASE_VM_STORAGE_DIR)
+        os.mkdir(DirectoryLocation.ISO_STORAGE_DIR)
 
         # Set permission on MCVirt directory
         self.setConfigPermissions()
@@ -53,12 +54,12 @@ class MCVirtConfig(ConfigFile):
         """Returns the address that should be used for listening
            for connections - the stored IP address, if configured, else
            all interfaces"""
-        config_ip = self.getConfig()['cluster']['cluster_ip']
+        config_ip = self.get_config()['cluster']['cluster_ip']
         return config_ip if config_ip else '0.0.0.0'
 
     def create(self):
         """Creates a basic VM configuration for new VMs"""
-        from node.drbd import DRBD as NodeDRBD
+        from node.drbd import Drbd as NodeDrbd
 
         # Create basic config
         json_data = \
@@ -80,7 +81,7 @@ class MCVirtConfig(ConfigFile):
                 'networks': {
                     'default': 'virbr0'
                 },
-                'drbd': NodeDRBD.getDefaultConfig(),
+                'drbd': NodeDrbd.get_default_config(),
                 'git':
                 {
                     'repo_domain': '',
@@ -93,7 +94,8 @@ class MCVirtConfig(ConfigFile):
                 },
                 'users': {
                     "mjc": {
-                        "password": "$p5k2$3e8$e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707$ChiC2SGEokhHietmLcCQNjtMLf30Oggr",
+                        "password": ("$p5k2$3e8$e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09"
+                                     "ac8b85d7331707$ChiC2SGEokh""HietmLcCQNjtMLf30Oggr"),
                         "salt": "e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707",
                         "user_type": "User"
                     }

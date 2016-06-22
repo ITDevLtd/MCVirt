@@ -25,7 +25,7 @@ import libvirt
 from mcvirt.parser import Parser
 from mcvirt.mcvirt import MCVirt, MCVirtException
 from mcvirt.test.common import stop_and_delete
-from mcvirt.node.drbd import DRBD as NodeDRBD
+from mcvirt.node.drbd import Drbd as NodeDrbd
 from mcvirt.cluster.remote import Remote
 from mcvirt.virtual_machine.virtual_machine import (VirtualMachine, VirtualMachineLockException,
                                                     VmRegisteredElsewhereException, LockStates,
@@ -172,18 +172,18 @@ class OnlineMigrateTests(unittest.TestCase):
                               self.test_vm['memory_allocation'],
                               self.test_vm['disk_size'],
                               self.test_vm['networks'],
-                              storage_type='DRBD')
+                              storage_type='Drbd')
 
         self.test_vm_object = VirtualMachineLibvirtFail(self.mcvirt, self.test_vm['name'])
 
-        # Wait until the DRBD resource is synced
+        # Wait until the Drbd resource is synced
         time.sleep(5)
         for disk_object in self.test_vm_object.getHardDriveObjects():
             wait_timeout = 6
             while (disk_object._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
-                # If the DRBD volume has not connected within 1 minute, throw an exception
+                # If the Drbd volume has not connected within 1 minute, throw an exception
                 if (not wait_timeout):
-                    raise DrbdVolumeNotInSyncException('Wait for DRBD connection timed out')
+                    raise DrbdVolumeNotInSyncException('Wait for Drbd connection timed out')
 
                 time.sleep(10)
                 wait_timeout -= 1
@@ -207,8 +207,8 @@ class OnlineMigrateTests(unittest.TestCase):
         available_nodes.remove(Cluster.getHostname())
         return available_nodes[0]
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_locked(self):
         """Attempts to migrate a locked VM"""
         self.test_vm_object.setLockState(LockStates(LockStates.LOCKED))
@@ -216,8 +216,8 @@ class OnlineMigrateTests(unittest.TestCase):
         with self.assertRaises(VirtualMachineLockException):
             self.test_vm_object.onlineMigrate(self.get_remote_node())
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_unregistered(self):
         """Attempts to migrate a VM that is not registered"""
         self.test_vm_object.stop()
@@ -229,28 +229,28 @@ class OnlineMigrateTests(unittest.TestCase):
         with self.assertRaises(VmRegisteredElsewhereException):
             self.test_vm_object.onlineMigrate(self.get_remote_node())
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_inappropriate_node(self):
         """Attempts to migrate a VM to a node that is not part of
            its available nodes"""
         remote_node = self.get_remote_node()
 
-        def updateConfig(config):
+        def update_config(config):
             config['available_nodes'].remove(remote_node)
-        self.test_vm_object.getConfigObject().updateConfig(updateConfig)
+        self.test_vm_object.get_config_object().update_config(update_config)
 
         with self.assertRaises(UnsuitableNodeException):
             self.test_vm_object.onlineMigrate(remote_node)
 
-        def updateConfig(config):
+        def update_config(config):
             config['available_nodes'].append(remote_node)
-        self.test_vm_object.getConfigObject().updateConfig(updateConfig)
+        self.test_vm_object.get_config_object().update_config(update_config)
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_drbd_not_connected(self):
-        """Attempts to migrate a VM whilst DRBD is not connected"""
+        """Attempts to migrate a VM whilst Drbd is not connected"""
         for disk_object in self.test_vm_object.getHardDriveObjects():
             disk_object._drbdDisconnect()
 
@@ -264,25 +264,25 @@ class OnlineMigrateTests(unittest.TestCase):
             disk_object._drbdConnect()
 
             try:
-                node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdConnect',
-                                             {'vm_name': self.test_vm_object.getName(),
-                                              'disk_id': disk_object.getConfigObject().getId()})
+                node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdConnect',
+                                             {'vm_name': self.test_vm_object.get_name(),
+                                              'disk_id': disk_object.get_config_object().getId()})
             except:
                 pass
 
-        # Wait until the DRBD resource is synced
+        # Wait until the Drbd resource is synced
         for disk_object in self.test_vm_object.getHardDriveObjects():
             wait_timeout = 6
             while (disk_object._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
-                # If the DRBD volume has not connected within 1 minute, throw an exception
+                # If the Drbd volume has not connected within 1 minute, throw an exception
                 if (not wait_timeout):
-                    raise DrbdVolumeNotInSyncException('Wait for DRBD connection timed out')
+                    raise DrbdVolumeNotInSyncException('Wait for Drbd connection timed out')
 
                 time.sleep(10)
                 wait_timeout -= 1
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_invalid_network(self):
         """Attempts to migrate a VM attached to a network that doesn't exist
            on the destination node"""
@@ -290,7 +290,7 @@ class OnlineMigrateTests(unittest.TestCase):
         def setInvalidNetwork(config):
             for mac_address in config['network_interfaces']:
                 config['network_interfaces'][mac_address] = 'Non-existent-network'
-        self.test_vm_object.getConfigObject().updateConfig(setInvalidNetwork)
+        self.test_vm_object.get_config_object().update_config(setInvalidNetwork)
 
         # Attempt to migrate the VM
         with self.assertRaises(UnsuitableNodeException):
@@ -300,10 +300,10 @@ class OnlineMigrateTests(unittest.TestCase):
         def resetNetwork(config):
             for mac_address in config['network_interfaces']:
                 config['network_interfaces'][mac_address] = self.test_vm['networks'][0]
-        self.test_vm_object.getConfigObject().updateConfig(resetNetwork)
+        self.test_vm_object.get_config_object().update_config(resetNetwork)
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_invalid_iso(self):
         """Attempts to migrate a VM, with an ISO attached that doesn't exist
            on the destination node"""
@@ -323,15 +323,15 @@ class OnlineMigrateTests(unittest.TestCase):
         with self.assertRaises(IsoNotPresentOnDestinationNodeException):
             self.test_vm_object.onlineMigrate(self.get_remote_node())
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_invalid_node(self):
         """Attempts to migrate the VM to a non-existent node"""
         with self.assertRaises(UnsuitableNodeException):
             self.test_vm_object.onlineMigrate('non-existent-node')
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_pre_migration_libvirt_failure(self):
         """Simulates a pre-migration libvirt failure"""
         # Set the mcvirt libvirt failure mode to simulate a pre-migration failure
@@ -350,17 +350,17 @@ class OnlineMigrateTests(unittest.TestCase):
         # Ensure that the VM is registered with the local libvirt instance and not on the remote
         # libvirt instance
         self.assertTrue(
-            self.test_vm_object.getName() in
+            self.test_vm_object.get_name() in
             VirtualMachine.getAllVms(self.mcvirt,
                                      node=Cluster.getHostname())
         )
         self.assertFalse(
-            self.test_vm_object.getName() in
+            self.test_vm_object.get_name() in
             VirtualMachine.getAllVms(self.mcvirt,
                                      node=self.get_remote_node())
         )
 
-        # Ensure DRBD disks are in a valid state
+        # Ensure Drbd disks are in a valid state
         for disk_object in self.test_vm_object.getHardDriveObjects():
             # Check that the disk is shown as not in-sync
             with self.assertRaises(DrbdVolumeNotInSyncException):
@@ -371,13 +371,13 @@ class OnlineMigrateTests(unittest.TestCase):
             disk_object.setSyncState(True)
             disk_object._checkDrbdStatus()
 
-            # Ensure that the local and remote disks are in the correct DRBD role
+            # Ensure that the local and remote disks are in the correct Drbd role
             local_role, remote_role = disk_object._drbdGetRole()
             self.assertEqual(local_role, DrbdRoleState.PRIMARY)
             self.assertEqual(remote_role, DrbdRoleState.SECONDARY)
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_post_migration_libvirt_failure(self):
         """Simulates a post-migration libvirt failure"""
         # Set the mcvirt libvirt failure mode to simulate a post-migration failure
@@ -396,17 +396,17 @@ class OnlineMigrateTests(unittest.TestCase):
         # Ensure that the VM is registered with the remote libvirt instance and not on the local
         # libvirt instance
         self.assertFalse(
-            self.test_vm_object.getName() in
+            self.test_vm_object.get_name() in
             VirtualMachine.getAllVms(self.mcvirt,
                                      node=Cluster.getHostname())
         )
         self.assertTrue(
-            self.test_vm_object.getName() in
+            self.test_vm_object.get_name() in
             VirtualMachine.getAllVms(self.mcvirt,
                                      node=self.get_remote_node())
         )
 
-        # Ensure DRBD disks are in a valid state
+        # Ensure Drbd disks are in a valid state
         for disk_object in self.test_vm_object.getHardDriveObjects():
             # Check that the disk is shown as not in-sync
             with self.assertRaises(DrbdVolumeNotInSyncException):
@@ -417,13 +417,13 @@ class OnlineMigrateTests(unittest.TestCase):
             disk_object.setSyncState(True)
             disk_object._checkDrbdStatus()
 
-            # Ensure that the local and remote disks are in the correct DRBD role
+            # Ensure that the local and remote disks are in the correct Drbd role
             local_role, remote_role = disk_object._drbdGetRole()
             self.assertEqual(local_role, DrbdRoleState.SECONDARY)
             self.assertEqual(remote_role, DrbdRoleState.PRIMARY)
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_libvirt_connection_failure(self):
         """Attempt to perform a migration, simulating a libvirt
            connection failure"""
@@ -438,8 +438,8 @@ class OnlineMigrateTests(unittest.TestCase):
         self.assertEqual(self.test_vm_object.getNode(), Cluster.getHostname())
         self.assertEqual(self.test_vm_object.getState(), PowerStates.RUNNING)
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate_stopped_vm(self):
         """Attempts to migrate a stopped VM"""
         self.test_vm_object.stop()
@@ -447,8 +447,8 @@ class OnlineMigrateTests(unittest.TestCase):
         with self.assertRaises(VmStoppedException):
             self.test_vm_object.onlineMigrate(self.get_remote_node())
 
-    @unittest.skipIf(not NodeDRBD.isEnabled(),
-                     'DRBD is not enabled on this node')
+    @unittest.skipIf(not NodeDrbd.isEnabled(),
+                     'Drbd is not enabled on this node')
     def test_migrate(self):
         "Perform an online migration using the argument parser"
         # Set the mcvirt libvirt failure mode to simulate a post-migration failure
@@ -457,7 +457,7 @@ class OnlineMigrateTests(unittest.TestCase):
         # Attempt to perform a migration
         self.parser.parse_arguments("migrate --online --node=%s %s" %
                                     (self.get_remote_node(),
-                                     self.test_vm_object.getName()),
+                                     self.test_vm_object.get_name()),
                                     mcvirt_instance=self.mcvirt)
 
         self.mcvirt.libvirt_failure_mode = LibvirtFailureMode.NORMAL_RUN
@@ -469,22 +469,22 @@ class OnlineMigrateTests(unittest.TestCase):
         # Ensure that the VM is registered with the remote libvirt instance and not on the local
         # libvirt instance
         self.assertFalse(
-            self.test_vm_object.getName() in
+            self.test_vm_object.get_name() in
             VirtualMachine.getAllVms(self.mcvirt,
                                      node=Cluster.getHostname())
         )
         self.assertTrue(
-            self.test_vm_object.getName() in
+            self.test_vm_object.get_name() in
             VirtualMachine.getAllVms(self.mcvirt,
                                      node=self.get_remote_node())
         )
 
-        # Ensure DRBD disks are in a valid state
+        # Ensure Drbd disks are in a valid state
         for disk_object in self.test_vm_object.getHardDriveObjects():
             # Check that the disk is shown as not in-sync
             disk_object._checkDrbdStatus()
 
-            # Ensure that the local and remote disks are in the correct DRBD role
+            # Ensure that the local and remote disks are in the correct Drbd role
             local_role, remote_role = disk_object._drbdGetRole()
             self.assertEqual(local_role, DrbdRoleState.SECONDARY)
             self.assertEqual(remote_role, DrbdRoleState.PRIMARY)

@@ -105,14 +105,14 @@ class Base(PyroObject):
             self._driver = self.DEFAULT_DRIVER
         return self._driver
 
-    def getRemoteObject(self, node_name=None, remote_node=None, registered=True):
+    def get_remote_object(self, node_name=None, remote_node=None, registered=True):
         cluster = self._get_registered_object('cluster')
         if remote_node is None:
             remote_node = cluster.getRemoteNode(node_name)
 
-        remote_vm_factory = remote_node.getConnection('virtual_machine_factory')
-        remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.getName())
-        remote_hard_drive_factory = remote_node.getConnection('hard_drive_factory')
+        remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
+        remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
+        remote_hard_drive_factory = remote_node.get_connection('hard_drive_factory')
 
         kwargs = {
             'vm_object': remote_vm,
@@ -132,7 +132,7 @@ class Base(PyroObject):
            of disks attached to the VM"""
         found_available_id = False
         disk_id = 0
-        vm_config = self.vm_object.getConfigObject().getConfig()
+        vm_config = self.vm_object.get_config_object().get_config()
         disks = vm_config['hard_disks']
         while (not found_available_id):
             disk_id += 1
@@ -152,7 +152,7 @@ class Base(PyroObject):
         if not self._checkExists():
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
-                (self.disk_id, self.vm_object.getName()))
+                (self.disk_id, self.vm_object.get_name()))
 
     def getType(self):
         """Returns the type of storage for the hard drive"""
@@ -218,9 +218,9 @@ class Base(PyroObject):
         def addDiskToConfig(vm_config):
             vm_config['hard_disks'][str(self.disk_id)] = self._getMCVirtConfig()
 
-        self.vm_object.getConfigObject().updateConfig(
+        self.vm_object.get_config_object().update_config(
             addDiskToConfig, 'Added disk \'%s\' to \'%s\'' %
-                             (self.disk_id, self.vm_object.getName())
+                             (self.disk_id, self.vm_object.get_name())
         )
 
         # If the node cluster is initialised, update all remote node configurations
@@ -231,14 +231,14 @@ class Base(PyroObject):
             cluster = self._get_registered_object('cluster')
             try:
                 for node in cluster.getNodes():
-                    remote_disk_object = self.getRemoteObject(node, registered=False)
+                    remote_disk_object = self.get_remote_object(node, registered=False)
                     remote_disk_object.addToVirtualMachine()
                     successful_nodes.append(node)
             except Exception:
                 # If the hard drive fails to be added to a node, remove it from all successful nodes
                 # and remove from the local node
                 for node in successful_nodes:
-                    self.getRemoteObject(node).removeFromVirtualMachine()
+                    self.get_remote_object(node).removeFromVirtualMachine()
 
                 self.removeFromVirtualMachine(unregister=register, all_nodes=False)
                 raise
@@ -262,15 +262,15 @@ class Base(PyroObject):
         def removeDiskFromConfig(vm_config):
             del(vm_config['hard_disks'][str(self.disk_id)])
 
-        self.vm_object.getConfigObject().updateConfig(
+        self.vm_object.get_config_object().update_config(
             removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %
-            (self.disk_id, self.vm_object.getName()))
+            (self.disk_id, self.vm_object.get_name()))
 
         # If the cluster is initialised, run on all nodes that the VM is available on
         if self._is_cluster_master and all_nodes:
             cluster = self._get_registered_object('cluster')
             for node in cluster.getNodes():
-                remote_disk_object = self.getRemoteObject(node)
+                remote_disk_object = self.get_remote_object(node)
                 remote_disk_object.removeFromVirtualMachine()
 
     def _unregisterLibvirt(self):
@@ -302,19 +302,19 @@ class Base(PyroObject):
         # Ensure VM has not already been configured with disks that
         # do not match the type specified
         number_of_disks = len(self.vm_object.getHardDriveObjects())
-        current_storage_type = self.vm_object.getConfigObject(
-        ).getConfig()['storage_type']
+        current_storage_type = self.vm_object.get_config_object(
+        ).get_config()['storage_type']
         if current_storage_type != self.getType():
             if number_of_disks:
                 raise StorageTypesCannotBeMixedException(
                     'The VM (%s) is already configured with %s disks' %
-                    (self.vm_object.getName(), current_storage_type))
+                    (self.vm_object.get_name(), current_storage_type))
 
             def updateStorageTypeConfig(config):
                 config['storage_type'] = self.getType()
-            self.vm_object.getConfigObject().updateConfig(
+            self.vm_object.get_config_object().update_config(
                 updateStorageTypeConfig, 'Updated storage type for \'%s\' to \'%s\'' %
-                (self.vm_object.getName(), self.getType()))
+                (self.vm_object.get_name(), self.getType()))
 
     @Pyro4.expose()
     @lockingMethod()
@@ -337,11 +337,11 @@ class Base(PyroObject):
 
             if perform_on_nodes and self._is_cluster_master:
                 def remoteCommand(node):
-                    remote_disk = self.getRemoteObject(remote_node=node, registered=False)
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.createLogicalVolume(name=name, size=size)
 
                 cluster = self._get_registered_object('cluster')
-                cluster.runRemoteCommand(callback_method=remoteCommand,
+                cluster.run_remote_command(callback_method=remoteCommand,
                                          nodes=self.vm_object._getRemoteNodes())
 
         except MCVirtCommandException, e:
@@ -376,13 +376,13 @@ class Base(PyroObject):
 
             if perform_on_nodes and self._is_cluster_master:
                 def remoteCommand(node):
-                    remote_disk = self.getRemoteObject(remote_node=node, registered=False)
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.removeLogicalVolume(
                         name=name, ignore_non_existent=ignore_non_existent
                     )
 
                 cluster = self._get_registered_object('cluster')
-                cluster.runRemoteCommand(callback_method=remoteCommand,
+                cluster.run_remote_command(callback_method=remoteCommand,
                                          nodes=self.vm_object._getRemoteNodes())
 
         except MCVirtCommandException, e:
@@ -390,7 +390,7 @@ class Base(PyroObject):
                 "Error whilst removing disk logical volume:\n" + str(e)
             )
 
-    def _getLogicalVolumeSize(self, name):
+    def _get_logical_volume_size(self, name):
         """Obtains the size of a logical volume"""
         # Use 'lvs' to obtain the size of the disk
         command_args = (
@@ -403,7 +403,7 @@ class Base(PyroObject):
             'lv_size',
             self._getLogicalVolumePath(name))
         try:
-            (_, command_output, _) = System.runCommand(command_args)
+            _, command_output, _ = System.runCommand(command_args)
         except MCVirtCommandException, e:
             raise ExternalStorageCommandErrorException(
                 "Error whilst obtaining the size of the logical volume:\n" +
@@ -435,11 +435,11 @@ class Base(PyroObject):
 
             if perform_on_nodes and self._is_cluster_master:
                 def remoteCommand(node):
-                    remote_disk = self.getRemoteObject(remote_node=node, registered=False)
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.zeroLogicalVolume(name=name, size=size)
 
                 cluster = self._get_registered_object('cluster')
-                cluster.runRemoteCommand(callback_method=remoteCommand,
+                cluster.run_remote_command(callback_method=remoteCommand,
                                          nodes=self.vm_object._getRemoteNodes())
 
         except MCVirtCommandException, e:
@@ -491,11 +491,11 @@ class Base(PyroObject):
 
             if perform_on_nodes and self._is_cluster_master:
                 def remoteCommand(node):
-                    remote_disk = self.getRemoteObject(remote_node=node, registered=False)
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.activateLogicalVolume(name=name)
 
                 cluster = self._get_registered_object('cluster')
-                cluster.runRemoteCommand(callback_method=remoteCommand,
+                cluster.run_remote_command(callback_method=remoteCommand,
                                          nodes=self.vm_object._getRemoteNodes())
 
         except MCVirtCommandException, e:
@@ -508,7 +508,7 @@ class Base(PyroObject):
         self._ensureExists()
         from mcvirt.virtual_machine.virtual_machine import LockStates
         # Ensure the user has permission to delete snapshot backups
-        self._get_registered_object('auth').assertPermission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
             self.vm_object
         )
@@ -545,7 +545,7 @@ class Base(PyroObject):
         self._ensureExists()
         from mcvirt.virtual_machine.virtual_machine import LockStates
         # Ensure the user has permission to delete snapshot backups
-        self._get_registered_object('auth').assertPermission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
             self.vm_object
         )
@@ -616,11 +616,11 @@ class Base(PyroObject):
 
     def _getVolumeGroup(self):
         """Returns the node MCVirt volume group"""
-        return MCVirtConfig().getConfig()['vm_storage_vg']
+        return MCVirtConfig().get_config()['vm_storage_vg']
 
     def getDiskConfig(self):
         """Returns the disk configuration for the hard drive"""
-        vm_config = self.vm_object.getConfigObject().getConfig()
+        vm_config = self.vm_object.get_config_object().get_config()
         if str(self.disk_id) in vm_config['hard_disks']:
             return vm_config['hard_disks'][str(self.disk_id)]
         else:

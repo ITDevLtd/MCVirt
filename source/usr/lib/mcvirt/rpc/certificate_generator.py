@@ -217,7 +217,7 @@ class CertificateGenerator(PyroObject):
 
     @Pyro4.expose()
     def generate_csr(self):
-        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         return self._generate_csr()
 
     def _generate_csr(self):
@@ -227,7 +227,7 @@ class CertificateGenerator(PyroObject):
 
     @Pyro4.expose()
     def sign_csr(self, csr):
-        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         return self._sign_csr(csr)
 
     def _sign_csr(self, csr):
@@ -246,7 +246,7 @@ class CertificateGenerator(PyroObject):
 
     @Pyro4.expose()
     def add_public_key(self, key):
-        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         return self._add_public_key(key)
 
     def _add_public_key(self, key):

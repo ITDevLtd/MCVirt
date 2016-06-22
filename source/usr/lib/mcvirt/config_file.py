@@ -1,3 +1,5 @@
+"""Provide base class for configuration files"""
+
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -22,7 +24,7 @@ import pwd
 
 from mcvirt.utils import get_hostname
 from mcvirt.system import System
-from mcvirt.constants import Constants
+from mcvirt.constants import DirectoryLocation
 
 
 class ConfigFile(object):
@@ -32,25 +34,25 @@ class ConfigFile(object):
     GIT = '/usr/bin/git'
 
     def __init__(self):
-        """Sets member variables and obtains libvirt domain object"""
+        """Set member variables and obtains libvirt domain object"""
         raise NotImplementedError
 
     @staticmethod
-    def getConfigPath(vm_name):
-        """Provides the path of the VM-spefic configuration file"""
+    def get_config_path(vm_name):
+        """Provide the path of the VM-specific configuration file"""
         raise NotImplementedError
 
-    def getConfig(self):
-        """Loads the VM configuration from disk and returns the parsed JSON"""
+    def get_config(self):
+        """Load the VM configuration from disk and returns the parsed JSON."""
         config_file = open(self.config_file, 'r')
         config = json.loads(config_file.read())
         config_file.close()
 
         return config
 
-    def updateConfig(self, callback_function, reason=''):
-        """Writes a provided configuration back to the configuration file"""
-        config = self.getConfig()
+    def update_config(self, callback_function, reason=''):
+        """Write a provided configuration back to the configuration file."""
+        config = self.get_config()
         callback_function(config)
         ConfigFile._writeJSON(config, self.config_file)
         self.config = config
@@ -58,7 +60,7 @@ class ConfigFile(object):
         self.setConfigPermissions()
 
     def getPermissionConfig(self):
-        config = self.getConfig()
+        config = self.get_config()
         return config['permissions']
 
     @staticmethod
@@ -93,8 +95,8 @@ class ConfigFile(object):
                 os.chmod(path, permission_mode)
 
         # Set permissions on git directory
-        for directory in os.listdir(Constants.BASE_STORAGE_DIR):
-            path = os.path.join(Constants.BASE_STORAGE_DIR, directory)
+        for directory in os.listdir(DirectoryLocation.BASE_STORAGE_DIR):
+            path = os.path.join(DirectoryLocation.BASE_STORAGE_DIR, directory)
             if (os.path.isdir(path)):
                 if (directory == '.git'):
                     setPermission(path, directory=True)
@@ -103,8 +105,8 @@ class ConfigFile(object):
                     setPermission(os.path.join(path, 'config.json'), directory=False)
 
         # Set permission for base directory, node directory and ISO directory
-        for directory in [Constants.BASE_STORAGE_DIR, Constants.NODE_STORAGE_DIR,
-                          Constants.ISO_STORAGE_DIR]:
+        for directory in [DirectoryLocation.BASE_STORAGE_DIR, DirectoryLocation.NODE_STORAGE_DIR,
+                          DirectoryLocation.ISO_STORAGE_DIR]:
             setPermission(directory, directory=True,
                           owner=pwd.getpwnam('libvirt-qemu').pw_uid)
 
@@ -124,7 +126,7 @@ class ConfigFile(object):
                 # Update the version number of the configuration file to
                 # the current version
                 config['version'] = self.CURRENT_VERSION
-            self.updateConfig(
+            self.update_config(
                 upgradeConfig,
                 'Updated configuration file \'%s\' from version \'%s\' to \'%s\'' %
                 (self.config_file,
@@ -133,7 +135,7 @@ class ConfigFile(object):
 
     def _getVersion(self):
         """Returns the version number of the configuration file"""
-        config = self.getConfig()
+        config = self.get_config()
         if ('version' in config.keys()):
             return config['version']
         else:
@@ -147,17 +149,17 @@ class ConfigFile(object):
                 Session.getCurrentUserObject().getUsername(), get_hostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file],
-                                  cwd=Constants.BASE_STORAGE_DIR)
+                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT,
                                    'commit',
                                    '-m',
                                    message,
                                    self.config_file],
-                                  cwd=Constants.BASE_STORAGE_DIR)
+                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT,
                                    'push'],
                                   raise_exception_on_failure=False,
-                                  cwd=Constants.BASE_STORAGE_DIR)
+                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
             except:
                 pass
 
@@ -172,13 +174,13 @@ class ConfigFile(object):
                                    'rm',
                                    '--cached',
                                    self.config_file],
-                                  cwd=Constants.BASE_STORAGE_DIR)
+                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT, 'commit', '-m', message],
-                                  cwd=Constants.BASE_STORAGE_DIR)
+                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT,
                                    'push'],
                                   raise_exception_on_failure=False,
-                                  cwd=Constants.BASE_STORAGE_DIR)
+                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
             except:
                 pass
 
@@ -188,28 +190,28 @@ class ConfigFile(object):
 
         # Only attempt to create a git repository if the git
         # URL has been set in the MCVirt configuration
-        mcvirt_config = MCVirtConfig().getConfig()
+        mcvirt_config = MCVirtConfig().get_config()
         if mcvirt_config['git']['repo_domain'] == '':
             return False
 
         # Attempt to create git object, if it does not already exist
-        if not os.path.isdir(Constants.BASE_STORAGE_DIR + '/.git'):
+        if not os.path.isdir(DirectoryLocation.BASE_STORAGE_DIR + '/.git'):
 
             # Initialise git repository
-            System.runCommand([self.GIT, 'init'], cwd=Constants.BASE_STORAGE_DIR)
+            System.runCommand([self.GIT, 'init'], cwd=DirectoryLocation.BASE_STORAGE_DIR)
 
             # Set git name and email address
             System.runCommand([self.GIT, 'config', '--file=%s' %
-                               Constants.BASE_STORAGE_DIR +
+                               DirectoryLocation.BASE_STORAGE_DIR +
                                '/.git/config', 'user.name', mcvirt_config['git']['commit_name']])
             System.runCommand([self.GIT, 'config', '--file=%s' %
-                               Constants.BASE_STORAGE_DIR +
+                               DirectoryLocation.BASE_STORAGE_DIR +
                                '/.git/config', 'user.email', mcvirt_config['git']['commit_email']])
 
             # Create git-credentials store
             System.runCommand([self.GIT,
                                'config',
-                               '--file=%s' % Constants.BASE_STORAGE_DIR + '/.git/config',
+                               '--file=%s' % DirectoryLocation.BASE_STORAGE_DIR + '/.git/config',
                                'credential.helper',
                                'store --file /root/.git-credentials'])
             git_credentials = '%s://%s:%s@%s' % (mcvirt_config['git']['repo_protocol'],
@@ -232,17 +234,17 @@ class ConfigFile(object):
                     mcvirt_config['git']['repo_domain'] +
                     '/' +
                     mcvirt_config['git']['repo_path']],
-                cwd=Constants.BASE_STORAGE_DIR)
+                cwd=DirectoryLocation.BASE_STORAGE_DIR)
 
             # Update the repo
-            System.runCommand([self.GIT, 'fetch'], cwd=Constants.BASE_STORAGE_DIR)
-            System.runCommand([self.GIT, 'checkout', 'master'], cwd=Constants.BASE_STORAGE_DIR)
+            System.runCommand([self.GIT, 'fetch'], cwd=DirectoryLocation.BASE_STORAGE_DIR)
+            System.runCommand([self.GIT, 'checkout', 'master'], cwd=DirectoryLocation.BASE_STORAGE_DIR)
             System.runCommand([self.GIT,
                                'branch',
                                '--set-upstream-to',
                                'origin/master',
                                'master'],
-                              cwd=Constants.BASE_STORAGE_DIR)
+                              cwd=DirectoryLocation.BASE_STORAGE_DIR)
 
             # Perform an initial commit of the configuration file
             self.gitAdd('Initial commit of configuration file.')
@@ -252,6 +254,6 @@ class ConfigFile(object):
             System.runCommand([self.GIT,
                                'pull'],
                               raise_exception_on_failure=False,
-                              cwd=Constants.BASE_STORAGE_DIR)
+                              cwd=DirectoryLocation.BASE_STORAGE_DIR)
 
         return True
