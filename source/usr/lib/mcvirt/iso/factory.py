@@ -106,7 +106,9 @@ class Factory(PyroObject):
         self._register_object(iso_writer)
         return iso_writer
 
+
 class IsoWriter(PyroObject):
+
     def __init__(self, temp_file, factory, temp_directory, path):
         self.temp_file = temp_file
         self.temp_directory = temp_directory
@@ -133,4 +135,4 @@ class IsoWriter(PyroObject):
 
         os.remove(self.temp_file)
         os.rmdir(self.temp_directory)
-        return iso_object            
+        return iso_object

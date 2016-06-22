@@ -95,7 +95,9 @@ class LogState(object):
         'name': 'FAILED'
     }
 
+
 class LogItem(object):
+
     def __init__(self, method, user, object_name, object_type):
         # Store information about method being run
         self.user = user
@@ -137,6 +139,7 @@ class LogItem(object):
         self.status = LogState.FAILED
         self.exception_message = str(exception)
         self.exception_mcvirt = True
+
 
 def getLogNames(callback, instance_method, object_type, args, kwargs):
     """Attempts to determine object name and object type, based on method"""

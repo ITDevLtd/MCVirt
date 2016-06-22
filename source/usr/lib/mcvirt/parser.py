@@ -533,7 +533,8 @@ class Parser:
             rpc = Connection(username=Parser.USERNAME, session_id=Parser.SESSION_ID)
         else:
             # Check if user/password have been passed. Else, ask for them.
-            username = args.username if args.username else System.getUserInput('Username: ').rstrip()
+            username = args.username if args.username else System.getUserInput(
+                'Username: ').rstrip()
             password = args.password if args.password else System.getUserInput('Password: ',
                                                                                password=True).rstrip()
             rpc = Connection(username=username, password=password)
@@ -661,8 +662,8 @@ class Parser:
             if args.add_disk:
                 hard_drive_factory = rpc.getConnection('hard_drive_factory')
                 hard_drive_factory.create(vm_object, size=args.add_disk,
-                                        storage_type=args.storage_type,
-                                        driver=args.hard_disk_driver)
+                                          storage_type=args.storage_type,
+                                          driver=args.hard_disk_driver)
 
             if (args.increase_disk and args.disk_id):
                 hard_drive_factory = rpc.getConnection('hard_drive_factory')

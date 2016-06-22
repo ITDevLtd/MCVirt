@@ -344,15 +344,15 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to modify VMs or
         # that the user is the owner of the VM and the VM is a clone
         if not (
-            self._get_registered_object('auth').checkPermission(PERMISSIONS.MODIFY_VM, self) or
-                (
+                self._get_registered_object('auth').checkPermission(PERMISSIONS.MODIFY_VM, self) or
+            (
                     self.getCloneParent() and
                     self._get_registered_object('auth').checkPermission(
                         PERMISSIONS.DELETE_CLONE,
                         self
                     )
-                )
-            ):
+                    )
+        ):
             raise InsufficientPermissionsException(
                 'User does not have the required permission - ' +
                 'User must have MODIFY_VM permission or be the owner of the cloned VM'
@@ -447,7 +447,8 @@ class VirtualMachine(PyroObject):
 
         current_value = self.getRAM()
         if old_value and current_value != old_value:
-            raise AttributeAlreadyChanged('Memory has already been changed to %s since command call' % current_value)
+            raise AttributeAlreadyChanged(
+                'Memory has already been changed to %s since command call' % current_value)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -463,7 +464,7 @@ class VirtualMachine(PyroObject):
 
         # Update the MCVirt configuration
         vm_object.updateConfig(['memory_allocation'], str(memory_allocation),
-                          'RAM allocation has been changed to %s' % memory_allocation)
+                               'RAM allocation has been changed to %s' % memory_allocation)
 
     @Pyro4.expose()
     def getCPU(self):
@@ -487,7 +488,8 @@ class VirtualMachine(PyroObject):
 
         current_value = self.getCPU()
         if old_value and current_value != old_value:
-            raise AttributeAlreadyChanged('CPU count has already been changed to %s since command call' % current_value)
+            raise AttributeAlreadyChanged(
+                'CPU count has already been changed to %s since command call' % current_value)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -577,7 +579,8 @@ class VirtualMachine(PyroObject):
         domain_xml_string = ET.tostring(domain_xml, encoding='utf8', method='xml')
 
         try:
-            self._get_registered_object('libvirt_connector').get_connection().defineXML(domain_xml_string)
+            self._get_registered_object(
+                'libvirt_connector').get_connection().defineXML(domain_xml_string)
         except:
             raise LibvirtException('Error: An error occurred whilst updating the VM')
 
@@ -1052,7 +1055,8 @@ class VirtualMachine(PyroObject):
         domain_xml_string = ET.tostring(domain_xml.getroot(), encoding='utf8', method='xml')
 
         try:
-            self._get_registered_object('libvirt_connector').get_connection().defineXML(domain_xml_string)
+            self._get_registered_object(
+                'libvirt_connector').get_connection().defineXML(domain_xml_string)
         except:
             raise LibvirtException('Error: An error occurred whilst registering VM')
 

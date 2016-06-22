@@ -165,7 +165,7 @@ class CertificateGenerator(PyroObject):
     def SERVER_KEY_FILE(self):
         if not self.IS_LOCAL:
             raise CACertificateNotFoundException('Server key file not available for remote node')
-        
+
         path = self._get_certificate_path('serverkey.pem')
         if not self._ensure_exists(path, assert_raise=False):
             # Generate new SSL private key

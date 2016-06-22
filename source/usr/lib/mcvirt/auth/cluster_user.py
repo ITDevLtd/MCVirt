@@ -20,6 +20,7 @@ import Pyro4
 from mcvirt.auth.user_base import UserBase
 from mcvirt.mcvirt_config import MCVirtConfig
 
+
 class ClusterUser(UserBase):
     """User type for cluster daemon users"""
 

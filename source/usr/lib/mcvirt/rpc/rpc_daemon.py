@@ -45,6 +45,7 @@ from mcvirt.rpc.daemon_lock import DaemonLock
 
 class BaseRpcDaemon(Pyro4.Daemon):
     """Override Pyro daemon to add authentication checks and MCVirt integration"""
+
     def __init__(self, *args, **kwargs):
         """Override init to set required configuration and create nameserver connection"""
         # Require all methods/classes to be exposed
@@ -126,7 +127,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
                     return session_id
 
-            # If a session id has been passed, store it and check the session_id/username against active sessions
+            # If a session id has been passed, store it and check the
+            # session_id/username against active sessions
             elif Annotations.SESSION_ID in data:
                 session_id = str(data[Annotations.SESSION_ID])
                 session_instance = self.registered_factories['mcvirt_session']
@@ -176,6 +178,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
 
 class DaemonSession(object):
+
     @Pyro4.expose()
     def getSessionId(self):
         if Pyro4.current_context.session_id:
@@ -216,7 +219,8 @@ class RpcNSMixinDaemon(object):
         self.registerFactories()
 
         # Ensure libvirt is configured
-        cert_gen_factory = RpcNSMixinDaemon.DAEMON.registered_factories['certificate_generator_factory']
+        cert_gen_factory = RpcNSMixinDaemon.DAEMON.registered_factories[
+            'certificate_generator_factory']
         cert_gen = cert_gen_factory.get_cert_generator('localhost')
         cert_gen.check_certificates()
         cert_gen = None
@@ -287,7 +291,8 @@ class RpcNSMixinDaemon(object):
 
         # Create and register SSLSocketFactory object
         certificate_generator_factory = CertificateGeneratorFactory()
-        self.register(certificate_generator_factory, objectId='certificate_generator_factory', force=True)
+        self.register(certificate_generator_factory,
+                      objectId='certificate_generator_factory', force=True)
 
         # Create libvirt config object and register with daemon
         libvirt_config = LibvirtConfig()

@@ -127,7 +127,6 @@ class Base(PyroObject):
         remote_node.annotateObject(hard_drive_object)
         return hard_drive_object
 
-
     def _getAvailableId(self):
         """Obtains the next available ID for the VM hard drive, by scanning the IDs
            of disks attached to the VM"""
@@ -273,7 +272,6 @@ class Base(PyroObject):
             for node in cluster.getNodes():
                 remote_disk_object = self.getRemoteObject(node)
                 remote_disk_object.removeFromVirtualMachine()
-
 
     def _unregisterLibvirt(self):
         """Removes the hard drive from the LibVirt configuration for the VM"""

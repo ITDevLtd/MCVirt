@@ -31,10 +31,12 @@ class MethodLock(object):
             cls._lock = Lock()
         return cls._lock
 
+
 def lockingMethod(object_type=None, instance_method=True):
     def wrapper(callback):
         callback.OBJECT_TYPE = wrapper.object_type
         callback.INSTANCE_METHOD = wrapper.instance_method
+
         def lock_log_and_call(*args, **kwargs):
             # Attempt to obtain object type and name for logging
             object_name, object_type = getLogNames(callback,

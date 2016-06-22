@@ -73,6 +73,7 @@ class Factory(PyroObject):
         user_config['password'] = hashed_password
         user_config['salt'] = salt
         user_config['user_type'] = user_type.__name__
+
         def updateConfig(config):
             config['users'][username] = user_config
         MCVirtConfig().updateConfig(updateConfig, 'Create user \'%s\'' % username)

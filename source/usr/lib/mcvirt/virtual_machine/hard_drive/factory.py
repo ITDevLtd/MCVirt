@@ -47,7 +47,8 @@ class Factory(PyroObject):
                 storage_type = config['storage_type']
             del(config['storage_type'])
 
-        hard_drive_object = self.getClass(storage_type)(vm_object=vm_object, disk_id=disk_id, **config)
+        hard_drive_object = self.getClass(storage_type)(
+            vm_object=vm_object, disk_id=disk_id, **config)
         self._register_object(hard_drive_object)
 
         return hard_drive_object

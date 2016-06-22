@@ -61,11 +61,13 @@ class Factory(PyroObject):
             return MCVirtConfig().getConfig()['virtual_machines']
         elif node == get_hostname():
             # Obtain array of all domains from libvirt
-            all_domains = self._get_registered_object('libvirt_connector').get_connection().listAllDomains()
+            all_domains = self._get_registered_object(
+                'libvirt_connector').get_connection().listAllDomains()
             return [vm.name() for vm in all_domains]
         else:
             # Return list of VMs registered on remote node
             cluster = self._get_registered_object('cluster')
+
             def remote_command(node_connection):
                 virtual_machine_factory = node_connection.getConnection('virtual_machine_factory')
                 return virtual_machine_factory.getAllVmNames(node=node)
@@ -105,7 +107,6 @@ class Factory(PyroObject):
 
         return True
 
-
     @Pyro4.expose()
     @lockingMethod(instance_method=True)
     def create(self, *args, **kwargs):
@@ -115,8 +116,8 @@ class Factory(PyroObject):
 
     @lockingMethod(instance_method=True)
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
-               network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-               hard_drive_driver=None):
+                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
+                hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
         # Validate the VM name
         valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search

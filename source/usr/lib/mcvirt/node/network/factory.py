@@ -40,7 +40,6 @@ class Factory(PyroObject):
         self._get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')
         return self._interfaceExists(interface)
 
-
     def _interfaceExists(self, interface):
         """Determines if a given network adapter exists on the node"""
         if interface not in netifaces.interfaces():
@@ -48,7 +47,6 @@ class Factory(PyroObject):
 
         addr = netifaces.ifaddresses(interface)
         return (netifaces.AF_INET in addr)
-
 
     @Pyro4.expose()
     @lockingMethod()
@@ -86,7 +84,8 @@ class Factory(PyroObject):
 
         # Attempt to register network with LibVirt
         try:
-            self._get_registered_object('libvirt_connector').get_connection().networkDefineXML(network_xml_string)
+            self._get_registered_object('libvirt_connector').get_connection(
+            ).networkDefineXML(network_xml_string)
         except:
             raise LibvirtException('An error occurred whilst registering network with LibVirt')
 

@@ -275,7 +275,8 @@ class DRBD(Base):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
         in the VM configuration"""
         # Ensure user has privileges to create a DRBD volume
-        self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_DRBD, self.vm_object)
+        self._get_registered_object('auth').assertPermission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
 
         # Ensure DRBD is enabled on the host
         if not self._get_registered_object('node_drbd').isEnabled():
@@ -322,6 +323,7 @@ class DRBD(Base):
             progress = DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG
 
             cluster = self._get_registered_object('cluster')
+
             def remoteCommand(node):
                 remote_disk = self.getRemoteObject(remote_node=node, registered=False)
                 remote_disk.generateDrbdConfig()
@@ -331,6 +333,7 @@ class DRBD(Base):
 
             # Setup meta data on DRBD volume
             self._initialiseMetaData()
+
             def remoteCommand(node):
                 remote_disk = self.getRemoteObject(remote_node=node, registered=False)
                 remote_disk.initialiseMetaData()
@@ -340,6 +343,7 @@ class DRBD(Base):
             # Bring up DRBD resource
             self._drbdUp()
             progress = DRBD.CREATE_PROGRESS.DRBD_UP
+
             def remoteCommand(node):
                 remote_disk = self.getRemoteObject(remote_node=node, registered=False)
                 remote_disk.drbdUp()
@@ -362,6 +366,7 @@ class DRBD(Base):
             # Ensure the DRBD resource is connected
             self._drbdConnect()
             progress = DRBD.CREATE_PROGRESS.DRBD_CONNECT
+
             def remoteCommand(node):
                 remote_disk = self.getRemoteObject(remote_node=node, registered=False)
                 remote_disk.drbdConnect()
@@ -371,6 +376,7 @@ class DRBD(Base):
 
             # Mark volume as primary on local node
             self._drbdSetPrimary()
+
             def remoteCommand(node):
                 remote_disk = self.getRemoteObject(remote_node=node, registered=False)
                 remote_disk.drbdSetSecondary()
@@ -436,6 +442,7 @@ class DRBD(Base):
         cluster.runRemoteCommand(callback_method=remoteCommand,
                                  nodes=remote_nodes)
         self._drbdDisconnect()
+
         def remoteCommand(node):
             remote_disk = self.getRemoteObject(remote_node=node, registered=False)
             remote_disk.drbdDown()
@@ -571,6 +578,7 @@ class DRBD(Base):
         # Configure remote node(s)
         if self._is_cluster_master:
             cluster_instance = self._get_registered_object('cluster')
+
             def remoteCommand(node):
                 remote_disk = self.getRemoteObject(remote_node=node)
                 remote_disk.setTwoPrimariesConfig(allow=allow)
@@ -787,6 +795,7 @@ class DRBD(Base):
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
         obtained_lock = False
+
         def updateConfig(config):
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.getConfigObject().updateConfig(
@@ -799,6 +808,7 @@ class DRBD(Base):
         # Update remote nodes
         if self._is_cluster_master and update_remote:
             cluster = self._get_registered_object('cluster')
+
             def remoteCommand(node):
                 remote_disk = self.getRemoteObject(remote_node=node)
                 remote_disk.setSyncState(sync_state=sync_state)

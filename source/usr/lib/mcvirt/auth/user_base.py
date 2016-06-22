@@ -97,6 +97,7 @@ class UserBase(PyroObject):
     def _setPassword(self, new_password):
         """Sets the password for the current user"""
         password_hash = self._hashPassword(new_password)
+
         def updateConfig(config):
             config['users'][self.getUsername()]['password'] = password_hash
         MCVirtConfig().updateConfig(updateConfig, 'Updated password for \'%s\'' % self.getUsername())

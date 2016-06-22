@@ -143,9 +143,11 @@ class ConfigFile(object):
         """Commits changes to an added or modified configuration file"""
         from auth.session import Session
         if (self._checkGitRepo()):
-            message += "\nUser: %s\nNode: %s" % (Session.getCurrentUserObject().getUsername(), get_hostname())
+            message += "\nUser: %s\nNode: %s" % (
+                Session.getCurrentUserObject().getUsername(), get_hostname())
             try:
-                System.runCommand([self.GIT, 'add', self.config_file], cwd=Constants.BASE_STORAGE_DIR)
+                System.runCommand([self.GIT, 'add', self.config_file],
+                                  cwd=Constants.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT,
                                    'commit',
                                    '-m',
@@ -171,7 +173,8 @@ class ConfigFile(object):
                                    '--cached',
                                    self.config_file],
                                   cwd=Constants.BASE_STORAGE_DIR)
-                System.runCommand([self.GIT, 'commit', '-m', message], cwd=Constants.BASE_STORAGE_DIR)
+                System.runCommand([self.GIT, 'commit', '-m', message],
+                                  cwd=Constants.BASE_STORAGE_DIR)
                 System.runCommand([self.GIT,
                                    'push'],
                                   raise_exception_on_failure=False,

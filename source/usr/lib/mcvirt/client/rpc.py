@@ -24,6 +24,7 @@ from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.auth.session import Session
 from mcvirt.rpc.constants import Annotations
 
+
 class Connection(object):
     """Connection class, providing connections to the Pyro MCVirt daemon"""
 
@@ -93,6 +94,7 @@ class Connection(object):
         ns = Pyro4.naming.locateNS(host=self.__host, port=self.NS_PORT, broadcast=False)
 
         class AuthProxy(Pyro4.Proxy):
+
             def _pyroValidateHandshake(self, data):
                 self._pyroHandshake[Annotations.SESSION_ID] = data
 

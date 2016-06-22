@@ -93,9 +93,9 @@ class MCVirtConfig(ConfigFile):
                 },
                 'users': {
                     "mjc": {
-                      "password": "$p5k2$3e8$e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707$ChiC2SGEokhHietmLcCQNjtMLf30Oggr",
-                      "salt": "e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707",
-                      "user_type": "User"
+                        "password": "$p5k2$3e8$e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707$ChiC2SGEokhHietmLcCQNjtMLf30Oggr",
+                        "salt": "e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707",
+                        "user_type": "User"
                     }
                 },
                 'libvirt_configured': False

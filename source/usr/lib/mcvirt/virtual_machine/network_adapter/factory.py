@@ -22,6 +22,7 @@ from mcvirt.rpc.lock import lockingMethod
 from network_adapter import NetworkAdapter
 from mcvirt.auth.permissions import PERMISSIONS
 
+
 class Factory(PyroObject):
     """Factory method to create/obtain network adapter instances"""
 
@@ -54,11 +55,12 @@ class Factory(PyroObject):
                 remote_vm = remote_vm_factory.getVirtualMachineByName(virtual_machine.getName())
                 remote_network_factory = node_connection.getConnection('network_factory')
                 remote_network = remote_network_factory.getNetworkByName(network_object.getName())
-                remote_network_adapter_factory = node_connection.getConnection('network_adapter_factory')
-                remote_network_adapter_factory.create(remote_vm, remote_network, mac_address=mac_address)
+                remote_network_adapter_factory = node_connection.getConnection(
+                    'network_adapter_factory')
+                remote_network_adapter_factory.create(
+                    remote_vm, remote_network, mac_address=mac_address)
             cluster = self._get_registered_object('cluster')
             cluster.runRemoteCommand(remote_command)
-
 
         network_adapter_object = self.getNetworkAdapterByMacAdress(virtual_machine, mac_address)
 

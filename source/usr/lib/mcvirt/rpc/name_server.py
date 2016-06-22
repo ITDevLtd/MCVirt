@@ -21,6 +21,7 @@ import time
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
 
+
 class NameServer(object):
     """Thread for running the name server"""
 
@@ -32,6 +33,6 @@ class NameServer(object):
 
     def start(self):
         """Start the Pyro name server"""
-        #self.daemon.requestLoop()
+        # self.daemon.requestLoop()
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.naming.startNSloop(host=get_hostname(), port=9090, enableBroadcast=False)

@@ -17,6 +17,7 @@
 
 from mcvirt.utils import get_hostname
 
+
 class Constants(object):
     TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
     BASE_STORAGE_DIR = '/var/lib/mcvirt'

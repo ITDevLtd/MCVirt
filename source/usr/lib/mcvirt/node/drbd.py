@@ -80,6 +80,7 @@ class DRBD(PyroObject):
         if self._is_cluster_master:
             # Enable DRBD on the remote nodes
             cluster = self._get_registered_object('cluster')
+
             def remoteCommand(node):
                 remote_drbd = node.getConnection('node_drbd')
                 remote_drbd.enable(secret=secret)
