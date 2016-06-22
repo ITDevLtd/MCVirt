@@ -17,9 +17,9 @@
 
 import libvirt
 
-from rpc.ssl_socket import SSLSocket
-from utils import get_hostname
-from rpc.pyro_object import PyroObject
+from mcvirt.rpc.ssl_socket import SSLSocket
+from mcvirt.utils import get_hostname
+from mcvirt.rpc.pyro_object import PyroObject
 
 
 class LibvirtConnector(PyroObject):

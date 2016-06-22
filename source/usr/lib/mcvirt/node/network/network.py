@@ -30,9 +30,8 @@ from mcvirt.rpc.pyro_object import PyroObject
 class Network(PyroObject):
     """Provides an interface to LibVirt networks"""
 
-    def __init__(self, mcvirt_instance, name):
+    def __init__(self, name):
         """Sets member variables and obtains libvirt domain object"""
-        self.mcvirt_instance = mcvirt_instance
         self.name = name
 
         # Ensure network exists

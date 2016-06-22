@@ -38,17 +38,12 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.client.rpc import Connection
 from mcvirt.node.network.factory import Factory as NetworkFactory
 from mcvirt.rpc.lock import lockingMethod
-from remote import Node
+from mcvirt.cluster.remote import Node
 from mcvirt.rpc.pyro_object import PyroObject
 
 
 class Cluster(PyroObject):
     """Class to perform node management within the MCVirt cluster"""
-
-    @staticmethod
-    def getHostname():
-        """Returns the hostname of the system"""
-        return socket.gethostname()
 
     @Pyro4.expose()
     def generateConnectionInfo(self):
@@ -90,10 +85,6 @@ class Cluster(PyroObject):
         }
         connection_info_json = json.dumps(connection_info_dict)
         return base64.b64encode(connection_info_json)
-
-    def __init__(self, mcvirt_instance):
-        """Sets member variables"""
-        self.mcvirt_instance = mcvirt_instance
 
     @Pyro4.expose()
     def printInfo(self):
@@ -413,7 +404,7 @@ class Cluster(PyroObject):
 
         # Check that each of the interfaces, used for the networks, is present on the
         # remote node
-        network_factory = NetworkFactory(self.mcvirt_instance)
+        network_factory = self._get_registered_object('network_factory')
         for local_network in network_factory.getAllNetworkObjects():
             if not remote_network_factory.interfaceExists(local_network.getAdapter()):
                 raise RemoteObjectConflict('Network interface %s does not exist on remote node' %
@@ -447,7 +438,8 @@ class Cluster(PyroObject):
 
         # Check for any VMs that the target node is available to and where the node is not
         # the only not that the VM is available to
-        all_vm_objects = self.mcvirt_instance.getAllVirtualMachineObjects()
+        vm_factory = self._get_registered_object('virtual_machine_factory')
+        all_vm_objects = vm_factory.getAllVirtualMachines()
         for vm_object in all_vm_objects:
             if ((vm_object.getStorageType() == 'DRBD' and
                  remote_host in vm_object.getAvailableNodes())):
@@ -469,11 +461,12 @@ class Cluster(PyroObject):
                 cluster.runRemoteCommand(remove_vms)
                 vm_object.delete(remove_data=True, local_only=True)
 
-        if (remote_host not in self.getFailedNodes()):
+        if remote_host not in self.getFailedNodes():
             remote = self.getRemoteNode(remote_host)
 
             # Remove any VMs from the remote node that the node is not able to run
-            all_vm_objects = self.mcvirt_instance.getAllVirtualMachineObjects()
+            vm_factory = self._get_registered_object('virtual_machine_factory')
+            all_vm_objects = vm_factory.getAllVirtualMachines()
             for vm_object in all_vm_objects:
                 if (vm_object.getAvailableNodes() != [remote_host]):
                     remote.runRemoteCommand('virtual_machine-delete',
@@ -488,10 +481,6 @@ class Cluster(PyroObject):
 
         # Remove remote node from local configuration
         self.removeNodeConfiguration(remote_host)
-
-        # Remove the node from the remote node connections, if it exists
-        if (remote_host in self.mcvirt_instance.remote_nodes):
-            del self.mcvirt_instance.remote_nodes[remote_host]
 
         # Remove the node from the rest of the nodes in the cluster
         self.runRemoteCommand('cluster-cluster-removeNodeConfiguration',

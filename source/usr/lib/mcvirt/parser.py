@@ -18,11 +18,10 @@
 import argparse
 import binascii
 
-from mcvirt import MCVirt
-from exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
-from auth.auth import Auth
-from client.rpc import Connection
-from system import System
+from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
+from mcvirt.auth.auth import Auth
+from mcvirt.client.rpc import Connection
+from mcvirt.system import System
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -519,7 +518,7 @@ class Parser:
         if self.print_status:
             print status
 
-    def parse_arguments(self, script_args=None, mcvirt_instance=None):
+    def parse_arguments(self, script_args=None):
         """Parses arguments and performs actions based on the arguments"""
         # If arguments have been specified, split, so that
         # an array is sent to the argument parser

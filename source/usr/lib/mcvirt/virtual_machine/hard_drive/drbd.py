@@ -23,13 +23,13 @@ import time
 from Cheetah.Template import Template
 
 from mcvirt.virtual_machine.hard_drive.base import Base
-from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode, DRBDSocket
+from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.system import System
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.rpc.lock import lockingMethod
-from mcvirt.mcvirt import MCVirt
+from mcvirt.constants import Constants
 from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
                                DrbdVolumeNotInSyncException, MCVirtCommandException)
@@ -214,7 +214,7 @@ class DRBD(Base):
     INITIAL_MINOR = 1
     DRBD_RAW_SUFFIX = 'raw'
     DRBD_META_SUFFIX = 'meta'
-    DRBD_CONFIG_TEMPLATE = MCVirt.TEMPLATE_DIR + '/drbd_resource.conf'
+    DRBD_CONFIG_TEMPLATE = Constants.TEMPLATE_DIR + '/drbd_resource.conf'
     CACHE_MODE = 'none'
 
     def __init__(self, drbd_minor=None, drbd_port=None, *args, **kwargs):
@@ -848,7 +848,8 @@ class DRBD(Base):
     def move(self, destination_node, source_node):
         """Replaces a remote node for the DRBD volume with a new node
            and syncs the data"""
-        cluster_instance = Cluster(self.vm_object.mcvirt_object)
+        # @TODO Update
+        cluster_instance = self._get_registered_object('cluster')
 
         # Remove DRBD configuration from source node
         dest_node_object = cluster_instance.getRemoteNode(destination_node)

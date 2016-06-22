@@ -35,7 +35,7 @@ class VirtualMachineConfig(ConfigFile):
             )
 
         # Perform upgrade of configuration
-        self.upgrade(vm_object.mcvirt_object)
+        self.upgrade()
 
     @staticmethod
     def getConfigPath(vm_name):
@@ -72,9 +72,9 @@ class VirtualMachineConfig(ConfigFile):
         # Write the configuration to disk
         VirtualMachineConfig._writeJSON(json_data, VirtualMachineConfig.getConfigPath(vm_name))
 
-    def _upgrade(self, mcvirt_instance, config):
+    def _upgrade(self, config):
         """Perform an upgrade of the configuration file"""
-        if (self._getVersion() < 1):
+        if self._getVersion() < 1:
             # Convert old disk array into hash. Assume that all old disks were
             # local, as DRBD was not supported in pre-version 1 configurations
             config['hard_disks'] = {}

@@ -15,40 +15,36 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import stat
 import os
 
-from config_file import ConfigFile
+from mcvirt.config_file import ConfigFile
+from mcvirt.constants import Constants
 
 
 class MCVirtConfig(ConfigFile):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    def __init__(self, mcvirt_instance=None, perform_upgrade=False):
+    def __init__(self):
         """Sets member variables and obtains libvirt domain object"""
-        from mcvirt import MCVirt
+        self.config_file = Constants.NODE_STORAGE_DIR + '/config.json'
 
-        self.config_file = MCVirt.NODE_STORAGE_DIR + '/config.json'
-
-        if not os.path.isdir(MCVirt.BASE_STORAGE_DIR):
+        if not os.path.isdir(Constants.BASE_STORAGE_DIR):
             self._createConfigDirectories()
 
         if not os.path.isfile(self.config_file):
             self.create()
 
         # If performing an upgrade has been specified, do so
-        if perform_upgrade and mcvirt_instance:
-            self.upgrade(mcvirt_instance)
+        self.upgrade()
 
     def _createConfigDirectories(self):
         """Creates the configuration directories for the node"""
         # Initialise the git repository
-        from mcvirt import MCVirt
-        import stat
-
-        os.mkdir(MCVirt.BASE_STORAGE_DIR)
-        os.mkdir(MCVirt.NODE_STORAGE_DIR)
-        os.mkdir(MCVirt.BASE_VM_STORAGE_DIR)
-        os.mkdir(MCVirt.ISO_STORAGE_DIR)
+        os.mkdir(Constants.BASE_STORAGE_DIR)
+        os.mkdir(Constants.NODE_STORAGE_DIR)
+        os.mkdir(Constants.BASE_VM_STORAGE_DIR)
+        os.mkdir(Constants.ISO_STORAGE_DIR)
 
         # Set permission on MCVirt directory
         self.setConfigPermissions()
@@ -68,7 +64,7 @@ class MCVirtConfig(ConfigFile):
         json_data = \
             {
                 'version': self.CURRENT_VERSION,
-                'superusers': [],
+                'superusers': [""],
                 'permissions':
                 {
                     'user': [],
@@ -95,13 +91,19 @@ class MCVirtConfig(ConfigFile):
                     'commit_name': '',
                     'commit_email': ''
                 },
-                'users': {},
+                'users': {
+                    "mjc": {
+                      "password": "$p5k2$3e8$e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707$ChiC2SGEokhHietmLcCQNjtMLf30Oggr",
+                      "salt": "e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707",
+                      "user_type": "User"
+                    }
+                },
                 'libvirt_configured': False
             }
 
         # Write the configuration to disk
         MCVirtConfig._writeJSON(json_data, self.config_file)
 
-    def _upgrade(self, mcvirt_instance, config):
+    def _upgrade(self, config):
         """Perform an upgrade of the configuration file"""
         pass

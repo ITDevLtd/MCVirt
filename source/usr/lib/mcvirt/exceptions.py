@@ -15,8 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from utils import get_all_submodules
 import Pyro4
+
+from mcvirt.utils import get_all_submodules
+
 
 class MCVirtException(Exception):
     """Provides an exception to be thrown for errors in MCVirt"""

@@ -26,15 +26,11 @@ from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsExc
                                DuplicatePermissionException)
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
-from permissions import PERMISSIONS, PERMISSION_GROUPS
+from mcvirt.auth.permissions import PERMISSIONS, PERMISSION_GROUPS
 
 
 class Auth(PyroObject):
     """Provides authentication and permissions for performing functions within MCVirt"""
-
-    def __init__(self, mcvirt_instance):
-        """Initiate object, storing MCVirt instance"""
-        self.mcvirt_instance = mcvirt_instance
 
     @staticmethod
     def checkRootPrivileges():
@@ -59,7 +55,9 @@ class Auth(PyroObject):
     def assert_user_type(self, *user_type_names):
         """Ensures that the currently logged in user is of a specified type"""
         if not self.check_user_type(*user_type_names):
-            raise InsufficientPermissionsException('User must be a %s user' % user_type_name)
+            raise InsufficientPermissionsException(
+                'User must be on the following: %s' % ', '.join(user_type_names)
+            )
 
     def assertPermission(self, permission_enum, vm_object=None):
         """Uses checkPermission function to determine if a user has a given permission
@@ -246,18 +244,16 @@ class Auth(PyroObject):
             config_object.updateConfig(addUserToConfig, 'Added user \'%s\' to group \'%s\'' %
                                                         (username, permission_group))
 
+            # @TODO FIX ME
             if self._is_cluster_master:
-                cluster_object = Cluster(self.mcvirt_instance)
-                if (vm_object):
-                    vm_name = vm_object.getName()
-                else:
-                    vm_name = None
+                cluster_object = self._get_registered_object('cluster')
+                vm_name = vm_object.getName() if vm_object else None
                 cluster_object.runRemoteCommand('auth-addUserPermissionGroup',
                                                 {'permission_group': permission_group,
                                                  'username': username,
                                                  'vm_name': vm_name})
 
-        elif (not ignore_duplicate):
+        elif not ignore_duplicate:
             raise DuplicatePermissionException(
                 'User \'%s\' already in group \'%s\'' % (username, permission_group)
             )
@@ -266,8 +262,6 @@ class Auth(PyroObject):
     @lockingMethod()
     def deleteUserPermissionGroup(self, permission_group, user_object, vm_object=None):
         """Removes a user from a permissions group on a VM object"""
-        from mcvirt.cluster.cluster import Cluster
-
         # Check if user running script is able to remove users to permission group
         if not (self.isSuperuser() or
                 (self.assertPermission(PERMISSIONS.MANAGE_VM_USERS, vm_object) and
@@ -279,11 +273,11 @@ class Auth(PyroObject):
         username = user_object.getUsername()
 
         # Check if user exists in the group
-        if (username not in self.getUsersInPermissionGroup(permission_group, vm_object)):
+        if username not in self.getUsersInPermissionGroup(permission_group, vm_object):
             raise UserNotPresentInGroup('User \'%s\' not in group \'%s\'' %
                                         (username, permission_group))
 
-        if (vm_object):
+        if vm_object:
             config_object = vm_object.getConfigObject()
             vm_name = vm_object.getName()
         else:
@@ -298,8 +292,9 @@ class Auth(PyroObject):
                                    'Removed user \'%s\' from group \'%s\'' %
                                    (username, permission_group))
 
+        # @TODO FIX ME
         if self._is_cluster_master:
-            cluster_object = Cluster(self.mcvirt_instance)
+            cluster = self._get_registered_object('cluster')
             cluster_object.runRemoteCommand('auth-deleteUserPermissionGroup',
                                             {'permission_group': permission_group,
                                              'username': username,
@@ -326,13 +321,13 @@ class Auth(PyroObject):
     def getUsersInPermissionGroup(self, permission_group, vm_object=None):
         """Obtains a list of users in a given group, either in the global permissions or
            for a specific VM"""
-        if (vm_object):
+        if vm_object:
             permission_config = vm_object.getConfigObject().getPermissionConfig()
         else:
             mcvirt_config = MCVirtConfig()
             permission_config = mcvirt_config.getPermissionConfig()
 
-        if (permission_group in permission_config.keys()):
+        if permission_group in permission_config.keys():
             return permission_config[permission_group]
         else:
             raise InvalidPermissionGroupException(

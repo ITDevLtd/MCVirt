@@ -18,6 +18,7 @@
 from datetime import datetime
 import Pyro4
 
+
 class Logger(object):
 
     LOGS = []

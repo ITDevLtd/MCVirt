@@ -21,7 +21,6 @@ import Pyro4
 import uuid
 import time
 
-from mcvirt.mcvirt import MCVirt
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
@@ -41,11 +40,12 @@ from mcvirt.node.libvirt_config import LibvirtConfig
 from mcvirt.libvirt_connector import LibvirtConnector
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.constants import Annotations
+from mcvirt.rpc.daemon_lock import DaemonLock
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
     """Override Pyro daemon to add authentication checks and MCVirt integration"""
-    def __init__(self, mcvirt_instance, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Override init to set required configuration and create nameserver connection"""
         # Require all methods/classes to be exposed
         # DO NOT CHANGE THIS OPTION!
@@ -55,7 +55,6 @@ class BaseRpcDaemon(Pyro4.Daemon):
         super(BaseRpcDaemon, self).__init__(*args, **kwargs)
 
         # Store MCVirt instance
-        self.mcvirt_instance = mcvirt_instance
         self.registered_factories = {}
         atexit.register(self.destroy)
 
@@ -63,8 +62,6 @@ class BaseRpcDaemon(Pyro4.Daemon):
         """Remove references to objects"""
         for factory in self.registered_factories:
             self.registered_factories[factory] = None
-        # Create MCVirt instance
-        self.mcvirt_instance = None
 
     def validateHandshake(self, conn, data):
         """Perform authentication on new connections"""
@@ -200,8 +197,7 @@ class RpcNSMixinDaemon(object):
         Pyro4.current_context.STARTUP_PERIOD = True
 
         # Store nameserver, MCVirt instance and create daemon
-        self.mcvirt_instance = MCVirt()
-        atexit.register(self.destroy)
+        self.daemon_lock = DaemonLock()
 
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
@@ -216,8 +212,7 @@ class RpcNSMixinDaemon(object):
         # Wait for nameserver
         self.obtainConnection()
 
-        RpcNSMixinDaemon.DAEMON = BaseRpcDaemon(mcvirt_instance=self.mcvirt_instance,
-                                                host=self.hostname)
+        RpcNSMixinDaemon.DAEMON = BaseRpcDaemon(host=self.hostname)
         self.registerFactories()
 
         # Ensure libvirt is configured
@@ -247,43 +242,43 @@ class RpcNSMixinDaemon(object):
         self.register(DaemonSession, objectId='session', force=True)
 
         # Create Virtual machine factory object and register with daemon
-        virtual_machine_factory = VirtualMachineFactory(self.mcvirt_instance)
+        virtual_machine_factory = VirtualMachineFactory()
         self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
 
         # Create network factory object and register with daemon
-        network_factory = NetworkFactory(self.mcvirt_instance)
+        network_factory = NetworkFactory()
         self.register(network_factory, objectId='network_factory', force=True)
 
         # Create network factory object and register with daemon
-        hard_drive_factory = HardDriveFactory(self.mcvirt_instance)
+        hard_drive_factory = HardDriveFactory()
         self.register(hard_drive_factory, objectId='hard_drive_factory', force=True)
 
         # Create ISO factory object and register with daemon
-        iso_factory = IsoFactory(self.mcvirt_instance)
+        iso_factory = IsoFactory()
         self.register(iso_factory, objectId='iso_factory', force=True)
 
         # Create auth object and register with daemon
-        auth = Auth(self.mcvirt_instance)
+        auth = Auth()
         self.register(auth, objectId='auth', force=True)
 
         # Create user factory object and register with Daemon
-        user_factory = UserFactory(self.mcvirt_instance)
+        user_factory = UserFactory()
         self.register(user_factory, objectId='user_factory', force=True)
 
         # Create cluster object and register with Daemon
-        cluster = Cluster(self.mcvirt_instance)
+        cluster = Cluster()
         self.register(cluster, objectId='cluster', force=True)
 
         # Create node DRBD object and register with daemon
-        node_drbd = NodeDRBD(self.mcvirt_instance)
+        node_drbd = NodeDRBD()
         self.register(node_drbd, objectId='node_drbd', force=True)
 
         # Create network adapter factory and register with daemon
-        network_adapter_factory = NetworkAdapterFactory(self.mcvirt_instance)
+        network_adapter_factory = NetworkAdapterFactory()
         self.register(network_adapter_factory, objectId='network_adapter_factory', force=True)
 
         # Create node instance and register with daemon
-        node = Node(self.mcvirt_instance)
+        node = Node()
         self.register(node, objectId='node', force=True)
 
         # Create logger object and register with daemon
@@ -303,12 +298,7 @@ class RpcNSMixinDaemon(object):
         self.register(libvirt_connector, objectId='libvirt_connector', force=True)
 
         # Create an MCVirt session
-        RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session'] = Session(self.mcvirt_instance)
-
-    def destroy(self):
-        """Destroy the MCVirt instance on destruction of object"""
-        # Create MCVirt instance
-        self.mcvirt_instance = None
+        RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session'] = Session()
 
     def obtainConnection(self):
         while 1:

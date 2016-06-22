@@ -19,11 +19,12 @@ import Pyro4
 import libvirt
 import os
 
-from mcvirt.system import System, MCVirtCommandException
+from mcvirt.system import System
 from mcvirt.exceptions import (VmAlreadyStartedException, VmIsCloneException,
                                ExternalStorageCommandErrorException,
                                DiskAlreadyExistsException,
-                               CannotMigrateLocalDiskException)
+                               CannotMigrateLocalDiskException,
+                               MCVirtCommandException)
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS

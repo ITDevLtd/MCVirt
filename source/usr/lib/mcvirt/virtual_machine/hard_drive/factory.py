@@ -33,10 +33,6 @@ class Factory(PyroObject):
     DEFAULT_STORAGE_TYPE = 'Local'
     OBJECT_TYPE = 'hard disk'
 
-    def __init__(self, mcvirt_instance):
-        """Create object, storing MCVirt instance"""
-        self.mcvirt_instance = mcvirt_instance
-
     @Pyro4.expose()
     def getObject(self, vm_object, disk_id, **config):
         """Returns the storage object for a given disk"""

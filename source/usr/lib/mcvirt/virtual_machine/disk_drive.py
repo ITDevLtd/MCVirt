@@ -21,12 +21,12 @@ import os
 import Pyro4
 
 from mcvirt.exceptions import LibvirtException
-from mcvirt.mcvirt import MCVirt
 from mcvirt.iso.iso import Iso
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.constants import Constants
 
 
 class DiskDrive(PyroObject):
@@ -48,7 +48,7 @@ class DiskDrive(PyroObject):
         )
 
         # Import cdrom XML template
-        cdrom_xml = ET.parse(MCVirt.TEMPLATE_DIR + '/cdrom.xml')
+        cdrom_xml = ET.parse(Constants.TEMPLATE_DIR + '/cdrom.xml')
 
         # Add iso image path to cdrom XML
         cdrom_xml.find('source').set('file', iso_object.getPath())
@@ -65,7 +65,7 @@ class DiskDrive(PyroObject):
         """Removes ISO attached to the disk drive of a VM"""
 
         # Import cdrom XML template
-        cdrom_xml = ET.parse(MCVirt.TEMPLATE_DIR + '/cdrom.xml')
+        cdrom_xml = ET.parse(Constants.TEMPLATE_DIR + '/cdrom.xml')
 
         # Add iso image path to cdrom XML
         cdrom_xml = cdrom_xml.getroot()
@@ -81,23 +81,22 @@ class DiskDrive(PyroObject):
 
     def getCurrentDisk(self):
         """Returns the path of the disk currently attached to the VM"""
-
         # Import cdrom XML template
         domain_config = self.vm_object.getLibvirtConfig()
         source_xml = domain_config.find('./devices/disk[@device="cdrom"]/source')
 
         if (source_xml is not None):
             filename = Iso.getFilenameFromPath(source_xml.get('file'))
-            return Iso(self.vm_object.mcvirt_object, filename)
+            return Iso(filename)
         else:
             return None
 
     def preOnlineMigrationChecks(self, destination_node_name):
         """Performs pre-online-migration checks"""
         # Determines if an attached ISO is present on the remote node
-        if (self.getCurrentDisk()):
-            from mcvirt.cluster.cluster import Cluster
-            cluster_instance = Cluster(self.vm_object.mcvirt_object)
+        if self.getCurrentDisk():
+            # @TODO Update
+            cluster_instance = self._get_registered_object('cluster')
             return_data = cluster_instance.runRemoteCommand('iso-getIsos', {},
                                                             nodes=[destination_node_name])
             if (self.getCurrentDisk().getName() not in return_data[destination_node_name]):

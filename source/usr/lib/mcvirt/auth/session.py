@@ -21,7 +21,7 @@ import Pyro4
 
 from mcvirt.exceptions import (AuthenticationError, CurrentUserError,
                                UserDoesNotExistException)
-from factory import Factory as UserFactory
+from mcvirt.auth.factory import Factory as UserFactory
 
 
 class Session(object):
@@ -29,14 +29,10 @@ class Session(object):
 
     USER_SESSIONS = {}
 
-    def __init__(self, mcvirt_instance):
-        """Create instance and store MCVirt instance"""
-        self.mcvirt_instance = mcvirt_instance
-
     def authenticateUser(self, username, password):
         """Authenticate using username/password and store
           session"""
-        user_factory = UserFactory(self.mcvirt_instance)
+        user_factory = UserFactory()
         user_object = user_factory.authenticate(username, password)
         if user_object:
             # Generate Session ID
@@ -58,7 +54,7 @@ class Session(object):
     def authenticateSession(self, username, session):
         """Authenticate user session"""
         if session in Session.USER_SESSIONS and Session.USER_SESSIONS[session] == username:
-            user_factory = UserFactory(self.mcvirt_instance)
+            user_factory = UserFactory()
             return user_factory.get_user_by_username(username)
 
         raise AuthenticationError('Invalid session ID')
@@ -66,7 +62,7 @@ class Session(object):
     def getProxyUserObject(self):
         """Returns the user that is being proxied as"""
         current_user = self.getCurrentUserObject()
-        user_factory = UserFactory(self.mcvirt_instance)
+        user_factory = UserFactory()
         if (current_user.ALLOW_PROXY_USER and 'proxy_user' in dir(Pyro4.current_context)
                 and Pyro4.current_context.proxy_user):
             try:
@@ -80,6 +76,6 @@ class Session(object):
         if Pyro4.current_context.session_id:
             session_id = Pyro4.current_context.session_id
             username = Session.USER_SESSIONS[session_id]
-            user_factory = UserFactory(self.mcvirt_instance)
+            user_factory = UserFactory()
             return user_factory.get_user_by_username(username)
         raise CurrentUserError('Cannot obtain current user')

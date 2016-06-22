@@ -15,17 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import socket
+from mcvirt.utils import get_hostname
 
-
-def get_hostname():
-    """Returns the hostname of the system"""
-    return socket.gethostname()
-
-def get_all_submodules(target_class):
-    """Returns all inheriting classes, recursively"""
-    subclasses = []
-    for subclass in target_class.__subclasses__():
-        subclasses.append(subclass)
-        subclasses += get_all_submodules(subclass)
-    return subclasses
+class Constants(object):
+    TEMPLATE_DIR = '/usr/lib/mcvirt/templates'
+    BASE_STORAGE_DIR = '/var/lib/mcvirt'
+    NODE_STORAGE_DIR = BASE_STORAGE_DIR + '/' + get_hostname()
+    BASE_VM_STORAGE_DIR = NODE_STORAGE_DIR + '/vm'
+    ISO_STORAGE_DIR = NODE_STORAGE_DIR + '/iso'
+    LOCK_FILE_DIR = '/var/run/lock/mcvirt'
+    LOCK_FILE = LOCK_FILE_DIR + '/lock'

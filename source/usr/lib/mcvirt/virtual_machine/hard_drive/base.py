@@ -286,7 +286,7 @@ class Base(PyroObject):
             device_xml.remove(disk_xml)
 
         # Update libvirt configuration
-        self.vm_object.editConfig(updateXML)
+        self.vm_object._editConfig(updateXML)
 
     def _registerLibvirt(self):
         """Register the hard drive with the Libvirt VM configuration"""
@@ -297,7 +297,7 @@ class Base(PyroObject):
             device_xml.append(drive_xml)
 
         # Update libvirt configuration
-        self.vm_object.editConfig(updateXML)
+        self.vm_object._editConfig(updateXML)
 
     def _setVmStorageType(self):
         """Set the VM configuration storage type to the current hard drive type"""

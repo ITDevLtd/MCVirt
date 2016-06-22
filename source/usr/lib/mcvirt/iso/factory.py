@@ -6,25 +6,23 @@ import shutil
 import binascii
 import Pyro4
 
-from iso import Iso
+from mcvirt.iso.iso import Iso
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import lockingMethod
+from mcvirt.constants import Constants
+
 
 class Factory(PyroObject):
     """Class for obtaining ISO objects"""
 
-    def __init__(self, mcvirt_instance):
-        """Create object, storing MCVirt instance"""
-        self.mcvirt_instance = mcvirt_instance
-
     def getIsos(self):
         """Returns a list of a ISOs"""
         # Get files in ISO directory
-        file_list = os.listdir(self.mcvirt_instance.ISO_STORAGE_DIR)
+        file_list = os.listdir(Constants.ISO_STORAGE_DIR)
         iso_list = []
 
         for iso_name in file_list:
-            iso_path = os.path.join(self.mcvirt_instance.ISO_STORAGE_DIR, iso_name)
+            iso_path = os.path.join(Constants.ISO_STORAGE_DIR, iso_name)
             if os.path.isfile(iso_path):
                 iso_list.append(iso_name)
         return iso_list
@@ -32,7 +30,7 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def getIsoByName(self, iso_name):
         """Creates and registers Iso object"""
-        iso_object = Iso(self.mcvirt_instance, iso_name)
+        iso_object = Iso(iso_name)
         self._register_object(iso_object)
         return iso_object
 
@@ -52,11 +50,10 @@ class Factory(PyroObject):
             raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
 
         filename = Iso.getFilenameFromPath(path)
-        Iso.overwriteCheck(self.mcvirt_instance, filename,
-                           self.mcvirt_instance.ISO_STORAGE_DIR + '/' + filename)
+        Iso.overwriteCheck(filename, Constants.ISO_STORAGE_DIR + '/' + filename)
 
-        shutil.copy(path, self.mcvirt_instance.ISO_STORAGE_DIR)
-        full_path = self.mcvirt_instance.ISO_STORAGE_DIR + '/' + filename
+        shutil.copy(path, Constants.ISO_STORAGE_DIR)
+        full_path = Constants.ISO_STORAGE_DIR + '/' + filename
 
         return self.getIsoByName(filename)
 

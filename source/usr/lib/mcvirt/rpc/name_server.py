@@ -19,7 +19,7 @@ import Pyro4
 import time
 
 from mcvirt.utils import get_hostname
-from ssl_socket import SSLSocket
+from mcvirt.rpc.ssl_socket import SSLSocket
 
 class NameServer(object):
     """Thread for running the name server"""

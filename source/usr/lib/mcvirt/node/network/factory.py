@@ -34,10 +34,6 @@ class Factory(PyroObject):
 
     OBJECT_TYPE = 'network'
 
-    def __init__(self, mcvirt_instance):
-        """Create object, storing MCVirt instance"""
-        self.mcvirt_instance = mcvirt_instance
-
     @Pyro4.expose()
     def interfaceExists(self, interface):
         """Public method for to determine if an interface exists"""
@@ -111,7 +107,7 @@ class Factory(PyroObject):
 
     @Pyro4.expose()
     def getNetworkByName(self, network_name):
-        network_object = Network(self.mcvirt_instance, network_name)
+        network_object = Network(network_name)
         self._register_object(network_object)
         return network_object
 

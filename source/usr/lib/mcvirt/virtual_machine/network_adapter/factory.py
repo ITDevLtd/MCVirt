@@ -27,10 +27,6 @@ class Factory(PyroObject):
 
     OBJECT_TYPE = 'network adapter'
 
-    def __init__(self, mcvirt_instance):
-        """Store member variables"""
-        self.mcvirt_instance = mcvirt_instance
-
     @Pyro4.expose()
     @lockingMethod()
     def create(self, virtual_machine, network_object, mac_address=None):
@@ -73,7 +69,7 @@ class Factory(PyroObject):
                 device_xml = domain_xml.find('./devices')
                 device_xml.append(network_xml)
 
-            virtual_machine.editConfig(updateXML)
+            virtual_machine._editConfig(updateXML)
         return network_adapter_object
 
     @Pyro4.expose()

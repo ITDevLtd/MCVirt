@@ -25,7 +25,7 @@ from enum import Enum
 import time
 import Pyro4
 
-from mcvirt.mcvirt import MCVirt
+from mcvirt.constants import Constants
 from mcvirt.exceptions import (MigrationFailureExcpetion, InvalidVirtualMachineNameException,
                                VmAlreadyExistsException, VmDirectoryAlreadyExistsException,
                                VmAlreadyStoppedException, VmAlreadyStartedException,
@@ -67,10 +67,9 @@ class VirtualMachine(PyroObject):
 
     OBJECT_TYPE = 'virtual machine'
 
-    def __init__(self, virtual_machine_factory, mcvirt_object, name):
+    def __init__(self, virtual_machine_factory, name):
         """Sets member variables and obtains LibVirt domain object"""
         self.name = name
-        self.mcvirt_object = mcvirt_object
 
         # Check that the domain exists
         if not virtual_machine_factory.checkExists(self.name):
@@ -460,7 +459,7 @@ class VirtualMachine(PyroObject):
             domain_xml.find('./currentMemory').text = str(memory_allocation)
             domain_xml.find('./currentMemory').set('unit', 'KiB')
 
-        vm_object.editConfig(updateXML)
+        vm_object._editConfig(updateXML)
 
         # Update the MCVirt configuration
         vm_object.updateConfig(['memory_allocation'], str(memory_allocation),
@@ -546,7 +545,7 @@ class VirtualMachine(PyroObject):
     @staticmethod
     def getVMDir(name):
         """Returns the storage directory for a given VM"""
-        return MCVirt.BASE_VM_STORAGE_DIR + '/' + name
+        return Constants.BASE_VM_STORAGE_DIR + '/' + name
 
     def getLibvirtConfig(self):
         """Returns an XML object of the libvirt configuration
@@ -820,7 +819,7 @@ class VirtualMachine(PyroObject):
         """Returns the storage type of the VM"""
         return self.getConfigObject().getConfig()['storage_type']
 
-    def clone(self, mcvirt_instance, clone_vm_name):
+    def clone(self, clone_vm_name):
         """Clones a VM, creating an identical machine, using
            LVM snapshotting to duplicate the Hard disk. DRBD is not
            currently supported"""
@@ -855,10 +854,11 @@ class VirtualMachine(PyroObject):
         networks = []
         for network_adapter in network_adapters:
             networks.append(network_adapter.getConnectedNetwork())
-        new_vm_object = VirtualMachine.create(mcvirt_instance, clone_vm_name, self.getCPU(),
-                                              self.getRAM(), [], networks, auth_check=False,
-                                              available_nodes=self.getAvailableNodes(),
-                                              node=self.getNode())
+        vm_factory = self._get_registered_object('virtual_machine_factory')
+        new_vm_object = vm_factory.create(clone_vm_name, self.getCPU(),
+                                          self.getRAM(), [], networks, auth_check=False,
+                                          available_nodes=self.getAvailableNodes(),
+                                          node=self.getNode())
 
         # Mark VM as being a clone and mark parent as being a clone
         def setCloneParent(vm_config):
@@ -887,7 +887,7 @@ class VirtualMachine(PyroObject):
 
         return new_vm_object
 
-    def duplicate(self, mcvirt_instance, duplicate_vm_name):
+    def duplicate(self, duplicate_vm_name):
         """Duplicates a VM, creating an identical machine, making a
            copy of the storage"""
         # Check the user has permission to create VMs
@@ -910,10 +910,11 @@ class VirtualMachine(PyroObject):
         networks = []
         for network_adapter in network_adapters:
             networks.append(network_adapter.getConnectedNetwork())
-        new_vm_object = VirtualMachine.create(mcvirt_instance, duplicate_vm_name, self.getCPU(),
-                                              self.getRAM(), [], networks, auth_check=False,
-                                              available_nodes=self.getAvailableNodes(),
-                                              node=self.getNode())
+        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+        new_vm_object = virtual_machine_factory.create(duplicate_vm_name, self.getCPU(),
+                                                       self.getRAM(), [], networks, auth_check=False,
+                                                       available_nodes=self.getAvailableNodes(),
+                                                       node=self.getNode())
 
         # Set current user as an owner of the new VM, so that they have permission
         # to perform functions on the VM
@@ -1027,7 +1028,7 @@ class VirtualMachine(PyroObject):
             disk_object.activateDisk()
 
         # Obtain domain XML
-        domain_xml = ET.parse(MCVirt.TEMPLATE_DIR + '/domain.xml')
+        domain_xml = ET.parse(Constants.TEMPLATE_DIR + '/domain.xml')
 
         # Add Name, RAM and CPU variables to XML
         domain_xml.find('./name').text = self.getName()

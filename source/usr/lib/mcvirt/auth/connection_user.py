@@ -17,9 +17,9 @@
 
 import Pyro4
 
-from user_base import UserBase
-from cluster_user import ClusterUser
-from permissions import PERMISSIONS
+from mcvirt.auth.user_base import UserBase
+from mcvirt.auth.cluster_user import ClusterUser
+from mcvirt.auth.permissions import PERMISSIONS
 
 class ConnectionUser(UserBase):
     """User type for initial connection users"""

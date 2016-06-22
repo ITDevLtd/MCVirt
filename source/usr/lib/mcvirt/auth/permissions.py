@@ -17,6 +17,7 @@
 
 from enum import Enum
 
+
 PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM',
                                    'MANAGE_VM_USERS', 'VIEW_VNC_CONSOLE', 'CLONE_VM',
                                    'DELETE_CLONE', 'MANAGE_HOST_NETWORKS', 'MANAGE_CLUSTER',

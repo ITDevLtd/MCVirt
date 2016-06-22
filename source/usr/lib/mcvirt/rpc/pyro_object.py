@@ -17,6 +17,7 @@
 
 import Pyro4
 
+
 class PyroObject(object):
     """Base class for providing Pyro-based methods for objects"""
 

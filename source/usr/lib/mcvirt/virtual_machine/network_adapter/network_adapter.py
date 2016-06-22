@@ -130,7 +130,7 @@ class NetworkAdapter(object):
 
             device_xml.remove(interface_xml)
 
-        self.vm_object.editConfig(updateXML)
+        self.vm_object._editConfig(updateXML)
 
         # Update the VM configuration
         def updateVmConfig(config):

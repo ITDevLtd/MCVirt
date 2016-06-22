@@ -37,7 +37,6 @@ if (os.path.exists(DRBDSocket.SOCKET_PATH)):
     socket.send(drbd_resource)
     socket.close()
 else:
-    from mcvirt.mcvirt import MCVirt
     from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 
     # Otherwise, create an MCVirt object and update the VM directly

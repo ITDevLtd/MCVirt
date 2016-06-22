@@ -21,8 +21,8 @@ import re
 from os.path import exists as os_path_exists
 from os import makedirs
 
-from virtual_machine import VirtualMachine
-from virtual_machine_config import VirtualMachineConfig
+from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
@@ -41,14 +41,10 @@ class Factory(PyroObject):
 
     OBJECT_TYPE = 'virtual machine'
 
-    def __init__(self, mcvirt_instance):
-        """Create object, storing MCVirt instance"""
-        self.mcvirt_instance = mcvirt_instance
-
     @Pyro4.expose()
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
-        vm_object = VirtualMachine(self, self.mcvirt_instance, vm_name)
+        vm_object = VirtualMachine(self, vm_name)
         self._register_object(vm_object)
         return vm_object
 

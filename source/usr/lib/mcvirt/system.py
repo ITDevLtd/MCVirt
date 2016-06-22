@@ -19,7 +19,7 @@ import getpass
 import subprocess
 import sys
 
-from exceptions import MCVirtCommandException
+from mcvirt.exceptions import MCVirtCommandException
 
 
 class System(object):

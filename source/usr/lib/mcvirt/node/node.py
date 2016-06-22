@@ -26,10 +26,6 @@ from mcvirt.rpc.pyro_object import PyroObject
 
 class Node(PyroObject):
 
-    def __init__(self, mcvirt_instance):
-        """Create object and store MCVirt instance"""
-        self.mcvirt_instance = mcvirt_instance
-
     @Pyro4.expose()
     def setStorageVolumeGroup(self, volume_group):
         """Update the MCVirt configuration to set the volume group for VM storage"""

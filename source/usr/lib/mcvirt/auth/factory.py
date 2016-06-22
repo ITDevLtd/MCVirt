@@ -19,22 +19,18 @@ import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import IncorrectCredentials, InvalidUsernameException, UserDoesNotExistException
-from user import User
+from mcvirt.auth.user import User
 from mcvirt.rpc.pyro_object import PyroObject
-from user_base import UserBase
-from user import User
-from connection_user import ConnectionUser
-from cluster_user import ClusterUser
-from auth import Auth
-from permissions import PERMISSIONS
+from mcvirt.auth.user_base import UserBase
+from mcvirt.auth.user import User
+from mcvirt.auth.connection_user import ConnectionUser
+from mcvirt.auth.cluster_user import ClusterUser
+from mcvirt.auth.auth import Auth
+from mcvirt.auth.permissions import PERMISSIONS
 
 
 class Factory(PyroObject):
     """Class for obtaining user objects"""
-
-    def __init__(self, mcvirt_instance):
-        """Create object, storing MCVirt instance"""
-        self.mcvirt_instance = mcvirt_instance
 
     def get_user_types(self):
         """Returns the available user classes"""

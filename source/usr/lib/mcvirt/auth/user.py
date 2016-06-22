@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from user_base import UserBase
+from mcvirt.auth.user_base import UserBase
 from mcvirt.exceptions import OldPasswordIncorrect
 
 

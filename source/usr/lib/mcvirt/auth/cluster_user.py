@@ -17,7 +17,7 @@
 
 import Pyro4
 
-from user_base import UserBase
+from mcvirt.auth.user_base import UserBase
 from mcvirt.mcvirt_config import MCVirtConfig
 
 class ClusterUser(UserBase):
