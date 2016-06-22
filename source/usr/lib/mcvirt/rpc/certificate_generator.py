@@ -178,6 +178,7 @@ class CertificateGenerator(PyroObject):
                 base_dir = self.REMOTE_SSL_BASE_DIRECTORY
             else:
                 base_dir = self.SSL_DIRECTORY
+
         return os.path.join(base_dir, certname)
 
     def _ensure_exists(self, certpath, assert_raise=True):
@@ -208,12 +209,18 @@ class CertificateGenerator(PyroObject):
 
         # Ensure that the client certificate exists
         if check_client and not self._ensure_exists(self.CLIENT_PUB_FILE, assert_raise=False):
-            csr = self.generate_csr()
-            self.sign_csr(csr)
+            cert_gen_factory = self._get_registered_object('certificate_generator_factory')
+            local_remote = cert_gen_factory.get_cert_generator('localhost', remote=True)
+            csr = self._generate_csr()
+            pub_key = local_remote._sign_csr(csr)
+            self._add_public_key(pub_key)
 
     @Pyro4.expose()
     def generate_csr(self):
         self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
+        return self._generate_csr()
+
+    def _generate_csr(self):
         System.runCommand(['openssl', 'req', '-new', '-key', self.CLIENT_KEY_FILE,
                            '-out', self.CLIENT_CSR, '-subj', self.SSL_DN])
         return self._read_file(self.CLIENT_CSR)
@@ -221,8 +228,12 @@ class CertificateGenerator(PyroObject):
     @Pyro4.expose()
     def sign_csr(self, csr):
         self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
+        return self._sign_csr(csr)
+
+    def _sign_csr(self, csr):
         self.CLIENT_CSR = csr
-        local_server = CertificateGenerator()
+        cert_gen_factory = self._get_registered_object('certificate_generator_factory')
+        local_server = cert_gen_factory.get_cert_generator('localhost')
         System.runCommand(['openssl', 'x509', '-req', '-extensions', 'usr_cert', '-in', self.CLIENT_CSR,
                            '-CA', local_server.CA_PUB_FILE, '-CAkey', local_server.CA_KEY_FILE, '-CAcreateserial',
                            '-out', self.CLIENT_PUB_FILE, '-outform', 'PEM', '-days', '10240', '-sha256'])
@@ -236,6 +247,9 @@ class CertificateGenerator(PyroObject):
     @Pyro4.expose()
     def add_public_key(self, key):
         self._get_registered_object('auth').assertPermission(PERMISSIONS.MANAGE_CLUSTER)
+        return self._add_public_key(key)
+
+    def _add_public_key(self, key):
         self.CLIENT_PUB_FILE = key
 
     def get_ca_contents(self):

@@ -23,8 +23,8 @@ from mcvirt.rpc.pyro_object import PyroObject
 
 class CertificateGeneratorFactory(PyroObject):
 
-    @Pyro4.expose
+    @Pyro4.expose()
     def get_cert_generator(self, server, remote=False):
-        cert_generator = CertificateGenerator(server, remote=False)
+        cert_generator = CertificateGenerator(server, remote=remote)
         self._register_object(cert_generator)
         return cert_generator

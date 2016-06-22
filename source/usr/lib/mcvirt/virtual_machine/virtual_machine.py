@@ -127,14 +127,9 @@ class VirtualMachine(PyroObject):
                     raise LibvirtException('Failed to stop VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('The VM is already shutdown')
-        elif not self._cluster_disabled:
-            cluster = self._get_registered_object('cluster')
-            remote_object = cluster.getRemoteNode(self.getNode())
-            vm_factory = remote_object.getConnection('virtual_machine_factory')
-            remote_vm = vm_factory.getVirtualMachineByName(self.getName())
-            remote_object.annotateObject(remote_vm)
+        elif not self._cluster_disabled and self.isRegisteredRemotely():
+            remote_vm = self.getRemoteObject()
             remote_vm.stop()
-
         else:
             raise VmRegisteredElsewhereException(
                 'VM registered elsewhere and cluster is not initialised'
@@ -184,7 +179,7 @@ class VirtualMachine(PyroObject):
             except Exception, e:
                 raise LibvirtException('Failed to start VM: %s' % e)
 
-        elif not self._cluster_disabled:
+        elif not self._cluster_disabled and self.isRegisteredRemotely():
             cluster = self._get_registered_object('cluster')
             remote_node = cluster.getRemoteNode(self.getNode())
             vm_factory = remote_node.getConnection('virtual_machine_factory')
@@ -227,14 +222,9 @@ class VirtualMachine(PyroObject):
                     raise LibvirtException('Failed to reset VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('Cannot reset a stopped VM')
-        elif self._is_cluster_master:
-            cluster = self._get_registered_object('cluster')
-            remote_object = cluster.getRemoteNode(self.getNode())
-            vm_factory = remote_object.getConnection('virtual_machine_factory')
-            remote_vm = vm_factory.getVirtualMachineByName(self.getName())
-            remote_object.annotateObject(remote_vm)
+        elif self._is_cluster_master and self.isRegisteredRemotely():
+            remote_vm = self.getRemoteObject()
             remote_vm.reset()
-
         else:
             raise VmRegisteredElsewhereException(
                 'VM registered elsewhere and cluster is not initialised'
@@ -272,7 +262,6 @@ class VirtualMachine(PyroObject):
                         " as the VM is not registered on a node\n"
 
         if self.isRegisteredRemotely():
-            print 'registeed remoely'
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.getRemoteNode(self.getNode())
             remote_vm_factory = remote_object.getConnection('virtual_machine_factory')
