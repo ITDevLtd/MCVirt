@@ -162,9 +162,11 @@ class Base(PyroObject):
     def delete(self):
         """Deletes the logical volume for the disk"""
         self._ensureExists()
-        # Remove from LibVirt, if registered, so that libvirt doesn't
-        # hold the device open when the storage is removed
-        self._unregisterLibvirt()
+
+        if self.vm_object.isRegisteredLocally():
+            # Remove from LibVirt, if registered, so that libvirt doesn't
+            # hold the device open when the storage is removed
+            self._unregisterLibvirt()
 
         # Remove backing storage
         self._removeStorage()

@@ -352,6 +352,7 @@ class DRBD(Base):
             time.sleep(5)
 
             # Add to virtual machine
+            self._sync_state = True
             self.addToVirtualMachine()
             progress = DRBD.CREATE_PROGRESS.ADD_TO_VM
 
@@ -512,7 +513,6 @@ class DRBD(Base):
     def _drbdConnect(self):
         """Performs a DRBD 'connect' on the hard drive DRBD resource"""
         if self._drbdGetConnectionState() not in DRBD.DRBD_STATES['CONNECTION']['CONNECTED']:
-            print self._drbdGetConnectionState()
             System.runCommand([NodeDRBD.DRBDADM, 'connect', self.resource_name])
 
     @Pyro4.expose()
@@ -708,6 +708,7 @@ class DRBD(Base):
     def preMigrationChecks(self):
         """Ensures that the DRBD state of the disk is in a state suitable for migration"""
         # Ensure disk state is up-to-date on both local and remote nodes
+        self._checkDrbdStatus()
         local_disk_state, remote_disk_state = self._drbdGetDiskState()
         local_role, remote_role = self._drbdGetRole()
         connection_state = self._drbdGetConnectionState()

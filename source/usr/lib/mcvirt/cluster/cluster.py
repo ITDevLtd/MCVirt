@@ -292,7 +292,7 @@ class Cluster(PyroObject):
         # If DRBD is enabled on the local node, configure/enable it on the remote node
         if self._get_registered_object('node_drbd').isEnabled():
             remote_drbd = remote_node.getConnection('node_drbd')
-            remote_drbd.enable()
+            remote_drbd.enable(secret=MCVirtConfig().getConfig()['drbd']['secret'])
 
         # Sync users
         self.sync_users(remote_node)

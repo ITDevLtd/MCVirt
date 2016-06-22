@@ -78,6 +78,19 @@ class VirtualMachine(PyroObject):
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
 
+    def getRemoteObject(self):
+        if self.isRegisteredLocally():
+            return self
+        elif self.isRegisteredRemotely():
+            cluster = self._get_registered_object('cluster')
+            remote_node = cluster.getRemoteNode(self.getNode())
+            remote_vm_factory = remote_node.getConnection('virtual_machine_factory')
+            remote_vm = remote_vm_factory.getVirtualMachineByName(self.getName())
+            remote_node.annotateObject(remote_vm)
+            return remote_vm
+        else:
+            raise VmNotRegistered('The VM is not registered on a node')
+
     def getConfigObject(self):
         """Returns the configuration object for the VM"""
         return VirtualMachineConfig(self)
@@ -357,18 +370,8 @@ class VirtualMachine(PyroObject):
                 'User must have MODIFY_VM permission or be the owner of the cloned VM'
             )
 
-        # Ensure the VM is not being removed from a machine that the VM is not being run on
-        if ((self.isRegisteredRemotely() and self._is_cluster_master and
-                not local_only)):
-            remote_node = self.getConfigObject().getConfig()['node']
-            raise VmRegisteredElsewhereException(
-                'The VM \'%s\' is registered on the remote node: %s' %
-                (self.getName(), remote_node)
-            )
-
         # Determine if VM is running
-        if (self.isRegisteredLocally() and self._getLibvirtDomainObject().state()
-                [0] == libvirt.VIR_DOMAIN_RUNNING):
+        if self._getPowerState == PowerStates.RUNNING:
             raise VmAlreadyStartedException('Error: Can\'t delete running VM')
 
         # Ensure VM is unlocked
@@ -440,6 +443,12 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assertPermission(PERMISSIONS.MODIFY_VM, self)
 
+        if self.isRegisteredRemotely():
+            vm_object = self.getRemoteObject()
+            return vm_object.updateRAM(memory_allocation, old_value)
+
+        self.ensureRegisteredLocally()
+
         # Ensure memory_allocation is an interger, greater than 0
         try:
             int(memory_allocation)
@@ -455,9 +464,6 @@ class VirtualMachine(PyroObject):
         # Ensure VM is unlocked
         self.ensureUnlocked()
 
-        # Ensure the VM is registered locally
-        self.ensureRegisteredLocally()
-
         def updateXML(domain_xml):
             # Update RAM allocation and unit measurement
             domain_xml.find('./memory').text = str(memory_allocation)
@@ -465,10 +471,10 @@ class VirtualMachine(PyroObject):
             domain_xml.find('./currentMemory').text = str(memory_allocation)
             domain_xml.find('./currentMemory').set('unit', 'KiB')
 
-        self.editConfig(updateXML)
+        vm_object.editConfig(updateXML)
 
         # Update the MCVirt configuration
-        self.updateConfig(['memory_allocation'], str(memory_allocation),
+        vm_object.updateConfig(['memory_allocation'], str(memory_allocation),
                           'RAM allocation has been changed to %s' % memory_allocation)
 
     @Pyro4.expose()
@@ -504,7 +510,7 @@ class VirtualMachine(PyroObject):
         def updateXML(domain_xml):
             # Update RAM allocation and unit measurement
             domain_xml.find('./vcpu').text = str(cpu_count)
-        self.editConfig(updateXML)
+        self._editConfig(updateXML)
 
         # Update the MCVirt configuration
         self.updateConfig(['cpu_cores'], str(cpu_count), 'CPU count has been changed to %s' %
@@ -560,10 +566,18 @@ class VirtualMachine(PyroObject):
         domain_xml = ET.fromstring(self._getLibvirtDomainObject().XMLDesc(domain_flags))
         return domain_xml
 
-    def editConfig(self, callback_function):
+    @Pyro4.expose()
+    @lockingMethod()
+    def editConfig(self, *args, **kwargs):
+        """Provides permission checking around the editConfig method and
+           exposes the method"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+        return self._editConfig(*args, **kwargs)
+
+    def _editConfig(self, callback_function):
         """Provides an interface for updating the libvirt configuration, by obtaining
-        the configuration, performing a callback function to perform changes on the configuration
-        and pushing the configuration back into LibVirt"""
+           the configuration, performing a callback function to perform changes on the configuration
+           and pushing the configuration back into LibVirt"""
         # Obtain VM XML
         domain_flags = (libvirt.VIR_DOMAIN_XML_INACTIVE + libvirt.VIR_DOMAIN_XML_SECURE)
         domain_xml = ET.fromstring(self._getLibvirtDomainObject().XMLDesc(domain_flags))
@@ -589,11 +603,8 @@ class VirtualMachine(PyroObject):
 
     @Pyro4.expose()
     @lockingMethod()
-    def offlineMigrate(
-            self,
-            destination_node_name,
-            start_after_migration=False,
-            wait_for_vm_shutdown=False):
+    def offlineMigrate(self, destination_node_name, start_after_migration=False,
+                       wait_for_vm_shutdown=False):
         """Performs an offline migration of a VM to another node in the cluster"""
         # Ensure user has permission to migrate VM
         self._get_registered_object('auth').assertPermission(PERMISSIONS.MIGRATE_VM, self)
@@ -644,10 +655,10 @@ class VirtualMachine(PyroObject):
     @lockingMethod()
     def onlineMigrate(self, destination_node_name):
         """Performs an online migration of a VM to another node in the cluster"""
-        factory = self._get_registered_object('virtual_machine_factory')
-
         # Ensure user has permission to migrate VM
         self._get_registered_object('auth').assertPermission(PERMISSIONS.MIGRATE_VM, self)
+
+        factory = self._get_registered_object('virtual_machine_factory')
 
         # Ensure VM is registered locally and unlocked
         self.ensureRegisteredLocally()
@@ -668,8 +679,9 @@ class VirtualMachine(PyroObject):
         # Begin pre-migration tasks
         try:
             # Obtain libvirt connection to destination node
-            destination_libvirt_connection = self.mcvirt_object.getRemoteLibvirtConnection(
-                destination_node
+            libvirt_connector = self._get_registered_object('libvirt_connector')
+            destination_libvirt_connection = libvirt_connector.get_connection(
+                destination_node_name
             )
 
             # Clear the VM node configuration
@@ -748,8 +760,7 @@ class VirtualMachine(PyroObject):
 
                 # Mark hard drives as being out-of-sync
                 disk_object.setSyncState(False)
-
-            raise e
+            raise
 
         # Perform post migration checks
         # Ensure VM is no longer registered with libvirt on the local node
@@ -1233,4 +1244,4 @@ class VirtualMachine(PyroObject):
                 # Append new XML configuration onto OS section of domain XML
                 os_xml.append(new_boot_xml_object)
 
-        self.editConfig(updateXML)
+        self._editConfig(updateXML)
