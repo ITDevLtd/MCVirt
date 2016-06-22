@@ -72,24 +72,14 @@ class Iso(PyroObject):
            Ask user whether they want to overwrite.
            Returns True if they will overwrite, False otherwise"""
 
-        if (os.path.exists(path)):
-            # If there is ask user if they want to overwrite
-            overwrite_answer = System.getUserInput(
-                '%s already exists, do you want to overwrite it? (Y/n): ' %
-                Iso.getFilenameFromPath(path)
+        if os.path.exists(path):
+            raise IsoAlreadyExistsException(
+                'Error: An ISO with the same name already exists: "%s"' % path
             )
-            if (overwrite_answer.strip() is not 'Y'):
-                raise IsoAlreadyExistsException(
-                    'Error: An ISO with the same name already exists: "%s"' % path
-                )
-            else:
-                original_object = Iso(mcvirt_instance, filename)
-                if (original_object.inUse()):
-                    IsoInUseException('The original ISO is attached to a VM, so cannot be replaced')
 
         return True
 
-    def delete(self, force=False):
+    def delete(self):
         """Delete an ISO"""
         # Check exists
         in_use = self.inUse()
@@ -97,13 +87,6 @@ class Iso(PyroObject):
             raise IsoInUseException(
                 'The ISO is attached to a VM, so cannot be removed: %s' % in_use
             )
-
-        if not force:
-            delete_answer = System.getUserInput(
-                'Are you sure you want to delete %s? (Y/n): ' % self.getName()
-            )
-            if (delete_answer.strip() is not 'Y'):
-                return False
 
         os.remove(self.getPath())
 
@@ -116,16 +99,14 @@ class Iso(PyroObject):
 
     def inUse(self):
         """Determines if the ISO is currently in use by a VM"""
-        from virtual_machine.disk_drive import DiskDrive
-        from cluster.cluster import Cluster
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
         for vm_name in virtual_machine_factory.getAllVmNames(node=get_hostname()):
             vm_object = virtual_machine_factory.getVirtualMachineByName(vm_name)
-            disk_drive_object = DiskDrive(vm_object)
+            disk_drive_object = vm_object.get_disk_drive()
             vm_current_iso = disk_drive_object.getCurrentDisk()
 
             # If the VM has an iso attached, check if the ISO is this one
-            if (vm_current_iso and (vm_current_iso.getPath() == self.getPath())):
+            if vm_current_iso and (vm_current_iso.getPath() == self.getPath()):
                 return vm_object.getName()
 
         return False

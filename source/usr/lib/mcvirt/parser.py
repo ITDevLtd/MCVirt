@@ -16,6 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import argparse
+import binascii
 
 from mcvirt import MCVirt
 from exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
@@ -913,20 +914,30 @@ class Parser:
         elif action == 'iso':
             iso_factory = rpc.getConnection('iso_factory')
             if args.list:
-                iso_factory = rpc.getConnection('iso_factory')
                 self.printStatus(iso_factory.getIsoList())
 
-            # Tempoarrily disabled until it is determined how this will work
-            # if (args.add_path):
-            #     iso_object = Iso.addIso(mcvirt_instance, args.add_path)
-            #     self.printStatus('Successfully added ISO: %s' % iso_object.getName())
+            if args.add_path:
+                iso_writer = iso_factory.addIsoFromStream(args.add_path)
+                rpc.annotateObject(iso_writer)
+                with open(args.add_path, 'rb') as iso_fh:
+                    while True:
+                        data_chunk = iso_fh.read(1024)
+                        if data_chunk:
+                            data_chunk = binascii.hexlify(data_chunk)
+                            iso_writer.write_data(data_chunk)
+                        else:
+                            break
+                iso_object = iso_writer.write_end()
+                rpc.annotateObject(iso_object)
+                self.printStatus('Successfully added ISO: %s' % iso_object.getName())
+
+            if args.add_url:
+                iso_object = iso_factory.addFromUrl(args.add_url)
+                rpc.annotateObject(iso_object)
+                self.printStatus('Successfully added ISO: %s' % iso_object.getName())
 
             if args.delete_path:
                 iso_object = iso_factory.getIsoByName(args.delete_path)
                 rpc.annotateObject(iso_object)
                 iso_object.delete()
                 self.printStatus('Successfully removed iso: %s' % args.delete_path)
-
-            if args.add_url:
-                iso_object = iso_factory.addFromUrl(mcvirt_instance, args.add_url)
-                self.printStatus('Successfully added ISO: %s' % iso_object.getName())

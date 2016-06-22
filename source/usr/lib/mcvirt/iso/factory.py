@@ -3,10 +3,12 @@ import urllib2
 import urlparse
 import tempfile
 import shutil
+import binascii
 import Pyro4
 
 from iso import Iso
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.lock import lockingMethod
 
 class Factory(PyroObject):
     """Class for obtaining ISO objects"""
@@ -59,7 +61,8 @@ class Factory(PyroObject):
         return self.getIsoByName(filename)
 
     @Pyro4.expose()
-    def addFromUrl(url, name=None):
+    @lockingMethod()
+    def addFromUrl(self, url, name=None):
         """Download an ISO from given URL and save in ISO directory"""
         # Work out name from URL if name is not supplied
         if name is None:
@@ -90,5 +93,47 @@ class Factory(PyroObject):
 
         os.remove(output_path)
         os.rmdir(temp_directory)
-        self._register_object(iso_object)
         return iso_object
+
+    @Pyro4.expose()
+    @lockingMethod()
+    def addIsoFromStream(self, path, name=None):
+        if name is None:
+            name = Iso.getFilenameFromPath(path)
+
+        # Get temporary directory to store ISO
+        temp_directory = tempfile.mkdtemp()
+        output_path = temp_directory + '/' + name
+
+        iso_writer = IsoWriter(output_path, self, temp_directory, path)
+        self._register_object(iso_writer)
+        return iso_writer
+
+class IsoWriter(PyroObject):
+    def __init__(self, temp_file, factory, temp_directory, path):
+        self.temp_file = temp_file
+        self.temp_directory = temp_directory
+        self.factory = factory
+        self.path = path
+        self.fh = open(self.temp_file, 'wb')
+
+    def __delete__(self):
+        if self.fh:
+            self.fh.close()
+            self.fh = None
+
+    @Pyro4.expose()
+    def write_data(self, data):
+        self.fh.write(binascii.unhexlify(data))
+
+    @Pyro4.expose()
+    def write_end(self):
+        if self.fh:
+            self.fh.close()
+            self.fh = None
+
+        iso_object = self.factory.addIso(self.temp_file)
+
+        os.remove(self.temp_file)
+        os.rmdir(self.temp_directory)
+        return iso_object            
