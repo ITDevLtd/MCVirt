@@ -59,7 +59,7 @@ class Factory(PyroObject):
                 )
 
         # Ensure that there is not a duplicate user
-        if UserBase._checkExists(username):
+        if UserBase._check_exists(username):
             raise UserAlreadyExistsException('There is a user with the same username \'%s\'' %
                                              username)
 
@@ -67,8 +67,8 @@ class Factory(PyroObject):
         self.ensure_valid_user_type(user_type)
 
         # Generate password salt for user and hash password
-        salt = UserBase._generateSalt()
-        hashed_password = UserBase._hashString(password, salt)
+        salt = UserBase._generate_salt()
+        hashed_password = UserBase._hash_string(password, salt)
 
         # Create config for user and update MCVirt config
         user_config = user_type.get_default_config()
@@ -94,7 +94,7 @@ class Factory(PyroObject):
         """Attempt to authenticate a user, using username/password."""
         try:
             user_object = self.get_user_by_username(username)
-            if user_object._checkPassword(password):
+            if user_object._check_password(password):
                 return user_object
         except UserDoesNotExistException:
             pass
@@ -105,13 +105,13 @@ class Factory(PyroObject):
         """Obtain a user object for the given username."""
         generic_object = UserBase(username=username)
         for user_class in UserBase.__subclasses__():
-            if str(user_class.__name__) == str(generic_object.getUserType()):
+            if str(user_class.__name__) == str(generic_object.get_user_type()):
                 user_object = user_class(username=username)
                 self._register_object(user_object)
                 return user_object
 
-        raise InvalidUserType('Failed to determine user type for %s' %
-                              generic_object.getUsername())
+        raise InvalidUserTypeException('Failed to determine user type for %s' %
+                                       generic_object.get_username())
 
     @Pyro4.expose()
     def get_all_users(self):
@@ -133,7 +133,7 @@ class Factory(PyroObject):
 
             # Is the user object is the same type as specified, or the user type
             # has not been specified, add to user objects list
-            if user_class is None or user_object.getUserType() == user_class.__name__:
+            if user_class is None or user_object.get_user_type() == user_class.__name__:
                 user_objects.append(user_object)
 
         # Return found user objects
@@ -148,14 +148,14 @@ class Factory(PyroObject):
 
         # Ensure that users can be generated
         if not user_type.CAN_GENERATE:
-            raise InvalidUserType('Users of type \'%s\' cannot be generated' %
-                                  user_type.__name__)
+            raise InvalidUserTypeException('Users of type \'%s\' cannot be generated' %
+                                           user_type.__name__)
 
         # Delete any old connection users
         for old_user_object in self.get_all_user_objects(user_class=user_type):
             old_user_object.delete()
 
-        username = user_type.USER_PREFIX + user_type.generatePassword(32, numeric_only=True)
-        password = user_type.generatePassword(32)
+        username = user_type.USER_PREFIX + user_type.generate_password(32, numeric_only=True)
+        password = user_type.generate_password(32)
         self.create(username=username, password=password, user_type=user_type)
         return username, password

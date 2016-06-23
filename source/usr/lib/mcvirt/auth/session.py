@@ -1,3 +1,5 @@
+"""Provide class for managing authentication sessions."""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -25,18 +27,19 @@ from mcvirt.auth.factory import Factory as UserFactory
 
 
 class Session(object):
-    """Handle daemon user sessions"""
+    """Handle daemon user sessions."""
 
     USER_SESSIONS = {}
 
-    def authenticateUser(self, username, password):
+    def authenticate_user(self, username, password):
         """Authenticate using username/password and store
-          session"""
+        session
+        """
         user_factory = UserFactory()
         user_object = user_factory.authenticate(username, password)
         if user_object:
             # Generate Session ID
-            session_id = Session._generateSessionId()
+            session_id = Session._generate_session_id()
 
             # Store session ID and return
             Session.USER_SESSIONS[session_id] = username
@@ -47,32 +50,32 @@ class Session(object):
         raise AuthenticationError('Invalid credentials')
 
     @staticmethod
-    def _generateSessionId():
-        """Generate random session ID"""
+    def _generate_session_id():
+        """Generate random session ID."""
         return hexlify(os.urandom(8))
 
-    def authenticateSession(self, username, session):
-        """Authenticate user session"""
+    def authenticate_session(self, username, session):
+        """Authenticate user session."""
         if session in Session.USER_SESSIONS and Session.USER_SESSIONS[session] == username:
             user_factory = UserFactory()
             return user_factory.get_user_by_username(username)
 
         raise AuthenticationError('Invalid session ID')
 
-    def getProxyUserObject(self):
-        """Returns the user that is being proxied as"""
-        current_user = self.getCurrentUserObject()
+    def get_proxy_user_object(self):
+        """Return the user that is being proxied as."""
+        current_user = self.get_current_user_object()
         user_factory = UserFactory()
-        if (current_user.allow_proxy_user and 'proxy_user' in dir(Pyro4.current_context)
-                and Pyro4.current_context.proxy_user):
+        if (current_user.allow_proxy_user and 'proxy_user' in dir(Pyro4.current_context) and
+                Pyro4.current_context.proxy_user):
             try:
                 return user_factory.get_user_by_username(Pyro4.current_context.proxy_user)
             except UserDoesNotExistException:
                 pass
         return current_user
 
-    def getCurrentUserObject(self):
-        """Returns the current user object, based on pyro session"""
+    def get_current_user_object(self):
+        """Return the current user object, based on pyro session."""
         if Pyro4.current_context.session_id:
             session_id = Pyro4.current_context.session_id
             username = Session.USER_SESSIONS[session_id]

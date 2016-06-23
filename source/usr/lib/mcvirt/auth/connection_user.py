@@ -40,7 +40,7 @@ class ConnectionUser(UserBase):
     @Pyro4.expose()
     def create_cluster_user(self, host):
         """Create a cluster user for the remote node."""
-        assert self.getUsername() == Pyro4.current_context.username
+        assert self.get_username() == Pyro4.current_context.username
         auth = self._pyroDaemon.registered_factories['auth']
         auth.assert_user_type('ConnectionUser')
         user_factory = self._pyroDaemon.registered_factories['user_factory']

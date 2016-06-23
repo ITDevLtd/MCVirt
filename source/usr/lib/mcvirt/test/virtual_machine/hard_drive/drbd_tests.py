@@ -69,7 +69,7 @@ class DrbdTests(unittest.TestCase):
         stop_and_delete(self.mcvirt, self.test_vms['TEST_VM_1']['name'])
         self.mcvirt = None
 
-    @unittest.skipIf(not NodeDrbd.isEnabled(),
+    @unittest.skipIf(not NodeDrbd.is_enabled(),
                      'Drbd is not enabled on this node')
     def test_verify(self):
         """Test the Drbd verification for both in-sync and out-of-sync Drbd volumes"""
@@ -80,7 +80,7 @@ class DrbdTests(unittest.TestCase):
                                                self.test_vms['TEST_VM_1']['disk_size'],
                                                self.test_vms['TEST_VM_1']['networks'],
                                                storage_type='Drbd')
-        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+        self.assertTrue(VirtualMachine._check_exists(self.mcvirt.getLibvirtConnection(),
                                                     self.test_vms['TEST_VM_1']['name']))
 
         # Wait for 10 seconds after creation to ensure that Drbd

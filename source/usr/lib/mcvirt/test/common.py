@@ -4,7 +4,7 @@ from mcvirt.cluster.cluster import Cluster
 
 def stop_and_delete(mcvirt_instance, vm_name):
     """Stops and removes VMs"""
-    if (VirtualMachine._checkExists(mcvirt_instance.getLibvirtConnection(), vm_name)):
+    if (VirtualMachine._check_exists(mcvirt_instance.getLibvirtConnection(), vm_name)):
         vm_object = VirtualMachine(mcvirt_instance, vm_name)
 
         # Reset sync state for any Drbd disks
@@ -15,7 +15,7 @@ def stop_and_delete(mcvirt_instance, vm_name):
         if (vm_object.isRegisteredRemotely()):
             from mcvirt.cluster.cluster import Cluster
             cluster = Cluster(mcvirt_instance)
-            remote_node = cluster.getRemoteNode(vm_object.getNode())
+            remote_node = cluster.get_remote_node(vm_object.getNode())
 
             # Stop the VM if it is running
             if (vm_object.getState() is PowerStates.RUNNING):

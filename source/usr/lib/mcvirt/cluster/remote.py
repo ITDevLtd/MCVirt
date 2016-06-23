@@ -1,3 +1,5 @@
+"""Provide interface for RPC to cluster nodes"""
+
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -23,7 +25,7 @@ class Node(Connection):
     """A class to perform remote commands on MCVirt nodes"""
 
     def __init__(self, name, node_config):
-        """Sets member variables"""
+        """Set member variables"""
         self.name = name
         self.ip_address = node_config['ip_address'] if 'ip_address' in node_config else None
         super(Node, self).__init__(username=node_config['username'],

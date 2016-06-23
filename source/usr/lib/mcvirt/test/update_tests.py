@@ -25,7 +25,7 @@ from mcvirt.virtual_machine.network_adapter import NetworkAdapterDoesNotExistExc
 
 def stopAndDelete(mcvirt_connection, vm_name):
     """Stops and removes VMs"""
-    if (VirtualMachine._checkExists(mcvirt_connection.getLibvirtConnection(), vm_name)):
+    if (VirtualMachine._check_exists(mcvirt_connection.getLibvirtConnection(), vm_name)):
         vm_object = VirtualMachine(mcvirt_connection, vm_name)
         if (vm_object.getState() is PowerStates.RUNNING):
             vm_object.stop()

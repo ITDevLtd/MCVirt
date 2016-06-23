@@ -32,7 +32,7 @@ from mcvirt.rpc.lock import lockingMethod
 
 
 class UserBase(PyroObject):
-    """Base object for users (both user and automated)"""
+    """Base object for users (both user and automated)."""
 
     USER_PREFIX = None
     CAN_GENERATE = False
@@ -45,77 +45,79 @@ class UserBase(PyroObject):
         return False
 
     @staticmethod
-    def _checkExists(username):
-        """Checks the MCVirt config to determine if a given user exists"""
+    def _check_exists(username):
+        """Check the MCVirt config to determine if a given user exists."""
         return (username in MCVirtConfig().get_config()['users'])
 
     @staticmethod
-    def _generateSalt():
-        """Generates random salt for the user's password"""
+    def _generate_salt():
+        """Generate random salt for the user's password,"""
         return hexlify(os.urandom(32))
 
     def __init__(self, username):
-        """Stores member variables and ensures that the user exists"""
+        """Store member variables and ensures that the user exists."""
         self.username = username
-        self._ensureExists()
+        self._ensure_exists()
 
     @Pyro4.expose()
-    def getUsername(self):
-        """Returns the username of the current user"""
+    def get_username(self):
+        """Return the username of the current user"""
         return self.username
 
-    def _ensureExists(self):
+    def _ensure_exists(self):
         """Ensure that the current user exists in the MCVirt configuration"""
-        if not self.__class__._checkExists(self.getUsername()):
+        if not self.__class__._check_exists(self.get_username()):
             raise UserDoesNotExistException('User %s does not exist' %
-                                            self.getUsername())
+                                            self.get_username())
 
     @Pyro4.expose()
     def get_config(self):
-        """Returns the configuration of the user"""
+        """Return the configuration of the user."""
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_USERS
         )
         return self._get_config()
 
     def _get_config(self):
-        """Returns the config hash for the current user"""
-        return MCVirtConfig().get_config()['users'][self.getUsername()]
+        """Return the config hash for the current user"""
+        return MCVirtConfig().get_config()['users'][self.get_username()]
 
-    def getUserType(self):
-        """Returns the user type of the user"""
+    def get_user_type(self):
+        """Return the user type of the user"""
         return self._get_config()['user_type']
 
-    def _checkPassword(self, password):
-        """Checks a given password against the stored password for the user"""
-        password_hash = self._hashPassword(password)
+    def _check_password(self, password):
+        """Check the given password against the stored password for the user."""
+        password_hash = self._hash_password(password)
         config = self._get_config()
         return (password_hash == config['password'])
 
-    def _getPasswordSalt(self):
-        """Returns the user's salt"""
+    def _get_password_salt(self):
+        """Return the user's salt"""
         return self._get_config()['salt']
 
-    def _setPassword(self, new_password):
-        """Sets the password for the current user"""
-        password_hash = self._hashPassword(new_password)
+    def _set_password(self, new_password):
+        """Set the password for the current user"""
+        password_hash = self._hash_password(new_password)
 
         def update_config(config):
-            config['users'][self.getUsername()]['password'] = password_hash
-        MCVirtConfig().update_config(update_config, 'Updated password for \'%s\'' % self.getUsername())
+            config['users'][self.get_username()]['password'] = password_hash
+        MCVirtConfig().update_config(
+            update_config, 'Updated password for \'%s\'' % self.get_username()
+        )
 
-    def _hashPassword(self, password):
-        """Hashes a password, using the current user's salt"""
-        return self.__class__._hashString(password, self._getPasswordSalt())
+    def _hash_password(self, password):
+        """Hash a password, using the current user's salt"""
+        return self.__class__._hash_sring(password, self._get_password_salt())
 
     @staticmethod
-    def _hashString(string, salt):
+    def _hash_sring(string, salt):
         """Hash string using salt"""
         return crypt(string, salt, iterations=1000)
 
     @staticmethod
-    def generatePassword(length, numeric_only=False):
-        """Returns a randomly generated password"""
+    def generate_password(length, numeric_only=False):
+        """Return a randomly generated password"""
         characers = string.ascii_letters
         if not numeric_only:
             characers += string.digits + '!@#$%^&*()'
@@ -125,30 +127,32 @@ class UserBase(PyroObject):
     @Pyro4.expose()
     @lockingMethod()
     def delete(self):
-        """Deletes current user from MCVirt config"""
+        """Delete the current user from MCVirt config"""
         auth_object = self._get_registered_object('auth')
         auth_object.assert_permission(
             PERMISSIONS.MANAGE_USERS
         )
 
         # Remove any global/VM-specific permissions
-        if self.getUsername() in auth_object.get_superusers():
+        if self.get_username() in auth_object.get_superusers():
             auth_object.delete_superuser(self)
 
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
         for virtual_machine in [None] + virtual_machine_factory.getAllVirtualMachines():
             for permission_group in auth_object.get_permission_groups():
-                if self.getUsername() in auth_object.get_users_in_permission_group(permission_group,
-                                                                               vm_object=virtual_machine):
-                    auth_object.delete_user_permission_group(permission_group, self,
-                                                          vm_object=virtual_machine)
+                if (self.get_username() in auth_object.get_users_in_permission_group(
+                        permission_group, vm_object=virtual_machine)):
+                    auth_object.delete_user_permission_group(
+                        permission_group, self, vm_object=virtual_machine
+                    )
 
         def update_config(config):
-            del config['users'][self.getUsername()]
-        MCVirtConfig().update_config(update_config, 'Deleted user \'%s\'' % self.getUsername())
+            del config['users'][self.get_username()]
+        MCVirtConfig().update_config(update_config, 'Deleted user \'%s\'' % self.get_username())
 
     @staticmethod
     def get_default_config():
+        """Return the default configuration for the user type."""
         return {
             'password': None,
             'salt': None,

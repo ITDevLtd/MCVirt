@@ -1,3 +1,5 @@
+"""Provide interface to libvirt network objects"""
+
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -15,13 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import xml.etree.ElementTree as ET
 import Pyro4
 
 from mcvirt.exceptions import (LibvirtException,
                                NetworkDoesNotExistException,
                                NetworkUtilizedException)
-from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
@@ -31,16 +31,16 @@ class Network(PyroObject):
     """Provides an interface to LibVirt networks"""
 
     def __init__(self, name):
-        """Sets member variables and obtains libvirt domain object"""
+        """Set member variables and obtains libvirt domain object"""
         self.name = name
 
         # Ensure network exists
-        if not self._checkExists(name):
+        if not self._check_exists(name):
             raise NetworkDoesNotExistException('Network does not exist: %s' % name)
 
     @staticmethod
-    def getNetworkConfig():
-        """Returns the network configuration for the node"""
+    def get_network_config():
+        """Return the network configuration for the node"""
         from mcvirt.mcvirt_config import MCVirtConfig
         mcvirt_config = MCVirtConfig().get_config()
         return mcvirt_config['networks']
@@ -48,12 +48,12 @@ class Network(PyroObject):
     @Pyro4.expose()
     @lockingMethod()
     def delete(self):
-        """Deletes a network from the node"""
+        """Delete a network from the node"""
         # Ensure user has permission to manage networks
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network is not connected to any VMs
-        connected_vms = self._getConnectedVirtualMachines()
+        connected_vms = self._get_connected_virtual_machines()
         if len(connected_vms):
             connected_vm_name_string = ', '.join(vm.get_name() for vm in connected_vms)
             raise NetworkUtilizedException(
@@ -62,8 +62,8 @@ class Network(PyroObject):
 
         # Undefine object from libvirt
         try:
-            self._getLibVirtObject().destroy()
-            self._getLibVirtObject().undefine()
+            self._get_libvirt_object().destroy()
+            self._get_libvirt_object().undefine()
         except:
             raise LibvirtException('Failed to delete network from libvirt')
 
@@ -73,8 +73,8 @@ class Network(PyroObject):
         from mcvirt.mcvirt_config import MCVirtConfig
         MCVirtConfig().update_config(update_config, 'Deleted network \'%s\'' % self.get_name())
 
-    def _getConnectedVirtualMachines(self):
-        """Returns an array of VM objects that have an interface connected to the network"""
+    def _get_connected_virtual_machines(self):
+        """Return an array of VM objects that have an interface connected to the network"""
         connected_vms = []
 
         # Iterate over all VMs and determine if any use the network to be deleted
@@ -99,27 +99,27 @@ class Network(PyroObject):
         # Return array of VMs that use this network
         return connected_vms
 
-    def _getLibVirtObject(self):
-        """Returns the LibVirt object for the network"""
+    def _get_libvirt_object(self):
+        """Return the LibVirt object for the network"""
         return self._get_registered_object(
             'libvirt_connector'
         ).get_connection().networkLookupByName(self.name)
 
     @Pyro4.expose()
     def get_name(self):
-        """Returns the name of the network"""
+        """Return the name of the network"""
         return self.name
 
     @Pyro4.expose()
-    def getAdapter(self):
-        """Returns the name of the physical bridge adapter for the network"""
-        return Network.getNetworkConfig()[self.get_name()]
+    def get_adapter(self):
+        """Return the name of the physical bridge adapter for the network"""
+        return Network.get_network_config()[self.get_name()]
 
     @staticmethod
-    def _checkExists(name):
+    def _check_exists(name):
         """Check if a network exists"""
         # Obtain array of all networks from libvirt
-        networks = Network.getNetworkConfig()
+        networks = Network.get_network_config()
 
         # Determine if the name of any of the networks returned
         # matches the requested name

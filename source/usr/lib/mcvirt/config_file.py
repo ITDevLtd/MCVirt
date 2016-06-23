@@ -146,7 +146,7 @@ class ConfigFile(object):
         from auth.session import Session
         if (self._checkGitRepo()):
             message += "\nUser: %s\nNode: %s" % (
-                Session.getCurrentUserObject().getUsername(), get_hostname())
+                Session.get_current_user_object().get_username(), get_hostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file],
                                   cwd=DirectoryLocation.BASE_STORAGE_DIR)
@@ -167,7 +167,7 @@ class ConfigFile(object):
         """Removes and commits a configuration file"""
         from auth.session import Session
         if self._checkGitRepo():
-            message += "\nUser: %s\nNode: %s" % (Session.getCurrentUserObject().getUsername(),
+            message += "\nUser: %s\nNode: %s" % (Session.get_current_user_object().get_username(),
                                                  get_hostname())
             try:
                 System.runCommand([self.GIT,

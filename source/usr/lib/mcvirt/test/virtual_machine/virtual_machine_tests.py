@@ -124,7 +124,7 @@ class VirtualMachineTests(unittest.TestCase):
         """Perform the test_create test with Local storage"""
         self.test_create('Local')
 
-    @unittest.skipIf(not NodeDrbd.isEnabled(),
+    @unittest.skipIf(not NodeDrbd.is_enabled(),
                      'Drbd is not enabled on this node')
     def test_create_drbd(self):
         """Perform the test_create test with Drbd storage"""
@@ -134,7 +134,7 @@ class VirtualMachineTests(unittest.TestCase):
         """Tests the creation of VMs through the argument parser"""
         # Ensure VM does not exist
         self.assertFalse(
-            VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+            VirtualMachine._check_exists(self.mcvirt.getLibvirtConnection(),
                                         self.test_vms['TEST_VM_1']['name']))
 
         # Create virtual machine using parser
@@ -149,7 +149,7 @@ class VirtualMachineTests(unittest.TestCase):
                                     mcvirt_instance=self.mcvirt)
 
         # Ensure VM exists
-        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+        self.assertTrue(VirtualMachine._check_exists(self.mcvirt.getLibvirtConnection(),
                                                     self.test_vms['TEST_VM_1']['name']))
 
         # Obtain VM object
@@ -161,7 +161,7 @@ class VirtualMachineTests(unittest.TestCase):
         self.assertEqual(vm_object.getCPU(), str(self.test_vms['TEST_VM_1']['cpu_count']))
 
         # Ensure second VM does not exist
-        self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+        self.assertFalse(VirtualMachine._check_exists(self.mcvirt.getLibvirtConnection(),
                                                      self.test_vms['TEST_VM_2']['name']))
 
         # Create second VM
@@ -176,14 +176,14 @@ class VirtualMachineTests(unittest.TestCase):
                                     mcvirt_instance=self.mcvirt)
 
         # Ensure VM exists
-        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+        self.assertTrue(VirtualMachine._check_exists(self.mcvirt.getLibvirtConnection(),
                                                     self.test_vms['TEST_VM_2']['name']))
 
         # Obtain VM object
         vm_object_2 = VirtualMachine(self.mcvirt, self.test_vms['TEST_VM_2']['name'])
         vm_object_2.delete(True)
 
-    @unittest.skipIf(NodeDrbd.isEnabled(),
+    @unittest.skipIf(NodeDrbd.is_enabled(),
                      'Drbd is enabled on this node')
     def test_create_drbd_not_enabled(self):
         """Attempt to create a VM with Drbd storage on a node that doesn't have Drbd enabled"""
@@ -202,7 +202,7 @@ class VirtualMachineTests(unittest.TestCase):
         """Perform the test_delete test with Local storage"""
         self.test_delete('Local')
 
-    @unittest.skipIf(not NodeDrbd.isEnabled(),
+    @unittest.skipIf(not NodeDrbd.is_enabled(),
                      'Drbd is not enabled on this node')
     def test_delete_drbd(self):
         """Perform the test_delete test with Drbd storage"""
@@ -217,7 +217,7 @@ class VirtualMachineTests(unittest.TestCase):
                                                self.test_vms['TEST_VM_1']['disk_size'],
                                                self.test_vms['TEST_VM_1']['networks'],
                                                storage_type=storage_type)
-        self.assertTrue(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+        self.assertTrue(VirtualMachine._check_exists(self.mcvirt.getLibvirtConnection(),
                                                     self.test_vms['TEST_VM_1']['name']))
 
         # Remove VM using parser
@@ -225,7 +225,7 @@ class VirtualMachineTests(unittest.TestCase):
                                     mcvirt_instance=self.mcvirt)
 
         # Ensure VM has been deleted
-        self.assertFalse(VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+        self.assertFalse(VirtualMachine._check_exists(self.mcvirt.getLibvirtConnection(),
                                                      self.test_vms['TEST_VM_1']['name']))
 
     def test_clone_local(self):
@@ -282,7 +282,7 @@ class VirtualMachineTests(unittest.TestCase):
         # Remove parent
         test_vm_parent.delete(True)
 
-    @unittest.skipIf(not NodeDrbd.isEnabled(),
+    @unittest.skipIf(not NodeDrbd.is_enabled(),
                      'Drbd is not enabled on this node')
     def test_clone_drbd(self):
         """Attempts to clone a Drbd-based VM"""
@@ -310,7 +310,7 @@ class VirtualMachineTests(unittest.TestCase):
         """Performs test_duplicate test with Local storage"""
         self.test_duplicate('Local')
 
-    @unittest.skipIf(not NodeDrbd.isEnabled(),
+    @unittest.skipIf(not NodeDrbd.is_enabled(),
                      'Drbd is not enabled on this node')
     def test_duplicate_drbd(self):
         """Performs the test_duplicate test with Drbd storage"""
@@ -375,7 +375,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Ensure VM does not exist
         self.assertFalse(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 invalid_vm_name))
 
@@ -394,7 +394,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Ensure VM has not been created
         self.assertFalse(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 invalid_vm_name))
 
@@ -410,7 +410,7 @@ class VirtualMachineTests(unittest.TestCase):
             [100],
             ['Production'])
         self.assertTrue(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 self.test_vms['TEST_VM_1']['name']))
 
@@ -427,7 +427,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Ensure original VM already exists
         self.assertTrue(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 self.test_vms['TEST_VM_1']['name']))
 
@@ -454,7 +454,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Ensure the VM has not been created
         self.assertFalse(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 self.test_vms['TEST_VM_1']['name']))
 
@@ -465,7 +465,7 @@ class VirtualMachineTests(unittest.TestCase):
         """Perform the test_start test with Local storage"""
         self.test_start('Local')
 
-    @unittest.skipIf(not NodeDrbd.isEnabled(),
+    @unittest.skipIf(not NodeDrbd.is_enabled(),
                      'Drbd is not enabled on this node')
     def test_start_drbd(self):
         """Perform the test_start test with Drbd storage"""
@@ -551,7 +551,7 @@ class VirtualMachineTests(unittest.TestCase):
         """Perform the test_stop test with Local storage"""
         self.test_stop('Local')
 
-    @unittest.skipIf(not NodeDrbd.isEnabled(),
+    @unittest.skipIf(not NodeDrbd.is_enabled(),
                      'Drbd is not enabled on this node')
     def test_stop_drbd(self):
         """Perform the test_stop test with Drbd storage"""
@@ -601,7 +601,7 @@ class VirtualMachineTests(unittest.TestCase):
                 self.test_vms['TEST_VM_1']['name'],
                 mcvirt_instance=self.mcvirt)
 
-    @unittest.skipIf(not NodeDrbd.isEnabled(),
+    @unittest.skipIf(not NodeDrbd.is_enabled(),
                      'Drbd is not enabled on this node')
     def test_offline_migrate(self):
         from mcvirt.virtual_machine.hard_drive.drbd import DrbdDiskState
@@ -617,7 +617,7 @@ class VirtualMachineTests(unittest.TestCase):
             storage_type='Drbd')
 
         # Get the first available remote node for the VM
-        node_name = test_vm_object._getRemoteNodes()[0]
+        node_name = test_vm_object._get_remote_nodes()[0]
 
         # Assert that the VM is registered locally
         self.assertTrue(test_vm_object.isRegisteredLocally())
@@ -646,7 +646,7 @@ class VirtualMachineTests(unittest.TestCase):
         self.assertEqual(test_vm_object.getNode(), node_name)
 
         cluster_instance = Cluster(self.mcvirt)
-        remote_node = cluster_instance.getRemoteNode(node_name)
+        remote_node = cluster_instance.get_remote_node(node_name)
 
         # Attempt to start the VM on the remote node
         remote_node.run_remote_command('virtual_machine-start',
@@ -675,7 +675,7 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Ensure VM no longer exists
         self.assertFalse(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 self.test_vms['TEST_VM_1']['name']))
 
@@ -725,7 +725,7 @@ class VirtualMachineTests(unittest.TestCase):
                 test_vm_object.get_name(),
                 mcvirt_instance=self.mcvirt)
 
-    @unittest.skipIf(NodeDrbd.isEnabled(),
+    @unittest.skipIf(NodeDrbd.is_enabled(),
                      'Drbd is enabled on this node')
     def test_unspecified_storage_type_local(self):
         """Create a VM without specifying the storage type"""
@@ -740,10 +740,10 @@ class VirtualMachineTests(unittest.TestCase):
 
         # Ensure that the VM exists
         self.assertTrue(
-            VirtualMachine._checkExists(self.mcvirt.getLibvirtConnection(),
+            VirtualMachine._check_exists(self.mcvirt.getLibvirtConnection(),
                                         self.test_vms['TEST_VM_1']['name']))
 
-    @unittest.skipIf(not NodeDrbd.isEnabled(),
+    @unittest.skipIf(not NodeDrbd.is_enabled(),
                      'Drbd is not enabled on this node')
     def test_unspecified_storage_type_drbd(self):
         """Create a VM without specifying the storage type"""
@@ -819,7 +819,7 @@ class VirtualMachineTests(unittest.TestCase):
         finally:
             fhandle.close()
 
-        iso_object = Iso.addIso(self.mcvirt, temp_iso)
+        iso_object = Iso.add_iso(self.mcvirt, temp_iso)
         os.unlink(temp_iso)
 
         try:
@@ -832,7 +832,7 @@ class VirtualMachineTests(unittest.TestCase):
             domain_config = ET.fromstring(domain_xml_string)
             self.assertEqual(
                 domain_config.find('./devices/disk[@device="cdrom"]/source').get('file'),
-                iso_object.getPath()
+                iso_object.get_path()
             )
         except Exception, e:
             test_vm_object.stop()

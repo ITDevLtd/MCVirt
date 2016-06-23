@@ -1,3 +1,5 @@
+"""Provide class for connecting to RPC daemon"""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -17,11 +19,10 @@
 
 import Pyro4
 
-import mcvirt.exceptions
+import mcvirt.exceptions # Import necessary for Pyro # noqa
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
-from mcvirt.auth.session import Session
 from mcvirt.rpc.constants import Annotations
 
 
@@ -52,19 +53,20 @@ class Connection(object):
         self.__session_id = session_id
 
         # Perform an initial connection to obtain/verify the session ID
-        self.__session_id = self.__getSession(password=password)
+        self.__session_id = self.__get_session(password=password)
 
-    def __getSession(self, password):
-        """Obtains a session ID"""
+    def __get_session(self, password):
+        """Obtain a session ID"""
         try:
             # Attempt to obtain a connection and obtain a session ID
-            session_object = self.get_connection(object_name=self.SESSION_OBJECT, password=password)
+            session_object = self.get_connection(object_name=self.SESSION_OBJECT,
+                                                 password=password)
             session_id = session_object._pyroHandshake['SEID']
             return session_id
         except Pyro4.errors.CommunicationError, e:
             raise AuthenticationError(str(e))
 
-    def _getAuthObj(self, password=None):
+    def _get_auth_obj(self, password=None):
         """Setup annotations for authentication"""
         auth_dict = {
             Annotations.USERNAME: self.__username
@@ -89,31 +91,34 @@ class Connection(object):
         return auth_dict
 
     def get_connection(self, object_name, password=None):
-        """Obtains a connection from pyro for a given object"""
+        """Obtain a connection from pyro for a given object"""
         # Obtain a connection to the name server on the localhost
         ns = Pyro4.naming.locateNS(host=self.__host, port=self.NS_PORT, broadcast=False)
 
         class AuthProxy(Pyro4.Proxy):
 
-            def _pyroValidateHandshake(self, data):
+            def _pyroValidateHandshake(self, data): # Override upstream # noqa
                 self._pyroHandshake[Annotations.SESSION_ID] = data
 
         # Create a Proxy object, using the overriden Proxy class and return.
         proxy = AuthProxy(ns.lookup(object_name))
-        proxy._pyroHandshake = self._getAuthObj(password=password)
+        proxy._pyroHandshake = self._get_auth_obj(password=password)
         proxy._pyroBind()
         return proxy
 
     def ignore_drbd(self):
+        """Set flag to ignore DRBD"""
         self.__ignore_drbd = True
 
     def ignore_cluster(self):
+        """Set flag to ignore cluster"""
         self.__ignore_cluster = True
 
-    def annotateObject(self, object_ref):
-        object_ref._pyroHandshake = self._getAuthObj()
+    def annotate_object(self, object_ref):
+        """Add authentication attributes to remote object"""
+        object_ref._pyroHandshake = self._get_auth_obj()
 
     @property
-    def SESSION_ID(self):
+    def session_id(self):
         """Property for the session ID"""
         return self.__session_id

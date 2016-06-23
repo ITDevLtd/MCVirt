@@ -24,13 +24,10 @@ from os import makedirs
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.node.network.factory import Factory as NetworkFactory
-from mcvirt.exceptions import (StorageTypeNotSpecified, InvalidNodesException,
+from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
-                               ClusterNotInitialisedException, NodeDoesNotExistException,
-                               DrbdNotEnabledOnNode)
+                               ClusterNotInitialisedException, NodeDoesNotExistException)
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
@@ -87,7 +84,7 @@ class Factory(PyroObject):
         return table_output
 
     @Pyro4.expose()
-    def checkExists(self, vm_name):
+    def check_exists(self, vm_name):
         """Determines if a VM exists, given a name"""
         return (vm_name in self.getAllVmNames())
 
@@ -102,7 +99,7 @@ class Factory(PyroObject):
         if len(name) < 3:
             raise InvalidVirtualMachineNameException('VM Name must be at least 3 characters long')
 
-        if self.checkExists(name):
+        if self.check_exists(name):
             raise InvalidVirtualMachineNameException('VM already exists')
 
         return True
@@ -133,7 +130,7 @@ class Factory(PyroObject):
                                                  ' is not initialised')
 
         # Determine if VM already exists
-        if self.checkExists(name):
+        if self.check_exists(name):
             raise VmAlreadyExistsException('Error: VM already exists')
 
         # If a node has not been specified, assume the local node
@@ -142,7 +139,7 @@ class Factory(PyroObject):
 
         # If Drbd has been chosen as a storage type, ensure it is enabled on the node
         node_drbd = self._get_registered_object('node_drbd')
-        if storage_type == 'Drbd' and not node_drbd.isEnabled():
+        if storage_type == 'Drbd' and not node_drbd.is_enabled():
             raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
 
         # Create directory for VM on the local and remote nodes
@@ -153,7 +150,7 @@ class Factory(PyroObject):
         # available node if local storage is being used. Use the machines in the cluster
         # if Drbd is being used
         cluster_object = self._get_registered_object('cluster')
-        all_nodes = cluster_object.getNodes(return_all=True)
+        all_nodes = cluster_object.get_nodes(return_all=True)
         all_nodes.append(get_hostname())
 
         if len(available_nodes) == 0:
@@ -231,7 +228,7 @@ class Factory(PyroObject):
             network_factory = self._get_registered_object('network_factory')
             if network_interfaces is not None:
                 for network in network_interfaces:
-                    network_object = network_factory.getNetworkByName(network)
+                    network_object = network_factory.get_network_by_name(network)
                     network_adapter_factory.create(vm_object, network_object)
 
         return vm_object

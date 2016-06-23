@@ -28,7 +28,7 @@ from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
 def stopAndDelete(test_object):
     """Stops and removes test objects"""
     # Determine if the test VM is present and remove it if it is
-    if (VirtualMachine._checkExists(test_object.mcvirt.getLibvirtConnection(),
+    if (VirtualMachine._check_exists(test_object.mcvirt.getLibvirtConnection(),
                                     test_object.test_vm_name)):
         vm_object = VirtualMachine(test_object.mcvirt, test_object.test_vm_name)
         if (vm_object.getState() is PowerStates.RUNNING):
@@ -36,7 +36,7 @@ def stopAndDelete(test_object):
         vm_object.delete(True)
 
     # Remove any test networks
-    if (Network._checkExists(test_object.test_network_name)):
+    if (Network._check_exists(test_object.test_network_name)):
         network_object = Network(test_object.mcvirt, test_object.test_network_name)
         network_object.delete()
 
@@ -81,7 +81,7 @@ class NetworkTests(unittest.TestCase):
     def test_create(self):
         """Tests the creation of network through the argument parser"""
         # Ensure network does not exist
-        self.assertFalse(Network._checkExists(self.test_network_name))
+        self.assertFalse(Network._check_exists(self.test_network_name))
 
         # Create network using parser
         self.parser.parse_arguments('network create %s --interface=%s' %
@@ -90,7 +90,7 @@ class NetworkTests(unittest.TestCase):
                                     mcvirt_instance=self.mcvirt)
 
         # Ensure network exists
-        self.assertTrue(Network._checkExists(self.test_network_name))
+        self.assertTrue(Network._check_exists(self.test_network_name))
 
         # Obtain network object
         network_object = Network(self.mcvirt, self.test_network_name)
@@ -130,12 +130,12 @@ class NetworkTests(unittest.TestCase):
                                     mcvirt_instance=self.mcvirt)
 
         # Ensure the network no longer exists
-        self.assertFalse(Network._checkExists(self.test_network_name))
+        self.assertFalse(Network._check_exists(self.test_network_name))
 
     def test_delete_non_existent(self):
         """Attempt to delete a non-existent network"""
         # Ensure the network does not exist
-        self.assertFalse(Network._checkExists(self.test_network_name))
+        self.assertFalse(Network._check_exists(self.test_network_name))
 
         # Attempt to remove the network using the argument parser
         with self.assertRaises(NetworkDoesNotExistException):

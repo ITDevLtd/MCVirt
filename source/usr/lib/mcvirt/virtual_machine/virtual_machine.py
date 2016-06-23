@@ -54,7 +54,7 @@ class VirtualMachine(PyroObject):
         self.name = name
 
         # Check that the domain exists
-        if not virtual_machine_factory.checkExists(self.name):
+        if not virtual_machine_factory.check_exists(self.name):
             raise VirtualMachineDoesNotExistException(
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
@@ -67,10 +67,10 @@ class VirtualMachine(PyroObject):
             return self
         elif self.isRegisteredRemotely():
             cluster = self._get_registered_object('cluster')
-            remote_node = cluster.getRemoteNode(self.getNode())
+            remote_node = cluster.get_remote_node(self.getNode())
             remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
-            remote_node.annotateObject(remote_vm)
+            remote_node.annotate_object(remote_vm)
             return remote_vm
         else:
             raise VmNotRegistered('The VM is not registered on a node')
@@ -166,14 +166,14 @@ class VirtualMachine(PyroObject):
 
         elif not self._cluster_disabled and self.isRegisteredRemotely():
             cluster = self._get_registered_object('cluster')
-            remote_node = cluster.getRemoteNode(self.getNode())
+            remote_node = cluster.get_remote_node(self.getNode())
             vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-            remote_node.annotateObject(remote_vm)
+            remote_node.annotate_object(remote_vm)
             if iso_object:
                 remote_iso_factory = remote_node.get_connection('iso_factory')
-                remote_iso = remote_iso_factory.getIsoByName(iso_object.get_name())
-                remote_node.annotateObject(remote_iso)
+                remote_iso = remote_iso_factory.get_iso_by_name(iso_object.get_name())
+                remote_node.annotate_object(remote_iso)
             else:
                 remote_iso = None
             remote_vm.start(iso_object=remote_iso)
@@ -229,10 +229,10 @@ class VirtualMachine(PyroObject):
 
         elif self.isRegisteredRemotely() and not self._cluster_disabled:
             cluster = self._get_registered_object('cluster')
-            remote_object = cluster.getRemoteNode(self.getNode())
+            remote_object = cluster.get_remote_node(self.getNode())
             vm_factory = remote_object.get_connection('virtual_machine_factory')
             remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-            remote_object.annotateObject(remote_vm)
+            remote_object.annotate_object(remote_vm)
             return PowerStates(remote_vm.getPowerState())
         else:
             return PowerStates.UNKNOWN
@@ -248,10 +248,10 @@ class VirtualMachine(PyroObject):
 
         if self.isRegisteredRemotely():
             cluster = self._get_registered_object('cluster')
-            remote_object = cluster.getRemoteNode(self.getNode())
+            remote_object = cluster.get_remote_node(self.getNode())
             remote_vm_factory = remote_object.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
-            remote_object.annotateObject(remote_vm)
+            remote_object.annotate_object(remote_vm)
             return remote_vm.getInfo()
 
         table = Texttable()
@@ -400,7 +400,7 @@ class VirtualMachine(PyroObject):
             def remote_command(remote_object):
                 vm_factory = remote_object.get_connection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-                remote_object.annotateObject(remote_vm)
+                remote_object.annotate_object(remote_vm)
                 remote_vm.delete(remove_data=remove_data)
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.run_remote_command(remote_command)
@@ -524,7 +524,7 @@ class VirtualMachine(PyroObject):
             def remote_command(remote_object):
                 vm_factory = remote_object.get_connection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-                remote_object.annotateObject(remote_vm)
+                remote_object.annotate_object(remote_vm)
                 remote_vm.update_config(attribute_path=attribute_path, value=value,
                                        reason=reason)
             cluster = self._get_registered_object('cluster')
@@ -614,10 +614,10 @@ class VirtualMachine(PyroObject):
 
         # Register on remote node
         cluster = self._get_registered_object('cluster')
-        remote = cluster.getRemoteNode(destination_node_name)
+        remote = cluster.get_remote_node(destination_node_name)
         remote_vm_factory = remote.get_connection('virtual_machine_factory')
         remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
-        remote.annotateObject(remote_vm)
+        remote.annotate_object(remote_vm)
         remote_vm.register()
 
         # Set the node of the VM
@@ -651,7 +651,7 @@ class VirtualMachine(PyroObject):
         cluster = self._get_registered_object('cluster')
 
         # Obtain node object for destination node
-        destination_node = cluster.getRemoteNode(destination_node_name)
+        destination_node = cluster.get_remote_node(destination_node_name)
 
         # Begin pre-migration tasks
         try:
@@ -770,7 +770,7 @@ class VirtualMachine(PyroObject):
 
         # Obtain remote object for destination node
         cluster = self._get_registered_object('cluster')
-        remote_node = cluster.getRemoteNode(destination_node_name)
+        remote_node = cluster.get_remote_node(destination_node_name)
         remote_network_factory = remote_node.get_connection('network_factory')
 
         # Checks the Drbd state of the disks and ensure that they are
@@ -784,7 +784,7 @@ class VirtualMachine(PyroObject):
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         for network_object in network_adapters:
             connected_network = network_object.getConnectedNetwork()
-            if connected_network not in remote_network_factory.getAllNetworkNames():
+            if connected_network not in remote_network_factory.get_all_network_names():
                 raise UnsuitableNodeException(
                     'The network %s does not exist on the remote node: %s' %
                     (connected_network, destination_node_name)
@@ -830,7 +830,7 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Ensure new VM name doesn't already exist
-        if not self._get_registered_object('virtual_machine_factory').checkExists(clone_vm_name):
+        if not self._get_registered_object('virtual_machine_factory').check_exists(clone_vm_name):
             raise VirtualMachineDoesNotExistException('Parent VM %s does not exist' % clone_vm_name)
 
         # Ensure VM is not a clone, as cloning a cloned VM will cause issues
@@ -890,7 +890,7 @@ class VirtualMachine(PyroObject):
             raise VmAlreadyStartedException('Can\'t duplicate running VM')
 
         # Ensure new VM name doesn't already exist
-        if self._get_registered_object('virtual_machine_factory').checkExists(duplicate_vm_name):
+        if self._get_registered_object('virtual_machine_factory').check_exists(duplicate_vm_name):
             raise VmAlreadyExistsException('VM already exists with name %s' % duplicate_vm_name)
 
         # Create new VM for clone, without hard disks
@@ -941,9 +941,9 @@ class VirtualMachine(PyroObject):
         if destination_node == source_node:
             raise UnsuitableNodeException('Source node and destination node must' +
                                           ' be different nodes')
-        if not cluster_instance.checkNodeExists(source_node):
+        if not cluster_instance.check_node_exists(source_node):
             raise UnsuitableNodeException('Source node does not exist: %s' % source_node)
-        if not cluster_instance.checkNodeExists(destination_node):
+        if not cluster_instance.check_node_exists(destination_node):
             raise UnsuitableNodeException('Destination node does not exist')
         if destination_node == get_hostname():
             raise UnsuitableNodeException('VM must be migrated to a remote node')
@@ -978,10 +978,10 @@ class VirtualMachine(PyroObject):
 
         # If the VM is a local VM, register it on the remote node
         if self.getStorageType() == 'Local':
-            remote_node = cluster_instance.getRemoteNode(destination_node)
+            remote_node = cluster_instance.get_remote_node(destination_node)
             remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
-            remote_node.annotateObject(remote_vm)
+            remote_node.annotate_object(remote_vm)
             remote_vm.register()
 
     @Pyro4.expose()
@@ -1100,7 +1100,7 @@ class VirtualMachine(PyroObject):
             def remote_command(remote_connection):
                 vm_factory = remote_connection.get_connection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-                remote_connection.annotateObject(remote_vm)
+                remote_connection.annotate_object(remote_vm)
                 remote_vm.setNodeRemote(node)
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.run_remote_command(remote_command)
@@ -1112,7 +1112,7 @@ class VirtualMachine(PyroObject):
             updateVmConfig, 'Changing node for VM \'%s\' to \'%s\'' %
             (self.get_name(), node))
 
-    def _getRemoteNodes(self):
+    def _get_remote_nodes(self):
         """Returns a list of remote available nodes"""
         from mcvirt.cluster.cluster import Cluster
         # Obtain list of available nodes

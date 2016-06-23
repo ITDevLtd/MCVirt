@@ -51,7 +51,7 @@ class DiskDrive(PyroObject):
         cdrom_xml = ET.parse(DirectoryLocation.TEMPLATE_DIR + '/cdrom.xml')
 
         # Add iso image path to cdrom XML
-        cdrom_xml.find('source').set('file', iso_object.getPath())
+        cdrom_xml.find('source').set('file', iso_object.get_path())
         cdrom_xml_string = ET.tostring(cdrom_xml.getroot(), encoding='utf8', method='xml')
 
         flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
@@ -86,7 +86,7 @@ class DiskDrive(PyroObject):
         source_xml = domain_config.find('./devices/disk[@device="cdrom"]/source')
 
         if (source_xml is not None):
-            filename = Iso.getFilenameFromPath(source_xml.get('file'))
+            filename = Iso.get_filename_from_path(source_xml.get('file'))
             return Iso(filename)
         else:
             return None
@@ -97,7 +97,7 @@ class DiskDrive(PyroObject):
         if self.getCurrentDisk():
             # @TODO Update
             cluster_instance = self._get_registered_object('cluster')
-            return_data = cluster_instance.run_remote_command('iso-getIsos', {},
+            return_data = cluster_instance.run_remote_command('iso-get_isos', {},
                                                             nodes=[destination_node_name])
             if (self.getCurrentDisk().get_name() not in return_data[destination_node_name]):
                 raise IsoNotPresentOnDestinationNodeException(

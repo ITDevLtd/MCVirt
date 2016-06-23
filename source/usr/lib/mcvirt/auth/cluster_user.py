@@ -43,5 +43,5 @@ class ClusterUser(UserBase):
     def update_host(self, host):
         """Update the host associated with the user."""
         def update_config(config):
-            config['users'][self.getUsername()]['host'] = host
-        MCVirtConfig().update_config(update_config, 'Updated host for \'%s\'' % self.getUsername())
+            config['users'][self.get_username()]['host'] = host
+        MCVirtConfig().update_config(update_config, 'Updated host for \'%s\'' % self.get_username())

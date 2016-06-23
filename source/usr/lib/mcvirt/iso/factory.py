@@ -1,3 +1,22 @@
+"""Provide factory class for ISO"""
+
+# Copyright (c) 2016 - I.T. Dev Ltd
+#
+# This file is part of MCVirt.
+#
+# MCVirt is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# MCVirt is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MCVirt.  If not, see <http://www.gnu.org/licenses/
+
 import os
 import urllib2
 import urlparse
@@ -10,13 +29,14 @@ from mcvirt.iso.iso import Iso
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import lockingMethod
 from mcvirt.constants import DirectoryLocation
+from mcvirt.exceptions import InvalidISOPathException
 
 
 class Factory(PyroObject):
     """Class for obtaining ISO objects"""
 
-    def getIsos(self):
-        """Returns a list of a ISOs"""
+    def get_isos(self):
+        """Return a list of a ISOs"""
         # Get files in ISO directory
         file_list = os.listdir(DirectoryLocation.ISO_STORAGE_DIR)
         iso_list = []
@@ -28,44 +48,44 @@ class Factory(PyroObject):
         return iso_list
 
     @Pyro4.expose()
-    def getIsoByName(self, iso_name):
-        """Creates and registers Iso object"""
+    def get_iso_by_name(self, iso_name):
+        """Create and register Iso object"""
         iso_object = Iso(iso_name)
         self._register_object(iso_object)
         return iso_object
 
     @Pyro4.expose()
-    def getIsoList(self):
+    def get_iso_list(self):
         """Return a user-readable list of ISOs"""
-        iso_list = self.getIsos()
+        iso_list = self.get_isos()
         if len(iso_list) == 0:
             return 'No ISOs found'
         else:
             return "\n".join(iso_list)
 
-    def addIso(self, path):
+    def add_iso(self, path):
         """Copy an ISO to ISOs directory"""
         # Check that file exists
         if not os.path.isfile(path):
             raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
 
-        filename = Iso.getFilenameFromPath(path)
-        Iso.overwriteCheck(filename, DirectoryLocation.ISO_STORAGE_DIR + '/' + filename)
+        filename = Iso.get_filename_from_path(path)
+        Iso.overwrite_check(filename, DirectoryLocation.ISO_STORAGE_DIR + '/' + filename)
 
         shutil.copy(path, DirectoryLocation.ISO_STORAGE_DIR)
         full_path = DirectoryLocation.ISO_STORAGE_DIR + '/' + filename
 
-        return self.getIsoByName(filename)
+        return self.get_iso_by_name(filename)
 
     @Pyro4.expose()
     @lockingMethod()
-    def addFromUrl(self, url, name=None):
+    def add_from_url(self, url, name=None):
         """Download an ISO from given URL and save in ISO directory"""
         # Work out name from URL if name is not supplied
         if name is None:
             # Parse URL to get path part
             url_parse = urlparse.urlparse(url)
-            name = Iso.getFilenameFromPath(url_parse.path)
+            name = Iso.get_filename_from_path(url_parse.path)
 
         # Get temporary directory to store ISO
         temp_directory = tempfile.mkdtemp()
@@ -86,7 +106,7 @@ class Factory(PyroObject):
                 file.write(chunk)
         iso.close()
 
-        iso_object = self.addIso(output_path)
+        iso_object = self.add_iso(output_path)
 
         os.remove(output_path)
         os.rmdir(temp_directory)
@@ -94,9 +114,10 @@ class Factory(PyroObject):
 
     @Pyro4.expose()
     @lockingMethod()
-    def addIsoFromStream(self, path, name=None):
+    def add_iso_from_stream(self, path, name=None):
+        """Import ISO, writing binary data to the ISO file"""
         if name is None:
-            name = Iso.getFilenameFromPath(path)
+            name = Iso.get_filename_from_path(path)
 
         # Get temporary directory to store ISO
         temp_directory = tempfile.mkdtemp()
@@ -108,8 +129,10 @@ class Factory(PyroObject):
 
 
 class IsoWriter(PyroObject):
+    """Provide an interface for writing ISOs"""
 
     def __init__(self, temp_file, factory, temp_directory, path):
+        """Set methods to be able to create ISO from temp path."""
         self.temp_file = temp_file
         self.temp_directory = temp_directory
         self.factory = factory
@@ -117,21 +140,24 @@ class IsoWriter(PyroObject):
         self.fh = open(self.temp_file, 'wb')
 
     def __delete__(self):
+        """Close FH on object deletion"""
         if self.fh:
             self.fh.close()
             self.fh = None
 
     @Pyro4.expose()
     def write_data(self, data):
+        """Write data to the ISO file"""
         self.fh.write(binascii.unhexlify(data))
 
     @Pyro4.expose()
     def write_end(self):
+        """End writing object, close FH and import ISO"""
         if self.fh:
             self.fh.close()
             self.fh = None
 
-        iso_object = self.factory.addIso(self.temp_file)
+        iso_object = self.factory.add_iso(self.temp_file)
 
         os.remove(self.temp_file)
         os.rmdir(self.temp_directory)

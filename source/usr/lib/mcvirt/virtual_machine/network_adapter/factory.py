@@ -31,7 +31,7 @@ class Factory(PyroObject):
     @Pyro4.expose()
     @lockingMethod()
     def create(self, virtual_machine, network_object, mac_address=None):
-        """Creates a network interface for the local VM"""
+        """Create a network interface for the local VM"""
         virtual_machine = self._convert_remote_object(virtual_machine)
         network_object = self._convert_remote_object(network_object)
         self._get_registered_object('auth').assert_permission(
@@ -43,10 +43,10 @@ class Factory(PyroObject):
             mac_address = NetworkAdapter.generateMacAddress()
 
         # Add network interface to VM configuration
-        def updateVmConfig(config):
+        def update_vm_config(config):
             config['network_interfaces'][mac_address] = network_object.get_name()
         virtual_machine.get_config_object().update_config(
-            updateVmConfig, 'Added network adapter to \'%s\' on \'%s\' network' %
+            update_vm_config, 'Added network adapter to \'%s\' on \'%s\' network' %
             (virtual_machine.get_name(), network_object.get_name()))
 
         if self._is_cluster_master:
@@ -54,7 +54,7 @@ class Factory(PyroObject):
                 remote_vm_factory = node_connection.get_connection('virtual_machine_factory')
                 remote_vm = remote_vm_factory.getVirtualMachineByName(virtual_machine.get_name())
                 remote_network_factory = node_connection.get_connection('network_factory')
-                remote_network = remote_network_factory.getNetworkByName(network_object.get_name())
+                remote_network = remote_network_factory.get_network_by_name(network_object.get_name())
                 remote_network_adapter_factory = node_connection.get_connection(
                     'network_adapter_factory')
                 remote_network_adapter_factory.create(

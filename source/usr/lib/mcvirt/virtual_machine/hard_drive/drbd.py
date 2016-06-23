@@ -218,7 +218,7 @@ class Drbd(Base):
     CACHE_MODE = 'none'
 
     def __init__(self, drbd_minor=None, drbd_port=None, *args, **kwargs):
-        """Sets member variables"""
+        """Set member variables"""
         # Get Drbde configuration from disk configuration
         self._sync_state = True
         self._drbd_port = None
@@ -227,19 +227,19 @@ class Drbd(Base):
 
     @property
     def config_properties(self):
-        """Returns the disk object config items"""
+        """Return the disk object config items"""
         return super(Drbd, self).config_properties + ['drbd_port', 'drbd_minor']
 
     @staticmethod
     def isAvailable(pyro_object):
-        """Determines if Drbd is available on the node"""
-        if pyro_object._get_registered_object('node_drbd').isEnabled():
+        """Determine if Drbd is available on the node"""
+        if pyro_object._get_registered_object('node_drbd').is_enabled():
             return True
         else:
             return False
 
-    def _checkExists(self):
-        """Ensures the required storage elements exist on the system"""
+    def _check_exists(self):
+        """Ensure the required storage elements exist on the system"""
         raw_lv = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
         meta_lv = self._getLogicalVolumeName(self.Drbd_META_SUFFIX)
         self._ensureLogicalVolumeExists(raw_lv)
@@ -247,8 +247,8 @@ class Drbd(Base):
         return True
 
     def activateDisk(self):
-        """Ensures that the disk is ready to be used by a VM on the local node"""
-        self._ensureExists()
+        """Ensure that the disk is ready to be used by a VM on the local node"""
+        self._ensure_exists()
         raw_lv = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
         meta_lv = self._getLogicalVolumeName(self.Drbd_META_SUFFIX)
         self._ensureLogicalVolumeActive(raw_lv)
@@ -263,12 +263,12 @@ class Drbd(Base):
 
     def deactivateDisk(self):
         """Marks Drbd volume as secondary"""
-        self._ensureExists()
+        self._ensure_exists()
         self._drbdSetSecondary()
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""
-        self._ensureExists()
+        self._ensure_exists()
         return self._get_logical_volume_size(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX))
 
     def create(self, size):
@@ -279,13 +279,13 @@ class Drbd(Base):
             PERMISSIONS.MANAGE_Drbd, self.vm_object)
 
         # Ensure Drbd is enabled on the host
-        if not self._get_registered_object('node_drbd').isEnabled():
+        if not self._get_registered_object('node_drbd').is_enabled():
             raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
 
         # Create cluster object for running on remote nodes
         cluster_instance = self._get_registered_object('cluster')
 
-        remote_nodes = self.vm_object._getRemoteNodes()
+        remote_nodes = self.vm_object._get_remote_nodes()
 
         # Keep track of progress, so the storage stack can be torn down if something goes wrong
         progress = Drbd.CREATE_PROGRESS.START
@@ -431,9 +431,9 @@ class Drbd(Base):
 
     def _removeStorage(self):
         """Removes the backing storage for the Drbd hard drive"""
-        self._ensureExists()
+        self._ensure_exists()
         cluster = self._get_registered_object('cluster')
-        remote_nodes = self.vm_object._getRemoteNodes()
+        remote_nodes = self.vm_object._get_remote_nodes()
 
         # Disconnect and perform a 'down' on the Drbd volume on all nodes
         def remoteCommand(node):
@@ -583,7 +583,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(remote_node=node)
                 remote_disk.setTwoPrimariesConfig(allow=allow)
             cluster_instance.run_remote_command(callback_method=remoteCommand,
-                                              nodes=self.vm_object._getRemoteNodes())
+                                              nodes=self.vm_object._get_remote_nodes())
 
     @Pyro4.expose()
     @lockingMethod()
@@ -813,7 +813,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(remote_node=node)
                 remote_disk.setSyncState(sync_state=sync_state)
             cluster.run_remote_command(callback_method=remoteCommand,
-                                     nodes=self.vm_object._getRemoteNodes())
+                                     nodes=self.vm_object._get_remote_nodes())
 
     @Pyro4.expose()
     def verify(self):
@@ -862,10 +862,10 @@ class Drbd(Base):
         cluster_instance = self._get_registered_object('cluster')
 
         # Remove Drbd configuration from source node
-        dest_node_object = cluster_instance.getRemoteNode(destination_node)
+        dest_node_object = cluster_instance.get_remote_node(destination_node)
 
         if source_node not in cluster_instance.getFailedNodes():
-            src_node_object = cluster_instance.getRemoteNode(source_node)
+            src_node_object = cluster_instance.get_remote_node(source_node)
             src_node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdDisconnect',
                                              {'vm_name': self.vm_object.get_name(),
                                               'disk_id': self.disk_id})
@@ -927,7 +927,7 @@ class Drbd(Base):
         self._generateDrbdConfig()
         dest_node_object.run_remote_command('virtual_machine-hard_drive-drbd-generateDrbdConfig',
                                           {'config': self._dumpConfig()})
-        NodeDrbd(self.vm_object.mcvirt_object).adjustDrbdConfig(
+        NodeDrbd(self.vm_object.mcvirt_object).adjust_drbd_config(
             self.resource_name
         )
 
@@ -959,7 +959,7 @@ class Drbd(Base):
         """Obtains the next available Drbd port"""
         # Obtain list of currently used Drbd ports
         node_drbd = self._get_registered_object('node_drbd')
-        used_ports = node_drbd.getUsedDrbdPorts()
+        used_ports = node_drbd.get_used_drbd_ports()
         available_port = None
 
         # Determine a free port
@@ -977,7 +977,7 @@ class Drbd(Base):
         """Obtains the next available Drbd minor"""
         # Obtain list of currently used Drbd minors
         node_drbd = self._get_registered_object('node_drbd')
-        used_minor_ids = node_drbd.getUsedDrbdMinors()
+        used_minor_ids = node_drbd.get_used_drbd_minors()
         available_minor_id = None
 
         # Determine a free minor
@@ -1055,13 +1055,13 @@ class Drbd(Base):
         node_template_conf = \
             {
                 'name': get_hostname(),
-                'ip_address': cluster_object.getClusterIpAddress()
+                'ip_address': cluster_object.get_cluster_ip_address()
             }
         drbd_config['nodes'].append(node_template_conf)
 
         # Add remote nodes to Drbd config
-        for node in self.vm_object._getRemoteNodes():
-            node_config = cluster_object.getNodeConfig(node)
+        for node in self.vm_object._get_remote_nodes():
+            node_config = cluster_object.get_node_config(node)
             node_template_conf = \
                 {
                     'name': node,

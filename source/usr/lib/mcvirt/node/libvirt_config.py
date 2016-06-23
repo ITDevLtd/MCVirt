@@ -63,7 +63,7 @@ libvirtd_opts=" --listen --verbose "
     def get_config(self):
         cert_gen_factory = self._get_registered_object('certificate_generator_factory')
         ssl_socket = cert_gen_factory.get_cert_generator('localhost')
-        nodes = self._get_registered_object('cluster').getNodes(return_all=True)
+        nodes = self._get_registered_object('cluster').get_nodes(return_all=True)
         nodes.append(get_hostname())
         allowed_dns = [cert_gen_factory.get_cert_generator(node).SSL_SUBJ for node in nodes]
 

@@ -1,3 +1,5 @@
+"""Provide class for managing ISO files"""
+
 # Copyright (c) 2015 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -18,11 +20,9 @@
 import os
 import stat
 
-from mcvirt.exceptions import (IsoNotPresentOnDestinationNodeException,
-                               InvalidISOPathException, NameNotSpecifiedException,
+from mcvirt.exceptions import (InvalidISOPathException, NameNotSpecifiedException,
                                IsoAlreadyExistsException, FailedToRemoveFileException,
                                IsoInUseException)
-from mcvirt.system import System
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.constants import DirectoryLocation
@@ -32,25 +32,26 @@ class Iso(PyroObject):
     """Provides management of ISOs for use in MCVirt"""
 
     def __init__(self, name):
-        """Ensures the VM exists, checks the file permissions and creates
-           an Iso object"""
+        """Ensure the VM exists, checks the file permissions and creates
+        an Iso object.
+        """
         self.name = name
 
-        if not os.path.isfile(self.getPath()):
+        if not os.path.isfile(self.get_path()):
             raise InvalidISOPathException('Error: \'%s\' does not exist' % self.get_name())
 
-        self.setIsoPermissions()
+        self.set_iso_permissions()
 
     def get_name(self):
-        """Returns the name of the ISO"""
+        """Return the name of the ISO"""
         return self.name
 
-    def getPath(self):
-        """Returns the full path of the ISO"""
+    def get_path(self):
+        """Return the full path of the ISO"""
         return DirectoryLocation.ISO_STORAGE_DIR + '/' + self.get_name()
 
     @staticmethod
-    def getFilenameFromPath(path, append_iso=True):
+    def get_filename_from_path(path, append_iso=True):
         """Return filename part of path"""
         filename = path.split('/')[-1]
         if not filename:
@@ -61,17 +62,17 @@ class Iso(PyroObject):
 
         return filename
 
-    def setIsoPermissions(self):
+    def set_iso_permissions(self):
         """Set permissions to 644"""
         mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
-        os.chmod(self.getPath(), mode)
+        os.chmod(self.get_path(), mode)
 
     @staticmethod
-    def overwriteCheck(filename, path):
+    def overwrite_check(filename, path):
         """Check if a file already exists at path.
-           Ask user whether they want to overwrite.
-           Returns True if they will overwrite, False otherwise"""
-
+        Ask user whether they want to overwrite.
+        Returns True if they will overwrite, False otherwise
+        """
         if os.path.exists(path):
             raise IsoAlreadyExistsException(
                 'Error: An ISO with the same name already exists: "%s"' % path
@@ -82,23 +83,23 @@ class Iso(PyroObject):
     def delete(self):
         """Delete an ISO"""
         # Check exists
-        in_use = self.inUse()
-        if in_use:
+        if self.in_use:
             raise IsoInUseException(
-                'The ISO is attached to a VM, so cannot be removed: %s' % in_use
+                'The ISO is attached to a VM, so cannot be removed: %s' % self.in_use
             )
 
-        os.remove(self.getPath())
+        os.remove(self.get_path())
 
-        if not os.path.isfile(self.getPath()):
+        if not os.path.isfile(self.get_path()):
             return True
         else:
             raise FailedToRemoveFileException(
                 'A failure occurred whilst attempting to remove ISO: %s' % self.get_name()
             )
 
-    def inUse(self):
-        """Determines if the ISO is currently in use by a VM"""
+    @property
+    def in_use(self):
+        """Determine if the ISO is currently in use by a VM"""
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
         for vm_name in virtual_machine_factory.getAllVmNames(node=get_hostname()):
             vm_object = virtual_machine_factory.getVirtualMachineByName(vm_name)
@@ -106,7 +107,7 @@ class Iso(PyroObject):
             vm_current_iso = disk_drive_object.getCurrentDisk()
 
             # If the VM has an iso attached, check if the ISO is this one
-            if vm_current_iso and vm_current_iso.getPath() == self.getPath():
+            if vm_current_iso and vm_current_iso.get_path() == self.get_path():
                 return vm_object.get_name()
 
         return False

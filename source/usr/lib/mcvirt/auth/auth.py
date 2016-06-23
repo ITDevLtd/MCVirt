@@ -47,7 +47,7 @@ class Auth(PyroObject):
         if Pyro4.current_context.STARTUP_PERIOD:
             return True
 
-        user_object = self._get_registered_object('mcvirt_session').getCurrentUserObject()
+        user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
         if user_object.__class__.__name__ in user_type_names:
             return True
         else:
@@ -85,7 +85,7 @@ class Auth(PyroObject):
             return True
 
         if user_object is None:
-            user_object = self._get_registered_object('mcvirt_session').getCurrentUserObject()
+            user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
 
         # Determine if the type of user has the permissions
         if permission_enum in user_object.PERMISSIONS:
@@ -95,7 +95,7 @@ class Auth(PyroObject):
         # if the user has been granted the permission
         mcvirt_config = MCVirtConfig()
         mcvirt_permissions = mcvirt_config.getPermissionConfig()
-        if self.check_permission_in_config(mcvirt_permissions, user_object.getUsername(),
+        if self.check_permission_in_config(mcvirt_permissions, user_object.get_username(),
                                            permission_enum):
             return True
 
@@ -107,7 +107,7 @@ class Auth(PyroObject):
 
             # Determine if the user has been granted the required permissions
             # in the VM configuration file
-            if (self.check_permission_in_config(vm_config, user_object.getUsername(),
+            if (self.check_permission_in_config(vm_config, user_object.get_username(),
                                                 permission_enum)):
                 return True
 
@@ -137,8 +137,8 @@ class Auth(PyroObject):
         # Cluster users can do anything
         if self.check_user_type('ClusterUser'):
             return True
-        user_object = self._get_registered_object('mcvirt_session').getProxyUserObject()
-        username = user_object.getUsername()
+        user_object = self._get_registered_object('mcvirt_session').get_proxy_user_object()
+        username = user_object.get_username()
         superusers = self.get_superusers()
 
         return ((username in superusers))
@@ -157,7 +157,7 @@ class Auth(PyroObject):
                 'User must be a superuser to manage superusers'
             )
         user_object = self._convert_remote_object(user_object)
-        username = user_object.getUsername()
+        username = user_object.get_username()
 
         mcvirt_config = MCVirtConfig()
 
@@ -175,7 +175,7 @@ class Auth(PyroObject):
         if self._is_cluster_master:
             def remote_command(connection):
                 remote_user_factory = connection.get_connection('user_factory')
-                remote_user = remote_user_factory.get_user_by_username(user_object.getUsername())
+                remote_user = remote_user_factory.get_user_by_username(user_object.get_username())
                 remote_auth = connection.get_connection('auth')
                 remote_auth.add_superuser(remote_user, ignore_duplicate=ignore_duplicate)
 
@@ -192,7 +192,7 @@ class Auth(PyroObject):
             )
 
         user_object = self._convert_remote_object(user_object)
-        username = user_object.getUsername()
+        username = user_object.get_username()
 
         # Ensure user to be removed is a superuser
         if (username not in self.get_superusers()):
@@ -207,7 +207,7 @@ class Auth(PyroObject):
         if self._is_cluster_master:
             def remote_command(connection):
                 remote_user_factory = connection.get_connection('user_factory')
-                remote_user = remote_user_factory.get_user_by_username(user_object.getUsername())
+                remote_user = remote_user_factory.get_user_by_username(user_object.get_username())
                 remote_auth = connection.get_connection('auth')
                 remote_auth.delete_superuser(remote_user)
 
@@ -228,7 +228,7 @@ class Auth(PyroObject):
 
         user_object = self._convert_remote_object(user_object)
         vm_object = self._convert_remote_object(vm_object) if vm_object is not None else None
-        username = user_object.getUsername()
+        username = user_object.get_username()
 
         # Check if user is already in the group
         if (vm_object):
@@ -271,7 +271,7 @@ class Auth(PyroObject):
 
         user_object = self._convert_remote_object(user_object)
         vm_object = self._convert_remote_object(vm_object) if vm_object is not None else None
-        username = user_object.getUsername()
+        username = user_object.get_username()
 
         # Check if user exists in the group
         if username not in self.get_users_in_permission_group(permission_group, vm_object):

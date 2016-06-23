@@ -119,7 +119,7 @@ class Factory(PyroObject):
     def getDrbdObjectByResourceName(self, resource_name):
         """Obtains a hard drive object for a Drbd drive, based on the resource name"""
         node_drbd = self._get_registered_object('node_drbd')
-        for hard_drive_object in node_drbd.getAllDrbdHardDriveObjects():
+        for hard_drive_object in node_drbd.get_all_drbd_hard_drive_object():
             if hard_drive_object.resource_name == resource_name:
                 return hard_drive_object
         raise HardDriveDoesNotExistException(

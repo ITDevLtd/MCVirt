@@ -55,7 +55,7 @@ class Local(Base):
         )
 
         # Ensure disk exists
-        self._ensureExists()
+        self._ensure_exists()
 
         # Ensure VM is stopped
         from mcvirt.virtual_machine.virtual_machine import PowerStates
@@ -75,7 +75,7 @@ class Local(Base):
                 "Error whilst extending logical volume:\n" + str(e)
             )
 
-    def _checkExists(self):
+    def _check_exists(self):
         """Checks if a disk exists, which is required before any operations
         can be performed on the disk"""
         self._ensureLogicalVolumeExists(
@@ -84,17 +84,17 @@ class Local(Base):
 
     def _removeStorage(self):
         """Removes the backing logical volume"""
-        self._ensureExists()
+        self._ensure_exists()
         self._removeLogicalVolume(self._getDiskName())
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""
-        self._ensureExists()
+        self._ensure_exists()
         return self._get_logical_volume_size(self._getDiskName())
 
     def clone(self, destination_vm_object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
-        self._ensureExists()
+        self._ensure_exists()
         new_disk = Local(vm_object=destination_vm_object, driver=self.driver,
                          disk_id=self.disk_id)
         new_logical_volume_name = new_disk._getDiskName()
@@ -132,12 +132,12 @@ class Local(Base):
 
     def activateDisk(self):
         """Starts the disk logical volume"""
-        self._ensureExists()
+        self._ensure_exists()
         self._activateLogicalVolume(self._getDiskName())
 
     def deactivateDisk(self):
         """Deactivates the disk loglcal volume"""
-        self._ensureExists()
+        self._ensure_exists()
 
     def preMigrationChecks(self):
         """Perform pre-migration checks"""

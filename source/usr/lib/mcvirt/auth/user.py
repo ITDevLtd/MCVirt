@@ -1,3 +1,5 @@
+"""Provide class for regular MCVirt interactive users"""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -22,8 +24,8 @@ from mcvirt.exceptions import OldPasswordIncorrect
 class User(UserBase):
     """Provides an interaction with the local user backend"""
 
-    def changePassword(old_password, new_password):
-        """Changes the current user's password"""
-        if not self._checkPassword(old_password):
+    def change_password(self, old_password, new_password):
+        """Change the current user's password."""
+        if not self._check_password(old_password):
             raise OldPasswordIncorrect('Old password is not correct')
-        self._setPassword(new_password)
+        self._set_password(new_password)

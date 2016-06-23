@@ -64,7 +64,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         for factory in self.registered_factories:
             self.registered_factories[factory] = None
 
-    def validateHandshake(self, conn, data):
+    def validateHandshake(self, conn, data): # Override name of upstream method # noqa
         """Perform authentication on new connections"""
         # Reset session_id for current context
         Pyro4.current_context.STARTUP_PERIOD = False
@@ -85,14 +85,15 @@ class BaseRpcDaemon(Pyro4.Daemon):
                 # Store the password and perform authentication check
                 password = str(data[Annotations.PASSWORD])
                 session_instance = self.registered_factories['mcvirt_session']
-                session_id = session_instance.authenticateUser(username=username, password=password)
+                session_id = session_instance.authenticate_user(username=username,
+                                                                password=password)
                 if session_id:
                     Pyro4.current_context.username = username
                     Pyro4.current_context.session_id = session_id
 
                     # If the authenticated user can specify a proxy user, and a proxy user
                     # has been specified, set this in the current context
-                    user_object = session_instance.getCurrentUserObject()
+                    user_object = session_instance.get_current_user_object()
                     if user_object.allow_proxy_user and Annotations.PROXY_USER in data:
                         Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
 
@@ -113,14 +114,16 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     else:
                         Pyro4.current_context.has_lock = False
 
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER, user_object=user_object)
-                            and Annotations.IGNORE_CLUSTER in data):
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER,
+                                              user_object=user_object) and
+                            Annotations.IGNORE_CLUSTER in data):
                         Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_CLUSTER]
                     else:
                         Pyro4.current_context.ignore_cluster = False
 
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_Drbd, user_object=user_object)
-                            and Annotations.IGNORE_Drbd in data):
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_Drbd,
+                                              user_object=user_object) and
+                            Annotations.IGNORE_Drbd in data):
                         Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
                     else:
                         Pyro4.current_context.ignore_drbd = False
@@ -132,12 +135,12 @@ class BaseRpcDaemon(Pyro4.Daemon):
             elif Annotations.SESSION_ID in data:
                 session_id = str(data[Annotations.SESSION_ID])
                 session_instance = self.registered_factories['mcvirt_session']
-                if session_instance.authenticateSession(username=username, session=session_id):
+                if session_instance.authenticate_session(username=username, session=session_id):
                     Pyro4.current_context.username = username
                     Pyro4.current_context.session_id = session_id
 
                     # Determine if user can provide alternative users
-                    user_object = session_instance.getCurrentUserObject()
+                    user_object = session_instance.get_current_user_object()
                     if user_object.allow_proxy_user and Annotations.PROXY_USER in data:
                         Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
 
@@ -158,14 +161,16 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     else:
                         Pyro4.current_context.has_lock = False
 
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER, user_object=user_object)
-                            and Annotations.IGNORE_CLUSTER in data):
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER,
+                                              user_object=user_object) and
+                            Annotations.IGNORE_CLUSTER in data):
                         Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_CLUSTER]
                     else:
                         Pyro4.current_context.ignore_cluster = False
 
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_Drbd, user_object=user_object)
-                            and Annotations.IGNORE_Drbd in data):
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_Drbd,
+                                              user_object=user_object) and
+                            Annotations.IGNORE_Drbd in data):
                         Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
                     else:
                         Pyro4.current_context.ignore_drbd = False
@@ -178,19 +183,20 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
 
 class DaemonSession(object):
+    """Class for allowing client to obtain the session ID"""
 
     @Pyro4.expose()
-    def getSessionId(self):
+    def get_session_id(self):
+        """Return the client's current session ID"""
         if Pyro4.current_context.session_id:
             return Pyro4.current_context.session_id
-        else:
-            raise error.DaemonError('No Session ID')
 
 
 class RpcNSMixinDaemon(object):
     """Wrapper for the daemon. Required since the
-       Pyro daemon class overrides get/setattr and other
-       built-in object methods"""
+    Pyro daemon class overrides get/setattr and other
+    built-in object methods
+    """
 
     DAEMON = None
 
@@ -213,10 +219,10 @@ class RpcNSMixinDaemon(object):
         ssl_socket = None
 
         # Wait for nameserver
-        self.obtainConnection()
+        self.obtain_connection()
 
         RpcNSMixinDaemon.DAEMON = BaseRpcDaemon(host=self.hostname)
-        self.registerFactories()
+        self.register_factories()
 
         # Ensure libvirt is configured
         cert_gen_factory = RpcNSMixinDaemon.DAEMON.registered_factories[
@@ -231,8 +237,8 @@ class RpcNSMixinDaemon(object):
         Pyro4.current_context.STARTUP_PERIOD = False
         RpcNSMixinDaemon.DAEMON.requestLoop()
 
-    def register(self, obj_or_class, objectId, *args, **kwargs):
-        """Override register to register object with NS"""
+    def register(self, obj_or_class, objectId, *args, **kwargs): # Override upstream # noqa
+        """Override register to register object with NS."""
         uri = RpcNSMixinDaemon.DAEMON.register(obj_or_class, *args, **kwargs)
         ns = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
         ns.register(objectId, uri)
@@ -240,7 +246,7 @@ class RpcNSMixinDaemon(object):
         RpcNSMixinDaemon.DAEMON.registered_factories[objectId] = obj_or_class
         return uri
 
-    def registerFactories(self):
+    def register_factories(self):
         """Register base MCVirt factories with RPC daemon"""
         # Register session class
         self.register(DaemonSession, objectId='session', force=True)
@@ -305,7 +311,8 @@ class RpcNSMixinDaemon(object):
         # Create an MCVirt session
         RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session'] = Session()
 
-    def obtainConnection(self):
+    def obtain_connection(self):
+        """Attempt to obtain a connection to the name server."""
         while 1:
             try:
                 Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)

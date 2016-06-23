@@ -34,6 +34,7 @@ from mcvirt.exceptions import ReachedMaximumStorageDevicesException
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import lockingMethod
+from mcvirt.constants import LockStates
 
 
 class Driver(Enum):
@@ -108,7 +109,7 @@ class Base(PyroObject):
     def get_remote_object(self, node_name=None, remote_node=None, registered=True):
         cluster = self._get_registered_object('cluster')
         if remote_node is None:
-            remote_node = cluster.getRemoteNode(node_name)
+            remote_node = cluster.get_remote_node(node_name)
 
         remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
         remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
@@ -124,7 +125,7 @@ class Base(PyroObject):
                 kwargs[config] = getattr(self, config)
 
         hard_drive_object = remote_hard_drive_factory.getObject(**kwargs)
-        remote_node.annotateObject(hard_drive_object)
+        remote_node.annotate_object(hard_drive_object)
         return hard_drive_object
 
     def _getAvailableId(self):
@@ -147,9 +148,9 @@ class Base(PyroObject):
 
         return disk_id
 
-    def _ensureExists(self):
+    def _ensure_exists(self):
         """Ensures the disk exists on the local node"""
-        if not self._checkExists():
+        if not self._check_exists():
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
                 (self.disk_id, self.vm_object.get_name()))
@@ -160,7 +161,7 @@ class Base(PyroObject):
 
     def delete(self):
         """Deletes the logical volume for the disk"""
-        self._ensureExists()
+        self._ensure_exists()
 
         if self.vm_object.isRegisteredLocally():
             # Remove from LibVirt, if registered, so that libvirt doesn't
@@ -175,7 +176,7 @@ class Base(PyroObject):
 
     def duplicate(self, destination_vm_object):
         """Clone the hard drive and attach it to the new VM object"""
-        self._ensureExists()
+        self._ensure_exists()
         disk_size = self.getSize()
 
         # Create new disk object, using the same type, size and disk_id
@@ -230,7 +231,7 @@ class Base(PyroObject):
             successful_nodes = []
             cluster = self._get_registered_object('cluster')
             try:
-                for node in cluster.getNodes():
+                for node in cluster.get_nodes():
                     remote_disk_object = self.get_remote_object(node, registered=False)
                     remote_disk_object.addToVirtualMachine()
                     successful_nodes.append(node)
@@ -269,7 +270,7 @@ class Base(PyroObject):
         # If the cluster is initialised, run on all nodes that the VM is available on
         if self._is_cluster_master and all_nodes:
             cluster = self._get_registered_object('cluster')
-            for node in cluster.getNodes():
+            for node in cluster.get_nodes():
                 remote_disk_object = self.get_remote_object(node)
                 remote_disk_object.removeFromVirtualMachine()
 
@@ -342,7 +343,7 @@ class Base(PyroObject):
 
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=self.vm_object._getRemoteNodes())
+                                         nodes=self.vm_object._get_remote_nodes())
 
         except MCVirtCommandException, e:
             # Remove any logical volumes that had been created if one of them fails
@@ -383,7 +384,7 @@ class Base(PyroObject):
 
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=self.vm_object._getRemoteNodes())
+                                         nodes=self.vm_object._get_remote_nodes())
 
         except MCVirtCommandException, e:
             raise ExternalStorageCommandErrorException(
@@ -440,7 +441,7 @@ class Base(PyroObject):
 
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=self.vm_object._getRemoteNodes())
+                                         nodes=self.vm_object._get_remote_nodes())
 
         except MCVirtCommandException, e:
             raise ExternalStorageCommandErrorException(
@@ -496,7 +497,7 @@ class Base(PyroObject):
 
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=self.vm_object._getRemoteNodes())
+                                         nodes=self.vm_object._get_remote_nodes())
 
         except MCVirtCommandException, e:
             raise ExternalStorageCommandErrorException(
@@ -505,8 +506,7 @@ class Base(PyroObject):
 
     def createBackupSnapshot(self):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""
-        self._ensureExists()
-        from mcvirt.virtual_machine.virtual_machine import LockStates
+        self._ensure_exists()
         # Ensure the user has permission to delete snapshot backups
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
@@ -542,8 +542,7 @@ class Base(PyroObject):
 
     def deleteBackupSnapshot(self):
         """Deletes the backup snapshot for the disk and unlocks the VM"""
-        self._ensureExists()
-        from mcvirt.virtual_machine.virtual_machine import LockStates
+        self._ensure_exists()
         # Ensure the user has permission to delete snapshot backups
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
@@ -569,7 +568,7 @@ class Base(PyroObject):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         raise NotImplementedError
 
-    def _checkExists(self):
+    def _check_exists(self):
         """Checks if the disk exists"""
         raise NotImplementedError
 

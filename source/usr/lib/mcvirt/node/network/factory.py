@@ -1,3 +1,5 @@
+"""Provide class for generating network objects"""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -22,7 +24,6 @@ import netifaces
 
 from mcvirt.exceptions import (NetworkAlreadyExistsException, LibvirtException,
                                InterfaceDoesNotExist)
-from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.network import Network
 from mcvirt.rpc.lock import lockingMethod
@@ -35,13 +36,13 @@ class Factory(PyroObject):
     OBJECT_TYPE = 'network'
 
     @Pyro4.expose()
-    def interfaceExists(self, interface):
+    def interface_exists(self, interface):
         """Public method for to determine if an interface exists"""
         self._get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')
-        return self._interfaceExists(interface)
+        return self._interface_exists(interface)
 
-    def _interfaceExists(self, interface):
-        """Determines if a given network adapter exists on the node"""
+    def _interface_exists(self, interface):
+        """Determine if a given network adapter exists on the node"""
         if interface not in netifaces.interfaces():
             return False
 
@@ -51,16 +52,16 @@ class Factory(PyroObject):
     @Pyro4.expose()
     @lockingMethod()
     def create(self, name, physical_interface):
-        """Creates a network on the node"""
+        """Create a network on the node"""
         # Ensure user has permission to manage networks
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network does not already exist
-        if Network._checkExists(name):
+        if Network._check_exists(name):
             raise NetworkAlreadyExistsException('Network already exists: %s' % name)
 
         # Ensure that the physical interface eixsts
-        if not self._interfaceExists(physical_interface):
+        if not self._interface_exists(physical_interface):
             raise InterfaceDoesNotExist(
                 'Physical interface %s does not exist' % physical_interface
             )
@@ -96,35 +97,36 @@ class Factory(PyroObject):
         MCVirtConfig().update_config(update_config, 'Created network \'%s\'' % name)
 
         # Obtain instance of the network object
-        network_instance = self.getNetworkByName(name)
+        network_instance = self.get_network_by_name(name)
 
         # Start network
-        network_instance._getLibVirtObject().create()
+        network_instance._get_libvirt_object().create()
 
         # Set network to autostart
-        network_instance._getLibVirtObject().setAutostart(True)
+        network_instance._get_libvirt_object().setAutostart(True)
 
     @Pyro4.expose()
-    def getNetworkByName(self, network_name):
+    def get_network_by_name(self, network_name):
+        """Return a network object of the network for a given name."""
         network_object = Network(network_name)
         self._register_object(network_object)
         return network_object
 
     @Pyro4.expose()
-    def getAllNetworkNames(self):
-        """Returns a list of network names"""
-        return Network.getNetworkConfig().keys()
+    def get_all_network_names(self):
+        """Return a list of network names"""
+        return Network.get_network_config().keys()
 
     @Pyro4.expose()
-    def getAllNetworkObjects(self):
-        """Returns all network objects"""
+    def get_all_network_objects(self):
+        """Return all network objects"""
         network_objects = []
-        for network_name in self.getAllNetworkNames():
-            network_objects.append(self.getNetworkByName(network_name))
+        for network_name in self.get_all_network_names():
+            network_objects.append(self.get_network_by_name(network_name))
         return network_objects
 
     @Pyro4.expose()
-    def getNetworkListTable(self):
+    def get_network_list_table(self):
         """Return a table of networks registered on the node"""
         # Create table and set headings
         table = Texttable()
@@ -132,6 +134,6 @@ class Factory(PyroObject):
         table.header(('Network', 'Physical Interface'))
 
         # Obtain network configurations and add to table
-        for network_object in self.getAllNetworkObjects():
-            table.add_row((network_object.get_name(), network_object.getAdapter()))
+        for network_object in self.get_all_network_objects():
+            table.add_row((network_object.get_name(), network_object.get_adapter()))
         return table.draw()

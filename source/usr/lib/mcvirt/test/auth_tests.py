@@ -101,7 +101,7 @@ class AuthTests(unittest.TestCase):
             self.test_vm['disks'],
             self.test_vm['networks'])
         self.assertTrue(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 self.test_vm['name']))
 
@@ -135,7 +135,7 @@ class AuthTests(unittest.TestCase):
             self.test_vm['disks'],
             self.test_vm['networks'])
         self.assertTrue(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 self.test_vm['name']))
 

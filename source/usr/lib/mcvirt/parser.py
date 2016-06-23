@@ -568,12 +568,12 @@ class Parser(object):
         if action == 'start':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
 
             if args.iso:
                 iso_factory = rpc.get_connection('iso_factory')
-                iso_object = iso_factory.getIsoByName(args.iso)
-                rpc.annotateObject(iso_object)
+                iso_object = iso_factory.get_iso_by_name(args.iso)
+                rpc.annotate_object(iso_object)
             else:
                 iso_object = None
             vm_object.start(iso_object=iso_object)
@@ -582,14 +582,14 @@ class Parser(object):
         elif action == 'stop':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             vm_object.stop()
             self.print_status('Successfully stopped VM')
 
         elif action == 'reset':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             vm_object.reset()
             self.print_status('Successfully reset VM')
 
@@ -613,25 +613,25 @@ class Parser(object):
         elif action == 'delete':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             vm_object.delete(args.remove_data)
 
         elif action == 'register':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             vm_object.register()
 
         elif action == 'unregister':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             vm_object.unregister()
 
         elif action == 'update':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
 
             if args.memory:
                 old_ram_allocation_kib = vm_object.getRAM()
@@ -656,14 +656,14 @@ class Parser(object):
                 network_adapter_object = network_adapter_factory.getNetworkAdapterByMacAdress(
                     vm_object, args.remove_network
                 )
-                rpc.annotateObject(network_adapter_object)
+                rpc.annotate_object(network_adapter_object)
                 network_adapter_object.delete()
 
             if (args.add_network):
                 network_factory = rpc.get_connection('network_factory')
                 network_adapter_factory = rpc.get_connection('network_adapter_factory')
-                network_object = network_factory.getNetworkByName(args.add_network)
-                rpc.annotateObject(network_object)
+                network_object = network_factory.get_network_by_name(args.add_network)
+                rpc.annotate_object(network_object)
                 network_adapter_factory.create(vm_object, network_object)
 
             if args.add_disk:
@@ -675,15 +675,15 @@ class Parser(object):
             if (args.increase_disk and args.disk_id):
                 hard_drive_factory = rpc.get_connection('hard_drive_factory')
                 hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
-                rpc.annotateObject(hard_drive_object)
+                rpc.annotate_object(hard_drive_object)
                 hard_drive_object.increaseSize(args.increase_disk)
 
             if args.iso:
                 iso_factory = rpc.get_connection('iso_factory')
-                iso_object = iso_factory.getIsoByName(args.iso)
-                rpc.annotateObject(iso_object)
+                iso_object = iso_factory.get_iso_by_name(args.iso)
+                rpc.annotate_object(iso_object)
                 disk_drive = vm_object.get_disk_drive()
-                rpc.annotateObject(disk_drive)
+                rpc.annotate_object(disk_drive)
                 disk_drive.attachISO(iso_object, True)
 
         elif action == 'permission':
@@ -693,20 +693,20 @@ class Parser(object):
             if args.vm_name:
                 vm_factory = rpc.get_connection('virtual_machine_factory')
                 vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-                rpc.annotateObject(vm_object)
+                rpc.annotate_object(vm_object)
                 permission_destination_string = 'role on VM %s' % vm_object.get_name()
             else:
                 vm_object = None
                 permission_destination_string = 'global role'
 
             auth_object = rpc.get_connection('auth')
-            rpc.annotateObject(auth_object)
+            rpc.annotate_object(auth_object)
             user_factory = rpc.get_connection('user_factory')
-            rpc.annotateObject(user_factory)
+            rpc.annotate_object(user_factory)
 
             if args.add_user:
                 user_object = user_factory.get_user_by_username(args.add_user)
-                rpc.annotateObject(user_object)
+                rpc.annotate_object(user_object)
                 auth_object.add_user_permission_group(
                     permission_group='user',
                     user_object=user_object,
@@ -717,7 +717,7 @@ class Parser(object):
 
             if args.delete_user:
                 user_object = user_factory.get_user_by_username(args.delete_user)
-                rpc.annotateObject(user_object)
+                rpc.annotate_object(user_object)
                 auth_object.delete_user_permission_group(
                     permission_group='user',
                     user_object=user_object,
@@ -728,7 +728,7 @@ class Parser(object):
 
             if args.add_owner:
                 user_object = user_factory.get_user_by_username(args.add_owner)
-                rpc.annotateObject(user_object)
+                rpc.annotate_object(user_object)
                 auth_object.add_user_permission_group(
                     permission_group='owner',
                     user_object=user_object,
@@ -739,7 +739,7 @@ class Parser(object):
 
             if args.delete_owner:
                 user_object = user_factory.get_user_by_username(args.delete_owner)
-                rpc.annotateObject(user_object)
+                rpc.annotate_object(user_object)
                 auth_object.delete_user_permission_group(
                     permission_group='owner',
                     user_object=user_object,
@@ -750,13 +750,13 @@ class Parser(object):
 
             if args.add_superuser:
                 user_object = user_factory.get_user_by_username(args.add_superuser)
-                rpc.annotateObject(user_object)
+                rpc.annotate_object(user_object)
                 auth_object.add_superuser(user_object=user_object)
                 self.print_status('Successfully added %s to the global superuser group' %
                                   args.add_superuser)
             if args.delete_superuser:
                 user_object = user_factory.get_user_by_username(args.delete_superuser)
-                rpc.annotateObject(user_object)
+                rpc.annotate_object(user_object)
                 auth_object.delete_superuser(user_object=user_object)
                 self.print_status('Successfully removed %s from the global superuser group ' %
                                   args.delete_superuser)
@@ -767,7 +767,7 @@ class Parser(object):
             if args.vm_name:
                 vm_factory = rpc.get_connection('virtual_machine_factory')
                 vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-                rpc.annotateObject(vm_object)
+                rpc.annotate_object(vm_object)
                 if args.vnc_port:
                     self.print_status(vm_object.getVncPort())
                 elif args.node:
@@ -776,23 +776,23 @@ class Parser(object):
                     self.print_status(vm_object.getInfo())
             else:
                 cluster_object = rpc.get_connection('cluster')
-                self.print_status(cluster_object.printInfo())
+                self.print_status(cluster_object.print_info())
 
         elif action == 'network':
             network_factory = rpc.get_connection('network_factory')
             if args.network_action == 'create':
                 network_factory.create(args.network, physical_interface=args.interface)
             elif args.network_action == 'delete':
-                network_object = network_factory.getNetworkByName(args.network)
-                rpc.annotateObject(network_object)
+                network_object = network_factory.get_network_by_name(args.network)
+                rpc.annotate_object(network_object)
                 network_object.delete()
             elif args.network_action == 'list':
-                self.print_status(network_factory.getNetworkListTable())
+                self.print_status(network_factory.get_network_list_table())
 
         elif action == 'migrate':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             if args.online_migration:
                 vm_object.onlineMigrate(args.destination_node)
             else:
@@ -807,23 +807,23 @@ class Parser(object):
         elif action == 'move':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             vm_object.move(destination_node=args.destination_node,
                            source_node=args.source_node)
 
         elif action == 'cluster':
             cluster_object = rpc.get_connection('cluster')
             if args.cluster_action == 'get-connect-string':
-                self.print_status(cluster_object.get_connectionString())
+                self.print_status(cluster_object.get_connection_string())
             if (args.cluster_action == 'add-node'):
                 if args.connect_string:
                     connect_string = args.connect_string
                 else:
                     connect_string = System.getUserInput('Enter Connect String: ')
-                cluster_object.addNode(connect_string)
+                cluster_object.add_node(connect_string)
                 self.print_status('Successfully added node')
             if (args.cluster_action == 'remove-node'):
-                cluster_object.removeNode(args.node)
+                cluster_object.remove_node(args.node)
                 self.print_status('Successfully removed node %s' % args.node)
 
         elif action == 'node':
@@ -841,7 +841,7 @@ class Parser(object):
             vm_factory = rpc.get_connection('virtual_machine_factory')
             if args.vm_name:
                 vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-                rpc.annotateObject(vm_object)
+                rpc.annotate_object(vm_object)
                 vm_objects = [vm_object]
             elif args.all:
                 vm_objects = vm_factory.getAllVirtualMachines()
@@ -849,9 +849,9 @@ class Parser(object):
             # Iterate over the VMs and check each disk
             failures = []
             for vm_object in vm_objects:
-                rpc.annotateObject(vm_object)
+                rpc.annotate_object(vm_object)
                 for disk_object in vm_object.getHardDriveObjects():
-                    rpc.annotateObject(disk_object)
+                    rpc.annotate_object(disk_object)
                     if disk_object.getType() == 'Drbd':
                         # Catch any exceptions due to the Drbd volume not being in-sync
                         try:
@@ -882,10 +882,10 @@ class Parser(object):
         elif action == 'backup':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             hard_drive_factory = rpc.get_connection('hard_drive_factory')
             hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
-            rpc.annotateObject(hard_drive_object)
+            rpc.annotate_object(hard_drive_object)
             if args.create_snapshot:
                 self.print_status(hard_drive_object.createBackupSnapshot())
             elif (args.delete_snapshot):
@@ -894,7 +894,7 @@ class Parser(object):
         elif action == 'lock':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             if args.lock:
                 vm_object.setLockState(LockStates(LockStates.LOCKED))
             if args.unlock:
@@ -905,13 +905,13 @@ class Parser(object):
         elif action == 'clone':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             vm_object.clone(args.vm_name)
 
         elif action == 'duplicate':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotateObject(vm_object)
+            rpc.annotate_object(vm_object)
             vm_object.duplicate(args.vm_name)
 
         elif action == 'list':
@@ -921,11 +921,11 @@ class Parser(object):
         elif action == 'iso':
             iso_factory = rpc.get_connection('iso_factory')
             if args.list:
-                self.print_status(iso_factory.getIsoList())
+                self.print_status(iso_factory.get_iso_list())
 
             if args.add_path:
-                iso_writer = iso_factory.addIsoFromStream(args.add_path)
-                rpc.annotateObject(iso_writer)
+                iso_writer = iso_factory.add_iso_from_stream(args.add_path)
+                rpc.annotate_object(iso_writer)
                 with open(args.add_path, 'rb') as iso_fh:
                     while True:
                         data_chunk = iso_fh.read(1024)
@@ -935,16 +935,16 @@ class Parser(object):
                         else:
                             break
                 iso_object = iso_writer.write_end()
-                rpc.annotateObject(iso_object)
+                rpc.annotate_object(iso_object)
                 self.print_status('Successfully added ISO: %s' % iso_object.get_name())
 
             if args.add_url:
-                iso_object = iso_factory.addFromUrl(args.add_url)
-                rpc.annotateObject(iso_object)
+                iso_object = iso_factory.add_from_url(args.add_url)
+                rpc.annotate_object(iso_object)
                 self.print_status('Successfully added ISO: %s' % iso_object.get_name())
 
             if args.delete_path:
-                iso_object = iso_factory.getIsoByName(args.delete_path)
-                rpc.annotateObject(iso_object)
+                iso_object = iso_factory.get_iso_by_name(args.delete_path)
+                rpc.annotate_object(iso_object)
                 iso_object.delete()
                 self.print_status('Successfully removed iso: %s' % args.delete_path)

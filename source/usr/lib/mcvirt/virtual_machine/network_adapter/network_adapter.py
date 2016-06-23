@@ -1,3 +1,5 @@
+"""Provide class for network adapters."""
+
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -16,11 +18,9 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
-import libvirt
 import xml.etree.ElementTree as ET
 
 from mcvirt.exceptions import NetworkAdapterDoesNotExistException
-from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import lockingMethod
 
@@ -29,11 +29,11 @@ class NetworkAdapter(object):
     """Provides operations to network interfaces attached to a VM"""
 
     def __init__(self, mac_address, vm_object):
-        """Sets member variables and obtains libvirt domain object"""
+        """Set member variables and obtains libvirt domain object."""
         self.vm_object = vm_object
         self.mac_address = mac_address
 
-        if (not self._checkExists()):
+        if (not self._check_exists()):
             raise NetworkAdapterDoesNotExistException(
                 'No interface with MAC address \'%s\' attached to VM' %
                 self.getMacAddress())
@@ -57,7 +57,7 @@ class NetworkAdapter(object):
 
         return interface_xml
 
-    def _checkExists(self):
+    def _check_exists(self):
         """Determines if the network interface is present on the VM"""
         vm_config = self.vm_object.get_config_object().get_config()
         return (self.getMacAddress() in vm_config['network_interfaces'])
