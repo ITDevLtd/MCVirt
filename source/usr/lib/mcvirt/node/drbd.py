@@ -158,7 +158,7 @@ class Drbd(PyroObject):
                 all_hard_drive_objects = vm_object.getHardDriveObjects()
 
                 for hard_drive_object in all_hard_drive_objects:
-                    if (hard_drive_object.getType() is 'Drbd'):
+                    if (hard_drive_object.get_type() is 'Drbd'):
                         hard_drive_objects.append(hard_drive_object)
 
         return hard_drive_objects

@@ -1,3 +1,4 @@
+"""Thread for running the name server"""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -16,7 +17,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
-import time
 
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket

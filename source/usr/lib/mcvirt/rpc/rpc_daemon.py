@@ -81,6 +81,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
         # If a password has been provided
         try:
+            # @TODO - Re-factor as the logic below is duplicated for SESSION_ID in data clause
             if Annotations.PASSWORD in data:
                 # Store the password and perform authentication check
                 password = str(data[Annotations.PASSWORD])

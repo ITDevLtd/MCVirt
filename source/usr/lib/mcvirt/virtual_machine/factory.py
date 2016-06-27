@@ -71,6 +71,7 @@ class Factory(PyroObject):
             return cluster.run_remote_command(callback_method=remote_command, nodes=[node])[node]
 
     @Pyro4.expose()
+    @locking_method()
     def listVms(self):
         """Lists the VMs that are currently on the host"""
         table = Texttable()

@@ -9,7 +9,7 @@ def stop_and_delete(mcvirt_instance, vm_name):
 
         # Reset sync state for any Drbd disks
         for disk_object in vm_object.getHardDriveObjects():
-            if disk_object.getType() == 'Drbd':
+            if disk_object.get_type() == 'Drbd':
                 disk_object.setSyncState(True)
 
         if (vm_object.isRegisteredRemotely()):

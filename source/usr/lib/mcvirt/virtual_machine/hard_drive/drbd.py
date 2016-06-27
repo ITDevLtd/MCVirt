@@ -23,16 +23,15 @@ import time
 from Cheetah.Template import Template
 
 from mcvirt.virtual_machine.hard_drive.base import Base
-from mcvirt.node.drbd import Drbd as NodeDrbd, DrbdNotEnabledOnNode
-from mcvirt.auth.auth import Auth
+from mcvirt.node.drbd import Drbd as NodeDrbd
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.system import System
-from mcvirt.cluster.cluster import Cluster
 from mcvirt.rpc.lock import locking_method
 from mcvirt.constants import DirectoryLocation
 from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
-                               DrbdVolumeNotInSyncException, MCVirtCommandException)
+                               DrbdVolumeNotInSyncException, MCVirtCommandException,
+                               DrbdNotEnabledOnNode)
 
 
 class DrbdConnectionState(Enum):

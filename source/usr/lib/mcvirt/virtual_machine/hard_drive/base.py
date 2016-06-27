@@ -1,3 +1,4 @@
+"""Provide base operations to manage all hard drives, used by VMs"""
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -39,6 +40,7 @@ from mcvirt.constants import LockStates
 
 class Driver(Enum):
     """Enums for specifying the hard drive driver type"""
+
     VIRTIO = 'virtio'
     IDE = 'ide'
     SCSI = 'scsi'
@@ -61,52 +63,54 @@ class Base(PyroObject):
     SNAPSHOT_SIZE = '500M'
 
     def __init__(self, vm_object, disk_id=None, driver=None):
-        """Sets member variables"""
+        """Set member variables"""
         self._disk_id = disk_id
         self._driver = driver
         self.vm_object = vm_object
 
         # If the disk is configured on a VM, obtain
         # the details from the VM configuration
-        disk_config = self.getDiskConfig()
         for key, value in self.getDiskConfig().iteritems():
             setattr(self, key, value)
 
     @property
     def config_properties(self):
-        """Returns the disk object config items"""
+        """Return the disk object config items"""
         return ['disk_id', 'driver']
 
     def __setattr__(self, name, value):
         """Override setattr to ensure that the value of
-           a disk config item is written to, rather than the
-           property method"""
+        a disk config item is written to, rather than the
+        property method
+        """
         if name in self.config_properties:
             name = '_%s' % name
         return super(Base, self).__setattr__(name, value)
 
     @property
     def disk_id(self):
-        """Returns the disk ID of the current disk, generating a new one
-           if there is not already one present"""
+        """Return the disk ID of the current disk, generating a new one
+        if there is not already one present
+        """
         if self._disk_id is None:
-            self._disk_id = self._getAvailableId()
+            self._disk_id = self._get_available_id()
         return self._disk_id
 
     @property
     def _target_dev(self):
-        """Determines the target dev, based on the disk's ID"""
+        """Determine the target dev, based on the disk's ID"""
         # Use ascii numbers to map 1 => a, 2 => b, etc...
         return 'sd' + chr(96 + int(self.disk_id))
 
     @property
     def driver(self):
-        """Returns the disk drive driver name"""
+        """Return the disk drive driver name"""
         if self._driver is None:
             self._driver = self.DEFAULT_DRIVER
         return self._driver
 
     def get_remote_object(self, node_name=None, remote_node=None, registered=True):
+        """Obtain an instance of the current hard drive object on a remote node"""
         cluster = self._get_registered_object('cluster')
         if remote_node is None:
             remote_node = cluster.get_remote_node(node_name)
@@ -120,7 +124,7 @@ class Base(PyroObject):
             'disk_id': self.disk_id
         }
         if not registered:
-            kwargs['storage_type'] = self.getType()
+            kwargs['storage_type'] = self.get_type()
             for config in self.config_properties:
                 kwargs[config] = getattr(self, config)
 
@@ -128,9 +132,10 @@ class Base(PyroObject):
         remote_node.annotate_object(hard_drive_object)
         return hard_drive_object
 
-    def _getAvailableId(self):
-        """Obtains the next available ID for the VM hard drive, by scanning the IDs
-           of disks attached to the VM"""
+    def _get_available_id(self):
+        """Obtain the next available ID for the VM hard drive, by scanning the IDs
+        of disks attached to the VM
+        """
         found_available_id = False
         disk_id = 0
         vm_config = self.vm_object.get_config_object().get_config()
@@ -149,18 +154,18 @@ class Base(PyroObject):
         return disk_id
 
     def _ensure_exists(self):
-        """Ensures the disk exists on the local node"""
+        """Ensure the disk exists on the local node"""
         if not self._check_exists():
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
                 (self.disk_id, self.vm_object.get_name()))
 
-    def getType(self):
-        """Returns the type of storage for the hard drive"""
+    def get_type(self):
+        """Return the type of storage for the hard drive"""
         return self.__class__.__name__
 
     def delete(self):
-        """Deletes the logical volume for the disk"""
+        """Delete the logical volume for the disk"""
         self._ensure_exists()
 
         if self.vm_object.isRegisteredLocally():
@@ -181,7 +186,7 @@ class Base(PyroObject):
 
         # Create new disk object, using the same type, size and disk_id
         new_disk_object = self._get_registered_object('hard_drive_factory').getClass(
-            self.getType()).create(
+            self.get_type()).create(
             destination_vm_object,
             disk_size,
             disk_id=self.disk_id,
@@ -216,12 +221,12 @@ class Base(PyroObject):
         self._setVmStorageType()
 
         # Update VM config file
-        def addDiskToConfig(vm_config):
+        def add_disk_to_config(vm_config):
             vm_config['hard_disks'][str(self.disk_id)] = self._getMCVirtConfig()
 
         self.vm_object.get_config_object().update_config(
-            addDiskToConfig, 'Added disk \'%s\' to \'%s\'' %
-                             (self.disk_id, self.vm_object.get_name())
+            add_disk_to_config, 'Added disk \'%s\' to \'%s\'' %
+                                (self.disk_id, self.vm_object.get_name())
         )
 
         # If the node cluster is initialised, update all remote node configurations
@@ -305,17 +310,17 @@ class Base(PyroObject):
         number_of_disks = len(self.vm_object.getHardDriveObjects())
         current_storage_type = self.vm_object.get_config_object(
         ).get_config()['storage_type']
-        if current_storage_type != self.getType():
+        if current_storage_type != self.get_type():
             if number_of_disks:
                 raise StorageTypesCannotBeMixedException(
                     'The VM (%s) is already configured with %s disks' %
                     (self.vm_object.get_name(), current_storage_type))
 
             def updateStorageTypeConfig(config):
-                config['storage_type'] = self.getType()
+                config['storage_type'] = self.get_type()
             self.vm_object.get_config_object().update_config(
                 updateStorageTypeConfig, 'Updated storage type for \'%s\' to \'%s\'' %
-                (self.vm_object.get_name(), self.getType()))
+                (self.vm_object.get_name(), self.get_type()))
 
     @Pyro4.expose()
     @locking_method()

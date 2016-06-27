@@ -41,9 +41,9 @@ class Parser(object):
     SESSION_ID = None
     USERNAME = None
 
-    def __init__(self, print_status=True, auth_object=None):
+    def __init__(self, verbose=True, auth_object=None):
         """Configure the argument parser object."""
-        self.print_status = print_status
+        self.verbose = verbose
         self.parent_parser = ThrowingArgumentParser(add_help=False)
 
         self.parent_parser.add_argument('--username', '-U', dest='username',
@@ -517,7 +517,7 @@ class Parser(object):
 
     def print_status(self, status):
         """Print if the user has specified that the parser should print statuses."""
-        if self.print_status:
+        if self.verbose:
             print status
 
     def parse_arguments(self, script_args=None):
@@ -545,7 +545,7 @@ class Parser(object):
                     'Password: ', password=True
                 ).rstrip()
             rpc = Connection(username=username, password=password)
-            Parser.SESSION_ID = rpc.SESSION_ID
+            Parser.SESSION_ID = rpc.session_id
             Parser.USERNAME = username
 
         if args.ignore_failed_nodes:
@@ -852,7 +852,7 @@ class Parser(object):
                 rpc.annotate_object(vm_object)
                 for disk_object in vm_object.getHardDriveObjects():
                     rpc.annotate_object(disk_object)
-                    if disk_object.getType() == 'Drbd':
+                    if disk_object.get_type() == 'Drbd':
                         # Catch any exceptions due to the Drbd volume not being in-sync
                         try:
                             disk_object.verify()

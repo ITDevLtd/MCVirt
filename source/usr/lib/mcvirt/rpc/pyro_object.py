@@ -1,3 +1,4 @@
+"""Base class for providing Pyro-based methods for objects"""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -23,7 +24,7 @@ class PyroObject(object):
 
     @property
     def _is_pyro_initialised(self):
-        """Determines if object is registered with the Pyro deamon"""
+        """Determine if object is registered with the Pyro deamon"""
         if '_pyroDaemon' not in self.__dict__.keys():
             return False
         else:
@@ -31,7 +32,7 @@ class PyroObject(object):
 
     @property
     def _cluster_disabled(self):
-        """Determines if the cluster has been actively disabled"""
+        """Determine if the cluster has been actively disabled"""
         # @TODO Implement this using Pyro annotations and current_context
         if self._is_pyro_initialised and 'ignore_cluster' in dir(Pyro4.current_context):
             return Pyro4.current_context.ignore_cluster
@@ -40,6 +41,7 @@ class PyroObject(object):
 
     @property
     def _ignore_drbd(self):
+        """Determine if DRBD statuses are being actively ignored"""
         if self._is_pyro_initialised and 'ignore_drbd' in dir(Pyro4.current_context):
             return Pyro4.current_context.ignore_drbd
         else:
@@ -47,19 +49,19 @@ class PyroObject(object):
 
     @property
     def _is_cluster_master(self):
-        """Determines if the local node is acting as cluster master for the command"""
+        """Determine if the local node is acting as cluster master for the command"""
         if self._is_pyro_initialised and 'cluster_master' in dir(Pyro4.current_context):
             return Pyro4.current_context.cluster_master
         else:
             return True
 
     def _register_object(self, local_object):
-        """Registers an object with the pyro daemon"""
+        """Register an object with the pyro daemon"""
         if self._is_pyro_initialised:
             self._pyroDaemon.register(local_object)
 
     def _convert_remote_object(self, remote_object):
-        """Returns a local instance of a remote object"""
+        """Return a local instance of a remote object"""
         # Ensure that object is a remote object
         if self._is_pyro_initialised and '_pyroUri' in dir(remote_object):
             # Obtain daemon instance of object
@@ -67,7 +69,7 @@ class PyroObject(object):
         return remote_object
 
     def _get_registered_object(self, object_name):
-        """Returns objects registered in the Pyro Daemon"""
+        """Return objects registered in the Pyro Daemon"""
         if self._is_pyro_initialised and object_name in self._pyroDaemon.registered_factories:
             return self._pyroDaemon.registered_factories[object_name]
         else:

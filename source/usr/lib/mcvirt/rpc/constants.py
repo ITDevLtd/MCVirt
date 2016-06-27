@@ -19,7 +19,7 @@
 
 class Annotations(object):
     """Pyro annotation names
-    @TODO Move to main MCVIrt constants class"""
+    @TODO Move to main MCVIrt constants class
     """
 
     USERNAME = 'USER'
