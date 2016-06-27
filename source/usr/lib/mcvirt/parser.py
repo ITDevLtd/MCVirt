@@ -109,6 +109,12 @@ class Parser(object):
             action='store_true',
             help='Change password'
         )
+        self.user_parser.add_argument(
+            '--new-password',
+            dest='new_password',
+            metavar='New password',
+            help='The new password'
+        )
 
         # Add arguments for creating a VM
         self.create_parser = self.subparsers.add_parser('create', help='Create VM',
@@ -961,12 +967,16 @@ class Parser(object):
                 self.print_status('Successfully removed iso: %s' % args.delete_path)
 
         elif action == 'user':
-            user_factory = rpc.get_connection('user_factory')
-            user = user_factory.get_user_by_username(Parser.USERNAME)
-            rpc.annotate_object(user)
+            if args.change_password:
+                user_factory = rpc.get_connection('user_factory')
+                user = user_factory.get_user_by_username(Parser.USERNAME)
+                rpc.annotate_object(user)
 
-            new_password = System.getUserInput("New password: ", password=True)
-            repeat_password = System.getUserInput("New password (repeat): ", password=True)
-            if new_password != repeat_password:
-                raise PasswordsDoNotMatchException('The two passwords do not match')
-            user.change_password(new_password)
+                if args.new_password:
+                    new_password = args.new_password
+                else:
+                    new_password = System.getUserInput("New password: ", password=True)
+                    repeat_password = System.getUserInput("New password (repeat): ", password=True)
+                    if new_password != repeat_password:
+                        raise PasswordsDoNotMatchException('The two passwords do not match')
+                user.change_password(new_password)
