@@ -18,14 +18,14 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from mcvirt.auth.user_base import UserBase
-from mcvirt.exceptions import OldPasswordIncorrect
+
+import Pyro4
 
 
 class User(UserBase):
     """Provides an interaction with the local user backend"""
 
-    def change_password(self, old_password, new_password):
+    @Pyro4.expose()
+    def change_password(self, new_password):
         """Change the current user's password."""
-        if not self._check_password(old_password):
-            raise OldPasswordIncorrect('Old password is not correct')
         self._set_password(new_password)

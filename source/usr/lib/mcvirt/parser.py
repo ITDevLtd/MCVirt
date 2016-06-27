@@ -20,7 +20,8 @@
 import argparse
 import binascii
 
-from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
+from mcvirt.exceptions import (ArgumentParserException, DrbdVolumeNotInSyncException,
+                               PasswordsDoNotMatchException)
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
@@ -98,6 +99,16 @@ class Parser(object):
                                      metavar='NAME')
         self.iso_parser.add_argument('--add-from-url', dest='add_url',
                                      help='Download and add an ISO', metavar='URL')
+
+        # Add arguments for managing users
+        self.user_parser = self.subparsers.add_parser('user', help='User managment',
+                                                      parents=[self.parent_parser])
+        self.user_parser.add_argument(
+            '--change-password',
+            dest='change_password',
+            action='store_true',
+            help='Change password'
+        )
 
         # Add arguments for creating a VM
         self.create_parser = self.subparsers.add_parser('create', help='Create VM',
@@ -948,3 +959,14 @@ class Parser(object):
                 rpc.annotate_object(iso_object)
                 iso_object.delete()
                 self.print_status('Successfully removed iso: %s' % args.delete_path)
+
+        elif action == 'user':
+            user_factory = rpc.get_connection('user_factory')
+            user = user_factory.get_user_by_username(Parser.USERNAME)
+            rpc.annotate_object(user)
+
+            new_password = System.getUserInput("New password: ", password=True)
+            repeat_password = System.getUserInput("New password (repeat): ", password=True)
+            if new_password != repeat_password:
+                raise PasswordsDoNotMatchException('The two passwords do not match')
+            user.change_password(new_password)
