@@ -1,3 +1,4 @@
+"""Provides an interface to obtain certificate generator objects"""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -22,9 +23,11 @@ from mcvirt.rpc.pyro_object import PyroObject
 
 
 class CertificateGeneratorFactory(PyroObject):
+    """Provides an interface to obtain certificate generator objects"""
 
     @Pyro4.expose()
     def get_cert_generator(self, server, remote=False):
+        """Obtain a certificate generator object for a given server"""
         cert_generator = CertificateGenerator(server, remote=remote)
         self._register_object(cert_generator)
         return cert_generator

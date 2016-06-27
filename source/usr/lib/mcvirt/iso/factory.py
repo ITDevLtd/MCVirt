@@ -27,7 +27,7 @@ import Pyro4
 
 from mcvirt.iso.iso import Iso
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.constants import DirectoryLocation
 from mcvirt.exceptions import InvalidISOPathException
 
@@ -73,12 +73,11 @@ class Factory(PyroObject):
         Iso.overwrite_check(filename, DirectoryLocation.ISO_STORAGE_DIR + '/' + filename)
 
         shutil.copy(path, DirectoryLocation.ISO_STORAGE_DIR)
-        full_path = DirectoryLocation.ISO_STORAGE_DIR + '/' + filename
 
         return self.get_iso_by_name(filename)
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def add_from_url(self, url, name=None):
         """Download an ISO from given URL and save in ISO directory"""
         # Work out name from URL if name is not supplied
@@ -113,7 +112,7 @@ class Factory(PyroObject):
         return iso_object
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def add_iso_from_stream(self, path, name=None):
         """Import ISO, writing binary data to the ISO file"""
         if name is None:

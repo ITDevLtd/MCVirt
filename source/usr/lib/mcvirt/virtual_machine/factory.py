@@ -28,7 +28,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                ClusterNotInitialisedException, NodeDoesNotExistException)
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
 
@@ -105,13 +105,13 @@ class Factory(PyroObject):
         return True
 
     @Pyro4.expose()
-    @lockingMethod(instance_method=True)
+    @locking_method(instance_method=True)
     def create(self, *args, **kwargs):
         """Exposed method for creating a VM, that performs a permission check"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
-    @lockingMethod(instance_method=True)
+    @locking_method(instance_method=True)
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                 network_interfaces=[], node=None, available_nodes=[], storage_type=None,
                 hard_drive_driver=None):

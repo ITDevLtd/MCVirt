@@ -39,7 +39,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
 
@@ -92,7 +92,7 @@ class VirtualMachine(PyroObject):
         return self._get_registered_object('libvirt_connector').get_connection().lookupByName(self.name)
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def stop(self):
         """Stops the VM"""
         # Check the user has permission to start/stop VMs
@@ -121,7 +121,7 @@ class VirtualMachine(PyroObject):
             )
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def start(self, iso_object=None):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
@@ -184,7 +184,7 @@ class VirtualMachine(PyroObject):
             )
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def reset(self):
         """Resets the VM"""
         # Check the user has permission to start/stop VMs
@@ -324,7 +324,7 @@ class VirtualMachine(PyroObject):
         return table.draw() + "\n" + warnings
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def delete(self, remove_data=False, local_only=False):
         """Delete the VM - removing it from LibVirt and from the filesystem"""
         # Check the user has permission to modify VMs or
@@ -411,7 +411,7 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['memory_allocation']
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def updateRAM(self, memory_allocation, old_value):
         """Updates the amount of RAM allocated to a VM"""
         # Check the user has permission to modify VMs
@@ -458,7 +458,7 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['cpu_cores']
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def updateCPU(self, cpu_count, old_value):
         """Updates the number of CPU cores attached to a VM"""
         # Check the user has permission to modify VMs
@@ -543,7 +543,7 @@ class VirtualMachine(PyroObject):
         return domain_xml
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def editConfig(self, *args, **kwargs):
         """Provides permission checking around the editConfig method and
            exposes the method"""
@@ -579,7 +579,7 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['clone_children']
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def offlineMigrate(self, destination_node_name, start_after_migration=False,
                        wait_for_vm_shutdown=False):
         """Performs an offline migration of a VM to another node in the cluster"""
@@ -629,7 +629,7 @@ class VirtualMachine(PyroObject):
             remote_vm.start()
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def onlineMigrate(self, destination_node_name):
         """Performs an online migration of a VM to another node in the cluster"""
         # Ensure user has permission to migrate VM
@@ -985,7 +985,7 @@ class VirtualMachine(PyroObject):
             remote_vm.register()
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def register(self):
         """Public method for permforming VM register"""
         self._get_registered_object('auth').assert_permission(
@@ -1051,7 +1051,7 @@ class VirtualMachine(PyroObject):
             self._setNode(get_hostname())
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def unregister(self):
         """Public method for permforming VM unregister"""
         self._get_registered_object('auth').assert_permission(
@@ -1086,7 +1086,7 @@ class VirtualMachine(PyroObject):
         )
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def setNodeRemote(self, node):
         """Set node from remote _setNode command"""
         # @TODO Merge with setNode and check either user type or permissions

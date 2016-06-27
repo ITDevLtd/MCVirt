@@ -22,7 +22,7 @@ from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import Drbd
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 
 
@@ -54,7 +54,7 @@ class Factory(PyroObject):
         return hard_drive_object
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def create(self, vm_object, size, storage_type, driver):
         """Performs the creation of a hard drive, using a given storage type"""
         vm_object = self._convert_remote_object(vm_object)

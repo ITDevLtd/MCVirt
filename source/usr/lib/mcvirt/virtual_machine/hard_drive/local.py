@@ -28,7 +28,7 @@ from mcvirt.exceptions import (VmAlreadyStartedException, VmIsCloneException,
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 
 
 class Local(Base):
@@ -47,7 +47,7 @@ class Local(Base):
         return True
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         self._get_registered_object('auth').assert_permission(

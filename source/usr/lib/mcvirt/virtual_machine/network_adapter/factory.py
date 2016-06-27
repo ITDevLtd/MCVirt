@@ -18,7 +18,7 @@
 import Pyro4
 
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from network_adapter import NetworkAdapter
 from mcvirt.auth.permissions import PERMISSIONS
 
@@ -29,7 +29,7 @@ class Factory(PyroObject):
     OBJECT_TYPE = 'network adapter'
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def create(self, virtual_machine, network_object, mac_address=None):
         """Create a network interface for the local VM"""
         virtual_machine = self._convert_remote_object(virtual_machine)

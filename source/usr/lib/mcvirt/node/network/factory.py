@@ -26,7 +26,7 @@ from mcvirt.exceptions import (NetworkAlreadyExistsException, LibvirtException,
                                InterfaceDoesNotExist)
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.network import Network
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 
 
@@ -50,7 +50,7 @@ class Factory(PyroObject):
         return (netifaces.AF_INET in addr)
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def create(self, name, physical_interface):
         """Create a network on the node"""
         # Ensure user has permission to manage networks

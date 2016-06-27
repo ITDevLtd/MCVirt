@@ -28,7 +28,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import UserDoesNotExistException
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 
 
 class UserBase(PyroObject):
@@ -125,7 +125,7 @@ class UserBase(PyroObject):
         return ''.join(random.choice(characers) for i in range(length))
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def delete(self):
         """Delete the current user from MCVirt config"""
         auth_object = self._get_registered_object('auth')

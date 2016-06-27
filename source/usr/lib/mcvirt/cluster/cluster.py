@@ -32,7 +32,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.connection_user import ConnectionUser
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.client.rpc import Connection
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.cluster.remote import Node
 from mcvirt.rpc.pyro_object import PyroObject
 
@@ -106,7 +106,7 @@ class Cluster(PyroObject):
         return table.draw()
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def add_node_configuration(self, node_name, ip_address,
                                connection_user, connection_password,
                                ca_key):
@@ -118,7 +118,7 @@ class Cluster(PyroObject):
         # Create CA file
         ssl_object = self._get_registered_object(
             'certificate_generator_factory').get_cert_generator(node_name)
-        ssl_object.CA_PUB_FILE = ca_key
+        ssl_object.ca_pub_file = ca_key
 
         # Connect to node and obtain cluster user
         remote = Connection(username=connection_user, password=connection_password,
@@ -138,7 +138,7 @@ class Cluster(PyroObject):
         MCVirtConfig().update_config(add_node_config)
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def add_node(self, node_connection_string):
         """Connect to a remote MCVirt machine, shares SSH keys and clusters the machines."""
         # Ensure the user has privileges to manage the cluster
@@ -164,7 +164,7 @@ class Cluster(PyroObject):
         ssl_object = self._get_registered_object(
             'certificate_generator_factory'
         ).get_cert_generator(node_config['hostname'])
-        ssl_object.CA_PUB_FILE = node_config['ca_cert']
+        ssl_object.ca_pub_file = node_config['ca_cert']
 
         # Check remote machine, to ensure it can be synced without any
         # conflicts

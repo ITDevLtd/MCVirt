@@ -33,7 +33,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import ReachedMaximumStorageDevicesException
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.constants import LockStates
 
 
@@ -204,7 +204,7 @@ class Base(PyroObject):
         return new_disk_object
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def addToVirtualMachine(self, register=True):
         """Add the hard drive to the virtual machine,
            and performs the base function on all nodes in the cluster"""
@@ -250,7 +250,7 @@ class Base(PyroObject):
         raise NotImplementedError
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def removeFromVirtualMachine(self, unregister=False, all_nodes=True):
         """Remove the hard drive from a VM configuration and perform all nodes
            in the cluster"""
@@ -318,7 +318,7 @@ class Base(PyroObject):
                 (self.vm_object.get_name(), self.getType()))
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def createLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _createLogicalVolume
            with permission checking"""
@@ -356,7 +356,7 @@ class Base(PyroObject):
             )
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def removeLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _removeLogicalVolume
            with permission checking"""
@@ -414,7 +414,7 @@ class Base(PyroObject):
         return int(lv_size)
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def zeroLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _zeroLogicalVolume
            with permission checking"""
@@ -471,7 +471,7 @@ class Base(PyroObject):
         return os.path.exists(self._getLogicalVolumePath(name))
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def activateLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _activateLogicalVolume
            with permission checking"""
@@ -563,7 +563,7 @@ class Base(PyroObject):
         self.vm_object.setLockState(LockStates.UNLOCKED)
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         raise NotImplementedError

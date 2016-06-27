@@ -29,7 +29,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.utils import get_hostname
 from mcvirt.constants import DirectoryLocation
 
@@ -62,7 +62,7 @@ class Drbd(PyroObject):
                                             ' (Is the drbd8-utils package installed?)')
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def enable(self, secret=None):
         """Ensure the machine is suitable to run Drbd"""
         # Ensure user has the ability to manage Drbd

@@ -1,3 +1,4 @@
+"""Provides class to generate and manage SSL certificates"""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -17,12 +18,11 @@
 
 import Pyro4
 import os
-from binascii import hexlify
 
 from mcvirt.utils import get_hostname
 from mcvirt.system import System
 from mcvirt.exceptions import (CACertificateNotFoundException, OpenSSLNotFoundException,
-                               CACertificateAlreadyExists, MustGenerateCertificateException)
+                               MustGenerateCertificateException)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.permissions import PERMISSIONS
 
@@ -30,13 +30,15 @@ from mcvirt.auth.permissions import PERMISSIONS
 class CertificateGenerator(PyroObject):
     """
     Class for providing SSL socket wrappers for Pyro.
-    Since the MCVirt isn't available for 2/3 of the time that this is used (NS and CLI), all methods
-    are static and paths are calculated manually. @TODO Fix this in future - create MCVirt config class.
+    Since the MCVirt isn't available for 2/3 of the time that this is used (NS and CLI),
+    all methods are static and paths are calculated manually.
+    @TODO Fix this in future - create MCVirt config class.
     """
 
     OPENSSL = '/usr/bin/openssl'
 
     def __init__(self, server=None, remote=False):
+        """Store member variables and ensure that openSSL is installed"""
         if not os.path.isfile(self.OPENSSL):
             raise OpenSSLNotFoundException('openssl not found: %s' % self.OPENSSL)
 
@@ -47,43 +49,52 @@ class CertificateGenerator(PyroObject):
         self.remote = remote
 
     @property
-    def IS_LOCAL(self):
+    def is_local(self):
+        """Determine if the server is the local machine"""
         return (self.server == get_hostname())
 
     @property
-    def SSL_DN(self):
+    def ssl_dn(self):
+        """"Return the certificate DN is openssl argument format."""
         server = get_hostname() if self.remote else self.server
         return '/C=GB/ST=MCVirt/L=MCVirt/O=MCVirt/CN=%s' % server
 
     @property
-    def SSL_SUBJ(self):
+    def ssl_subj(self):
+        """Return the SSL DN in regular format"""
         server = get_hostname() if self.remote else self.server
         return 'C=GB,ST=MCVirt,L=MCVirt,O=MCVirt,CN=%s' % server
 
     @property
-    def SSL_DIRECTORY(self):
-        path = '%s/%s' % (self.SSL_BASE_DIRECTORY, self.server)
+    def ssl_directory(self):
+        """Return the SSL directory for the server"""
+        path = '%s/%s' % (self.ssl_base_directory, self.server)
         if not os.path.exists(path):
             os.makedirs(path)
         return path
 
     @property
-    def SSL_BASE_DIRECTORY(self):
+    def ssl_base_directory(self):
+        """Return the base SSL directory for the node."""
         path = '/var/lib/mcvirt/%s/ssl' % get_hostname()
         if not os.path.exists(path):
             os.makedirs(path)
         return path
 
     @property
-    def REMOTE_SSL_BASE_DIRECTORY(self):
-        path = os.path.join(self.SSL_DIRECTORY, 'remote')
+    def remote_ssl_directory(self):
+        """Return the 'remote' subdirectory of server, used for storing certificates that
+        are used by a remote server.
+        """
+        path = os.path.join(self.ssl_directory, 'remote')
         if not os.path.exists(path):
             os.makedirs(path)
         return path
 
     @property
-    def CA_KEY_FILE(self):
-        if not self.IS_LOCAL:
+    def ca_key_file(self):
+        """Return/generate the CA prviate key."""
+        if not self.is_local:
             raise CACertificateNotFoundException('CA key file not available for remote node')
         path = self._get_certificate_path('capriv.pem')
 
@@ -93,40 +104,46 @@ class CertificateGenerator(PyroObject):
         return path
 
     @property
-    def CA_PUB_FILE(self):
-        base_dir = '/etc/mcvirt' if self.IS_LOCAL else None
+    def ca_pub_file(self):
+        """Return/generate the CA pub file"""
+        base_dir = '/etc/mcvirt' if self.is_local else None
 
         path = self._get_certificate_path('cacert.pem',
                                           base_dir=base_dir)
 
-        if not self._ensure_exists(path, assert_raise=False) and self.IS_LOCAL:
+        if not self._ensure_exists(path, assert_raise=False) and self.is_local:
             # Generate public key for CA
-            System.runCommand([self.OPENSSL, 'req', '-x509', '-new', '-nodes', '-key', self.CA_KEY_FILE,
-                               '-sha256', '-days', '10240', '-out', path,
-                               '-subj', '%s_ca' % self.SSL_DN])
+            System.runCommand([self.OPENSSL, 'req', '-x509', '-new', '-nodes',
+                               '-key', self.ca_key_file, '-sha256', '-days', '10240', '-out', path,
+                               '-subj', '%s_ca' % self.ssl_dn])
 
-            if self.IS_LOCAL:
+            if self.is_local:
                 symlink_path = self._get_certificate_path('cacert.pem')
                 os.symlink(path, symlink_path)
 
         return path
 
-    @CA_PUB_FILE.setter
-    def CA_PUB_FILE(self, value):
-        if self.IS_LOCAL:
-            raise MustGenerateCertificateException('Local machine must generate its CA public file')
-        self._write_file(self.CA_PUB_FILE, value)
+    @ca_pub_file.setter
+    def ca_pub_file(self, value):
+        """Write the CA public key contents to the file"""
+        if self.is_local:
+            raise MustGenerateCertificateException(
+                'Local machine must generate its CA public file'
+            )
+        self._write_file(self.ca_pub_file, value)
 
     @property
-    def CLIENT_PUB_FILE(self):
+    def client_pub_file(self):
+        """Return/generate the client public file, used for connecting to the libvirt daemon"""
         return self._get_certificate_path('clientcert.pem', allow_remote=True)
 
-    @CLIENT_PUB_FILE.setter
-    def CLIENT_PUB_FILE(self, value):
-        self._write_file(self.CLIENT_PUB_FILE, value)
+    @client_pub_file.setter
+    def client_pub_file(self, value):
+        self._write_file(self.client_pub_file, value)
 
     @property
-    def CLIENT_KEY_FILE(self):
+    def client_key_file(self):
+        """Obtain the private key for the client key"""
         path = self._get_certificate_path('clientkey.pem')
 
         if not self._ensure_exists(path, assert_raise=False):
@@ -135,35 +152,40 @@ class CertificateGenerator(PyroObject):
         return path
 
     @property
-    def CLIENT_CSR(self):
+    def client_csr(self):
+        """Return the client CSR"""
         return self._get_certificate_path('clientcert.csr', allow_remote=True)
 
-    @CLIENT_CSR.setter
-    def CLIENT_CSR(self, value):
-        self._write_file(self.CLIENT_CSR, value)
+    @client_csr.setter
+    def client_csr(self, value):
+        """Write the client CSR"""
+        self._write_file(self.client_csr, value)
 
     @property
-    def SERVER_PUB_FILE(self):
-        if not self.IS_LOCAL:
+    def server_pub_file(self):
+        """Obtain the server public key file"""
+        if not self.is_local:
             raise CACertificateNotFoundException('Server public key not available for remote node')
         path = self._get_certificate_path('servercert.pem')
 
         if not self._ensure_exists(path, assert_raise=False):
             # Generate certificate request
-            ssl_csr = os.path.join(self.SSL_DIRECTORY, '%s.csr' % self.server)
-            System.runCommand([self.OPENSSL, 'req', '-new', '-key', self.SERVER_KEY_FILE, '-out', ssl_csr,
-                               '-subj', self.SSL_DN])
+            ssl_csr = os.path.join(self.ssl_directory, '%s.csr' % self.server)
+            System.runCommand([self.OPENSSL, 'req', '-new', '-key', self.server_key_file,
+                               '-out', ssl_csr, '-subj', self.ssl_dn])
 
             # Generate public key
-            System.runCommand([self.OPENSSL, 'x509', '-req', '-in', ssl_csr, '-CA', self.CA_PUB_FILE,
-                               '-CAkey', self.CA_KEY_FILE, '-CAcreateserial',
-                               '-out', path, '-outform', 'PEM', '-days', '10240', '-sha256'])
+            System.runCommand([self.OPENSSL, 'x509', '-req', '-in', ssl_csr,
+                               '-CA', self.ca_pub_file, '-CAkey', self.ca_key_file,
+                               '-CAcreateserial', '-out', path, '-outform', 'PEM',
+                               '-days', '10240', '-sha256'])
 
         return path
 
     @property
-    def SERVER_KEY_FILE(self):
-        if not self.IS_LOCAL:
+    def server_key_file(self):
+        """Obtain the server private key file"""
+        if not self.is_local:
             raise CACertificateNotFoundException('Server key file not available for remote node')
 
         path = self._get_certificate_path('serverkey.pem')
@@ -175,9 +197,9 @@ class CertificateGenerator(PyroObject):
     def _get_certificate_path(self, certname, base_dir=None, allow_remote=False):
         if base_dir is None:
             if allow_remote and self.remote:
-                base_dir = self.REMOTE_SSL_BASE_DIRECTORY
+                base_dir = self.remote_ssl_directory
             else:
-                base_dir = self.SSL_DIRECTORY
+                base_dir = self.ssl_directory
 
         return os.path.join(base_dir, certname)
 
@@ -191,24 +213,26 @@ class CertificateGenerator(PyroObject):
         return True
 
     def _read_file(self, certpath):
-        """Obtains the local machine's CA file contents"""
+        """Obtain the contents of a local certificate"""
         with open(certpath, 'r') as cert_fh:
             cert_contents = cert_fh.read()
         return cert_contents
 
     def _write_file(self, certpath, cert_contents):
+        """Create a local certificate file"""
         with open(certpath, 'w') as cert_fh:
             cert_fh.write(cert_contents)
 
     def check_certificates(self, check_client=True):
-        """Ensures that the required certificates are available
-           to start the daemon and connect to the local host"""
+        """Ensure that the required certificates are available
+        to start the daemon and connect to the local host
+        """
         # Ensure that the server certificates exist
-        self.CA_PUB_FILE
-        self.SERVER_PUB_FILE
+        self.ca_pub_file
+        self.server_pub_file
 
         # Ensure that the client certificate exists
-        if check_client and not self._ensure_exists(self.CLIENT_PUB_FILE, assert_raise=False):
+        if check_client and not self._ensure_exists(self.client_pub_file, assert_raise=False):
             cert_gen_factory = self._get_registered_object('certificate_generator_factory')
             local_remote = cert_gen_factory.get_cert_generator('localhost', remote=True)
             csr = self._generate_csr()
@@ -217,40 +241,46 @@ class CertificateGenerator(PyroObject):
 
     @Pyro4.expose()
     def generate_csr(self):
+        """Generate a certificate request for the remote server"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         return self._generate_csr()
 
     def _generate_csr(self):
-        System.runCommand(['openssl', 'req', '-new', '-key', self.CLIENT_KEY_FILE,
-                           '-out', self.CLIENT_CSR, '-subj', self.SSL_DN])
-        return self._read_file(self.CLIENT_CSR)
+        System.runCommand(['openssl', 'req', '-new', '-key', self.client_key_file,
+                           '-out', self.client_csr, '-subj', self.ssl_dn])
+        return self._read_file(self.client_csr)
 
     @Pyro4.expose()
     def sign_csr(self, csr):
+        """Sign the CSR for a remote SSL certificate."""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         return self._sign_csr(csr)
 
     def _sign_csr(self, csr):
-        self.CLIENT_CSR = csr
+        self.client_csr = csr
         cert_gen_factory = self._get_registered_object('certificate_generator_factory')
         local_server = cert_gen_factory.get_cert_generator('localhost')
-        System.runCommand(['openssl', 'x509', '-req', '-extensions', 'usr_cert', '-in', self.CLIENT_CSR,
-                           '-CA', local_server.CA_PUB_FILE, '-CAkey', local_server.CA_KEY_FILE, '-CAcreateserial',
-                           '-out', self.CLIENT_PUB_FILE, '-outform', 'PEM', '-days', '10240', '-sha256'])
+        System.runCommand(['openssl', 'x509', '-req', '-extensions', 'usr_cert',
+                           '-in', self.client_csr, '-CA', local_server.ca_pub_file,
+                           '-CAkey', local_server.ca_key_file, '-CAcreateserial',
+                           '-out', self.client_pub_file, '-outform', 'PEM', '-days', '10240',
+                           '-sha256'])
 
         # Regenerate libvirtd configuration, allowing access to this certificate
-        if self.IS_LOCAL:
+        if self.is_local:
             self._get_registered_object('libvirt_config').hard_restart = True
         self._get_registered_object('libvirt_config').generate_config()
-        return self._read_file(self.CLIENT_PUB_FILE)
+        return self._read_file(self.client_pub_file)
 
     @Pyro4.expose()
     def add_public_key(self, key):
+        """Add the public key for a remote node"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         return self._add_public_key(key)
 
     def _add_public_key(self, key):
-        self.CLIENT_PUB_FILE = key
+        self.client_pub_file = key
 
     def get_ca_contents(self):
-        return self._read_file(self.CA_PUB_FILE)
+        """Return the contents of the local CA certificate"""
+        return self._read_file(self.ca_pub_file)

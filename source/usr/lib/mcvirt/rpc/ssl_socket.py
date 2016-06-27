@@ -36,12 +36,12 @@ class SSLSocket(object):
         if server_side:
             cert_gen = cert_gen_factory.get_cert_generator(server='localhost')
             cert_gen.check_certificates(check_client=False)
-            ssl_kwargs['keyfile'] = cert_gen.SERVER_KEY_FILE
-            ssl_kwargs['certfile'] = cert_gen.SERVER_PUB_FILE
+            ssl_kwargs['keyfile'] = cert_gen.server_key_file
+            ssl_kwargs['certfile'] = cert_gen.server_pub_file
         else:
             cert_gen = cert_gen_factory.get_cert_generator(kwargs['connect'][0])
             ssl_kwargs['cert_reqs'] = ssl.CERT_REQUIRED
-            ssl_kwargs['ca_certs'] = cert_gen.CA_PUB_FILE
+            ssl_kwargs['ca_certs'] = cert_gen.ca_pub_file
         return ssl.wrap_socket(socket_object, **ssl_kwargs)
 
     @staticmethod

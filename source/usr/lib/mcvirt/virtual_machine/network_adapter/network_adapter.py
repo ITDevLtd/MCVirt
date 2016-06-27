@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 
 from mcvirt.exceptions import NetworkAdapterDoesNotExistException
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 
 
 class NetworkAdapter(object):
@@ -109,7 +109,7 @@ class NetworkAdapter(object):
         return self.mac_address
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def delete(self):
         """Remove the given interface from the VM, based on the given MAC address"""
         self._get_registered_object('auth').assert_permission(

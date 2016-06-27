@@ -829,12 +829,12 @@ class Parser(object):
         elif action == 'node':
             node = rpc.get_connection('node')
             if args.volume_group:
-                node.setStorageVolumeGroup(args.volume_group)
+                node.set_storage_volume_group(args.volume_group)
                 self.print_status('Successfully set VM storage volume group to %s' %
                                   args.volume_group)
 
             if args.ip_address:
-                node.setClusterIpAddress(args.ip_address)
+                node.set_cluster_ip_address(args.ip_address)
                 self.print_status('Successfully set cluster IP address to %s' % args.ip_address)
 
         elif action == 'verify':

@@ -24,7 +24,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsException,
                                UnprivilegedUserException, InvalidPermissionGroupException,
                                DuplicatePermissionException)
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.permissions import PERMISSIONS, PERMISSION_GROUPS
 
@@ -202,7 +202,8 @@ class Auth(PyroObject):
 
         def update_config(config):
             config['superusers'].remove(username)
-        mcvirt_config.update_config(update_config, 'Removed \'%s\' from superuser group' % username)
+        mcvirt_config.update_config(update_config, 'Removed \'%s\' from superuser group' %
+                                                   username)
 
         if self._is_cluster_master:
             def remote_command(connection):
@@ -215,7 +216,7 @@ class Auth(PyroObject):
             cluster.run_remote_command(remote_command)
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def add_user_permission_group(self, permission_group, user_object,
                                   vm_object=None, ignore_duplicate=False):
         """Add a user to a permissions group on a VM object."""
@@ -260,7 +261,7 @@ class Auth(PyroObject):
             )
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def delete_user_permission_group(self, permission_group, user_object, vm_object=None):
         """Remove user from a permissions group on a VM object."""
         # Check if user running script is able to remove users to permission group

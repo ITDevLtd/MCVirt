@@ -50,8 +50,8 @@ class NodeTests(unittest.TestCase):
 
     def tearDown(self):
         """Resets any values changed to the MCVirt config"""
-        Node.setClusterIpAddress(self.mcvirt, self.original_ip_address)
-        Node.setStorageVolumeGroup(self.mcvirt, self.original_volume_group)
+        Node.set_cluster_ip_address(self.mcvirt, self.original_ip_address)
+        Node.set_storage_volume_group(self.mcvirt, self.original_volume_group)
         self.mcvirt = None
 
     def test_set_ip_address(self):

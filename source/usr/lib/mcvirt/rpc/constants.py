@@ -1,3 +1,4 @@
+"""Provides constants for the RPC daemon"""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -17,6 +18,10 @@
 
 
 class Annotations(object):
+    """Pyro annotation names
+    @TODO Move to main MCVIrt constants class"""
+    """
+
     USERNAME = 'USER'
     PASSWORD = 'PASS'
     PROXY_USER = 'ALTU'

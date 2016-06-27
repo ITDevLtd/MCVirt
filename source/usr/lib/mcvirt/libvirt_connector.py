@@ -32,7 +32,7 @@ class LibvirtConnector(PyroObject):
 
         ssl_object = self._get_registered_object(
             'certificate_generator_factory').get_cert_generator(server)
-        libvirt_url = 'qemu://%s/system?pkipath=%s' % (ssl_object.server, ssl_object.SSL_DIRECTORY)
+        libvirt_url = 'qemu://%s/system?pkipath=%s' % (ssl_object.server, ssl_object.ssl_directory)
         connection = libvirt.open(libvirt_url)
         if connection is None:
             raise LibVirtConnectionException(

@@ -1,3 +1,5 @@
+"""Provide class to configure libvirtd"""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -41,10 +43,11 @@ libvirtd_opts=" --listen --verbose "
 """
 
     def __init__(self):
+        """Create variable to determine if a hard restart is required"""
         self.hard_restart = False
 
     def generate_config(self):
-        """Generates the libvirtd configuration"""
+        """Generate the libvirtd configuration"""
         libvirt_config = self.get_config()
 
         # Replace the variables in the template with the local libvirtd configuration
@@ -61,22 +64,23 @@ libvirtd_opts=" --listen --verbose "
         self._reload_libvirt()
 
     def get_config(self):
+        """Create the configuration for libvirt"""
         cert_gen_factory = self._get_registered_object('certificate_generator_factory')
         ssl_socket = cert_gen_factory.get_cert_generator('localhost')
         nodes = self._get_registered_object('cluster').get_nodes(return_all=True)
         nodes.append(get_hostname())
-        allowed_dns = [cert_gen_factory.get_cert_generator(node).SSL_SUBJ for node in nodes]
+        allowed_dns = [cert_gen_factory.get_cert_generator(node).ssl_subj for node in nodes]
 
         return {
             'ip_address': MCVirtConfig().getListenAddress(),
-            'ssl_server_key': ssl_socket.SERVER_KEY_FILE,
-            'ssl_server_cert': ssl_socket.SERVER_PUB_FILE,
-            'ssl_ca_cert': ssl_socket.CA_PUB_FILE,
+            'ssl_server_key': ssl_socket.server_key_file,
+            'ssl_server_cert': ssl_socket.server_pub_file,
+            'ssl_ca_cert': ssl_socket.ca_pub_file,
             'allowed_nodes': '", "'.join(allowed_dns)
         }
 
     def _reload_libvirt(self):
-        """Forces libvirt to reload it's configuration"""
+        """Force libvirt to reload it's configuration"""
         action = 'restart' if self.hard_restart else 'force-reload'
         System.runCommand(['service', 'libvirtd', action])
         self.hard_restart = False

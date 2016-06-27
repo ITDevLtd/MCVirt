@@ -23,7 +23,7 @@ from mcvirt.exceptions import (LibvirtException,
                                NetworkDoesNotExistException,
                                NetworkUtilizedException)
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 
 
@@ -46,7 +46,7 @@ class Network(PyroObject):
         return mcvirt_config['networks']
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def delete(self):
         """Delete a network from the node"""
         # Ensure user has permission to manage networks

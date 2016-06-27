@@ -1,3 +1,5 @@
+"""Perform configurations for local node."""
+
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -25,10 +27,11 @@ from mcvirt.rpc.pyro_object import PyroObject
 
 
 class Node(PyroObject):
+    """Provides methods to configure the local node."""
 
     @Pyro4.expose()
-    def setStorageVolumeGroup(self, volume_group):
-        """Update the MCVirt configuration to set the volume group for VM storage"""
+    def set_storage_volume_group(self, volume_group):
+        """Update the MCVirt configuration to set the volume group for VM storage."""
         # Ensure volume_group name is valid
         pattern = re.compile("^[A-Z0-9a-z_-]+$")
         if (not pattern.match(volume_group)):
@@ -39,11 +42,12 @@ class Node(PyroObject):
         def update_config(config):
             config['vm_storage_vg'] = volume_group
         mcvirt_config = MCVirtConfig()
-        mcvirt_config.update_config(update_config, 'Set virtual machine storage volume group to %s' %
-                                                 volume_group)
+        mcvirt_config.update_config(update_config,
+                                    'Set virtual machine storage volume group to %s' %
+                                    volume_group)
 
-    def setClusterIpAddress(self, ip_address):
-        """Updates the cluster IP address for the node"""
+    def set_cluster_ip_address(self, ip_address):
+        """Update the cluster IP address for the node."""
         # Check validity of IP address (mainly to ensure that )
         pattern = re.compile(r"^((([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])[ (\[]?(\.|dot)"
                              "[ )\]]?){3}([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5]))$")
@@ -55,4 +59,4 @@ class Node(PyroObject):
             config['cluster']['cluster_ip'] = ip_address
         mcvirt_config = MCVirtConfig()
         mcvirt_config.update_config(update_config, 'Set node cluster IP address to %s' %
-                                                 ip_address)
+                                                   ip_address)

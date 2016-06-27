@@ -28,7 +28,7 @@ from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.system import System
 from mcvirt.cluster.cluster import Cluster
-from mcvirt.rpc.lock import lockingMethod
+from mcvirt.rpc.lock import locking_method
 from mcvirt.constants import DirectoryLocation
 from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
@@ -465,7 +465,7 @@ class Drbd(Base):
                                   perform_on_nodes=True)
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def initialiseMetaData(self, *args, **kwargs):
         """Provides an exposed method for _initialiseMetaData
            with permission checking"""
@@ -478,7 +478,7 @@ class Drbd(Base):
         System.runCommand([NodeDrbd.DrbdADM, 'create-md', self.resource_name])
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def drbdUp(self, *args, **kwargs):
         """Provides an exposed method for _drbdUp
            with permission checking"""
@@ -491,7 +491,7 @@ class Drbd(Base):
         System.runCommand([NodeDrbd.DrbdADM, 'up', self.resource_name])
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def drbdDown(self, *args, **kwargs):
         """Provides an exposed method for _drbdDown
            with permission checking"""
@@ -509,7 +509,7 @@ class Drbd(Base):
             System.runCommand([NodeDrbd.DrbdADM, 'down', self.resource_name])
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def drbdConnect(self, *args, **kwargs):
         """Provides an exposed method for _drbdConnect
            with permission checking"""
@@ -523,7 +523,7 @@ class Drbd(Base):
             System.runCommand([NodeDrbd.DrbdADM, 'connect', self.resource_name])
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def drbdDisconnect(self, *args, **kwargs):
         """Provides an exposed method for _drbdDisconnect
            with permission checking"""
@@ -536,7 +536,7 @@ class Drbd(Base):
         System.runCommand([NodeDrbd.DrbdADM, 'disconnect', self.resource_name])
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def setTwoPrimariesConfig(self, *args, **kwargs):
         """Provides an exposed method for _setTwoPrimariesConfig
            with permission checking"""
@@ -586,7 +586,7 @@ class Drbd(Base):
                                               nodes=self.vm_object._get_remote_nodes())
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def drbdSetPrimary(self, *args, **kwargs):
         """Provides an exposed method for _drbdSetPrimary
            with permission checking"""
@@ -622,7 +622,7 @@ class Drbd(Base):
         System.runCommand([NodeDrbd.DrbdADM, 'primary', self.resource_name])
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def drbdSetSecondary(self, *args, **kwargs):
         """Provides an exposed method for _drbdSetSecondary
            with permission checking"""
@@ -791,7 +791,7 @@ class Drbd(Base):
             return True
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
         obtained_lock = False
@@ -1025,7 +1025,7 @@ class Drbd(Base):
         return self._getDrbdDevice()
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def generateDrbdConfig(self, *args, **kwargs):
         """Provides an exposed method for _generateDrbdConfig
            with permission checking"""
@@ -1078,7 +1078,7 @@ class Drbd(Base):
         fh.close()
 
     @Pyro4.expose()
-    @lockingMethod()
+    @locking_method()
     def removeDrbdConfig(self, *args, **kwargs):
         """Provides an exposed method for _removeDrbdConfig
            with permission checking"""

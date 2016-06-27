@@ -1,3 +1,4 @@
+"""Provides classes for locking the MCVirt daemon whilst a function is being performed"""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -23,16 +24,20 @@ from mcvirt.logger import Logger, getLogNames
 
 
 class MethodLock(object):
+    """Class for storing/generating/obtaining a lock object"""
+
     _lock = None
 
     @classmethod
-    def getLock(cls):
+    def get_lock(cls):
+        """Obtain the lock object and return"""
         if cls._lock is None:
             cls._lock = Lock()
         return cls._lock
 
 
-def lockingMethod(object_type=None, instance_method=True):
+def locking_method(object_type=None, instance_method=True):
+    """Provide a decorator method for locking the node whilst performing the method"""
     def wrapper(callback):
         callback.OBJECT_TYPE = wrapper.object_type
         callback.INSTANCE_METHOD = wrapper.instance_method
@@ -44,7 +49,7 @@ def lockingMethod(object_type=None, instance_method=True):
                                                    wrapper.object_type,
                                                    args=args,
                                                    kwargs=kwargs)
-            lock = MethodLock.getLock()
+            lock = MethodLock.get_lock()
 
             # If the current Pyro connection has the lock, then do not attempt
             # to lock again, as this will be caused by a locking method calling
