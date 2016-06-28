@@ -18,6 +18,7 @@
 
 import Pyro4
 import os
+import shutil
 
 from mcvirt.utils import get_hostname
 from mcvirt.system import System
@@ -271,6 +272,11 @@ class CertificateGenerator(PyroObject):
             self._get_registered_object('libvirt_config').hard_restart = True
         self._get_registered_object('libvirt_config').generate_config()
         return self._read_file(self.client_pub_file)
+
+    @Pyro4.expose()
+    def remove_certificates(self):
+        """Remove a certificate directory for a node"""
+        shutil.rmtree(self.ssl_directory)
 
     @Pyro4.expose()
     def add_public_key(self, key):

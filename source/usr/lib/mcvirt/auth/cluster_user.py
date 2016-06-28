@@ -40,6 +40,11 @@ class ClusterUser(UserBase):
         default_config['host'] = None
         return default_config
 
+    @property
+    def node(self):
+        """Return the node that the user is used for"""
+        return self._get_config()['host']
+
     def update_host(self, host):
         """Update the host associated with the user."""
         def update_config(config):
