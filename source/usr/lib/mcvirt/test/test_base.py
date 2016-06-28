@@ -29,8 +29,8 @@ def skip_drbd(required):
         def wrapper(*args):
             if (bool(args[0].rpc.get_connection('node_drbd').is_enabled()) !=
                     bool(wrapper.required)):
-                return unittest.skip(('DRBD either required and not available or'
-                                      ' can\'t be present and is installed.'))
+                return args[0].skipTest(('DRBD either required and not available or'
+                                         ' can\'t be present and is installed.'))
 
         wrapper.required = wrapper_gen.required
         return wrapper
@@ -66,10 +66,71 @@ class TestBase(unittest.TestCase):
         Parser.USERNAME = self.RPC_USERNAME
         Parser.SESSION_ID = self.rpc.session_id
 
+        # Setup variable for test VM
+        self.test_vms = \
+            {
+                'TEST_VM_1':
+                {
+                    'name': 'mcvirt-unittest-vm',
+                    'cpu_count': 1,
+                    'memory_allocation': 100,
+                    'disk_size': [100],
+                    'networks': ['Production']
+                },
+                'TEST_VM_2':
+                {
+                    'name': 'mcvirt-unittest-vm2',
+                    'cpu_count': 2,
+                    'memory_allocation': 120,
+                    'disk_size': [100],
+                    'networks': ['Production']
+                }
+            }
+
+        # Ensure any test VM is stopped and removed from the machine
+        self.stop_and_delete(self.test_vms['TEST_VM_2']['name'])
+        self.stop_and_delete(self.test_vms['TEST_VM_1']['name'])
+
+        self.vm_factory = self.rpc.get_connection('virtual_machine_factory')
+
+        self.test_network_name = 'test_network'
+        self.test_physical_interface = 'vmbr0'
+        self.network_factory = self.rpc.get_connection('network_factory')
+
+        # Determine if the test network exists. If so, delete it
+        if self.network_factory.check_exists(self.test_network_name):
+            network = self.network_factory.get_network_by_name(self.test_network_name)
+            self.rpc.annotate_object(network)
+            network.delete()
+
     def tearDown(self):
         """Destroy stored objects."""
+        # Ensure any test VM is stopped and removed from the machine
+        self.stop_and_delete(self.test_vms['TEST_VM_2']['name'])
+        self.stop_and_delete(self.test_vms['TEST_VM_1']['name'])
+
+        # Remove the test network, if it exists
+        if self.network_factory.check_exists(self.test_network_name):
+            network = self.network_factory.get_network_by_name(self.test_network_name)
+            self.rpc.annotate_object(network)
+            network.delete()
+
+        self.network_factory = None
+        self.vm_factory = None
         self.rpc = None
         self.parser = None
+
+    def create_vm(self, vm_name, storage_type):
+        """Create a test VM, annotate object and ensure it exists"""
+        vm_object = self.vm_factory.create(self.test_vms[vm_name]['name'],
+                                           self.test_vms[vm_name]['cpu_count'],
+                                           self.test_vms[vm_name]['memory_allocation'],
+                                           self.test_vms[vm_name]['disk_size'],
+                                           self.test_vms[vm_name]['networks'],
+                                           storage_type=storage_type)
+        self.rpc.annotate_object(vm_object)
+        self.assertTrue(self.vm_factory.check_exists(self.test_vms[vm_name]['name']))
+        return vm_object
 
     def stop_and_delete(self, vm_name):
         """Stop and remove a virtual machine"""

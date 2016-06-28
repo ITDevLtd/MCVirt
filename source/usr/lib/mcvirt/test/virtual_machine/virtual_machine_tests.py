@@ -40,8 +40,6 @@ from mcvirt.exceptions import (InvalidVirtualMachineNameException,
 from mcvirt.test.test_base import TestBase, skip_drbd
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdDiskState
 
-from mcvirt.iso.iso import Iso
-
 
 class VirtualMachineTests(TestBase):
     """Provide unit tests for the VirtualMachine class"""
@@ -81,56 +79,6 @@ class VirtualMachineTests(TestBase):
         suite.addTest(VirtualMachineTests('test_unspecified_storage_type_drbd'))
 
         return suite
-
-    def setUp(self):
-        """Create various objects and deletes any test VMs"""
-        super(VirtualMachineTests, self).setUp()
-        # Setup variable for test VM
-        self.test_vms = \
-            {
-                'TEST_VM_1':
-                {
-                    'name': 'mcvirt-unittest-vm',
-                    'cpu_count': 1,
-                    'memory_allocation': 100,
-                    'disk_size': [100],
-                    'networks': ['Production']
-                },
-                'TEST_VM_2':
-                {
-                    'name': 'mcvirt-unittest-vm2',
-                    'cpu_count': 2,
-                    'memory_allocation': 120,
-                    'disk_size': [100],
-                    'networks': ['Production']
-                }
-            }
-
-        # Ensure any test VM is stopped and removed from the machine
-        self.stop_and_delete(self.test_vms['TEST_VM_2']['name'])
-        self.stop_and_delete(self.test_vms['TEST_VM_1']['name'])
-
-        self.vm_factory = self.rpc.get_connection('virtual_machine_factory')
-
-    def tearDown(self):
-        """Stop and tear down any test VMs"""
-        # Ensure any test VM is stopped and removed from the machine
-        self.stop_and_delete(self.test_vms['TEST_VM_2']['name'])
-        self.stop_and_delete(self.test_vms['TEST_VM_1']['name'])
-        self.vm_factory = None
-        super(VirtualMachineTests, self).tearDown()
-
-    def create_vm(self, vm_name, storage_type):
-        """Create a test VM, annotate object and ensure it exists"""
-        vm_object = self.vm_factory.create(self.test_vms[vm_name]['name'],
-                                           self.test_vms[vm_name]['cpu_count'],
-                                           self.test_vms[vm_name]['memory_allocation'],
-                                           self.test_vms[vm_name]['disk_size'],
-                                           self.test_vms[vm_name]['networks'],
-                                           storage_type=storage_type)
-        self.rpc.annotate_object(vm_object)
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms[vm_name]['name']))
-        return vm_object
 
     def test_create_local(self):
         """Perform the test_create test with Local storage"""
