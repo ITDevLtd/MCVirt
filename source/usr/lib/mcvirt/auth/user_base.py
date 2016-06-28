@@ -114,10 +114,10 @@ class UserBase(PyroObject):
 
     def _hash_password(self, password):
         """Hash a password, using the current user's salt"""
-        return self.__class__._hash_sring(password, self._get_password_salt())
+        return self.__class__._hash_string(password, self._get_password_salt())
 
     @staticmethod
-    def _hash_sring(string, salt):
+    def _hash_string(string, salt):
         """Hash string using salt"""
         return crypt(string, salt, iterations=1000)
 
