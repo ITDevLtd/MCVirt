@@ -103,13 +103,17 @@ class Parser(object):
         # Add arguments for managing users
         self.user_parser = self.subparsers.add_parser('user', help='User managment',
                                                       parents=[self.parent_parser])
-        self.user_parser.add_argument(
-            '--change-password',
-            dest='change_password',
-            action='store_true',
-            help='Change password'
+        self.user_subparser = self.user_parser.add_subparsers(
+            dest='user_action',
+            help='User managment action to perform',
+            metavar='Action'
         )
-        self.user_parser.add_argument(
+        self.change_password_subparser = self.user_subparser.add_parser(
+            'change-password',
+            help='Change a user password',
+            parents=[self.parent_parser]
+        )
+        self.change_password_subparser.add_argument(
             '--new-password',
             dest='new_password',
             metavar='New password',
@@ -967,7 +971,7 @@ class Parser(object):
                 self.print_status('Successfully removed iso: %s' % args.delete_path)
 
         elif action == 'user':
-            if args.change_password:
+            if args.user_action == 'change-password':
                 user_factory = rpc.get_connection('user_factory')
                 user = user_factory.get_user_by_username(Parser.USERNAME)
                 rpc.annotate_object(user)
