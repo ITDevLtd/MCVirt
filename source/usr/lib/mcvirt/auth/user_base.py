@@ -98,12 +98,6 @@ class UserBase(PyroObject):
 
     def _set_password(self, new_password):
         """Set the password for the current user"""
-        # Check that the current user is the same as this user, or that current user has the correct
-        # permissions
-        actual_user = self._get_registered_object('mcvirt_session').get_current_user_object()
-        if actual_user.get_username() != self.get_username():
-            self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
-
         password_hash = self._hash_password(new_password)
 
         def update_config(config):
@@ -111,6 +105,16 @@ class UserBase(PyroObject):
         MCVirtConfig().update_config(
             update_config, 'Updated password for \'%s\'' % self.get_username()
         )
+
+        if self._is_cluster_master:
+            def remote_command(node_connection):
+                remote_user_factory = node_connection.get_connection('user_factory')
+                remote_user = remote_user_factory.get_user_by_username(self.get_username())
+                node_connection.annotate_object(remote_user)
+                remote_user.change_password(new_password)
+
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(remote_command)
 
     def _hash_password(self, password):
         """Hash a password, using the current user's salt"""
