@@ -991,4 +991,4 @@ class Parser(object):
                     if new_password != repeat_password:
                         raise PasswordsDoNotMatchException('The two passwords do not match')
 
-                user.change_password(new_password)
+                user.set_password(new_password)

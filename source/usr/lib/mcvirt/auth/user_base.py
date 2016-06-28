@@ -111,7 +111,7 @@ class UserBase(PyroObject):
                 remote_user_factory = node_connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(self.get_username())
                 node_connection.annotate_object(remote_user)
-                remote_user.change_password(new_password)
+                remote_user.set_password(new_password)
 
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
