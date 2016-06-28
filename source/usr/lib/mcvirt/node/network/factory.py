@@ -161,6 +161,4 @@ class Factory(PyroObject):
 
         # Determine if the name of any of the networks returned
         # matches the requested name
-        print networks
-        print (name in networks.keys())
         return (name in networks.keys())

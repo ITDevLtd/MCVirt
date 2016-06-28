@@ -48,6 +48,10 @@ class TestBase(unittest.TestCase):
         """Obtain connections to the daemon and create various
         member variables.
         """
+        # Start RPC daemon
+        daemon = RpcNSMixinDaemon()
+        daemon.start()
+
         # Define RPC credentials, which are the default superuser credentials
         # that are supplied with MCVirt
         self.RPC_USERNAME = 'mjc'

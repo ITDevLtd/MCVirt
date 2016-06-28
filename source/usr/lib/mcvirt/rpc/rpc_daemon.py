@@ -235,10 +235,10 @@ class RpcNSMixinDaemon(object):
         cert_gen = None
         cert_gen_factory = None
 
-    def start(self):
+    def start(self, *args, **kwargs):
         """Start the Pyro daemon"""
         Pyro4.current_context.STARTUP_PERIOD = False
-        RpcNSMixinDaemon.DAEMON.requestLoop()
+        RpcNSMixinDaemon.DAEMON.requestLoop(*args, **kwargs)
 
     def register(self, obj_or_class, objectId, *args, **kwargs): # Override upstream # noqa
         """Override register to register object with NS."""

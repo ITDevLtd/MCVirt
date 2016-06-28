@@ -77,7 +77,7 @@ class MCVirtLibvirtFail(MCVirt):
     def getRemoteLibvirtConnection(self, remote_node):
         """Overrides the getRemoteLibvirtConnection function to
            attempt to simulate an unresponsive remote libvirt daemon"""
-        if (self.libvirt_failure_mode is LibvirtFailureMode.CONNECTION_FAILURE):
+        if self.libvirt_failure_mode is LibvirtFailureMode.CONNECTION_FAILURE:
             cluster_instance = Cluster(self)
             remote_node = DummyRemote(cluster_instance,
                                       'invalid_remote_node',
@@ -98,7 +98,7 @@ class VirtualMachineLibvirtFail(VirtualMachine):
            method to simulate different failure cases"""
         libvirt_object = super(VirtualMachineLibvirtFail, self)._getLibvirtDomainObject()
 
-        if (self.mcvirt_object.libvirt_failure_mode is LibvirtFailureMode.PRE_MIGRATION_FAILURE):
+        if self.mcvirt_object.libvirt_failure_mode is LibvirtFailureMode.PRE_MIGRATION_FAILURE:
 
             # Override migrate3 method to raise an exception before the migration takes place
             def migrate3(self, *args, **kwargs):
@@ -108,7 +108,7 @@ class VirtualMachineLibvirtFail(VirtualMachine):
             function_type = type(libvirt.virDomain.migrate3)
             libvirt_object.migrate3 = function_type(migrate3, libvirt_object, libvirt.virDomain)
 
-        elif (self.mcvirt_object.libvirt_failure_mode is LibvirtFailureMode.POST_MIGRATION_FAILURE):
+        elif self.mcvirt_object.libvirt_failure_mode is LibvirtFailureMode.POST_MIGRATION_FAILURE:
             # Override the migrate3 method to raise an exception after the migration has taken place
             def migrate3(self, *args, **kwargs):
                 libvirt.virDomain.migrate3(libvirt_object, *args, **kwargs)
@@ -121,7 +121,7 @@ class VirtualMachineLibvirtFail(VirtualMachine):
         return libvirt_object
 
 
-class OnlineMigrateTests(unittest.TestCase):
+class OnlineMigrateTests(TestBase):
     """Provides unit tests for the onlineMigrate function"""
 
     @staticmethod
@@ -144,9 +144,6 @@ class OnlineMigrateTests(unittest.TestCase):
 
     def setUp(self):
         """Creates various objects and deletes any test VMs"""
-        # Create MCVirt parser object
-        self.parser = Parser(print_status=False)
-
         # Get an MCVirt instance
         self.mcvirt = MCVirtLibvirtFail()
 
@@ -264,8 +261,8 @@ class OnlineMigrateTests(unittest.TestCase):
 
             try:
                 node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdConnect',
-                                             {'vm_name': self.test_vm_object.get_name(),
-                                              'disk_id': disk_object.get_config_object().getId()})
+                                               {'vm_name': self.test_vm_object.get_name(),
+                                                'disk_id': disk_object.get_config_object().getId()})
             except:
                 pass
 
