@@ -66,7 +66,7 @@ class Drbd(PyroObject):
     def enable(self, secret=None):
         """Ensure the machine is suitable to run Drbd"""
         # Ensure user has the ability to manage Drbd
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_Drbd)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_DRBD)
 
         # Ensure that Drbd is installed
         self.ensure_installed()

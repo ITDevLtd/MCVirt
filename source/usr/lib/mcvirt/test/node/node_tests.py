@@ -18,8 +18,8 @@
 import unittest
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt
-from mcvirt.node.node import Node, InvalidIPAddressException, InvalidVolumeGroupNameException
+from mcvirt.node.node import Node
+from mcvirt.exceptions import InvalidIPAddressException, InvalidVolumeGroupNameException
 from mcvirt.mcvirt_config import MCVirtConfig
 
 

@@ -16,15 +16,13 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import unittest
-import os
 import time
 
-from mcvirt.test.common import stop_and_delete
 from mcvirt.node.drbd import Drbd as NodeDrbd
-from mcvirt.virtual_machine.hard_drive.drbd import DrbdConnectionState, DrbdVolumeNotInSyncException
+from mcvirt.virtual_machine.hard_drive.drbd import DrbdConnectionState
+from mcvirt.exceptions import DrbdVolumeNotInSyncException
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt
 from mcvirt.system import System
 
 

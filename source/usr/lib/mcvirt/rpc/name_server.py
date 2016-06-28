@@ -28,6 +28,8 @@ class NameServer(object):
     def __init__(self):
         """Perform configuration of Pyro4"""
         Pyro4.config.USE_MSG_WAITALL = False
+        Pyro4.config.THREADPOOL_ALLOW_QUEUE = True
+        Pyro4.config.THREADPOOL_SIZE = 128
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
 

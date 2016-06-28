@@ -41,7 +41,7 @@ class Parser(object):
     SESSION_ID = None
     USERNAME = None
 
-    def __init__(self, verbose=True, auth_object=None):
+    def __init__(self, verbose=True):
         """Configure the argument parser object."""
         self.verbose = verbose
         self.parent_parser = ThrowingArgumentParser(add_help=False)
@@ -896,21 +896,21 @@ class Parser(object):
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotate_object(vm_object)
             if args.lock:
-                vm_object.setLockState(LockStates(LockStates.LOCKED))
+                vm_object.setLockState(LockStates.LOCKED.value)
             if args.unlock:
-                vm_object.setLockState(LockStates(LockStates.UNLOCKED))
+                vm_object.setLockState(LockStates.UNLOCKED.value)
             if args.check_lock:
                 self.print_status(LockStates(vm_object.getLockState()).name)
 
         elif action == 'clone':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            vm_object = vm_factory.getVirtualMachineByName(args.template)
             rpc.annotate_object(vm_object)
             vm_object.clone(args.vm_name)
 
         elif action == 'duplicate':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            vm_object = vm_factory.getVirtualMachineByName(args.template)
             rpc.annotate_object(vm_object)
             vm_object.duplicate(args.vm_name)
 

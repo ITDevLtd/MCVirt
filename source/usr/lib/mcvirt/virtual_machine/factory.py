@@ -27,7 +27,8 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
-                               ClusterNotInitialisedException, NodeDoesNotExistException)
+                               ClusterNotInitialisedException, NodeDoesNotExistException,
+                               VmDirectoryAlreadyExistsException)
 from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
@@ -144,7 +145,7 @@ class Factory(PyroObject):
             raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
 
         # Create directory for VM on the local and remote nodes
-        if os_path_exists(VirtualMachine.getVMDir(name)):
+        if os_path_exists(VirtualMachine._get_vm_dir(name)):
             raise VmDirectoryAlreadyExistsException('Error: VM directory already exists')
 
         # If available nodes has not been passed, assume the local machine is the only
@@ -177,7 +178,7 @@ class Factory(PyroObject):
             raise InvalidNodesException('One of the nodes must be the local node')
 
         # Create directory for VM
-        makedirs(VirtualMachine.getVMDir(name))
+        makedirs(VirtualMachine._get_vm_dir(name))
 
         # Add VM to MCVirt configuration
         def updateMCVirtConfig(config):

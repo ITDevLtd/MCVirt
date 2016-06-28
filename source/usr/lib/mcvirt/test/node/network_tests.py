@@ -18,11 +18,12 @@
 import unittest
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt
-from mcvirt.node.network.network import (Network, NetworkDoesNotExistException,
-                                         NetworkUtilizedException)
-from mcvirt.node.network.factory import Factory as NetworkFactory, NetworkAlreadyExistsException,
-from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
+from mcvirt.node.network.network import Network
+from mcvirt.exceptions import (NetworkDoesNotExistException, NetworkUtilizedException,
+                               NetworkAlreadyExistsException)
+from mcvirt.node.network.factory import Factory as NetworkFactory
+from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+from mcvirt.constants import PowerStates
 
 
 def stopAndDelete(test_object):

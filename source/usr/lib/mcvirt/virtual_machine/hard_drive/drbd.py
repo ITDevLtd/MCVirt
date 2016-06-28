@@ -275,7 +275,7 @@ class Drbd(Base):
         in the VM configuration"""
         # Ensure user has privileges to create a Drbd volume
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_Drbd, self.vm_object)
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
 
         # Ensure Drbd is enabled on the host
         if not self._get_registered_object('node_drbd').is_enabled():
@@ -695,6 +695,13 @@ class Drbd(Base):
                                           self.resource_name])
         state = stdout.strip()
         return DrbdConnectionState(state)
+
+    def drbdGetDiskState(self):
+        """Provide an exposed method for drbdGetDiskState"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+        local_state, remote_state = self._drbdGetDiskState()
+        return local_state.value, remote_state.value
 
     def _drbdGetDiskState(self):
         """Returns the disk state of the Drbd resource"""

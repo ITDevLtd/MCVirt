@@ -160,6 +160,7 @@ class Base(PyroObject):
                 'Disk %s for %s does not exist' %
                 (self.disk_id, self.vm_object.get_name()))
 
+    @Pyro4.expose()
     def get_type(self):
         """Return the type of storage for the hard drive"""
         return self.__class__.__name__
@@ -182,15 +183,12 @@ class Base(PyroObject):
     def duplicate(self, destination_vm_object):
         """Clone the hard drive and attach it to the new VM object"""
         self._ensure_exists()
-        disk_size = self.getSize()
 
         # Create new disk object, using the same type, size and disk_id
-        new_disk_object = self._get_registered_object('hard_drive_factory').getClass(
-            self.get_type()).create(
-            destination_vm_object,
-            disk_size,
-            disk_id=self.disk_id,
-            driver=self.driver)
+        new_disk_object = self.__class__(vm_object=destination_vm_object, disk_id=self.disk_id,
+                                         driver=self.driver)
+        self._register_object(new_disk_object)
+        new_disk_object.create(self.getSize())
 
         source_drbd_block_device = self._getDiskPath()
         destination_drbd_block_device = new_disk_object._getDiskPath()
@@ -534,7 +532,7 @@ class Base(PyroObject):
             )
 
         # Lock the VM
-        self.vm_object.setLockState(LockStates.LOCKED)
+        self.vm_object._setLockState(LockStates.LOCKED)
 
         try:
             System.runCommand(['lvcreate', '--snapshot', backup_volume_path,
@@ -542,7 +540,7 @@ class Base(PyroObject):
                                '--size', self.SNAPSHOT_SIZE])
             return self._getLogicalVolumePath(snapshot_logical_volume)
         except:
-            self.vm_object.setLockState(LockStates.UNLOCKED)
+            self.vm_object._setLockState(LockStates.UNLOCKED)
             raise
 
     def deleteBackupSnapshot(self):
@@ -565,7 +563,7 @@ class Base(PyroObject):
                            self._getLogicalVolumePath(self._getBackupSnapshotLogicalVolume())])
 
         # Unlock the VM
-        self.vm_object.setLockState(LockStates.UNLOCKED)
+        self.vm_object._setLockState(LockStates.UNLOCKED)
 
     @Pyro4.expose()
     @locking_method()
@@ -662,6 +660,14 @@ class Base(PyroObject):
     def _getLibvirtDriver(self):
         """Returns the libvirt name of the driver for the disk"""
         return Driver[self.driver].value
+
+    @Pyro4.expose()
+    def getDiskPath(self):
+        """Exposed method for _getDiskPath"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_CLUSTER
+        )
+        return self._getDiskPath()
 
     def _getDiskPath(self):
         """Returns the path of the raw disk image"""

@@ -23,19 +23,18 @@ from enum import Enum
 import libvirt
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt, MCVirtException
-from mcvirt.test.common import stop_and_delete
 from mcvirt.node.drbd import Drbd as NodeDrbd
 from mcvirt.cluster.remote import Remote
-from mcvirt.virtual_machine.virtual_machine import (VirtualMachine, VirtualMachineLockException,
-                                                    VmRegisteredElsewhereException, LockStates,
-                                                    UnsuitableNodeException, VmStoppedException,
-                                                    PowerStates)
-from mcvirt.virtual_machine.hard_drive.drbd import (DrbdConnectionState,
-                                                    DrbdVolumeNotInSyncException,
-                                                    DrbdStateException, DrbdRoleState)
+from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+from mcvirt.exceptions import (VirtualMachineLockException, VmRegisteredElsewhereException,
+                               UnsuitableNodeException, VmStoppedException,
+                               DrbdVolumeNotInSyncException, DrbdStateException,
+                               IsoNotPresentOnDestinationNodeException, MCVirtException)
+from mcvirt.constants import PowerStates
+from mcvirt.virtual_machine.hard_drive.drbd import DrbdConnectionState, DrbdRoleState
 from mcvirt.cluster.cluster import Cluster
-from mcvirt.iso import Iso, IsoNotPresentOnDestinationNodeException
+from mcvirt.iso.iso import Iso
+from mcvirt.test.test_base import TestBase, skip_drbd
 
 
 class LibvirtFailureMode(Enum):
@@ -211,7 +210,7 @@ class OnlineMigrateTests(unittest.TestCase):
                      'Drbd is not enabled on this node')
     def test_migrate_locked(self):
         """Attempts to migrate a locked VM"""
-        self.test_vm_object.setLockState(LockStates(LockStates.LOCKED))
+        self.test_vm_object.setLockState(LockStates.LOCKED.value)
 
         with self.assertRaises(VirtualMachineLockException):
             self.test_vm_object.onlineMigrate(self.get_remote_node())

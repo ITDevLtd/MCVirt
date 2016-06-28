@@ -97,6 +97,7 @@ class Local(Base):
         self._ensure_exists()
         new_disk = Local(vm_object=destination_vm_object, driver=self.driver,
                          disk_id=self.disk_id)
+        self._register_object(new_disk)
         new_logical_volume_name = new_disk._getDiskName()
         disk_size = self.getSize()
 
@@ -110,9 +111,8 @@ class Local(Base):
                 "Error whilst cloning disk logical volume:\n" + str(e)
             )
 
-        new_disk._addToVirtualMachine()
-        self._register_object(new_disk)
-        return new_disk_object
+        new_disk.addToVirtualMachine()
+        return new_disk
 
     def create(self, size):
         """Creates a new disk image, attaches the disk to the VM and records the disk
