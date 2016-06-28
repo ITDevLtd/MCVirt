@@ -20,11 +20,11 @@
 import argparse
 import binascii
 
-from mcvirt.exceptions import (ArgumentParserException, DrbdVolumeNotInSyncException,
-                               PasswordsDoNotMatchException)
+from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
+from mcvirt.auth.user_base import UserBase
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -124,6 +124,29 @@ class Parser(object):
             dest='target_user',
             metavar='Target user',
             help='The user to change the password of'
+        )
+        self.create_user_subparser = self.user_subparser.add_parser(
+            'create',
+            help='Create a new user',
+            parents=[self.parent_parser]
+        )
+        self.create_user_subparser.add_argument(
+            'new_username',
+            metavar='User',
+            type=str,
+            help='The new user to create'
+        )
+        self.create_user_subparser.add_argument(
+            '--user-password',
+            dest='new_user_password',
+            metavar='New password',
+            help='The password for the new user'
+        )
+        self.create_user_subparser.add_argument(
+            '--generate-password',
+            dest='generate_password',
+            action='store_true',
+            help='Generate a password for the new user'
         )
 
         # Add arguments for creating a VM
@@ -982,13 +1005,19 @@ class Parser(object):
                 target_user = args.target_user or Parser.USERNAME
                 user = user_factory.get_user_by_username(target_user)
                 rpc.annotate_object(user)
-
-                if args.new_password:
-                    new_password = args.new_password
-                else:
-                    new_password = System.getUserInput("New password: ", password=True)
-                    repeat_password = System.getUserInput("New password (repeat): ", password=True)
-                    if new_password != repeat_password:
-                        raise PasswordsDoNotMatchException('The two passwords do not match')
-
+                new_password = args.new_password or System.getNewPassword()
                 user.set_password(new_password)
+
+            elif args.user_action == 'create':
+                user_factory = rpc.get_connection('user_factory')
+
+                if args.generate_password:
+                    new_password = UserBase.generate_password(10)
+                else:
+                    new_password = args.new_user_password or System.getNewPassword()
+
+                user_factory.create(args.new_username, new_password)
+
+                self.print_status('New user details:\nUsername: %s' % args.new_username)
+                if args.generate_password:
+                    self.print_status('Password: %s' % new_password)

@@ -19,7 +19,7 @@ import getpass
 import subprocess
 import sys
 
-from mcvirt.exceptions import MCVirtCommandException
+from mcvirt.exceptions import MCVirtCommandException, PasswordsDoNotMatchException
 
 
 class System(object):
@@ -52,3 +52,14 @@ class System(object):
         else:
             sys.stdout.write(display_text)
             return sys.stdin.readline()
+
+    @staticmethod
+    def getNewPassword():
+        """Prompts the user for a new password, throwing an exception is the password is not
+           repeated correctly"""
+        new_password = System.getUserInput("New password: ", password=True)
+        repeat_password = System.getUserInput("New password (repeat): ", password=True)
+        if new_password != repeat_password:
+            raise PasswordsDoNotMatchException('The two passwords do not match')
+
+        return new_password
