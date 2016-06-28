@@ -160,6 +160,16 @@ class UserBase(PyroObject):
             del config['users'][self.get_username()]
         MCVirtConfig().update_config(update_config, 'Deleted user \'%s\'' % self.get_username())
 
+        if self._is_cluster_master:
+            def remote_command(node_connection):
+                remote_user_factory = node_connection.get_connection('user_factory')
+                remote_user = remote_user_factory.get_user_by_username(self.get_username())
+                node_connection.annotate_object(remote_user)
+                remote_user.delete()
+
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(remote_command)
+
     @staticmethod
     def get_default_config():
         """Return the default configuration for the user type."""

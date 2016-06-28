@@ -148,6 +148,17 @@ class Parser(object):
             action='store_true',
             help='Generate a password for the new user'
         )
+        self.remove_user_subparser = self.user_subparser.add_parser(
+            'remove',
+            help='Remove a user',
+            parents=[self.parent_parser]
+        )
+        self.remove_user_subparser.add_argument(
+            'remove_username',
+            metavar='User',
+            type=str,
+            help='The user to remove'
+        )
 
         # Add arguments for creating a VM
         self.create_parser = self.subparsers.add_parser('create', help='Create VM',
@@ -1021,3 +1032,9 @@ class Parser(object):
                 self.print_status('New user details:\nUsername: %s' % args.new_username)
                 if args.generate_password:
                     self.print_status('Password: %s' % new_password)
+
+            elif args.user_action == 'remove':
+                user_factory = rpc.get_connection('user_factory')
+                user = user_factory.get_user_by_username(args.remove_username)
+                rpc.annotate_object(user)
+                user.delete()
