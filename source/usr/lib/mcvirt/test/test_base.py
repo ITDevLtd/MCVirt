@@ -16,6 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import unittest
+import threading
 
 from mcvirt.client.rpc import Connection
 from mcvirt.parser import Parser
@@ -48,10 +49,6 @@ class TestBase(unittest.TestCase):
         """Obtain connections to the daemon and create various
         member variables.
         """
-        # Start RPC daemon
-        daemon = RpcNSMixinDaemon()
-        daemon.start()
-
         # Define RPC credentials, which are the default superuser credentials
         # that are supplied with MCVirt
         self.RPC_USERNAME = 'mjc'

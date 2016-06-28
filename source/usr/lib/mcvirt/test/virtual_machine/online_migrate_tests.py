@@ -126,7 +126,7 @@ class OnlineMigrateTests(TestBase):
 
     @staticmethod
     def suite():
-        """Returns a test suite of the online migrate tests"""
+        """Return a test suite of the online migrate tests"""
         suite = unittest.TestSuite()
         suite.addTest(OnlineMigrateTests('test_migrate_locked'))
         suite.addTest(OnlineMigrateTests('test_migrate_unregistered'))
@@ -143,7 +143,7 @@ class OnlineMigrateTests(TestBase):
         return suite
 
     def setUp(self):
-        """Creates various objects and deletes any test VMs"""
+        """Create various objects and deletes any test VMs"""
         # Get an MCVirt instance
         self.mcvirt = MCVirtLibvirtFail()
 
