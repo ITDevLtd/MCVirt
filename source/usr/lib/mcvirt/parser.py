@@ -20,7 +20,8 @@
 import argparse
 import binascii
 
-from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
+from mcvirt.exceptions import (ArgumentParserException, DrbdVolumeNotInSyncException,
+                               PasswordsDoNotMatchException)
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
@@ -98,6 +99,32 @@ class Parser(object):
                                      metavar='NAME')
         self.iso_parser.add_argument('--add-from-url', dest='add_url',
                                      help='Download and add an ISO', metavar='URL')
+
+        # Add arguments for managing users
+        self.user_parser = self.subparsers.add_parser('user', help='User managment',
+                                                      parents=[self.parent_parser])
+        self.user_subparser = self.user_parser.add_subparsers(
+            dest='user_action',
+            help='User managment action to perform',
+            metavar='Action'
+        )
+        self.change_password_subparser = self.user_subparser.add_parser(
+            'change-password',
+            help='Change a user password',
+            parents=[self.parent_parser]
+        )
+        self.change_password_subparser.add_argument(
+            '--new-password',
+            dest='new_password',
+            metavar='New password',
+            help='The new password'
+        )
+        self.change_password_subparser.add_argument(
+            '--target-user',
+            dest='target_user',
+            metavar='Target user',
+            help='The user to change the password of'
+        )
 
         # Add arguments for creating a VM
         self.create_parser = self.subparsers.add_parser('create', help='Create VM',
@@ -948,3 +975,20 @@ class Parser(object):
                 rpc.annotate_object(iso_object)
                 iso_object.delete()
                 self.print_status('Successfully removed iso: %s' % args.delete_path)
+
+        elif action == 'user':
+            if args.user_action == 'change-password':
+                user_factory = rpc.get_connection('user_factory')
+                target_user = args.target_user or Parser.USERNAME
+                user = user_factory.get_user_by_username(target_user)
+                rpc.annotate_object(user)
+
+                if args.new_password:
+                    new_password = args.new_password
+                else:
+                    new_password = System.getUserInput("New password: ", password=True)
+                    repeat_password = System.getUserInput("New password (repeat): ", password=True)
+                    if new_password != repeat_password:
+                        raise PasswordsDoNotMatchException('The two passwords do not match')
+
+                user.set_password(new_password)

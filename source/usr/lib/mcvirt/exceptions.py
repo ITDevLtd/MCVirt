@@ -154,8 +154,8 @@ class UserDoesNotExistException(MCVirtException):
     pass
 
 
-class OldPasswordIncorrect(MCVirtException):
-    """The old password is not correct"""
+class PasswordsDoNotMatchException(MCVirtException):
+    """The new passwords do not match"""
 
     pass
 

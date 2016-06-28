@@ -106,6 +106,16 @@ class UserBase(PyroObject):
             update_config, 'Updated password for \'%s\'' % self.get_username()
         )
 
+        if self._is_cluster_master:
+            def remote_command(node_connection):
+                remote_user_factory = node_connection.get_connection('user_factory')
+                remote_user = remote_user_factory.get_user_by_username(self.get_username())
+                node_connection.annotate_object(remote_user)
+                remote_user.set_password(new_password)
+
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(remote_command)
+
     def _hash_password(self, password):
         """Hash a password, using the current user's salt"""
         return self.__class__._hash_string(password, self._get_password_salt())
