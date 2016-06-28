@@ -119,6 +119,12 @@ class Parser(object):
             metavar='New password',
             help='The new password'
         )
+        self.change_password_subparser.add_argument(
+            '--target-user',
+            dest='target_user',
+            metavar='Target user',
+            help='The user to change the password of'
+        )
 
         # Add arguments for creating a VM
         self.create_parser = self.subparsers.add_parser('create', help='Create VM',
@@ -973,7 +979,8 @@ class Parser(object):
         elif action == 'user':
             if args.user_action == 'change-password':
                 user_factory = rpc.get_connection('user_factory')
-                user = user_factory.get_user_by_username(Parser.USERNAME)
+                target_user = args.target_user or Parser.USERNAME
+                user = user_factory.get_user_by_username(target_user)
                 rpc.annotate_object(user)
 
                 if args.new_password:
@@ -983,4 +990,5 @@ class Parser(object):
                     repeat_password = System.getUserInput("New password (repeat): ", password=True)
                     if new_password != repeat_password:
                         raise PasswordsDoNotMatchException('The two passwords do not match')
+
                 user.change_password(new_password)

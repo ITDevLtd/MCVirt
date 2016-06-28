@@ -98,6 +98,12 @@ class UserBase(PyroObject):
 
     def _set_password(self, new_password):
         """Set the password for the current user"""
+        # Check that the current user is the same as this user, or that current user has the correct
+        # permissions
+        actual_user = self._get_registered_object('mcvirt_session').get_current_user_object()
+        if actual_user.get_username() != self.get_username():
+            self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+
         password_hash = self._hash_password(new_password)
 
         def update_config(config):
