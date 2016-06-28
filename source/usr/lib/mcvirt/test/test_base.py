@@ -107,6 +107,7 @@ class TestBase(unittest.TestCase):
     def tearDown(self):
         """Destroy stored objects."""
         # Ensure any test VM is stopped and removed from the machine
+        self.rpc.ignore_drbd()
         self.stop_and_delete(self.test_vms['TEST_VM_2']['name'])
         self.stop_and_delete(self.test_vms['TEST_VM_1']['name'])
 

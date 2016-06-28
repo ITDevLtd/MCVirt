@@ -1116,7 +1116,7 @@ class VirtualMachine(PyroObject):
                 remote_connection.annotate_object(remote_vm)
                 remote_vm.setNodeRemote(node)
             cluster = self._get_registered_object('cluster')
-            remote_object = cluster.run_remote_command(remote_command)
+            cluster.run_remote_command(remote_command)
 
         # Update the node in the VM configuration
         def updateVmConfig(config):
@@ -1125,15 +1125,8 @@ class VirtualMachine(PyroObject):
             updateVmConfig, 'Changing node for VM \'%s\' to \'%s\'' %
             (self.get_name(), node))
 
-    @Pyro4.expose()
-    def get_remote_nodes(self):
-        """Provide an exposed method for returning remote nodes"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
-        return self._get_remote_nodes()
-
     def _get_remote_nodes(self):
         """Returns a list of remote available nodes"""
-        from mcvirt.cluster.cluster import Cluster
         # Obtain list of available nodes
         nodes = self.getAvailableNodes()
 

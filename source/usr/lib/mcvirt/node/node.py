@@ -25,12 +25,14 @@ from mcvirt.exceptions import (InvalidVolumeGroupNameException,
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.lock import locking_method
 
 
 class Node(PyroObject):
     """Provides methods to configure the local node."""
 
     @Pyro4.expose()
+    @locking_method()
     def set_storage_volume_group(self, volume_group):
         """Update the MCVirt configuration to set the volume group for VM storage."""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
@@ -50,6 +52,7 @@ class Node(PyroObject):
                                     volume_group)
 
     @Pyro4.expose()
+    @locking_method()
     def set_cluster_ip_address(self, ip_address):
         """Update the cluster IP address for the node."""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)

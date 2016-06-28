@@ -281,9 +281,6 @@ class Drbd(Base):
         if not self._get_registered_object('node_drbd').is_enabled():
             raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
 
-        # Create cluster object for running on remote nodes
-        cluster_instance = self._get_registered_object('cluster')
-
         remote_nodes = self.vm_object._get_remote_nodes()
 
         # Keep track of progress, so the storage stack can be torn down if something goes wrong
@@ -601,7 +598,6 @@ class Drbd(Base):
         self._checkDrbdStatus()
 
         # Ensure that role states are not unknown
-        node_drbd = self._get_registered_object('node_drbd')
         if (local_role_state is DrbdRoleState.UNKNOWN or
             (remote_role_state is DrbdRoleState.UNKNOWN and
              not self._ignore_drbd)):
@@ -689,6 +685,14 @@ class Drbd(Base):
                     (self.resource_name, state.value)
                 )
 
+    @Pyro4.expose()
+    def drbdGetConnectionState(self):
+        """Provide an exposed method for _drbdGetConnectionState"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+        connection_state = self._drbdGetConnectionState()
+        return connection_state.value
+
     def _drbdGetConnectionState(self):
         """Returns the connection state of the Drbd resource"""
         _, stdout, _ = System.runCommand([NodeDrbd.DrbdADM, 'cstate',
@@ -696,6 +700,7 @@ class Drbd(Base):
         state = stdout.strip()
         return DrbdConnectionState(state)
 
+    @Pyro4.expose()
     def drbdGetDiskState(self):
         """Provide an exposed method for drbdGetDiskState"""
         self._get_registered_object('auth').assert_permission(
@@ -800,8 +805,6 @@ class Drbd(Base):
     @locking_method()
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
-        obtained_lock = False
-
         def update_config(config):
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.get_config_object().update_config(
@@ -819,7 +822,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(remote_node=node)
                 remote_disk.setSyncState(sync_state=sync_state)
             cluster.run_remote_command(callback_method=remoteCommand,
-                                     nodes=self.vm_object._get_remote_nodes())
+                                       nodes=self.vm_object._get_remote_nodes())
 
     @Pyro4.expose()
     def verify(self):

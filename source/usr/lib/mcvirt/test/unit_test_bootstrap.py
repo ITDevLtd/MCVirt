@@ -25,13 +25,15 @@ from mcvirt.test.virtual_machine.virtual_machine_tests import VirtualMachineTest
 # from mcvirt.test.auth_tests import AuthTests
 from mcvirt.test.virtual_machine.hard_drive.drbd_tests import DrbdTests
 from mcvirt.test.update_tests import UpdateTests
-#from mcvirt.test.virtual_machine.online_migrate_tests import OnlineMigrateTests
+from mcvirt.test.virtual_machine.online_migrate_tests import OnlineMigrateTests
 from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
 
 
 class UnitTestBootstrap(object):
+    """Bootstrap daemon with unit tests"""
 
     def __init__(self):
+      """Create dameon and test suite objects"""
       # Configure daemon
       self.daemon_run = True
       self.daemon = RpcNSMixinDaemon()
@@ -46,19 +48,25 @@ class UnitTestBootstrap(object):
       network_test_suite = NetworkTests.suite()
       drbd_test_suite = DrbdTests.suite()
       update_test_suite = UpdateTests.suite()
-      #online_migrate_test_suite = OnlineMigrateTests.suite()
       node_test_suite = NodeTests.suite()
-      self.all_tests = unittest.TestSuite(
-          [virtual_machine_test_suite, network_test_suite,
-           drbd_test_suite, update_test_suite, node_test_suite,
-           #online_migrate_test_suite
-           ]
-        )
+      online_migrate_test_suite = OnlineMigrateTests.suite()
+      OnlineMigrateTests.RPC_DAEMON = self.daemon
+      self.all_tests = unittest.TestSuite([
+          virtual_machine_test_suite,
+          network_test_suite,
+          drbd_test_suite,
+          update_test_suite,
+          node_test_suite,
+          online_migrate_test_suite,
+          #auth_test_suite
+      ])
 
     def daemon_loop_condition(self):
+        """Provide a condition for the daemon loop"""
         return self.daemon_run
 
     def start(self):
+        """Start the daemon, run the unit tests and tear down"""
         try:
             # Attempt to start daemon
             self.daemon_thread.start()
@@ -69,6 +77,7 @@ class UnitTestBootstrap(object):
             # Set the run condition flag for daemon to False in order to
             # stop on next loop
             self.daemon_run = False
+            OnlineMigrateTests.RPC_DAEMON = None
             try:
                 # Perform final connection to daemon to ensure that it loops
                 # to stop.

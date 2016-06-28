@@ -16,7 +16,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import sys
-import unittest
 
 sys.path.insert(0, '/usr/lib')
 
