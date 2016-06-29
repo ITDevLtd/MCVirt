@@ -61,7 +61,7 @@ class Connection(object):
             # Attempt to obtain a connection and obtain a session ID
             session_object = self.get_connection(object_name=self.SESSION_OBJECT,
                                                  password=password)
-            session_id = session_object._pyroHandshake['SEID']
+            session_id = session_object._pyroHandshake[Annotations.SESSION_ID]
             return session_id
         except Pyro4.errors.CommunicationError, e:
             raise AuthenticationError(str(e))
