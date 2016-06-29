@@ -500,6 +500,47 @@ class Cluster(PyroObject):
         self.run_remote_command('cluster-cluster-remove_node_configuration',
                                 {'node': remote_host})
 
+    def remove_node_ssl_certificates(self, remote_node):
+        """Remove the SSL certificates relating to a node
+        that is being removed from the cluster
+        """
+        def remove_auth(node_connection, remove_nodes):
+            # Removes the SSL certificates for the remote node
+            cert_gen_factory = node_connection.get_connection('certificate_generator_factory')
+            user_factory = node_connection.get_connection('user_factory')
+            for remove_node in remove_nodes:
+                cert_gen = cert_gen_factory.get_cert_generator(remove_node)
+                node_connection.annotate_object(cert_gen)
+                cert_gen.remove_certificates()
+
+                # Remove the user related to the node
+                user = user_factory.get_cluster_user_by_node(remove_node)
+                node_connection.annotate_object(user)
+                user.delete()
+
+        # For all remaining nodes in the cluster, remove all SSL certificates
+        # and cluster user for node being removed.
+        remote_nodes = self.get_nodes()
+        remote_nodes.remove(remote_node)
+        self.run_remote_command(callback_method=remove_auth, nodes=remote_nodes,
+                                kwargs={'remove_nodes': [remote_node]})
+
+        # Remove Credentials for all nodes in cluster from node being removed
+        remote_nodes.push(get_hostname())
+        self.run_remote_command(callback_method=remove_auth, nodes=[remote_node],
+                                kwargs={'remove_nodes': remote_nodes})
+
+        # Remove authentication from the local node to the node to be removed
+        cert_generator = self._get_registered_object(
+            'certificate_generator_factory'
+        ).get_cert_generator(remote_node)
+        cert_generator.remove_certificates()
+
+        # Remove local cluster user
+        user_factory = self._get_registered_object('user_factory')
+        user = user_factory.get_cluster_user_by_node(remote_node)
+        user.delete()
+
     def get_cluster_ip_address(self):
         """Return the cluster IP address of the local node"""
         cluster_config = self.get_cluster_config()
@@ -540,7 +581,7 @@ class Cluster(PyroObject):
                     nodes.remove(node)
         return nodes
 
-    def run_remote_command(self, callback_method, nodes=None):
+    def run_remote_command(self, callback_method, nodes=None, args=[], kwargs={}):
         """Run a remote command on all (or a given list of) remote nodes"""
         return_data = {}
 
@@ -550,7 +591,7 @@ class Cluster(PyroObject):
         for node in nodes:
             node_object = self.get_remote_node(node)
             if node_object is not None:
-                return_data[node] = callback_method(node_object)
+                return_data[node] = callback_method(node_object, *args, **kwargs)
         return return_data
 
     def check_node_exists(self, node_name):

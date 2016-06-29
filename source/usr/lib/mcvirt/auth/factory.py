@@ -172,3 +172,10 @@ class Factory(PyroObject):
         password = user_type.generate_password(32)
         self.create(username=username, password=password, user_type=user_type)
         return username, password
+
+    def get_cluster_user_by_node(self, node):
+        """Obtain a cluster user for a given node"""
+        for user in self.get_all_user_objects(user_class=ClusterUser):
+            if user.node == node:
+                return user
+        raise UserDoesNotExistException('No user found for node %s' % node)
