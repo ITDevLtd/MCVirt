@@ -23,7 +23,7 @@ import xml.etree.ElementTree as ET
 import netifaces
 
 from mcvirt.exceptions import (NetworkAlreadyExistsException, LibvirtException,
-                               InterfaceDoesNotExist)
+                               InterfaceDoesNotExist, NetworkDoesNotExistException)
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.network import Network
 from mcvirt.rpc.lock import locking_method
@@ -57,7 +57,7 @@ class Factory(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network does not already exist
-        if Network._check_exists(name):
+        if self.check_exists(name):
             raise NetworkAlreadyExistsException('Network already exists: %s' % name)
 
         # Ensure that the physical interface eixsts
@@ -105,9 +105,19 @@ class Factory(PyroObject):
         # Set network to autostart
         network_instance._get_libvirt_object().setAutostart(True)
 
+        if self._is_cluster_master:
+            def remote_add(node):
+                network_factory = node.get_connection('network_factory')
+                network_factory.create(name, physical_interface)
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(remote_add)
+
+        return network_instance
+
     @Pyro4.expose()
     def get_network_by_name(self, network_name):
         """Return a network object of the network for a given name."""
+        self.ensure_exists(network_name)
         network_object = Network(network_name)
         self._register_object(network_object)
         return network_object
@@ -137,3 +147,18 @@ class Factory(PyroObject):
         for network_object in self.get_all_network_objects():
             table.add_row((network_object.get_name(), network_object.get_adapter()))
         return table.draw()
+
+    def ensure_exists(self, name):
+        """Ensure network exists"""
+        if not self.check_exists(name):
+            raise NetworkDoesNotExistException('Network does not exist: %s' % name)
+
+    @Pyro4.expose()
+    def check_exists(self, name):
+        """Check if a network exists"""
+        # Obtain array of all networks from libvirt
+        networks = Network.get_network_config()
+
+        # Determine if the name of any of the networks returned
+        # matches the requested name
+        return (name in networks.keys())

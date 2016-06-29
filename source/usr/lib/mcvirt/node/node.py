@@ -23,15 +23,20 @@ import Pyro4
 from mcvirt.exceptions import (InvalidVolumeGroupNameException,
                                InvalidIPAddressException)
 from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.lock import locking_method
 
 
 class Node(PyroObject):
     """Provides methods to configure the local node."""
 
     @Pyro4.expose()
+    @locking_method()
     def set_storage_volume_group(self, volume_group):
         """Update the MCVirt configuration to set the volume group for VM storage."""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
+
         # Ensure volume_group name is valid
         pattern = re.compile("^[A-Z0-9a-z_-]+$")
         if (not pattern.match(volume_group)):
@@ -46,8 +51,12 @@ class Node(PyroObject):
                                     'Set virtual machine storage volume group to %s' %
                                     volume_group)
 
+    @Pyro4.expose()
+    @locking_method()
     def set_cluster_ip_address(self, ip_address):
         """Update the cluster IP address for the node."""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
+
         # Check validity of IP address (mainly to ensure that )
         pattern = re.compile(r"^((([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])[ (\[]?(\.|dot)"
                              "[ )\]]?){3}([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5]))$")

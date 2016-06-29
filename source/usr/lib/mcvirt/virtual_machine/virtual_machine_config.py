@@ -41,7 +41,7 @@ class VirtualMachineConfig(ConfigFile):
     def get_config_path(vm_name):
         """Provides the path of the VM-spefic configuration file"""
         from mcvirt.virtual_machine.virtual_machine import VirtualMachine
-        return ('%s/config.json' % VirtualMachine.getVMDir(vm_name))
+        return ('%s/config.json' % VirtualMachine._get_vm_dir(vm_name))
 
     @staticmethod
     def create(vm_name, available_nodes, cpu_cores, memory_allocation):

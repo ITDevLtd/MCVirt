@@ -23,11 +23,12 @@ from enum import Enum
 PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY_VM',
                                    'MANAGE_VM_USERS', 'VIEW_VNC_CONSOLE', 'CLONE_VM',
                                    'DELETE_CLONE', 'MANAGE_HOST_NETWORKS', 'MANAGE_CLUSTER',
-                                   'MANAGE_Drbd', 'CAN_IGNORE_Drbd', 'MIGRATE_VM',
+                                   'MANAGE_DRBD', 'CAN_IGNORE_DRBD', 'MIGRATE_VM',
                                    'DUPLICATE_VM', 'SET_VM_LOCK', 'BACKUP_VM',
                                    'CAN_IGNORE_CLUSTER', 'MOVE_VM', 'SET_VM_NODE',
                                    'MANAGE_USERS', 'TEST_SUPERUSER_PERMISSION',
-                                   'TEST_OWNER_PERMISSION', 'TEST_USER_PERMISSION'])
+                                   'TEST_OWNER_PERMISSION', 'TEST_USER_PERMISSION',
+                                   'SUPERUSER', 'MANAGE_NODE'])
 
 # Set the permissions for the permissions groups
 PERMISSION_GROUPS = \

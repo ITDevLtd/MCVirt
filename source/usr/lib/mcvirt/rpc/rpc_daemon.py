@@ -122,7 +122,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     else:
                         Pyro4.current_context.ignore_cluster = False
 
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_Drbd,
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
                                               user_object=user_object) and
                             Annotations.IGNORE_Drbd in data):
                         Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
@@ -169,7 +169,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     else:
                         Pyro4.current_context.ignore_cluster = False
 
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_Drbd,
+                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
                                               user_object=user_object) and
                             Annotations.IGNORE_Drbd in data):
                         Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
@@ -212,6 +212,8 @@ class RpcNSMixinDaemon(object):
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
+        Pyro4.config.THREADPOOL_ALLOW_QUEUE = True
+        Pyro4.config.THREADPOOL_SIZE = 128
         self.hostname = get_hostname()
 
         # Ensure that the required SSL certificates exist
@@ -233,10 +235,10 @@ class RpcNSMixinDaemon(object):
         cert_gen = None
         cert_gen_factory = None
 
-    def start(self):
+    def start(self, *args, **kwargs):
         """Start the Pyro daemon"""
         Pyro4.current_context.STARTUP_PERIOD = False
-        RpcNSMixinDaemon.DAEMON.requestLoop()
+        RpcNSMixinDaemon.DAEMON.requestLoop(*args, **kwargs)
 
     def register(self, obj_or_class, objectId, *args, **kwargs): # Override upstream # noqa
         """Override register to register object with NS."""

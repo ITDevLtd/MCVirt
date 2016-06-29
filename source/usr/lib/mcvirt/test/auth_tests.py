@@ -18,10 +18,9 @@
 import unittest
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt, MCVirtException
-from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
-from mcvirt.auth.auth import Auth, InsufficientPermissionsException
-from mcvirt.test.common import stop_and_delete
+from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+from mcvirt.auth.auth import Auth
+from mcvirt.exceptions import InsufficientPermissionsException
 
 
 def removeTestUserPermissions(mcvirt_instance, username):
