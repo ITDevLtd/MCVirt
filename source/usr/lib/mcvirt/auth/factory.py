@@ -22,7 +22,7 @@ import Pyro4
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import (IncorrectCredentials, InvalidUsernameException,
                                UserDoesNotExistException, InvalidUserTypeException,
-                               UserAlreadyExistsException)
+                               UserAlreadyExistsException, BlankPasswordException)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.user_base import UserBase
 from mcvirt.auth.user import User
@@ -43,11 +43,15 @@ class Factory(PyroObject):
         if user_type not in self.get_user_types():
             raise InvalidUserTypeException('An invalid user type has been passed')
 
+    @Pyro4.expose()
     def create(self, username, password, user_type=User):
         """Create a user."""
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_USERS
         )
+
+        if password == '':
+            raise BlankPasswordException('Password cannot be blank')
 
         # Ensure that username is not part of a reserved namespace
         for user_class in self.get_user_types():
@@ -79,6 +83,15 @@ class Factory(PyroObject):
         def update_config(config):
             config['users'][username] = user_config
         MCVirtConfig().update_config(update_config, 'Create user \'%s\'' % username)
+
+        if user_type == User and self._is_cluster_master:
+            # Create the user on the other nodes in the cluster
+            def remote_command(node_connection):
+                remote_user_factory = node_connection.get_connection('user_factory')
+                remote_user_factory.create(username, password)
+
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(remote_command)
 
     @Pyro4.expose()
     def add_config(self, username, user_config):
