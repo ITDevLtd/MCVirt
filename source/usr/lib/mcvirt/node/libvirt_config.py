@@ -32,7 +32,7 @@ class LibvirtConfig(PyroObject):
 
     CONFIG_FILE = '/etc/libvirt/libvirtd.conf'
     CONFIG_TEMPLATE = '/usr/lib/mcvirt/templates/libvirtd.conf'
-    DEFAULT_FILE = '/etc/default/libvirtd'
+    DEFAULT_FILE = '/etc/default/%s'
     DEFAULT_CONFIG = """
 # Defaults for libvirtd initscript (/etc/init.d/libvirtd)
 # This is a POSIX shell fragment
@@ -70,7 +70,7 @@ libvirtd_opts=" --listen --verbose "
         with open(self.CONFIG_FILE, 'w') as fh:
             fh.write(config_content.respond())
 
-        with open(self.DEFAULT_FILE, 'w') as default_fh:
+        with open(self.DEFAULT_FILE % self.service_name, 'w') as default_fh:
             default_fh.write(self.DEFAULT_CONFIG)
 
         # Update Drbd running configuration
