@@ -133,6 +133,9 @@ class OnlineMigrateTests(TestBase):
 
     def setUp(self):
         """Create various objects and deletes any test VMs"""
+        if not self.rpc.get_connection('node_drbd').is_enabled():
+            self.skipTest('DRBD is not enabled on this node')
+
         # Register fake libvirt connector with daemon
         self.old_libvirt_connector = RpcNSMixinDaemon.DAEMON.registered_factories[
             'libvirt_connector'
