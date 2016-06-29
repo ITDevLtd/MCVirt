@@ -276,6 +276,7 @@ class CertificateGenerator(PyroObject):
     @Pyro4.expose()
     def remove_certificates(self):
         """Remove a certificate directory for a node"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         shutil.rmtree(self.ssl_directory)
 
     @Pyro4.expose()
