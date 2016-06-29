@@ -79,6 +79,7 @@ class Factory(PyroObject):
         """Returns an array of network interface objects for each of the
         interfaces attached to the VM"""
         interfaces = []
+        virtual_machine = self._convert_remote_object(virtual_machine)
         vm_config = virtual_machine.get_config_object().get_config()
         for mac_address in vm_config['network_interfaces'].keys():
             interface_object = NetworkAdapter(mac_address, virtual_machine)
@@ -90,6 +91,7 @@ class Factory(PyroObject):
     def getNetworkAdapterByMacAdress(self, virtual_machine, mac_address):
         """Returns the network adapter by a given MAC address"""
         # Ensure that MAC address is a valid network adapter for the VM
+        virtual_machine = self._convert_remote_object(virtual_machine)
         interface_object = NetworkAdapter(mac_address, virtual_machine)
         self._register_object(interface_object)
         return interface_object

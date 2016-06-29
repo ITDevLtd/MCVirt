@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import stat
 import os
 
 from mcvirt.config_file import ConfigFile
@@ -24,10 +23,11 @@ from mcvirt.constants import DirectoryLocation
 
 class MCVirtConfig(ConfigFile):
     """Provides operations to obtain and set the MCVirt
-       configuration for a VM"""
+    configuration for a VM
+    """
 
     def __init__(self):
-        """Sets member variables and obtains libvirt domain object"""
+        """Set member variables and obtains libvirt domain object"""
         self.config_file = DirectoryLocation.NODE_STORAGE_DIR + '/config.json'
 
         if not os.path.isdir(DirectoryLocation.BASE_STORAGE_DIR):
@@ -40,7 +40,7 @@ class MCVirtConfig(ConfigFile):
         self.upgrade()
 
     def _createConfigDirectories(self):
-        """Creates the configuration directories for the node"""
+        """Create the configuration directories for the node"""
         # Initialise the git repository
         os.mkdir(DirectoryLocation.BASE_STORAGE_DIR)
         os.mkdir(DirectoryLocation.NODE_STORAGE_DIR)
@@ -51,21 +51,22 @@ class MCVirtConfig(ConfigFile):
         self.setConfigPermissions()
 
     def getListenAddress(self):
-        """Returns the address that should be used for listening
-           for connections - the stored IP address, if configured, else
-           all interfaces"""
+        """Return the address that should be used for listening
+        for connections - the stored IP address, if configured, else
+        all interfaces
+        """
         config_ip = self.get_config()['cluster']['cluster_ip']
         return config_ip if config_ip else '0.0.0.0'
 
     def create(self):
-        """Creates a basic VM configuration for new VMs"""
+        """Create a basic VM configuration for new VMs"""
         from node.drbd import Drbd as NodeDrbd
 
         # Create basic config
         json_data = \
             {
                 'version': self.CURRENT_VERSION,
-                'superusers': [""],
+                'superusers': ["mjc"],
                 'permissions':
                 {
                     'user': [],

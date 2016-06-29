@@ -89,7 +89,15 @@ class VirtualMachine(PyroObject):
         and return object
         """
         # Get the domain object.
-        return self._get_registered_object('libvirt_connector').get_connection().lookupByName(self.name)
+        return self._get_registered_object('libvirt_connector').get_connection().lookupByName(
+            self.name
+        )
+
+    @Pyro4.expose()
+    def get_libvirt_xml(self):
+        """Obtain domain XML from libvirt"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
+        return self._getLibvirtDomainObject().XMLDesc()
 
     @Pyro4.expose()
     @locking_method()
@@ -386,7 +394,7 @@ class VirtualMachine(PyroObject):
         if remove_data:
             # Remove VM configuration file
             self.get_config_object().gitRemove('VM \'%s\' has been removed' % self.name)
-            shutil.rmtree(VirtualMachine.getVMDir(self.name))
+            shutil.rmtree(VirtualMachine._get_vm_dir(self.name))
 
         # Remove VM from MCVirt configuration
         def updateMCVirtConfig(config):
@@ -499,6 +507,7 @@ class VirtualMachine(PyroObject):
         self._register_object(disk_drive_object)
         return disk_drive_object
 
+    @Pyro4.expose()
     def getHardDriveObjects(self):
         """Returns an array of disk objects for the disks attached to the VM"""
         disks = self.get_config_object().get_config()['hard_disks']
@@ -531,7 +540,7 @@ class VirtualMachine(PyroObject):
             remote_object = cluster.run_remote_command(remote_command)
 
     @staticmethod
-    def getVMDir(name):
+    def _get_vm_dir(name):
         """Returns the storage directory for a given VM"""
         return DirectoryLocation.BASE_VM_STORAGE_DIR + '/' + name
 
@@ -808,6 +817,8 @@ class VirtualMachine(PyroObject):
         """Returns the storage type of the VM"""
         return self.get_config_object().get_config()['storage_type']
 
+    @Pyro4.expose()
+    @locking_method()
     def clone(self, clone_vm_name):
         """Clones a VM, creating an identical machine, using
            LVM snapshotting to duplicate the Hard disk. Drbd is not
@@ -830,8 +841,8 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Ensure new VM name doesn't already exist
-        if not self._get_registered_object('virtual_machine_factory').check_exists(clone_vm_name):
-            raise VirtualMachineDoesNotExistException('Parent VM %s does not exist' % clone_vm_name)
+        if self._get_registered_object('virtual_machine_factory').check_exists(clone_vm_name):
+            raise VirtualMachineDoesNotExistException('VM %s already exists' % clone_vm_name)
 
         # Ensure VM is not a clone, as cloning a cloned VM will cause issues
         if self.getCloneParent():
@@ -844,10 +855,10 @@ class VirtualMachine(PyroObject):
         for network_adapter in network_adapters:
             networks.append(network_adapter.getConnectedNetwork())
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        new_vm_object = vm_factory.create(clone_vm_name, self.getCPU(),
-                                          self.getRAM(), [], networks, auth_check=False,
-                                          available_nodes=self.getAvailableNodes(),
-                                          node=self.getNode())
+        new_vm_object = vm_factory._create(clone_vm_name, self.getCPU(),
+                                           self.getRAM(), [], networks,
+                                           available_nodes=self.getAvailableNodes(),
+                                           node=self.getNode())
 
         # Mark VM as being a clone and mark parent as being a clone
         def setCloneParent(vm_config):
@@ -876,6 +887,8 @@ class VirtualMachine(PyroObject):
 
         return new_vm_object
 
+    @Pyro4.expose()
+    @locking_method()
     def duplicate(self, duplicate_vm_name):
         """Duplicates a VM, creating an identical machine, making a
            copy of the storage"""
@@ -900,10 +913,10 @@ class VirtualMachine(PyroObject):
         for network_adapter in network_adapters:
             networks.append(network_adapter.getConnectedNetwork())
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
-        new_vm_object = virtual_machine_factory.create(duplicate_vm_name, self.getCPU(),
-                                                       self.getRAM(), [], networks, auth_check=False,
-                                                       available_nodes=self.getAvailableNodes(),
-                                                       node=self.getNode())
+        new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.getCPU(),
+                                                        self.getRAM(), [], networks,
+                                                        available_nodes=self.getAvailableNodes(),
+                                                        node=self.getNode())
 
         # Set current user as an owner of the new VM, so that they have permission
         # to perform functions on the VM
@@ -1103,7 +1116,7 @@ class VirtualMachine(PyroObject):
                 remote_connection.annotate_object(remote_vm)
                 remote_vm.setNodeRemote(node)
             cluster = self._get_registered_object('cluster')
-            remote_object = cluster.run_remote_command(remote_command)
+            cluster.run_remote_command(remote_command)
 
         # Update the node in the VM configuration
         def updateVmConfig(config):
@@ -1114,7 +1127,6 @@ class VirtualMachine(PyroObject):
 
     def _get_remote_nodes(self):
         """Returns a list of remote available nodes"""
-        from mcvirt.cluster.cluster import Cluster
         # Obtain list of available nodes
         nodes = self.getAvailableNodes()
 
@@ -1124,16 +1136,17 @@ class VirtualMachine(PyroObject):
 
         return nodes
 
+    @Pyro4.expose()
     def isRegisteredLocally(self):
         """Returns true if the VM is registered on the local node"""
-        from mcvirt.cluster.cluster import Cluster
         return (self.getNode() == get_hostname())
 
+    @Pyro4.expose()
     def isRegisteredRemotely(self):
         """Returns true if the VM is registered on a remote node"""
-        from mcvirt.cluster.cluster import Cluster
         return (not (self.getNode() == get_hostname() or self.getNode() is None))
 
+    @Pyro4.expose()
     def isRegistered(self):
         """Returns true if the VM is registered on a node"""
         return (self.getNode() is not None)
@@ -1183,27 +1196,35 @@ class VirtualMachine(PyroObject):
 
     def ensureUnlocked(self):
         """Ensures that the VM is in an unlocked state"""
-        if self.getLockState() is LockStates.LOCKED:
+        if self._getLockState() is LockStates.LOCKED:
             raise VirtualMachineLockException('VM \'%s\' is locked' % self.get_name())
 
+    @Pyro4.expose()
     def getLockState(self):
+        return self._getLockState().value
+
+    def _getLockState(self):
         """Returns the lock status of a VM"""
         return LockStates(self.get_config_object().get_config()['lock'])
 
+    @Pyro4.expose()
     def setLockState(self, lock_status):
+        return self._setLockState(LockStates(lock_status))
+
+    def _setLockState(self, lock_status):
         """Sets the lock status of the VM"""
         # Ensure the user has permission to set VM locks
         self._get_registered_object('auth').assert_permission(PERMISSIONS.SET_VM_LOCK, self)
 
         # Check if the lock is already set to this state
-        if self.getLockState() == lock_status:
+        if self._getLockState() == lock_status:
             raise VirtualMachineLockException('Lock for \'%s\' is already set to \'%s\'' %
-                                              (self.get_name(), self.getLockState().name))
+                                              (self.get_name(), self._getLockState().name))
 
         def updateLock(config):
             config['lock'] = lock_status.value
         self.get_config_object().update_config(updateLock, 'Setting lock state of \'%s\' to \'%s\'' %
-                                                        (self.get_name(), lock_status.name))
+                                                           (self.get_name(), lock_status.name))
 
     def setBootOrder(self, boot_devices):
         """Sets the boot devices and the order in which devices are booted from"""

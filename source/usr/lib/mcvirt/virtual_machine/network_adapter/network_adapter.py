@@ -23,9 +23,10 @@ import xml.etree.ElementTree as ET
 from mcvirt.exceptions import NetworkAdapterDoesNotExistException
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.pyro_object import PyroObject
 
 
-class NetworkAdapter(object):
+class NetworkAdapter(PyroObject):
     """Provides operations to network interfaces attached to a VM"""
 
     def __init__(self, mac_address, vm_object):
@@ -33,7 +34,7 @@ class NetworkAdapter(object):
         self.vm_object = vm_object
         self.mac_address = mac_address
 
-        if (not self._check_exists()):
+        if not self._check_exists():
             raise NetworkAdapterDoesNotExistException(
                 'No interface with MAC address \'%s\' attached to VM' %
                 self.getMacAddress())

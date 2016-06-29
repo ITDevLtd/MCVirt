@@ -54,10 +54,12 @@ def locking_method(object_type=None, instance_method=True):
             # If the current Pyro connection has the lock, then do not attempt
             # to lock again, as this will be caused by a locking method calling
             # another locking method, which should not attempt to re-obtain the lock
-            requires_lock = (not Pyro4.current_context.has_lock)
+            requires_lock = (not ('has_lock' in dir(Pyro4.current_context) and
+                                  Pyro4.current_context.has_lock))
 
             logger = Logger()
-            log = logger.create_log(callback, user=Pyro4.current_context.username,
+            username = Pyro4.current_context.username if 'username' in dir(Pyro4.current_context) else ''
+            log = logger.create_log(callback, user=username,
                                     object_name=object_name, object_type=object_type)
 
             if requires_lock:

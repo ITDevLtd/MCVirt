@@ -19,6 +19,7 @@
 
 import os
 import stat
+import Pyro4
 
 from mcvirt.exceptions import (InvalidISOPathException, NameNotSpecifiedException,
                                IsoAlreadyExistsException, FailedToRemoveFileException,
@@ -42,10 +43,12 @@ class Iso(PyroObject):
 
         self.set_iso_permissions()
 
+    @Pyro4.expose()
     def get_name(self):
         """Return the name of the ISO"""
         return self.name
 
+    @Pyro4.expose()
     def get_path(self):
         """Return the full path of the ISO"""
         return DirectoryLocation.ISO_STORAGE_DIR + '/' + self.get_name()

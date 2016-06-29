@@ -19,9 +19,7 @@
 
 import Pyro4
 
-from mcvirt.exceptions import (LibvirtException,
-                               NetworkDoesNotExistException,
-                               NetworkUtilizedException)
+from mcvirt.exceptions import LibvirtException, NetworkUtilizedException
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
@@ -33,10 +31,6 @@ class Network(PyroObject):
     def __init__(self, name):
         """Set member variables and obtains libvirt domain object"""
         self.name = name
-
-        # Ensure network exists
-        if not self._check_exists(name):
-            raise NetworkDoesNotExistException('Network does not exist: %s' % name)
 
     @staticmethod
     def get_network_config():
@@ -72,6 +66,15 @@ class Network(PyroObject):
             del config['networks'][self.get_name()]
         from mcvirt.mcvirt_config import MCVirtConfig
         MCVirtConfig().update_config(update_config, 'Deleted network \'%s\'' % self.get_name())
+
+        if self._is_cluster_master:
+            def remove_remote(node):
+                network_factory = node.get_connection('network_factory')
+                network = network_factory.get_network_by_name(self.name)
+                node.annotate_object(network)
+                network.delete()
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(remove_remote)
 
     def _get_connected_virtual_machines(self):
         """Return an array of VM objects that have an interface connected to the network"""
@@ -114,13 +117,3 @@ class Network(PyroObject):
     def get_adapter(self):
         """Return the name of the physical bridge adapter for the network"""
         return Network.get_network_config()[self.get_name()]
-
-    @staticmethod
-    def _check_exists(name):
-        """Check if a network exists"""
-        # Obtain array of all networks from libvirt
-        networks = Network.get_network_config()
-
-        # Determine if the name of any of the networks returned
-        # matches the requested name
-        return (name in networks.keys())
