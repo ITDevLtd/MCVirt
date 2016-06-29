@@ -18,8 +18,11 @@
 from datetime import datetime
 import Pyro4
 
+from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.syslogger import Syslogger
 
-class Logger(object):
+
+class Logger(PyroObject):
 
     LOGS = []
 
@@ -115,6 +118,10 @@ class LogItem(object):
         self.queue_time = datetime.now()
         self.start_time = None
         self.finish_time = None
+        Syslogger.logger().debug('                    Queued command: %s' % ', '.join([
+            str(self.queue_time), self.user or '', self.object_type or '', self.object_name or '',
+            self.method_name or ''
+        ]))
 
     @property
     def description(self):
@@ -123,22 +130,38 @@ class LogItem(object):
     def start(self):
         self.start_time = datetime.now()
         self.status = LogState.RUNNING
+        Syslogger.logger().debug('                     Start command: %s' % ', '.join([
+            str(self.start_time), self.user or '', self.object_type or '', self.object_name or '',
+            self.method_name or ''
+        ]))
 
     def finish_success(self):
         self.finish_time = datetime.now()
         self.status = LogState.SUCCESS
+        Syslogger.logger().debug('        Command complete (success): %s' % ', '.join([
+            str(self.finish_time), self.user or '', self.object_type or '', self.object_name or '',
+            self.method_name or ''
+        ]))
 
     def finish_error_unknown(self, exception):
         self.finish_time = datetime.now()
         self.status = LogState.FAILED
         self.exception_message = str(exception)
         self.exception_mcvirt = False
+        Syslogger.logger().error('Command failed (Unknown Exception): %s' % ', '.join([
+            str(self.finish_time), self.user or '', self.object_type or '', self.object_name or '',
+            self.method_name or '', self.exception_message or ''
+        ]))
 
     def finish_error(self, exception):
         self.finish_time = datetime.now()
         self.status = LogState.FAILED
         self.exception_message = str(exception)
         self.exception_mcvirt = True
+        Syslogger.logger().error(' Command failed (MCVirt Exception): %s' % ', '.join([
+            str(self.finish_time), self.user or '', self.object_type or '', self.object_name or '',
+            self.method_name or '', self.exception_message or ''
+        ]))
 
 
 def getLogNames(callback, instance_method, object_type, args, kwargs):
