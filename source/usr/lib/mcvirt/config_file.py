@@ -238,7 +238,8 @@ class ConfigFile(object):
 
             # Update the repo
             System.runCommand([self.GIT, 'fetch'], cwd=DirectoryLocation.BASE_STORAGE_DIR)
-            System.runCommand([self.GIT, 'checkout', 'master'], cwd=DirectoryLocation.BASE_STORAGE_DIR)
+            System.runCommand([self.GIT, 'checkout', 'master'],
+                              cwd=DirectoryLocation.BASE_STORAGE_DIR)
             System.runCommand([self.GIT,
                                'branch',
                                '--set-upstream-to',

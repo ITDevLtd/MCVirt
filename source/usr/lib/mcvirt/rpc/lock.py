@@ -58,7 +58,11 @@ def locking_method(object_type=None, instance_method=True):
                                   Pyro4.current_context.has_lock))
 
             logger = Logger()
-            username = Pyro4.current_context.username if 'username' in dir(Pyro4.current_context) else ''
+            if 'username' in dir(Pyro4.current_context):
+                username = Pyro4.current_context.username
+            else:
+                username = ''
+
             log = logger.create_log(callback, user=username,
                                     object_name=object_name, object_type=object_type)
 

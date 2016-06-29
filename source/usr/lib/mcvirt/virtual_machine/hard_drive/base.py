@@ -346,7 +346,7 @@ class Base(PyroObject):
 
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=self.vm_object._get_remote_nodes())
+                                           nodes=self.vm_object._get_remote_nodes())
 
         except MCVirtCommandException, e:
             # Remove any logical volumes that had been created if one of them fails
@@ -387,7 +387,7 @@ class Base(PyroObject):
 
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=self.vm_object._get_remote_nodes())
+                                           nodes=self.vm_object._get_remote_nodes())
 
         except MCVirtCommandException, e:
             raise ExternalStorageCommandErrorException(
@@ -444,7 +444,7 @@ class Base(PyroObject):
 
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=self.vm_object._get_remote_nodes())
+                                           nodes=self.vm_object._get_remote_nodes())
 
         except MCVirtCommandException, e:
             raise ExternalStorageCommandErrorException(
@@ -500,7 +500,7 @@ class Base(PyroObject):
 
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=self.vm_object._get_remote_nodes())
+                                           nodes=self.vm_object._get_remote_nodes())
 
         except MCVirtCommandException, e:
             raise ExternalStorageCommandErrorException(

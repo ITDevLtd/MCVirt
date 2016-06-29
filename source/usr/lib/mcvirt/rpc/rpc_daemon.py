@@ -64,7 +64,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         for factory in self.registered_factories:
             self.registered_factories[factory] = None
 
-    def validateHandshake(self, conn, data): # Override name of upstream method # noqa
+    def validateHandshake(self, conn, data):  # Override name of upstream method # noqa
         """Perform authentication on new connections"""
         # Reset session_id for current context
         Pyro4.current_context.STARTUP_PERIOD = False
@@ -240,7 +240,7 @@ class RpcNSMixinDaemon(object):
         Pyro4.current_context.STARTUP_PERIOD = False
         RpcNSMixinDaemon.DAEMON.requestLoop(*args, **kwargs)
 
-    def register(self, obj_or_class, objectId, *args, **kwargs): # Override upstream # noqa
+    def register(self, obj_or_class, objectId, *args, **kwargs):  # Override upstream # noqa
         """Override register to register object with NS."""
         uri = RpcNSMixinDaemon.DAEMON.register(obj_or_class, *args, **kwargs)
         ns = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)

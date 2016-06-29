@@ -140,7 +140,7 @@ class AuthTests(unittest.TestCase):
 
         # Add user to 'user' group and ensure they have been added
         self.auth_object.add_user_permission_group(self.mcvirt, 'user', self.test_user,
-                                                test_vm_object)
+                                                   test_vm_object)
         self.assertTrue(
             self.test_user in self.auth_object.get_users_in_permission_group(
                 'user',
@@ -157,7 +157,8 @@ class AuthTests(unittest.TestCase):
         self.assertFalse(
             self.test_user in self.auth_object.get_users_in_permission_group(
                 'user',
-                test_vm_object))
+                test_vm_object
+            ))
 
     def test_add_delete_superuser(self):
         """Adds/deletes a user to/from the superuser role"""

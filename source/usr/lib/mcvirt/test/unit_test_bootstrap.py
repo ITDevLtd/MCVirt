@@ -58,7 +58,7 @@ class UnitTestBootstrap(object):
             update_test_suite,
             node_test_suite,
             online_migrate_test_suite,
-            #auth_test_suite
+            # auth_test_suite
         ])
 
     def daemon_loop_condition(self):

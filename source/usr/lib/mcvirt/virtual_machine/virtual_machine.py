@@ -34,7 +34,7 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                CannotCloneDrbdBasedVmsException, CannotDeleteClonedVmException,
                                VirtualMachineLockException, InvalidArgumentException,
                                VirtualMachineDoesNotExistException, VmIsCloneException,
-                               VncNotEnabledException)
+                               VncNotEnabledException, AttributeAlreadyChanged)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
@@ -337,19 +337,15 @@ class VirtualMachine(PyroObject):
         """Delete the VM - removing it from LibVirt and from the filesystem"""
         # Check the user has permission to modify VMs or
         # that the user is the owner of the VM and the VM is a clone
-        if not (
-                self._get_registered_object('auth').check_permission(PERMISSIONS.MODIFY_VM, self) or
-            (
-                    self.getCloneParent() and
+        if not (self._get_registered_object('auth').check_permission(
+                PERMISSIONS.MODIFY_VM, self) or
+                (self.getCloneParent() and
                     self._get_registered_object('auth').check_permission(
-                        PERMISSIONS.DELETE_CLONE,
-                        self
-                    )
-                    )
-        ):
+                        PERMISSIONS.DELETE_CLONE, self))
+                ):
             raise InsufficientPermissionsException(
-                'User does not have the required permission - ' +
-                'User must have MODIFY_VM permission or be the owner of the cloned VM'
+                ('User does not have the required permission - '
+                 'User must have MODIFY_VM permission or be the owner of the cloned VM')
             )
 
         # Determine if VM is running
@@ -458,7 +454,7 @@ class VirtualMachine(PyroObject):
 
         # Update the MCVirt configuration
         vm_object.update_config(['memory_allocation'], str(memory_allocation),
-                               'RAM allocation has been changed to %s' % memory_allocation)
+                                'RAM allocation has been changed to %s' % memory_allocation)
 
     @Pyro4.expose()
     def getCPU(self):
@@ -498,7 +494,7 @@ class VirtualMachine(PyroObject):
 
         # Update the MCVirt configuration
         self.update_config(['cpu_cores'], str(cpu_count), 'CPU count has been changed to %s' %
-                                                         cpu_count)
+                                                          cpu_count)
 
     @Pyro4.expose()
     def get_disk_drive(self):
@@ -535,7 +531,7 @@ class VirtualMachine(PyroObject):
                 remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
                 remote_object.annotate_object(remote_vm)
                 remote_vm.update_config(attribute_path=attribute_path, value=value,
-                                       reason=reason)
+                                        reason=reason)
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.run_remote_command(remote_command)
 
@@ -978,8 +974,8 @@ class VirtualMachine(PyroObject):
         available_nodes.remove(source_node)
         available_nodes.append(destination_node)
         self.update_config(['available_nodes'], available_nodes,
-                          'Moved VM \'%s\' from node \'%s\' to node \'%s\'' %
-                          (self.get_name(), source_node, destination_node))
+                           'Moved VM \'%s\' from node \'%s\' to node \'%s\'' %
+                           (self.get_name(), source_node, destination_node))
 
         # Move each of the attached disks to the remote node
         for disk_object in self.getHardDriveObjects():
@@ -1007,8 +1003,7 @@ class VirtualMachine(PyroObject):
         self._register()
 
     def _register(self, set_node=True):
-        """Registers a VM with LibVirt"""
-        from mcvirt.cluster.cluster import Cluster
+        """Register a VM with LibVirt"""
         # Import domain XML template
         current_node = self.getNode()
         if current_node is not None:
@@ -1073,7 +1068,7 @@ class VirtualMachine(PyroObject):
         self._unregister()
 
     def _unregister(self):
-        """Unregisters the VM from the local node"""
+        """Unregister the VM from the local node"""
         # Ensure VM is unlocked
         self.ensureUnlocked()
 
@@ -1223,8 +1218,9 @@ class VirtualMachine(PyroObject):
 
         def updateLock(config):
             config['lock'] = lock_status.value
-        self.get_config_object().update_config(updateLock, 'Setting lock state of \'%s\' to \'%s\'' %
-                                                           (self.get_name(), lock_status.name))
+        self.get_config_object().update_config(updateLock,
+                                               'Setting lock state of \'%s\' to \'%s\'' %
+                                               (self.get_name(), lock_status.name))
 
     def setBootOrder(self, boot_devices):
         """Sets the boot devices and the order in which devices are booted from"""

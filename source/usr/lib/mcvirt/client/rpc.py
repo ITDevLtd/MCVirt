@@ -19,7 +19,7 @@
 
 import Pyro4
 
-import mcvirt.exceptions # Import necessary for Pyro # noqa
+import mcvirt.exceptions  # Import necessary for Pyro # noqa
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
@@ -49,7 +49,7 @@ class Connection(object):
         else:
             self.__proxy_username = None
 
-        # Store the passed session_id so that it may abe used for the initial connection
+        # Store the passed session_id so that it may be used for the initial connection
         self.__session_id = session_id
 
         # Perform an initial connection to obtain/verify the session ID
@@ -97,7 +97,7 @@ class Connection(object):
 
         class AuthProxy(Pyro4.Proxy):
 
-            def _pyroValidateHandshake(self, data): # Override upstream # noqa
+            def _pyroValidateHandshake(self, data):  # Override upstream # noqa
                 self._pyroHandshake[Annotations.SESSION_ID] = data
 
         # Create a Proxy object, using the overriden Proxy class and return.

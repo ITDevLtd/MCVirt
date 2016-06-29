@@ -324,7 +324,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(remote_node=node, registered=False)
                 remote_disk.generateDrbdConfig()
             cluster.run_remote_command(callback_method=remoteCommand,
-                                     nodes=remote_nodes)
+                                       nodes=remote_nodes)
             progress = Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG_R
 
             # Setup meta data on Drbd volume
@@ -334,7 +334,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(remote_node=node, registered=False)
                 remote_disk.initialiseMetaData()
             cluster.run_remote_command(callback_method=remoteCommand,
-                                     nodes=remote_nodes)
+                                       nodes=remote_nodes)
 
             # Bring up Drbd resource
             self._drbdUp()
@@ -344,7 +344,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(remote_node=node, registered=False)
                 remote_disk.drbdUp()
             cluster.run_remote_command(callback_method=remoteCommand,
-                                     nodes=remote_nodes)
+                                       nodes=remote_nodes)
             progress = Drbd.CREATE_PROGRESS.Drbd_UP_R
 
             # Wait for 5 seconds to let Drbd initialise
@@ -367,7 +367,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(remote_node=node, registered=False)
                 remote_disk.drbdConnect()
             cluster.run_remote_command(callback_method=remoteCommand,
-                                     nodes=remote_nodes)
+                                       nodes=remote_nodes)
             progress = Drbd.CREATE_PROGRESS.Drbd_CONNECT_R
 
             # Mark volume as primary on local node
@@ -377,7 +377,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(remote_node=node, registered=False)
                 remote_disk.drbdSetSecondary()
             cluster.run_remote_command(callback_method=remoteCommand,
-                                     nodes=remote_nodes)
+                                       nodes=remote_nodes)
 
         except Exception:
             cluster = self._get_registered_object('cluster')
@@ -387,7 +387,7 @@ class Drbd(Base):
                     remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.drbdDisconnect()
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=remote_nodes)
+                                           nodes=remote_nodes)
 
             if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_CONNECT.value):
                 self._drbdDisconnect()
@@ -400,7 +400,7 @@ class Drbd(Base):
                     remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.drbdDown()
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=remote_nodes)
+                                           nodes=remote_nodes)
 
             if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_UP.value):
                 self._drbdDown()
@@ -410,7 +410,7 @@ class Drbd(Base):
                     remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.removeDrbdConfig()
                 cluster.run_remote_command(callback_method=remoteCommand,
-                                         nodes=remote_nodes)
+                                           nodes=remote_nodes)
 
             if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG.value):
                 self._removeDrbdConfig()
@@ -436,14 +436,14 @@ class Drbd(Base):
             remote_disk = self.get_remote_object(remote_node=node, registered=False)
             remote_disk.drbdDisconnect()
         cluster.run_remote_command(callback_method=remoteCommand,
-                                 nodes=remote_nodes)
+                                   nodes=remote_nodes)
         self._drbdDisconnect()
 
         def remoteCommand(node):
             remote_disk = self.get_remote_object(remote_node=node, registered=False)
             remote_disk.drbdDown()
         cluster.run_remote_command(callback_method=remoteCommand,
-                                 nodes=remote_nodes)
+                                   nodes=remote_nodes)
         self._drbdDown()
 
         # Remove the Drbd configuration from all nodes
@@ -451,7 +451,7 @@ class Drbd(Base):
             remote_disk = self.get_remote_object(remote_node=node, registered=False)
             remote_disk.removeDrbdConfig()
         cluster.run_remote_command(callback_method=remoteCommand,
-                                 nodes=remote_nodes)
+                                   nodes=remote_nodes)
         self._removeDrbdConfig()
 
         # Remove the meta and raw logical volume from all nodes
@@ -579,7 +579,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(remote_node=node)
                 remote_disk.setTwoPrimariesConfig(allow=allow)
             cluster_instance.run_remote_command(callback_method=remoteCommand,
-                                              nodes=self.vm_object._get_remote_nodes())
+                                                nodes=self.vm_object._get_remote_nodes())
 
     @Pyro4.expose()
     @locking_method()
@@ -876,21 +876,21 @@ class Drbd(Base):
         if source_node not in cluster_instance.getFailedNodes():
             src_node_object = cluster_instance.get_remote_node(source_node)
             src_node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdDisconnect',
-                                             {'vm_name': self.vm_object.get_name(),
-                                              'disk_id': self.disk_id})
+                                               {'vm_name': self.vm_object.get_name(),
+                                                'disk_id': self.disk_id})
             src_node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdDown',
-                                             {'config': self._dumpConfig()})
+                                               {'config': self._dumpConfig()})
 
             # Remove the Drbd configuration from source node
             src_node_object.run_remote_command('virtual_machine-hard_drive-drbd-removeDrbdConfig',
-                                             {'config': self._dumpConfig()})
+                                               {'config': self._dumpConfig()})
 
             # Remove the meta logical volume from remote node
             src_node_object.run_remote_command('virtual_machine-hard_drive-removeLogicalVolume',
-                                             {'config': self._dumpConfig(),
-                                              'name': self._getLogicalVolumeName(
-                                                  self.Drbd_META_SUFFIX),
-                                              'ignore_non_existent': False})
+                                               {'config': self._dumpConfig(),
+                                                'name': self._getLogicalVolumeName(
+                                                    self.Drbd_META_SUFFIX),
+                                                'ignore_non_existent': False})
 
         # Disconnect the local Drbd volume
         self._drbdDisconnect()
@@ -902,56 +902,56 @@ class Drbd(Base):
         raw_logical_volume_name = self._getLogicalVolumeName(
             self.Drbd_RAW_SUFFIX)
         dest_node_object.run_remote_command('virtual_machine-hard_drive-createLogicalVolume',
-                                          {'config': self._dumpConfig(),
-                                           'name': raw_logical_volume_name,
-                                           'size': disk_size})
+                                            {'config': self._dumpConfig(),
+                                             'name': raw_logical_volume_name,
+                                             'size': disk_size})
 
         # Activate and zero raw volume
         dest_node_object.run_remote_command('virtual_machine-hard_drive-activateLogicalVolume',
-                                          {'config': self._dumpConfig(),
-                                           'name': raw_logical_volume_name})
+                                            {'config': self._dumpConfig(),
+                                             'name': raw_logical_volume_name})
         dest_node_object.run_remote_command('virtual_machine-hard_drive-zeroLogicalVolume',
-                                          {'config': self._dumpConfig(),
-                                           'name': raw_logical_volume_name,
-                                           'size': disk_size})
+                                            {'config': self._dumpConfig(),
+                                             'name': raw_logical_volume_name,
+                                             'size': disk_size})
 
         meta_logical_volume_name = self._getLogicalVolumeName(
             self.Drbd_META_SUFFIX)
         meta_volume_size = self._calculateMetaDataSize()
         dest_node_object.run_remote_command('virtual_machine-hard_drive-createLogicalVolume',
-                                          {'config': self._dumpConfig(),
-                                           'name': meta_logical_volume_name,
-                                           'size': meta_volume_size})
+                                            {'config': self._dumpConfig(),
+                                             'name': meta_logical_volume_name,
+                                             'size': meta_volume_size})
 
         # Activate and zero meta volume
         dest_node_object.run_remote_command('virtual_machine-hard_drive-activateLogicalVolume',
-                                          {'config': self._dumpConfig(),
-                                           'name': meta_logical_volume_name})
+                                            {'config': self._dumpConfig(),
+                                             'name': meta_logical_volume_name})
         dest_node_object.run_remote_command('virtual_machine-hard_drive-zeroLogicalVolume',
-                                          {'config': self._dumpConfig(),
-                                           'name': meta_logical_volume_name,
-                                           'size': meta_volume_size})
+                                            {'config': self._dumpConfig(),
+                                             'name': meta_logical_volume_name,
+                                             'size': meta_volume_size})
 
         # Generate Drbd configuration on local and remote node
         self._generateDrbdConfig()
         dest_node_object.run_remote_command('virtual_machine-hard_drive-drbd-generateDrbdConfig',
-                                          {'config': self._dumpConfig()})
+                                            {'config': self._dumpConfig()})
         NodeDrbd(self.vm_object.mcvirt_object).adjust_drbd_config(
             self.resource_name
         )
 
         # Initialise meta-data on destination node
         dest_node_object.run_remote_command('virtual_machine-hard_drive-drbd-initialiseMetaData',
-                                          {'config': self._dumpConfig()})
+                                            {'config': self._dumpConfig()})
 
         # Bring up Drbd volume on destination node
         dest_node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdUp',
-                                          {'config': self._dumpConfig()})
+                                            {'config': self._dumpConfig()})
 
         # Set destination node to secondary
         dest_node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdSetSecondary',
-                                          {'vm_name': self.vm_object.get_name(),
-                                           'disk_id': self.disk_id})
+                                            {'vm_name': self.vm_object.get_name(),
+                                             'disk_id': self.disk_id})
 
         # Overwrite peer with data from local node
         self._drbdOverwritePeer()
@@ -959,10 +959,10 @@ class Drbd(Base):
         # Remove the raw logic volume from the source node
         if (source_node not in cluster_instance.getFailedNodes()):
             src_node_object.run_remote_command('virtual_machine-hard_drive-removeLogicalVolume',
-                                             {'config': self._dumpConfig(),
-                                              'name': self._getLogicalVolumeName(
-                                                  self.Drbd_RAW_SUFFIX),
-                                              'ignore_non_existent': False})
+                                               {'config': self._dumpConfig(),
+                                                'name': self._getLogicalVolumeName(
+                                                   self.Drbd_RAW_SUFFIX),
+                                                'ignore_non_existent': False})
 
     def _getAvailableDrbdPort(self):
         """Obtains the next available Drbd port"""

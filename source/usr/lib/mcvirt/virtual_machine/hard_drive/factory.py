@@ -79,8 +79,10 @@ class Factory(PyroObject):
 
         available_storage_types = self._getAvailableStorageTypes()
         if storage_type:
-            if storage_type not in [available_storage.__name__ for available_storage in available_storage_types]:
-                raise UnknownStorageTypeException('%s is not supported by this node' % storage_type)
+            if (storage_type not in
+                    [available_storage.__name__ for available_storage in available_storage_types]):
+                raise UnknownStorageTypeException('%s is not supported by this node' %
+                                                  storage_type)
         else:
             if len(available_storage_types) > 1:
                 raise UnknownStorageTypeException('Storage type must be specified')

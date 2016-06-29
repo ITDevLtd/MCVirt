@@ -54,7 +54,9 @@ class Factory(PyroObject):
                 remote_vm_factory = node_connection.get_connection('virtual_machine_factory')
                 remote_vm = remote_vm_factory.getVirtualMachineByName(virtual_machine.get_name())
                 remote_network_factory = node_connection.get_connection('network_factory')
-                remote_network = remote_network_factory.get_network_by_name(network_object.get_name())
+                remote_network = remote_network_factory.get_network_by_name(
+                    network_object.get_name()
+                )
                 remote_network_adapter_factory = node_connection.get_connection(
                     'network_adapter_factory')
                 remote_network_adapter_factory.create(

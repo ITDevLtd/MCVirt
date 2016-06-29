@@ -84,7 +84,8 @@ class VirtualMachineLibvirtFail(VirtualMachine):
            method to simulate different failure cases"""
         libvirt_object = super(VirtualMachineLibvirtFail, self)._getLibvirtDomainObject()
 
-        if VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE is LibvirtFailureMode.PRE_MIGRATION_FAILURE:
+        if (VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE is
+                LibvirtFailureMode.PRE_MIGRATION_FAILURE):
 
             # Override migrate3 method to raise an exception before the migration takes place
             def migrate3(self, *args, **kwargs):
@@ -94,7 +95,8 @@ class VirtualMachineLibvirtFail(VirtualMachine):
             function_type = type(libvirt.virDomain.migrate3)
             libvirt_object.migrate3 = function_type(migrate3, libvirt_object, libvirt.virDomain)
 
-        elif VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE is LibvirtFailureMode.POST_MIGRATION_FAILURE:
+        elif (VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE is
+                LibvirtFailureMode.POST_MIGRATION_FAILURE):
             # Override the migrate3 method to raise an exception
             # after the migration has taken place
             def migrate3(self, *args, **kwargs):
@@ -253,7 +255,9 @@ class OnlineMigrateTests(TestBase):
         # Reset the VM configuration
         def resetNetwork(config):
             for mac_address in config['network_interfaces']:
-                config['network_interfaces'][mac_address] = self.test_vms['TEST_VM_1']['networks'][0]
+                config['network_interfaces'][mac_address] = self.test_vms[
+                    'TEST_VM_1'
+                ]['networks'][0]
         self.local_vm_object.get_config_object().update_config(resetNetwork)
 
     @skip_drbd(True)
@@ -340,7 +344,8 @@ class OnlineMigrateTests(TestBase):
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.NORMAL_RUN
 
         # Ensure the VM is still registered on the remote node and in a running state
-        self.assertEqual(self.local_vm_object.getNode(), self.local_vm_object._get_remote_nodes()[0])
+        self.assertEqual(self.local_vm_object.getNode(),
+                         self.local_vm_object._get_remote_nodes()[0])
         self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING)
 
         # Ensure that the VM is registered with the remote libvirt instance and not on the local
@@ -407,7 +412,8 @@ class OnlineMigrateTests(TestBase):
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.NORMAL_RUN
 
         # Ensure the VM is still registered on the remote node and in a running state
-        self.assertEqual(self.local_vm_object.getNode(), self.local_vm_object._get_remote_nodes()[0])
+        self.assertEqual(self.local_vm_object.getNode(),
+                         self.local_vm_object._get_remote_nodes()[0])
         self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING.value)
 
         # Ensure that the VM is registered with the remote libvirt instance and not on the local

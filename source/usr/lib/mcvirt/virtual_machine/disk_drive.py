@@ -17,14 +17,11 @@
 
 import libvirt
 import xml.etree.ElementTree as ET
-import os
 import Pyro4
 
-from mcvirt.exceptions import LibvirtException
+from mcvirt.exceptions import LibvirtException, IsoNotPresentOnDestinationNodeException
 from mcvirt.iso.iso import Iso
-from mcvirt.cluster.cluster import Cluster
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.constants import DirectoryLocation
 
@@ -98,8 +95,8 @@ class DiskDrive(PyroObject):
             # @TODO Update
             cluster_instance = self._get_registered_object('cluster')
             return_data = cluster_instance.run_remote_command('iso-get_isos', {},
-                                                            nodes=[destination_node_name])
-            if (self.getCurrentDisk().get_name() not in return_data[destination_node_name]):
+                                                              nodes=[destination_node_name])
+            if self.getCurrentDisk().get_name() not in return_data[destination_node_name]:
                 raise IsoNotPresentOnDestinationNodeException(
                     'The ISO attached to \'%s\' (%s) is not present on %s' %
                     (self.vm_object.get_name(), self.getCurrentDisk().get_name(),
