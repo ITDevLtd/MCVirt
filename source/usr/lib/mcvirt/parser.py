@@ -138,7 +138,7 @@ class Parser(object):
         )
         self.create_user_mut_ex_group = self.create_user_subparser.add_mutually_exclusive_group(
             required=False
-         )
+        )
         self.create_user_mut_ex_group.add_argument(
             '--user-password',
             dest='new_user_password',

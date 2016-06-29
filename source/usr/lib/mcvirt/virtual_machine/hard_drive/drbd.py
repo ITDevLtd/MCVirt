@@ -961,7 +961,7 @@ class Drbd(Base):
             src_node_object.run_remote_command('virtual_machine-hard_drive-removeLogicalVolume',
                                                {'config': self._dumpConfig(),
                                                 'name': self._getLogicalVolumeName(
-                                                   self.Drbd_RAW_SUFFIX),
+                                                    self.Drbd_RAW_SUFFIX),
                                                 'ignore_non_existent': False})
 
     def _getAvailableDrbdPort(self):
