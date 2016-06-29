@@ -56,7 +56,8 @@ class System(object):
     @staticmethod
     def getNewPassword():
         """Prompts the user for a new password, throwing an exception is the password is not
-           repeated correctly"""
+        repeated correctly
+        """
         new_password = System.getUserInput("New password: ", password=True)
         repeat_password = System.getUserInput("New password (repeat): ", password=True)
         if new_password != repeat_password:
