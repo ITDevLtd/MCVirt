@@ -148,7 +148,7 @@ class LogItem(object):
         self.status = LogState.FAILED
         self.exception_message = str(exception)
         self.exception_mcvirt = False
-        Syslogger.logger().debug('Command failed (Unknown Exception): %s' % ', '.join([
+        Syslogger.logger().error('Command failed (Unknown Exception): %s' % ', '.join([
             str(self.finish_time), self.user or '', self.object_type or '', self.object_name or '',
             self.method_name or '', self.exception_message or ''
         ]))
@@ -158,7 +158,7 @@ class LogItem(object):
         self.status = LogState.FAILED
         self.exception_message = str(exception)
         self.exception_mcvirt = True
-        Syslogger.logger().debug(' Command failed (MCVirt Exception): %s' % ', '.join([
+        Syslogger.logger().error(' Command failed (MCVirt Exception): %s' % ', '.join([
             str(self.finish_time), self.user or '', self.object_type or '', self.object_name or '',
             self.method_name or '', self.exception_message or ''
         ]))
