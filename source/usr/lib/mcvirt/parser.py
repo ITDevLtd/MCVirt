@@ -136,13 +136,16 @@ class Parser(object):
             type=str,
             help='The new user to create'
         )
-        self.create_user_subparser.add_argument(
+        self.create_user_mut_ex_group = self.create_user_subparser.add_mutually_exclusive_group(
+            required=False
+         )
+        self.create_user_mut_ex_group.add_argument(
             '--user-password',
             dest='new_user_password',
             metavar='New password',
             help='The password for the new user'
         )
-        self.create_user_subparser.add_argument(
+        self.create_user_mut_ex_group.add_argument(
             '--generate-password',
             dest='generate_password',
             action='store_true',

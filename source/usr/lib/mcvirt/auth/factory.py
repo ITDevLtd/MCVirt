@@ -22,7 +22,7 @@ import Pyro4
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import (IncorrectCredentials, InvalidUsernameException,
                                UserDoesNotExistException, InvalidUserTypeException,
-                               UserAlreadyExistsException)
+                               UserAlreadyExistsException, BlankPasswordException)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.user_base import UserBase
 from mcvirt.auth.user import User
@@ -49,6 +49,9 @@ class Factory(PyroObject):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_USERS
         )
+
+        if password == '':
+            raise BlankPasswordException('Password cannot be blank')
 
         # Ensure that username is not part of a reserved namespace
         for user_class in self.get_user_types():
