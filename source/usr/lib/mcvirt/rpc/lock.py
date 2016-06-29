@@ -21,6 +21,7 @@ from threading import Lock
 
 from mcvirt.exceptions import MCVirtException
 from mcvirt.logger import Logger, getLogNames
+from mcvirt.syslogger import Syslogger
 
 
 class MethodLock(object):
@@ -71,14 +72,16 @@ def locking_method(object_type=None, instance_method=True):
             try:
                 response = callback(*args, **kwargs)
             except MCVirtException as e:
-                print "".join(Pyro4.util.getPyroTraceback())
+                Syslogger.logger().error('An internal MCVirt exception occurred in lock')
+                Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
                 log.finish_error(e)
                 if requires_lock:
                     lock.release()
                     Pyro4.current_context.has_lock = False
                 raise
             except Exception as e:
-                print "".join(Pyro4.util.getPyroTraceback())
+                Syslogger.logger().error('Unknown exception occurred in lock')
+                Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
                 log.finish_error_unknown(e)
                 if requires_lock:
                     lock.release()

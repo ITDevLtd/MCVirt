@@ -31,6 +31,7 @@ class DirectoryLocation(object):
     ISO_STORAGE_DIR = NODE_STORAGE_DIR + '/iso'
     LOCK_FILE_DIR = '/var/run/lock/mcvirt'
     LOCK_FILE = LOCK_FILE_DIR + '/lock'
+    LOG_FILE = '/var/log/mcvirt.log'
 
 
 class LockStates(Enum):

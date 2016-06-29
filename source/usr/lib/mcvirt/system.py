@@ -20,6 +20,7 @@ import subprocess
 import sys
 
 from mcvirt.exceptions import MCVirtCommandException
+from mcvirt.syslogger import Syslogger
 
 
 class System(object):
@@ -32,22 +33,27 @@ class System(object):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=cwd)
-        if (command_process.wait() and raise_exception_on_failure):
+        Syslogger.logger().debug('Started system command: %s' % ', '.join(command_args))
+        rc = command_process.wait()
+        stdout = command_process.stdout.read()
+        stderr = command_process.stderr.read()
+        if rc and raise_exception_on_failure:
+            Syslogger.logger().error("Failed system command: %s\nRC: %s\nStdout: %s\nStderr: %s" %
+                                   (', '.join(command_args), rc, stdout, stderr))
             raise MCVirtCommandException(
                 "Command: %s\nExit code: %s\nOutput:\n%s" %
                 (' '.join(command_args),
-                 command_process.returncode,
-                 command_process.stdout.read() +
-                 command_process.stderr.read()))
-        return (
-            command_process.returncode,
-            command_process.stdout.read(),
-            command_process.stderr.read())
+                 rc,
+                 stdout + stderr))
+
+        Syslogger.logger().debug("Successful system command: %s\nRC: %s\nStdout: %s\nStderr: %s" %
+                               (', '.join(command_args), rc, stdout, stderr))
+        return (rc, stdout, stderr)
 
     @staticmethod
     def getUserInput(display_text, password=False):
         """Prompts the user for input"""
-        if (password):
+        if password:
             return getpass.getpass(display_text)
         else:
             sys.stdout.write(display_text)

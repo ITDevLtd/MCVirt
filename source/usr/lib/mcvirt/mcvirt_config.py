@@ -100,7 +100,8 @@ class MCVirtConfig(ConfigFile):
                         "user_type": "User"
                     }
                 },
-                'libvirt_configured': False
+                'libvirt_configured': False,
+                'log_level': 'WARNING'
             }
 
         # Write the configuration to disk
