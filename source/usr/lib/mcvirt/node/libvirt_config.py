@@ -41,7 +41,7 @@ class LibvirtConfig(PyroObject):
 start_libvirtd="yes"
 
 # options passed to libvirtd, add "-l" to listen on tcp
-libvirtd_opts=" --listen --verbose "
+libvirtd_opts=" --listen --verbose %s"
 """
 
     def __init__(self):
@@ -70,8 +70,13 @@ libvirtd_opts=" --listen --verbose "
         with open(self.CONFIG_FILE, 'w') as fh:
             fh.write(config_content.respond())
 
+        if self.service_name == 'libvirt-bin':
+            default_config = self.DEFAULT_CONFIG % '--d '
+        else:
+            default_config = self.DEFAULT_CONFIG % ''
+
         with open(self.DEFAULT_FILE % self.service_name, 'w') as default_fh:
-            default_fh.write(self.DEFAULT_CONFIG)
+            default_fh.write(default_config)
 
         # Update Drbd running configuration
         self._reload_libvirt()
