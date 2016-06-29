@@ -18,11 +18,13 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from Cheetah.Template import Template
+import os
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
+from mcvirt.exceptions import LibvirtNotInstalledException
 
 
 class LibvirtConfig(PyroObject):
@@ -45,6 +47,17 @@ libvirtd_opts=" --listen --verbose "
     def __init__(self):
         """Create variable to determine if a hard restart is required"""
         self.hard_restart = False
+
+        # Determine location of libvirt init script
+        self.service_name = self.get_service_name()
+
+    def get_service_name(self):
+        """Locate the libvirt service"""
+        for service_name in ['libvirtd', 'libvirt-bin']:
+            if os.path.isfile('/etc/init.d/%s' % service_name):
+                return service_name
+
+        raise LibvirtNotInstalledException('Libvirt does not appear to be installed')
 
     def generate_config(self):
         """Generate the libvirtd configuration"""
@@ -82,5 +95,5 @@ libvirtd_opts=" --listen --verbose "
     def _reload_libvirt(self):
         """Force libvirt to reload it's configuration"""
         action = 'restart' if self.hard_restart else 'force-reload'
-        System.runCommand(['service', 'libvirtd', action])
+        System.runCommand(['service', self.service_name, action])
         self.hard_restart = False
