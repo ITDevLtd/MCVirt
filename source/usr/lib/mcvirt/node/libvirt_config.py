@@ -71,7 +71,7 @@ libvirtd_opts=" --listen --verbose %s"
             fh.write(config_content.respond())
 
         if self.service_name == 'libvirt-bin':
-            default_config = self.DEFAULT_CONFIG % '--d '
+            default_config = self.DEFAULT_CONFIG % '-d '
         else:
             default_config = self.DEFAULT_CONFIG % ''
 
