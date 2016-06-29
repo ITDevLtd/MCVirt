@@ -133,9 +133,6 @@ class OnlineMigrateTests(TestBase):
 
     def setUp(self):
         """Create various objects and deletes any test VMs"""
-        if not self.rpc.get_connection('node_drbd').is_enabled():
-            self.skipTest('DRBD is not enabled on this node')
-
         # Register fake libvirt connector with daemon
         self.old_libvirt_connector = RpcNSMixinDaemon.DAEMON.registered_factories[
             'libvirt_connector'
@@ -152,6 +149,9 @@ class OnlineMigrateTests(TestBase):
                                                force=True)
 
         super(OnlineMigrateTests, self).setUp()
+
+        if not self.rpc.get_connection('node_drbd').is_enabled():
+            self.skipTest('DRBD is not enabled on this node')
 
         self.test_iso = 'test_iso.iso'
         self.test_iso_path = '%s/%s' % (DirectoryLocation.ISO_STORAGE_DIR, self.test_iso)

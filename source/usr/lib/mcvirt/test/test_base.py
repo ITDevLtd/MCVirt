@@ -45,15 +45,15 @@ class TestBase(unittest.TestCase):
     for providing access to the parser and RPC
     """
 
+    # Define RPC credentials, which are the default superuser credentials
+    # that are supplied with MCVirt
+    RPC_USERNAME = 'mjc'
+    RPC_PASSWORD = 'pass'
+
     def setUp(self):
         """Obtain connections to the daemon and create various
         member variables.
         """
-        # Define RPC credentials, which are the default superuser credentials
-        # that are supplied with MCVirt
-        self.RPC_USERNAME = 'mjc'
-        self.RPC_PASSWORD = 'pass'
-
         # Create and store RPC connection to daemon.
         self.rpc = Connection(self.RPC_USERNAME, self.RPC_PASSWORD)
 
