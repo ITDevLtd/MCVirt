@@ -17,51 +17,56 @@
 
 import os
 
-from config_file import ConfigFile
+from mcvirt.config_file import ConfigFile
+from mcvirt.constants import DirectoryLocation
 
 
 class MCVirtConfig(ConfigFile):
-    """Provides operations to obtain and set the MCVirt configuration for a VM"""
+    """Provides operations to obtain and set the MCVirt
+    configuration for a VM
+    """
 
-    def __init__(self, mcvirt_instance=None, perform_upgrade=False):
-        """Sets member variables and obtains libvirt domain object"""
-        from mcvirt import MCVirt
+    def __init__(self):
+        """Set member variables and obtains libvirt domain object"""
+        self.config_file = DirectoryLocation.NODE_STORAGE_DIR + '/config.json'
 
-        self.config_file = MCVirt.NODE_STORAGE_DIR + '/config.json'
-
-        if (not os.path.isdir(MCVirt.BASE_STORAGE_DIR)):
+        if not os.path.isdir(DirectoryLocation.BASE_STORAGE_DIR):
             self._createConfigDirectories()
 
-        if (not os.path.isfile(self.config_file)):
+        if not os.path.isfile(self.config_file):
             self.create()
 
         # If performing an upgrade has been specified, do so
-        if (perform_upgrade and mcvirt_instance):
-            self.upgrade(mcvirt_instance)
+        self.upgrade()
 
     def _createConfigDirectories(self):
-        """Creates the configuration directories for the node"""
+        """Create the configuration directories for the node"""
         # Initialise the git repository
-        from mcvirt import MCVirt
-        import stat
-
-        os.mkdir(MCVirt.BASE_STORAGE_DIR)
-        os.mkdir(MCVirt.NODE_STORAGE_DIR)
-        os.mkdir(MCVirt.BASE_VM_STORAGE_DIR)
-        os.mkdir(MCVirt.ISO_STORAGE_DIR)
+        os.mkdir(DirectoryLocation.BASE_STORAGE_DIR)
+        os.mkdir(DirectoryLocation.NODE_STORAGE_DIR)
+        os.mkdir(DirectoryLocation.BASE_VM_STORAGE_DIR)
+        os.mkdir(DirectoryLocation.ISO_STORAGE_DIR)
 
         # Set permission on MCVirt directory
         self.setConfigPermissions()
 
+    def getListenAddress(self):
+        """Return the address that should be used for listening
+        for connections - the stored IP address, if configured, else
+        all interfaces
+        """
+        config_ip = self.get_config()['cluster']['cluster_ip']
+        return config_ip if config_ip else '0.0.0.0'
+
     def create(self):
-        """Creates a basic VM configuration for new VMs"""
-        from node.drbd import DRBD as NodeDRBD
+        """Create a basic VM configuration for new VMs"""
+        from node.drbd import Drbd as NodeDrbd
 
         # Create basic config
         json_data = \
             {
                 'version': self.CURRENT_VERSION,
-                'superusers': [],
+                'superusers': ["mjc"],
                 'permissions':
                 {
                     'user': [],
@@ -77,7 +82,7 @@ class MCVirtConfig(ConfigFile):
                 'networks': {
                     'default': 'virbr0'
                 },
-                'drbd': NodeDRBD.getDefaultConfig(),
+                'drbd': NodeDrbd.get_default_config(),
                 'git':
                 {
                     'repo_domain': '',
@@ -87,53 +92,22 @@ class MCVirtConfig(ConfigFile):
                     'password': '',
                     'commit_name': '',
                     'commit_email': ''
-                }
+                },
+                'users': {
+                    "mjc": {
+                        "password": ("$p5k2$3e8$e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09"
+                                     "ac8b85d7331707$ChiC2SGEokh""HietmLcCQNjtMLf30Oggr"),
+                        "salt": "e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707",
+                        "user_type": "User"
+                    }
+                },
+                'libvirt_configured': False,
+                'log_level': 'WARNING'
             }
 
         # Write the configuration to disk
         MCVirtConfig._writeJSON(json_data, self.config_file)
 
-    def _upgrade(self, mcvirt_instance, config):
+    def _upgrade(self, config):
         """Perform an upgrade of the configuration file"""
-        if (self._getVersion() < 1):
-            # Add new global permission groups
-            for new_permission_goup in ['user', 'owner']:
-                if (new_permission_goup not in config['permissions'].keys()):
-                    config['permissions'][new_permission_goup] = []
-
-            # Add cluster configuration to config
-            config['cluster'] = {
-                'cluster_ip': '',
-                'nodes': {}
-            }
-
-            # Obtain list of virtual machines from LibVirt
-            all_domains = mcvirt_instance.getLibvirtConnection().listAllDomains()
-
-            # Add virtual machines to global configuration
-            config['virtual_machines'] = [vm.name() for vm in all_domains]
-
-            # Obtain list of networks from LibVirt
-            all_networks = mcvirt_instance.getLibvirtConnection().listAllNetworks()
-            config['networks'] = {}
-            for network in all_networks:
-                config['networks'][network.name()] = network.bridgeName()
-
-            # Add default DRBD configuration
-            config['drbd'] = {
-                'enabled': 0,
-                'secret': '',
-                'sync_rate': '10M',
-                'protocol': 'C'
-            }
-
-            # Create git configuration
-            config['git'] = {
-                'repo_domain': '',
-                'repo_path': '',
-                'repo_protocol': '',
-                'username': '',
-                'password': '',
-                'commit_name': '',
-                'commit_email': ''
-            }
+        pass

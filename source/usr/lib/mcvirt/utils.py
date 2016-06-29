@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# Copyright (c) 2014 - I.T. Dev Ltd
+# Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
 #
@@ -16,25 +15,18 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import sys
+import socket
 
-sys.path.insert(0, '/usr/lib')
 
-from mcvirt.mcvirt import MCVirt
-from cluster.remote import Remote
+def get_hostname():
+    """Returns the hostname of the system"""
+    return socket.gethostname()
 
-mcvirt_instance = MCVirt(None, initialise_nodes=False)
 
-end_conection = False
-try:
-    while True:
-        data = str.strip(sys.stdin.readline())
-        (output, end_conection) = Remote.receiveRemoteCommand(mcvirt_instance, data)
-
-        sys.stdout.write("%s\n" % output)
-        sys.stdout.flush()
-
-        if (end_conection):
-            break
-finally:
-    mcvirt_instance = None
+def get_all_submodules(target_class):
+    """Returns all inheriting classes, recursively"""
+    subclasses = []
+    for subclass in target_class.__subclasses__():
+        subclasses.append(subclass)
+        subclasses += get_all_submodules(subclass)
+    return subclasses

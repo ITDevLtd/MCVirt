@@ -17,19 +17,19 @@
 
 import unittest
 
-from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt
-from mcvirt.node.node import Node, InvalidIPAddressException, InvalidVolumeGroupNameException
+from mcvirt.exceptions import InvalidIPAddressException, InvalidVolumeGroupNameException
 from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.test.test_base import TestBase
 
 
-class NodeTests(unittest.TestCase):
-    """Provides unit tests for the functionality
-       provided by the node subparser"""
+class NodeTests(TestBase):
+    """Provide unit tests for the functionality
+    provided by the node subparser
+    """
 
     @staticmethod
     def suite():
-        """Returns a test suite"""
+        """Return a test suite"""
         suite = unittest.TestSuite()
         suite.addTest(NodeTests('test_set_ip_address'))
         suite.addTest(NodeTests('test_set_invalid_ip_address'))
@@ -38,50 +38,46 @@ class NodeTests(unittest.TestCase):
         return suite
 
     def setUp(self):
-        """Creates various objects and deletes any test VMs"""
-        # Create MCVirt parser object
-        self.parser = Parser(print_status=False)
-
-        # Get an MCVirt instance
-        self.mcvirt = MCVirt()
-
-        self.original_ip_address = MCVirtConfig().getConfig()['cluster']['cluster_ip']
-        self.original_volume_group = MCVirtConfig().getConfig()['vm_storage_vg']
+        """Create various objects and deletes any test VMs"""
+        super(NodeTests, self).setUp()
+        self.original_ip_address = MCVirtConfig().get_config()['cluster']['cluster_ip']
+        self.original_volume_group = MCVirtConfig().get_config()['vm_storage_vg']
 
     def tearDown(self):
-        """Resets any values changed to the MCVirt config"""
-        Node.setClusterIpAddress(self.mcvirt, self.original_ip_address)
-        Node.setStorageVolumeGroup(self.mcvirt, self.original_volume_group)
-        self.mcvirt = None
+        """Reset any values changed to the MCVirt config"""
+        def reset_config(config):
+            config['cluster']['cluster_ip'] = self.original_ip_address
+            config['vm_storage_vg'] = self.original_volume_group
+        MCVirtConfig().update_config(reset_config, 'Reset node configurations')
+
+        super(NodeTests, self).tearDown()
 
     def test_set_ip_address(self):
-        """Changes the cluster IP address using the argument parser"""
+        """Change the cluster IP address using the argument parser"""
         test_ip_address = '1.1.1.1'
         self.parser.parse_arguments('node --set-ip-address %s' %
-                                    test_ip_address,
-                                    mcvirt_instance=self.mcvirt)
-        self.assertEqual(MCVirtConfig().getConfig()['cluster']['cluster_ip'], test_ip_address)
+                                    test_ip_address)
+        self.assertEqual(MCVirtConfig().get_config()['cluster']['cluster_ip'], test_ip_address)
 
     def test_set_invalid_ip_address(self):
+        """Test the validity checks for IP addresses"""
         test_fake_ip_addresses = [
             '1.1.1.256', 'test_string', '1.1.1', '1.2.3.4a'
         ]
         for ip_address in test_fake_ip_addresses:
             with self.assertRaises(InvalidIPAddressException):
                 self.parser.parse_arguments('node --set-ip-address %s' %
-                                            ip_address,
-                                            mcvirt_instance=self.mcvirt)
+                                            ip_address)
 
     def test_set_volume_group(self):
-        """Changes the cluster IP address using the argument parser"""
+        """Change the cluster IP address using the argument parser"""
         test_vg = 'test-vg_name'
-        self.parser.parse_arguments('node --set-vm-vg %s' % test_vg,
-                                    mcvirt_instance=self.mcvirt)
-        self.assertEqual(MCVirtConfig().getConfig()['vm_storage_vg'], test_vg)
+        self.parser.parse_arguments('node --set-vm-vg %s' % test_vg)
+        self.assertEqual(MCVirtConfig().get_config()['vm_storage_vg'], test_vg)
 
     def test_set_invalid_volume_group(self):
+        """Test the validity checks for volume group name"""
         test_fake_volume_groups = ('[adg', 'vg;', '@vg_name')
         for volume_group in test_fake_volume_groups:
             with self.assertRaises(InvalidVolumeGroupNameException):
-                self.parser.parse_arguments('node --set-vm-vg %s' % volume_group,
-                                            mcvirt_instance=self.mcvirt)
+                self.parser.parse_arguments('node --set-vm-vg %s' % volume_group)

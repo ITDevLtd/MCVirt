@@ -17,33 +17,25 @@
 
 from enum import Enum
 import os
+import math
+import Pyro4
+import time
+from Cheetah.Template import Template
 
 from mcvirt.virtual_machine.hard_drive.base import Base
-from mcvirt.virtual_machine.hard_drive.config.drbd import DRBD as ConfigDRBD
-from mcvirt.node.drbd import DRBD as NodeDRBD, DRBDNotEnabledOnNode, DRBDSocket
-from mcvirt.auth import Auth
-from mcvirt.system import System, MCVirtCommandException
-from mcvirt.cluster.cluster import Cluster
-from mcvirt.mcvirt import MCVirtException
-
-
-class DrbdStateException(MCVirtException):
-    """The DRBD state is not OK"""
-    pass
-
-
-class DrbdBlockDeviceDoesNotExistException(MCVirtException):
-    """DRBD block device does not exist"""
-    pass
-
-
-class DrbdVolumeNotInSyncException(MCVirtException):
-    """The last DRBD verification of the volume failed"""
-    pass
+from mcvirt.node.drbd import Drbd as NodeDrbd
+from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.system import System
+from mcvirt.rpc.lock import locking_method
+from mcvirt.constants import DirectoryLocation
+from mcvirt.utils import get_hostname
+from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
+                               DrbdVolumeNotInSyncException, MCVirtCommandException,
+                               DrbdNotEnabledOnNode)
 
 
 class DrbdConnectionState(Enum):
-    """Library of DRBD connection states"""
+    """Library of Drbd connection states"""
 
     # No network configuration available. The resource has not yet been connected,
     # or has been administratively disconnected (using drbdadm disconnect), or has
@@ -73,7 +65,7 @@ class DrbdConnectionState(Enum):
     # TCP connection has been established, this node waits for the first
     # network packet from the peer.
     WF_REPORT_PARAMS = 'WFReportParams'
-    # A DRBD connection has been established, data mirroring is now active.
+    # A Drbd connection has been established, data mirroring is now active.
     # This is the normal state.
     CONNECTED = 'Connected'
     # Full synchronization, initiated by the administrator, is just starting.
@@ -114,7 +106,7 @@ class DrbdConnectionState(Enum):
 
 
 class DrbdRoleState(Enum):
-    """Library of DRBD role states"""
+    """Library of Drbd role states"""
 
     # The resource is currently in the primary role, and may be read from and written to.
     # This role only occurs on one of the two nodes, unless dual-primary mode is enabled.
@@ -129,9 +121,9 @@ class DrbdRoleState(Enum):
 
 
 class DrbdDiskState(Enum):
-    """Library of DRBD disk states"""
+    """Library of Drbd disk states"""
 
-    # No local block device has been assigned to the DRBD driver. This may mean that the resource
+    # No local block device has been assigned to the Drbd driver. This may mean that the resource
     # has never attached to its backing device, that it has been manually detached using
     # drbdadm detach, or that it automatically detached after a lower-level I/O error.
     DISKLESS = 'Diskless'
@@ -140,7 +132,7 @@ class DrbdDiskState(Enum):
     # Transient state following an I/O failure report by the local block
     # device. Next state: Diskless.
     FAILED = 'Failed'
-    # Transient state when an Attach is carried out on an already-Connected DRBD device.
+    # Transient state when an Attach is carried out on an already-Connected Drbd device.
     NEGOTIATING = 'Negotiating'
     # The data is inconsistent. This status occurs immediately upon creation of a new resource,
     # on both nodes (before the initial full sync). Also, this status is found in one node
@@ -157,39 +149,55 @@ class DrbdDiskState(Enum):
     UP_TO_DATE = 'UpToDate'
 
 
-class DRBD(Base):
-    """Provides operations to manage DRBD-backed hard drives, used by VMs"""
+class Drbd(Base):
+    """Provides operations to manage Drbd-backed hard drives, used by VMs"""
 
     CREATE_PROGRESS = Enum('CREATE_PROGRESS',
                            ['START',
                             'CREATE_RAW_LV',
                             'CREATE_META_LV',
-                            'CREATE_DRBD_CONFIG',
-                            'CREATE_DRBD_CONFIG_R',
-                            'DRBD_UP',
-                            'DRBD_UP_R',
+                            'CREATE_Drbd_CONFIG',
+                            'CREATE_Drbd_CONFIG_R',
+                            'Drbd_UP',
+                            'Drbd_UP_R',
                             'ADD_TO_VM',
-                            'DRBD_CONNECT',
-                            'DRBD_CONNECT_R'])
+                            'Drbd_CONNECT',
+                            'Drbd_CONNECT_R'])
 
-    DRBD_STATES = {
+    Drbd_STATES = {
         'CONNECTION': {
-            'OK': [DrbdConnectionState.CONNECTED,
-                   DrbdConnectionState.VERIFY_S,
-                   DrbdConnectionState.VERIFY_T,
-                   DrbdConnectionState.PAUSED_SYNC_S,
-                   DrbdConnectionState.STARTING_SYNC_S,
-                   DrbdConnectionState.SYNC_SOURCE,
-                   DrbdConnectionState.WF_BIT_MAP_S,
-                   DrbdConnectionState.WF_BIT_MAP_T,
-                   DrbdConnectionState.WF_SYNC_UUID],
-            'WARNING': [DrbdConnectionState.STAND_ALONE,
-                        DrbdConnectionState.DISCONNECTING,
-                        DrbdConnectionState.UNCONNECTED,
-                        DrbdConnectionState.BROKEN_PIPE,
-                        DrbdConnectionState.NETWORK_FAILURE,
-                        DrbdConnectionState.WF_CONNECTION,
-                        DrbdConnectionState.WF_REPORT_PARAMS]
+            'OK': [
+                DrbdConnectionState.CONNECTED,
+                DrbdConnectionState.VERIFY_S,
+                DrbdConnectionState.VERIFY_T,
+                DrbdConnectionState.PAUSED_SYNC_S,
+                DrbdConnectionState.STARTING_SYNC_S,
+                DrbdConnectionState.SYNC_SOURCE,
+                DrbdConnectionState.WF_BIT_MAP_S,
+                DrbdConnectionState.WF_BIT_MAP_T,
+                DrbdConnectionState.WF_SYNC_UUID
+            ],
+            'CONNECTED': [
+                DrbdConnectionState.CONNECTED,
+                DrbdConnectionState.VERIFY_S,
+                DrbdConnectionState.VERIFY_T,
+                DrbdConnectionState.PAUSED_SYNC_S,
+                DrbdConnectionState.STARTING_SYNC_S,
+                DrbdConnectionState.SYNC_SOURCE,
+                DrbdConnectionState.SYNC_TARGET,
+                DrbdConnectionState.WF_BIT_MAP_S,
+                DrbdConnectionState.WF_BIT_MAP_T,
+                DrbdConnectionState.WF_SYNC_UUID
+            ],
+            'WARNING': [
+                DrbdConnectionState.STAND_ALONE,
+                DrbdConnectionState.DISCONNECTING,
+                DrbdConnectionState.UNCONNECTED,
+                DrbdConnectionState.BROKEN_PIPE,
+                DrbdConnectionState.NETWORK_FAILURE,
+                DrbdConnectionState.WF_CONNECTION,
+                DrbdConnectionState.WF_REPORT_PARAMS
+            ]
         },
         'ROLE': {
             'OK': [DrbdRoleState.PRIMARY],
@@ -201,297 +209,346 @@ class DRBD(Base):
         }
     }
 
-    def __init__(self, vm_object, disk_id):
-        """Sets member variables"""
-        # Get DRBD configuration from disk configuration
-        self.config = ConfigDRBD(vm_object=vm_object, disk_id=disk_id, registered=True)
-        super(DRBD, self).__init__(disk_id=disk_id)
+    INITIAL_PORT = 7789
+    INITIAL_MINOR = 1
+    Drbd_RAW_SUFFIX = 'raw'
+    Drbd_META_SUFFIX = 'meta'
+    Drbd_CONFIG_TEMPLATE = DirectoryLocation.TEMPLATE_DIR + '/drbd_resource.conf'
+    CACHE_MODE = 'none'
 
-    def _checkExists(self):
-        """Ensures the required storage elements exist on the system"""
-        raw_lv = self.getConfigObject()._getLogicalVolumeName(
-            self.getConfigObject().DRBD_RAW_SUFFIX
-        )
-        meta_lv = self.getConfigObject()._getLogicalVolumeName(
-            self.getConfigObject().DRBD_META_SUFFIX
-        )
-        DRBD._ensureLogicalVolumeExists(self.getConfigObject(), raw_lv)
-        DRBD._ensureLogicalVolumeExists(self.getConfigObject(), meta_lv)
+    def __init__(self, drbd_minor=None, drbd_port=None, *args, **kwargs):
+        """Set member variables"""
+        # Get Drbde configuration from disk configuration
+        self._sync_state = True
+        self._drbd_port = None
+        self._drbd_minor = None
+        super(Drbd, self).__init__(*args, **kwargs)
+
+    @property
+    def config_properties(self):
+        """Return the disk object config items"""
+        return super(Drbd, self).config_properties + ['drbd_port', 'drbd_minor']
+
+    @staticmethod
+    def isAvailable(pyro_object):
+        """Determine if Drbd is available on the node"""
+        if pyro_object._get_registered_object('node_drbd').is_enabled():
+            return True
+        else:
+            return False
+
+    def _check_exists(self):
+        """Ensure the required storage elements exist on the system"""
+        raw_lv = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
+        meta_lv = self._getLogicalVolumeName(self.Drbd_META_SUFFIX)
+        self._ensureLogicalVolumeExists(raw_lv)
+        self._ensureLogicalVolumeExists(meta_lv)
         return True
 
     def activateDisk(self):
-        """Ensures that the disk is ready to be used by a VM on the local node"""
-        self._ensureExists()
-        raw_lv = self.getConfigObject()._getLogicalVolumeName(
-            self.getConfigObject().DRBD_RAW_SUFFIX)
-        meta_lv = self.getConfigObject()._getLogicalVolumeName(
-            self.getConfigObject().DRBD_META_SUFFIX)
-        DRBD._ensureLogicalVolumeActive(self.getConfigObject(), raw_lv)
-        DRBD._ensureLogicalVolumeActive(self.getConfigObject(), meta_lv)
+        """Ensure that the disk is ready to be used by a VM on the local node"""
+        self._ensure_exists()
+        raw_lv = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
+        meta_lv = self._getLogicalVolumeName(self.Drbd_META_SUFFIX)
+        self._ensureLogicalVolumeActive(raw_lv)
+        self._ensureLogicalVolumeActive(meta_lv)
         self._checkDrbdStatus()
 
         # If the disk is not already set to primary, set it to primary
-        if (self._drbdGetRole()[0] is not DrbdRoleState('Primary')):
+        if self._drbdGetRole()[0] is not DrbdRoleState('Primary'):
             self._drbdSetPrimary()
 
         self._ensureBlockDeviceExists()
 
     def deactivateDisk(self):
-        """Marks DRBD volume as secondary"""
-        self._ensureExists()
+        """Marks Drbd volume as secondary"""
+        self._ensure_exists()
         self._drbdSetSecondary()
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""
-        self._ensureExists()
-        return DRBD._getLogicalVolumeSize(
-            self.getConfigObject(),
-            self.getConfigObject()._getLogicalVolumeName(
-                self.getConfigObject().DRBD_RAW_SUFFIX
-            )
-        )
+        self._ensure_exists()
+        return self._get_logical_volume_size(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX))
 
-    @staticmethod
-    def create(vm_object, size, driver, disk_id=None, drbd_minor=None, drbd_port=None):
+    def create(self, size):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
         in the VM configuration"""
-        # Ensure user has privileges to create a DRBD volume
-        vm_object.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.MANAGE_DRBD,
-            vm_object
-        )
+        # Ensure user has privileges to create a Drbd volume
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
 
-        # Ensure DRBD is enabled on the host
-        if (not NodeDRBD.isEnabled()):
-            raise DRBDNotEnabledOnNode('DRBD is not enabled on this node')
+        # Ensure Drbd is enabled on the host
+        if not self._get_registered_object('node_drbd').is_enabled():
+            raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
 
-        # Obtain disk ID, DRBD minor and DRBD port if one has not been specified
-        config_object = ConfigDRBD(
-            vm_object=vm_object,
-            disk_id=disk_id,
-            driver=driver,
-            drbd_minor=drbd_minor,
-            drbd_port=drbd_port)
-
-        # Create cluster object for running on remote nodes
-        cluster_instance = Cluster(vm_object.mcvirt_object)
-
-        remote_nodes = vm_object._getRemoteNodes()
+        remote_nodes = self.vm_object._get_remote_nodes()
 
         # Keep track of progress, so the storage stack can be torn down if something goes wrong
-        progress = DRBD.CREATE_PROGRESS.START
+        progress = Drbd.CREATE_PROGRESS.START
         try:
-            # Create DRBD raw logical volume
-            raw_logical_volume_name = config_object._getLogicalVolumeName(
-                config_object.DRBD_RAW_SUFFIX)
-            DRBD._createLogicalVolume(config_object, raw_logical_volume_name,
+            # Create Drbd raw logical volume
+            raw_logical_volume_name = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
+            self._createLogicalVolume(raw_logical_volume_name,
                                       size, perform_on_nodes=True)
-            progress = DRBD.CREATE_PROGRESS.CREATE_RAW_LV
-            DRBD._activateLogicalVolume(config_object, raw_logical_volume_name,
+            progress = Drbd.CREATE_PROGRESS.CREATE_RAW_LV
+            self._activateLogicalVolume(raw_logical_volume_name,
                                         perform_on_nodes=True)
 
             # Zero raw logical volume
-            DRBD._zeroLogicalVolume(config_object, raw_logical_volume_name,
+            self._zeroLogicalVolume(raw_logical_volume_name,
                                     size, perform_on_nodes=True)
 
-            # Create DRBD meta logical volume
-            meta_logical_volume_name = config_object._getLogicalVolumeName(
-                config_object.DRBD_META_SUFFIX
+            # Create Drbd meta logical volume
+            meta_logical_volume_name = self._getLogicalVolumeName(
+                self.Drbd_META_SUFFIX
             )
-            meta_logical_volume_size = config_object._calculateMetaDataSize()
-            DRBD._createLogicalVolume(config_object, meta_logical_volume_name,
-                                      meta_logical_volume_size, perform_on_nodes=True)
-            progress = DRBD.CREATE_PROGRESS.CREATE_META_LV
-            DRBD._activateLogicalVolume(config_object, meta_logical_volume_name,
+            meta_logical_volume_size = self._calculateMetaDataSize()
+            self._createLogicalVolume(meta_logical_volume_name,
+                                      meta_logical_volume_size,
+                                      perform_on_nodes=True)
+            progress = Drbd.CREATE_PROGRESS.CREATE_META_LV
+            self._activateLogicalVolume(meta_logical_volume_name,
                                         perform_on_nodes=True)
 
             # Zero meta logical volume
-            DRBD._zeroLogicalVolume(config_object, meta_logical_volume_name,
+            self._zeroLogicalVolume(meta_logical_volume_name,
                                     meta_logical_volume_size, perform_on_nodes=True)
 
-            # Generate DRBD resource configuration
-            config_object._generateDrbdConfig()
-            progress = DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG
-            cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-generateDrbdConfig',
-                                              {'config': config_object._dumpConfig()},
-                                              nodes=remote_nodes)
-            progress = DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R
+            # Generate Drbd resource configuration
+            self._generateDrbdConfig()
+            progress = Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG
 
-            # Setup meta data on DRBD volume
-            DRBD._initialiseMetaData(config_object._getResourceName())
-            cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-initialiseMetaData',
-                                              {'config': config_object._dumpConfig()},
-                                              nodes=remote_nodes)
+            cluster = self._get_registered_object('cluster')
 
-            # Bring up DRBD resource
-            DRBD._drbdUp(config_object)
-            progress = DRBD.CREATE_PROGRESS.DRBD_UP
-            cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdUp',
-                                              {'config': config_object._dumpConfig()},
-                                              nodes=remote_nodes)
-            progress = DRBD.CREATE_PROGRESS.DRBD_UP_R
+            def remoteCommand(node):
+                remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                remote_disk.generateDrbdConfig()
+            cluster.run_remote_command(callback_method=remoteCommand,
+                                       nodes=remote_nodes)
+            progress = Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG_R
 
-            # Wait for 5 seconds to let DRBD connect
-            import time
+            # Setup meta data on Drbd volume
+            self._initialiseMetaData()
+
+            def remoteCommand(node):
+                remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                remote_disk.initialiseMetaData()
+            cluster.run_remote_command(callback_method=remoteCommand,
+                                       nodes=remote_nodes)
+
+            # Bring up Drbd resource
+            self._drbdUp()
+            progress = Drbd.CREATE_PROGRESS.Drbd_UP
+
+            def remoteCommand(node):
+                remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                remote_disk.drbdUp()
+            cluster.run_remote_command(callback_method=remoteCommand,
+                                       nodes=remote_nodes)
+            progress = Drbd.CREATE_PROGRESS.Drbd_UP_R
+
+            # Wait for 5 seconds to let Drbd initialise
+            # TODO: Monitor Drbd status instead.
             time.sleep(5)
 
             # Add to virtual machine
-            DRBD._addToVirtualMachine(config_object)
-            progress = DRBD.CREATE_PROGRESS.ADD_TO_VM
-
-            # Create disk object
-            hard_drive_object = DRBD(vm_object, config_object.getId())
+            self._sync_state = True
+            self.addToVirtualMachine()
+            progress = Drbd.CREATE_PROGRESS.ADD_TO_VM
 
             # Overwrite data on peer
-            hard_drive_object._drbdOverwritePeer()
+            self._drbdOverwritePeer()
 
-            # Ensure the DRBD resource is connected
-            hard_drive_object._drbdConnect()
-            progress = DRBD.CREATE_PROGRESS.DRBD_CONNECT
-            cluster_instance.runRemoteCommand(
-                'virtual_machine-hard_drive-drbd-drbdConnect', {
-                    'vm_name': vm_object.getName(),
-                    'disk_id': hard_drive_object.getConfigObject().getId()
-                },
-                nodes=remote_nodes
+            # Ensure the Drbd resource is connected
+            self._drbdConnect()
+            progress = Drbd.CREATE_PROGRESS.Drbd_CONNECT
 
-            )
-            progress = DRBD.CREATE_PROGRESS.DRBD_CONNECT_R
+            def remoteCommand(node):
+                remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                remote_disk.drbdConnect()
+            cluster.run_remote_command(callback_method=remoteCommand,
+                                       nodes=remote_nodes)
+            progress = Drbd.CREATE_PROGRESS.Drbd_CONNECT_R
 
             # Mark volume as primary on local node
-            hard_drive_object._drbdSetPrimary()
-            cluster_instance.runRemoteCommand(
-                'virtual_machine-hard_drive-drbd-drbdSetSecondary',
-                {
-                    'vm_name': vm_object.getName(),
-                    'disk_id': hard_drive_object.getConfigObject().getId()},
-                nodes=remote_nodes)
+            self._drbdSetPrimary()
 
-            return hard_drive_object
+            def remoteCommand(node):
+                remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                remote_disk.drbdSetSecondary()
+            cluster.run_remote_command(callback_method=remoteCommand,
+                                       nodes=remote_nodes)
 
         except Exception:
+            cluster = self._get_registered_object('cluster')
             # If the creation fails, tear down based on the progress of the creation
-            if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_CONNECT_R.value):
-                cluster_instance.runRemoteCommand(
-                    'virtual_machine-hard_drive-drbd-drbdDisconnect',
-                    {
-                        'vm_name': vm_object.getName(),
-                        'disk_id': hard_drive_object.getConfigObject().getId()})
+            if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_CONNECT_R.value):
+                def remoteCommand(node):
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                    remote_disk.drbdDisconnect()
+                cluster.run_remote_command(callback_method=remoteCommand,
+                                           nodes=remote_nodes)
 
-            if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_CONNECT.value):
-                hard_drive_object._drbdDisconnect()
+            if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_CONNECT.value):
+                self._drbdDisconnect()
 
-            if (progress.value >= DRBD.CREATE_PROGRESS.ADD_TO_VM.value):
-                DRBD._removeFromVirtualMachine(config_object)
+            if (progress.value >= Drbd.CREATE_PROGRESS.ADD_TO_VM.value):
+                self.removeFromVirtualMachine()
 
-            if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_UP_R.value):
-                cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDown',
-                                                  {'config': config_object._dumpConfig()},
-                                                  nodes=remote_nodes)
+            if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_UP_R.value):
+                def remoteCommand(node):
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                    remote_disk.drbdDown()
+                cluster.run_remote_command(callback_method=remoteCommand,
+                                           nodes=remote_nodes)
 
-            if (progress.value >= DRBD.CREATE_PROGRESS.DRBD_UP.value):
-                DRBD._drbdDown(config_object)
+            if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_UP.value):
+                self._drbdDown()
 
-            if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R.value):
-                cluster_instance.runRemoteCommand(
-                    'virtual_machine-hard_drive-drbd-removeDrbdConfig',
-                    {
-                        'config': config_object._dumpConfig()},
-                    nodes=remote_nodes)
+            if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG_R.value):
+                def remoteCommand(node):
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                    remote_disk.removeDrbdConfig()
+                cluster.run_remote_command(callback_method=remoteCommand,
+                                           nodes=remote_nodes)
 
-            if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_DRBD_CONFIG.value):
-                config_object._removeDrbdConfig()
+            if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG.value):
+                self._removeDrbdConfig()
 
-            if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_META_LV.value):
-                DRBD._removeLogicalVolume(
-                    config_object,
-                    meta_logical_volume_name,
-                    perform_on_nodes=True)
+            if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_META_LV.value):
+                self._removeLogicalVolume(meta_logical_volume_name,
+                                          perform_on_nodes=True)
 
-            if (progress.value >= DRBD.CREATE_PROGRESS.CREATE_RAW_LV.value):
-                DRBD._removeLogicalVolume(
-                    config_object,
-                    raw_logical_volume_name,
-                    perform_on_nodes=True)
+            if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_RAW_LV.value):
+                self._removeLogicalVolume(raw_logical_volume_name,
+                                          perform_on_nodes=True)
 
             raise
 
     def _removeStorage(self):
-        """Removes the backing storage for the DRBD hard drive"""
-        self._ensureExists()
-        cluster_instance = Cluster(self.getVmObject().mcvirt_object)
-        remote_nodes = self.getVmObject()._getRemoteNodes()
+        """Removes the backing storage for the Drbd hard drive"""
+        self._ensure_exists()
+        cluster = self._get_registered_object('cluster')
+        remote_nodes = self.vm_object._get_remote_nodes()
 
-        # Disconnect and perform a 'down' on the DRBD volume on all nodes
-        cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDisconnect',
-                                          {'vm_name': self.getVmObject().getName(),
-                                           'disk_id': self.getConfigObject().getId()},
-                                          nodes=remote_nodes)
+        # Disconnect and perform a 'down' on the Drbd volume on all nodes
+        def remoteCommand(node):
+            remote_disk = self.get_remote_object(remote_node=node, registered=False)
+            remote_disk.drbdDisconnect()
+        cluster.run_remote_command(callback_method=remoteCommand,
+                                   nodes=remote_nodes)
         self._drbdDisconnect()
-        cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDown',
-                                          {'config': self.getConfigObject()._dumpConfig()},
-                                          nodes=remote_nodes)
-        DRBD._drbdDown(self.getConfigObject())
 
-        # Remove the DRBD configuration from all nodes
-        cluster_instance.runRemoteCommand('virtual_machine-hard_drive-drbd-removeDrbdConfig',
-                                          {'config': self.getConfigObject()._dumpConfig()},
-                                          nodes=remote_nodes)
-        self.getConfigObject()._removeDrbdConfig()
+        def remoteCommand(node):
+            remote_disk = self.get_remote_object(remote_node=node, registered=False)
+            remote_disk.drbdDown()
+        cluster.run_remote_command(callback_method=remoteCommand,
+                                   nodes=remote_nodes)
+        self._drbdDown()
+
+        # Remove the Drbd configuration from all nodes
+        def remoteCommand(node):
+            remote_disk = self.get_remote_object(remote_node=node, registered=False)
+            remote_disk.removeDrbdConfig()
+        cluster.run_remote_command(callback_method=remoteCommand,
+                                   nodes=remote_nodes)
+        self._removeDrbdConfig()
 
         # Remove the meta and raw logical volume from all nodes
-        DRBD._removeLogicalVolume(
-            self.getConfigObject(),
-            self.getConfigObject()._getLogicalVolumeName(
-                self.getConfigObject().DRBD_META_SUFFIX),
-            perform_on_nodes=True)
-        DRBD._removeLogicalVolume(
-            self.getConfigObject(),
-            self.getConfigObject()._getLogicalVolumeName(
-                self.getConfigObject().DRBD_RAW_SUFFIX),
-            perform_on_nodes=True)
+        self._removeLogicalVolume(self._getLogicalVolumeName(self.Drbd_META_SUFFIX),
+                                  perform_on_nodes=True)
+        self._removeLogicalVolume(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX),
+                                  perform_on_nodes=True)
 
-    @staticmethod
-    def _initialiseMetaData(resource_name):
+    @Pyro4.expose()
+    @locking_method()
+    def initialiseMetaData(self, *args, **kwargs):
+        """Provides an exposed method for _initialiseMetaData
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._initialiseMetaData(*args, **kwargs)
+
+    def _initialiseMetaData(self):
         """Performs an initialisation of the meta data, using drbdadm"""
-        System.runCommand([NodeDRBD.DRBDADM, 'create-md', resource_name])
+        System.runCommand([NodeDrbd.DrbdADM, 'create-md', self.resource_name])
 
-    @staticmethod
-    def _drbdUp(config_object):
-        """Performs a DRBD 'up' on the hard drive DRBD resource"""
-        System.runCommand([NodeDRBD.DRBDADM, 'up', config_object._getResourceName()])
+    @Pyro4.expose()
+    @locking_method()
+    def drbdUp(self, *args, **kwargs):
+        """Provides an exposed method for _drbdUp
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
-    @staticmethod
-    def _drbdDown(config_object):
-        """Performs a DRBD 'down' on the hard drive DRBD resource"""
+        return self._drbdUp(*args, **kwargs)
+
+    def _drbdUp(self):
+        """Performs a Drbd 'up' on the hard drive Drbd resource"""
+        System.runCommand([NodeDrbd.DrbdADM, 'up', self.resource_name])
+
+    @Pyro4.expose()
+    @locking_method()
+    def drbdDown(self, *args, **kwargs):
+        """Provides an exposed method for _drbdDown
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdDown(*args, **kwargs)
+
+    def _drbdDown(self):
+        """Performs a Drbd 'down' on the hard drive Drbd resource"""
         try:
-            System.runCommand([NodeDRBD.DRBDADM, 'down', config_object._getResourceName()])
+            System.runCommand([NodeDrbd.DrbdADM, 'down', self.resource_name])
         except MCVirtCommandException:
-            import time
-            # If the DRBD down fails, attempt to wait 5 seconds and try again
+            # If the Drbd down fails, attempt to wait 5 seconds and try again
             time.sleep(5)
-            System.runCommand([NodeDRBD.DRBDADM, 'down', config_object._getResourceName()])
+            System.runCommand([NodeDrbd.DrbdADM, 'down', self.resource_name])
+
+    @Pyro4.expose()
+    @locking_method()
+    def drbdConnect(self, *args, **kwargs):
+        """Provides an exposed method for _drbdConnect
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdConnect(*args, **kwargs)
 
     def _drbdConnect(self):
-        """Performs a DRBD 'connect' on the hard drive DRBD resource"""
-        if (self._drbdGetConnectionState() not in DRBD.DRBD_STATES['CONNECTION']['OK']):
-            System.runCommand(
-                [NodeDRBD.DRBDADM, 'connect', self.getConfigObject()._getResourceName()])
+        """Performs a Drbd 'connect' on the hard drive Drbd resource"""
+        if self._drbdGetConnectionState() not in Drbd.Drbd_STATES['CONNECTION']['CONNECTED']:
+            System.runCommand([NodeDrbd.DrbdADM, 'connect', self.resource_name])
+
+    @Pyro4.expose()
+    @locking_method()
+    def drbdDisconnect(self, *args, **kwargs):
+        """Provides an exposed method for _drbdDisconnect
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdDisconnect(*args, **kwargs)
 
     def _drbdDisconnect(self):
-        """Performs a DRBD 'disconnect' on the hard drive DRBD resource"""
-        System.runCommand(
-            [NodeDRBD.DRBDADM, 'disconnect', self.getConfigObject()._getResourceName()])
+        """Performs a Drbd 'disconnect' on the hard drive Drbd resource"""
+        System.runCommand([NodeDrbd.DrbdADM, 'disconnect', self.resource_name])
+
+    @Pyro4.expose()
+    @locking_method()
+    def setTwoPrimariesConfig(self, *args, **kwargs):
+        """Provides an exposed method for _setTwoPrimariesConfig
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._setTwoPrimariesConfig(*args, **kwargs)
 
     def _setTwoPrimariesConfig(self, allow=False):
-        """Configures DRBD to temporarily allow or re-disable whether
+        """Configures Drbd to temporarily allow or re-disable whether
            two allow two primaries"""
-        if (allow):
-            # Configure DRBD on both nodes to allow DRBD volume to be set to primary
+        if allow:
+            # Configure Drbd on both nodes to allow Drbd volume to be set to primary
             self._checkDrbdStatus()
 
-            System.runCommand([NodeDRBD.DRBDADM, 'net-options',
-                               self.getConfigObject()._getResourceName(),
+            System.runCommand([NodeDrbd.DrbdADM, 'net-options',
+                               self.resource_name,
                                '--allow-two-primaries'])
 
         else:
@@ -510,70 +567,86 @@ class DRBD(Base):
                 raise DrbdStateException('Both nodes are set to primary whilst attempting'
                                          ' to disable dual-primary mode')
 
-            System.runCommand([NodeDRBD.DRBDADM, 'net-options',
-                               self.getConfigObject()._getResourceName(),
+            System.runCommand([NodeDrbd.DrbdADM, 'net-options',
+                               self.resource_name,
                                '--allow-two-primaries=no'])
 
-        # Config remote node(s)
-        if (self.getConfigObject().vm_object.mcvirt_object.initialiseNodes()):
-            cluster_instance = Cluster(self.getConfigObject().vm_object.mcvirt_object)
-            cluster_instance.runRemoteCommand(
-                'virtual_machine-hard_drive-drbd-setTwoPrimariesConfig',
-                {'vm_name': self.getVmObject().getName(),
-                 'disk_id': self.getConfigObject().getId(),
-                 'allow': allow},
-                nodes=self.getConfigObject().vm_object._getRemoteNodes()
-            )
+        # Configure remote node(s)
+        if self._is_cluster_master:
+            cluster_instance = self._get_registered_object('cluster')
+
+            def remoteCommand(node):
+                remote_disk = self.get_remote_object(remote_node=node)
+                remote_disk.setTwoPrimariesConfig(allow=allow)
+            cluster_instance.run_remote_command(callback_method=remoteCommand,
+                                                nodes=self.vm_object._get_remote_nodes())
+
+    @Pyro4.expose()
+    @locking_method()
+    def drbdSetPrimary(self, *args, **kwargs):
+        """Provides an exposed method for _drbdSetPrimary
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdSetPrimary(*args, **kwargs)
 
     def _drbdSetPrimary(self, allow_two_primaries=False):
-        """Performs a DRBD 'primary' on the hard drive DRBD resource"""
+        """Performs a Drbd 'primary' on the hard drive Drbd resource"""
         local_role_state, remote_role_state = self._drbdGetRole()
 
-        # Check DRBD status
+        # Check Drbd status
         self._checkDrbdStatus()
 
         # Ensure that role states are not unknown
         if (local_role_state is DrbdRoleState.UNKNOWN or
             (remote_role_state is DrbdRoleState.UNKNOWN and
-             not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object))):
-            raise DrbdStateException('DRBD role is unknown for resource %s' %
-                                     self.getConfigObject()._getResourceName())
+             not self._ignore_drbd)):
+            raise DrbdStateException('Drbd role is unknown for resource %s' %
+                                     self.resource_name)
 
         # Ensure remote role is secondary
         if (not allow_two_primaries and
             remote_role_state is not DrbdRoleState.SECONDARY and
             not (DrbdRoleState.UNKNOWN and
-                 NodeDRBD.isIgnored(self.getVmObject().mcvirt_object))):
+                 self._ignore_drbd)):
             raise DrbdStateException(
-                'Cannot make local DRBD primary if remote DRBD is not secondary: %s' %
-                self.getConfigObject()._getResourceName())
+                'Cannot make local Drbd primary if remote Drbd is not secondary: %s' %
+                self.resource_name)
 
-        # Set DRBD resource to primary
-        System.runCommand([NodeDRBD.DRBDADM, 'primary', self.getConfigObject()._getResourceName()])
+        # Set Drbd resource to primary
+        System.runCommand([NodeDrbd.DrbdADM, 'primary', self.resource_name])
+
+    @Pyro4.expose()
+    @locking_method()
+    def drbdSetSecondary(self, *args, **kwargs):
+        """Provides an exposed method for _drbdSetSecondary
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbdSetSecondary(*args, **kwargs)
 
     def _drbdSetSecondary(self):
-        """Performs a DRBD 'secondary' on the hard drive DRBD resource"""
+        """Performs a Drbd 'secondary' on the hard drive Drbd resource"""
         # Attempt to set the disk as secondary
-        set_secondary_command = [NodeDRBD.DRBDADM, 'secondary',
-                                 self.getConfigObject()._getResourceName()]
+        set_secondary_command = [NodeDrbd.DrbdADM, 'secondary',
+                                 self.resource_name]
         try:
             System.runCommand(set_secondary_command)
         except MCVirtCommandException:
             # If this fails, wait for 5 seconds, and attempt once more
-            from time import sleep
-            sleep(5)
+            time.sleep(5)
             System.runCommand(set_secondary_command)
 
     def _drbdOverwritePeer(self):
-        """Force DRBD to overwrite the data on the peer"""
-        System.runCommand([NodeDRBD.DRBDADM,
+        """Force Drbd to overwrite the data on the peer"""
+        System.runCommand([NodeDrbd.DrbdADM,
                            '--',
                            '--overwrite-data-of-peer',
                            'primary',
-                           self.getConfigObject()._getResourceName()])
+                           self.resource_name])
 
     def _checkDrbdStatus(self):
-        """Checks the status of the DRBD volume and returns the states"""
+        """Checks the status of the Drbd volume and returns the states"""
         # Check the disk state
         local_disk_state, remote_disk_state = self._drbdGetDiskState()
         self._checkStateType('DISK', local_disk_state)
@@ -582,7 +655,7 @@ class DRBD(Base):
         connection_state = self._drbdGetConnectionState()
         self._checkStateType('CONNECTION', connection_state)
 
-        # Check DRBD role
+        # Check Drbd role
         local_role_state, remote_role_state = self._drbdGetRole()
 
         # Ensure the disk is in-sync
@@ -595,48 +668,66 @@ class DRBD(Base):
         """Determines if the given type of state is OK or not. An exception
            is thrown in the event of a bad state"""
         # Determine if connection state is not OK
-        if (state not in DRBD.DRBD_STATES[state_name]['OK']):
+        if state not in Drbd.Drbd_STATES[state_name]['OK']:
             # Ignore the state if it is in warning and the user has specified to ignore
-            # the DRBD state
-            if (state in DRBD.DRBD_STATES[state_name]['WARNING']):
-                if (not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object)):
+            # the Drbd state
+            if state in Drbd.Drbd_STATES[state_name]['WARNING']:
+                if not self._ignore_drbd:
                     raise DrbdStateException(
-                        ('DRBD connection state for the DRBD resource '
+                        ('Drbd connection state for the Drbd resource '
                          '%s is %s so cannot continue. Run MCVirt as a '
                          'superuser with --ignore-drbd to ignore this issue') %
-                        (self.getConfigObject()._getResourceName(), state.value)
+                        (self.resource_name, state.value)
                     )
             else:
                 raise DrbdStateException(
-                    'DRBD connection state for the DRBD resource %s is %s so cannot continue. ' %
-                    (self.getConfigObject()._getResourceName(), state.value))
+                    'Drbd connection state for the Drbd resource %s is %s so cannot continue. ' %
+                    (self.resource_name, state.value)
+                )
+
+    @Pyro4.expose()
+    def drbdGetConnectionState(self):
+        """Provide an exposed method for _drbdGetConnectionState"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+        connection_state = self._drbdGetConnectionState()
+        return connection_state.value
 
     def _drbdGetConnectionState(self):
-        """Returns the connection state of the DRBD resource"""
-        _, stdout, _ = System.runCommand([NodeDRBD.DRBDADM, 'cstate',
-                                          self.getConfigObject()._getResourceName()])
+        """Returns the connection state of the Drbd resource"""
+        _, stdout, _ = System.runCommand([NodeDrbd.DrbdADM, 'cstate',
+                                          self.resource_name])
         state = stdout.strip()
         return DrbdConnectionState(state)
 
+    @Pyro4.expose()
+    def drbdGetDiskState(self):
+        """Provide an exposed method for drbdGetDiskState"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+        local_state, remote_state = self._drbdGetDiskState()
+        return local_state.value, remote_state.value
+
     def _drbdGetDiskState(self):
-        """Returns the disk state of the DRBD resource"""
-        _, stdout, _ = System.runCommand([NodeDRBD.DRBDADM, 'dstate',
-                                          self.getConfigObject()._getResourceName()])
+        """Returns the disk state of the Drbd resource"""
+        _, stdout, _ = System.runCommand([NodeDrbd.DrbdADM, 'dstate',
+                                          self.resource_name])
         states = stdout.strip()
         (local_state, remote_state) = states.split('/')
         return (DrbdDiskState(local_state), DrbdDiskState(remote_state))
 
     def _drbdGetRole(self):
-        """Returns the role of the DRBD resource"""
-        _, stdout, _ = System.runCommand([NodeDRBD.DRBDADM, 'role',
-                                          self.getConfigObject()._getResourceName()])
+        """Returns the role of the Drbd resource"""
+        _, stdout, _ = System.runCommand([NodeDrbd.DrbdADM, 'role',
+                                          self.resource_name])
         states = stdout.strip()
         (local_state, remote_state) = states.split('/')
         return (DrbdRoleState(local_state), DrbdRoleState(remote_state))
 
     def preMigrationChecks(self):
-        """Ensures that the DRBD state of the disk is in a state suitable for migration"""
+        """Ensures that the Drbd state of the disk is in a state suitable for migration"""
         # Ensure disk state is up-to-date on both local and remote nodes
+        self._checkDrbdStatus()
         local_disk_state, remote_disk_state = self._drbdGetDiskState()
         local_role, remote_role = self._drbdGetRole()
         connection_state = self._drbdGetConnectionState()
@@ -645,261 +736,410 @@ class DRBD(Base):
                 (connection_state is not DrbdConnectionState.CONNECTED) or
                 (local_role is not DrbdRoleState.PRIMARY) or
                 (remote_role is not DrbdRoleState.SECONDARY)):
-            raise DrbdStateException('DRBD resource %s is not in a suitable state to be migrated. '
-                                     % self.getConfigObject()._getResourceName() +
+            raise DrbdStateException('Drbd resource %s is not in a suitable state to be migrated. '
+                                     % self.resource_name +
                                      'Both nodes must be up-to-date and connected')
 
     def preOnlineMigration(self, destination_node):
         """Performs required tasks in order
            for the underlying VM to perform an
            online migration"""
-        # Temporarily allow the DRBD volume to be in a dual-primary mode
+        # Temporarily allow the Drbd volume to be in a dual-primary mode
         self._setTwoPrimariesConfig(allow=True)
 
         # Set remote node as primary
-        destination_node.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdSetPrimary',
-                                          {'vm_name': self.getVmObject().getName(),
-                                           'disk_id': self.getConfigObject().getId(),
-                                           'allow_two_primaries': True})
+        remote_disk = self.get_remote_object(remote_node=destination_node)
+        remote_disk.drbdSetPrimary(allow_two_primaries=True)
 
     def postOnlineMigration(self):
         """Performs post tasks after a VM
            has performed an online migration"""
-        import time
-        # Set DRBD on local node as secondary
+        # Set Drbd on local node as secondary
         self._drbdSetSecondary()
 
-        # Attempt to wait for DRBD to update status to secondary
+        # Attempt to wait for Drbd to update status to secondary
         # If, after 15 seconds, the local volume is still not
         # primary, let the setTwiPrimariesConfig function raise
         # an appropriate exception
         for i in range(1, 3):
             local_role, _ = self._drbdGetRole()
-            if (local_role is DrbdRoleState.SECONDARY):
+            if local_role is DrbdRoleState.SECONDARY:
                 break
             else:
                 time.sleep(5)
 
-        # Disable the DRBD volume from being a dual-primary mode
+        # Disable the Drbd volume from being a dual-primary mode
         self._setTwoPrimariesConfig(allow=False)
 
     def _ensureBlockDeviceExists(self):
-        """Ensures that the DRBD block device exists"""
-        drbd_block_device = self.getConfigObject()._getDrbdDevice()
-        if (not os.path.exists(drbd_block_device)):
+        """Ensures that the Drbd block device exists"""
+        drbd_block_device = self._getDrbdDevice()
+        if not os.path.exists(drbd_block_device):
             raise DrbdBlockDeviceDoesNotExistException(
-                'DRBD block device %s for resource %s does not exist' %
-                (drbd_block_device, self.getConfigObject()._getResourceName()))
+                'Drbd block device %s for resource %s does not exist' %
+                (drbd_block_device, self.resource_name))
 
     def _ensureInSync(self):
-        """Ensures that the DRBD volume was marked as in sync during the last verification"""
-        if (not self._isInSync() and not NodeDRBD.isIgnored(self.getVmObject().mcvirt_object)):
+        """Ensures that the Drbd volume was marked as in sync during the last verification"""
+        if not self._isInSync() and not self._ignore_drbd:
             raise DrbdVolumeNotInSyncException(
-                'The last DRBD verification of the DRBD volume failed: %s. ' %
-                self.getConfigObject()._getResourceName() +
+                'The last Drbd verification of the Drbd volume failed: %s. ' %
+                self.resource_name +
                 'Run MCVirt as a superuser with --ignore-drbd to ignore this issue'
             )
 
     def _isInSync(self):
-        """Returns whether the last DRBD verification reported the
-           DRBD volume as in-sync"""
-        vm_config = self.getVmObject().getConfigObject().getConfig()
+        """Returns whether the last Drbd verification reported the
+           Drbd volume as in-sync"""
+        vm_config = self.vm_object.get_config_object().get_config()
 
         # If the hard drive configuration exists, read the current state of the disk
-        if (self.getConfigObject().getId() in vm_config['hard_disks']):
-            return vm_config['hard_disks'][self.getConfigObject().getId()]['sync_state']
+        if self.disk_id in vm_config['hard_disks']:
+            return vm_config['hard_disks'][self.disk_id]['sync_state']
         else:
             # Otherwise, if the hard drive configuration does not exist in the VM configuration,
             # assume the disk is being created and is in-sync
             return True
 
+    @Pyro4.expose()
+    @locking_method()
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
-        obtained_lock = False
-        if (not self.getVmObject().mcvirt_object.obtained_filelock):
-            obtained_lock = True
-            self.getVmObject().mcvirt_object.obtainLock(timeout=10, initialise_nodes=update_remote)
-
-        def updateConfig(config):
-            config['hard_disks'][self.getConfigObject().getId()]['sync_state'] = sync_state
-        self.getVmObject().getConfigObject().updateConfig(
-            updateConfig,
+        def update_config(config):
+            config['hard_disks'][self.disk_id]['sync_state'] = sync_state
+        self.vm_object.get_config_object().update_config(
+            update_config,
             'Updated sync state of disk \'%s\' of \'%s\' to \'%s\'' %
-            (self.getConfigObject().getId(),
-             self.getConfigObject().vm_object.getName(),
+            (self.disk_id,
+             self.vm_object.get_name(),
              sync_state))
 
         # Update remote nodes
-        if (self.getConfigObject().vm_object.mcvirt_object.initialiseNodes() and update_remote):
-            cluster_instance = Cluster(self.getConfigObject().vm_object.mcvirt_object)
-            for node in self.getConfigObject().vm_object._getRemoteNodes():
-                remote_object = cluster_instance.getRemoteNode(node)
-                remote_object.runRemoteCommand('virtual_machine-hard_drive-drbd-setSyncState',
-                                               {'vm_name': self.getVmObject().getName(),
-                                                'disk_id': self.getConfigObject().getId(),
-                                                'sync_state': sync_state})
+        if self._is_cluster_master and update_remote:
+            cluster = self._get_registered_object('cluster')
 
-        if (obtained_lock):
-            self.getVmObject().mcvirt_object.releaseLock(initialise_nodes=update_remote)
+            def remoteCommand(node):
+                remote_disk = self.get_remote_object(remote_node=node)
+                remote_disk.setSyncState(sync_state=sync_state)
+            cluster.run_remote_command(callback_method=remoteCommand,
+                                       nodes=self.vm_object._get_remote_nodes())
 
+    @Pyro4.expose()
     def verify(self):
-        """Performs a verification of a DRBD hard drive"""
-        import time
-
-        # Check DRBD state of disk
+        """Performs a verification of a Drbd hard drive"""
+        # Check Drbd state of disk
         if (self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
             raise DrbdStateException(
-                'DRBD resource must be connected before performing a verification: %s' %
-                self.getConfigObject()._getResourceName())
-
-        self.getVmObject().mcvirt_object.releaseLock()
+                'Drbd resource must be connected before performing a verification: %s' %
+                self.resource_name)
 
         # Reset the disk to be marked in a consistent state
         self.setSyncState(True)
 
         try:
-            # Create a socket, to receive errors from DRBD about out-of-sync blocks
-            drbd_socket = DRBDSocket(self.getVmObject().mcvirt_object)
-
             # Perform a drbdadm verification
-            System.runCommand([NodeDRBD.DRBDADM, 'verify',
-                               self.getConfigObject()._getResourceName()])
+            System.runCommand([NodeDrbd.DrbdADM, 'verify',
+                               self.resource_name])
 
-            # Monitor the DRBD status, until the VM has started syncing
+            # Monitor the Drbd status, until the VM has started syncing
             while True:
-                if (self._drbdGetConnectionState() == DrbdConnectionState.VERIFY_S):
+                if self._drbdGetConnectionState() == DrbdConnectionState.VERIFY_S:
                     break
                 time.sleep(5)
 
-            # Monitor the DRBD status, until the VM has finished syncing
+            # Monitor the Drbd status, until the VM has finished syncing
             while True:
-                if (self._drbdGetConnectionState() != DrbdConnectionState.VERIFY_S):
+                if self._drbdGetConnectionState() != DrbdConnectionState.VERIFY_S:
                     break
                 time.sleep(5)
-
-            # Provide DRBD 10 seconds to run the mcvirt_drbd command, if necessary
-            time.sleep(10)
-
-            # Stop the DRBD connection socket
-            drbd_socket.stop()
-            time.sleep(10)
-            drbd_socket.mcvirt_instance = None
-            drbd_socket = None
 
         except Exception:
             # If an exception is thrown during the verify, mark the VM as
             # not in-sync
             self.setSyncState(False)
 
-            # Tear down the socket
-            if (drbd_socket):
-                drbd_socket.mcvirt_instance = None
-                drbd_socket = None
-            raise
-
-        self.getVmObject().mcvirt_object.obtainLock()
-
-        if (self._isInSync()):
+        if self._isInSync():
             return True
         else:
-            raise DrbdVolumeNotInSyncException('The DRBD verification for \'%s\' failed' %
-                                               self.getConfigObject()._getResourceName())
+            raise DrbdVolumeNotInSyncException('The Drbd verification for \'%s\' failed' %
+                                               self.resource_name)
 
     def move(self, destination_node, source_node):
-        """Replaces a remote node for the DRBD volume with a new node
+        """Replaces a remote node for the Drbd volume with a new node
            and syncs the data"""
-        cluster_instance = Cluster(self.getVmObject().mcvirt_object)
+        # @TODO Update
+        cluster_instance = self._get_registered_object('cluster')
 
-        # Remove DRBD configuration from source node
-        dest_node_object = cluster_instance.getRemoteNode(destination_node)
+        # Remove Drbd configuration from source node
+        dest_node_object = cluster_instance.get_remote_node(destination_node)
 
-        if (source_node not in cluster_instance.getFailedNodes()):
-            src_node_object = cluster_instance.getRemoteNode(source_node)
-            src_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDisconnect',
-                                             {'vm_name': self.getVmObject().getName(),
-                                              'disk_id': self.getConfigObject().getId()})
-            src_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdDown',
-                                             {'config': self.getConfigObject()._dumpConfig()})
+        if source_node not in cluster_instance.getFailedNodes():
+            src_node_object = cluster_instance.get_remote_node(source_node)
+            src_node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdDisconnect',
+                                               {'vm_name': self.vm_object.get_name(),
+                                                'disk_id': self.disk_id})
+            src_node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdDown',
+                                               {'config': self._dumpConfig()})
 
-            # Remove the DRBD configuration from source node
-            src_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-removeDrbdConfig',
-                                             {'config': self.getConfigObject()._dumpConfig()})
+            # Remove the Drbd configuration from source node
+            src_node_object.run_remote_command('virtual_machine-hard_drive-drbd-removeDrbdConfig',
+                                               {'config': self._dumpConfig()})
 
             # Remove the meta logical volume from remote node
-            src_node_object.runRemoteCommand('virtual_machine-hard_drive-removeLogicalVolume',
-                                             {'config': self.getConfigObject()._dumpConfig(),
-                                              'name': self.getConfigObject()._getLogicalVolumeName(
-                                                  self.getConfigObject().DRBD_META_SUFFIX),
-                                              'ignore_non_existent': False})
+            src_node_object.run_remote_command('virtual_machine-hard_drive-removeLogicalVolume',
+                                               {'config': self._dumpConfig(),
+                                                'name': self._getLogicalVolumeName(
+                                                    self.Drbd_META_SUFFIX),
+                                                'ignore_non_existent': False})
 
-        # Disconnect the local DRBD volume
+        # Disconnect the local Drbd volume
         self._drbdDisconnect()
 
         # Obtain the size of the disk to be created
         disk_size = self.getSize()
 
         # Create the storage on the destination node
-        raw_logical_volume_name = self.getConfigObject()._getLogicalVolumeName(
-            self.getConfigObject().DRBD_RAW_SUFFIX)
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-createLogicalVolume',
-                                          {'config': self.getConfigObject()._dumpConfig(),
-                                           'name': raw_logical_volume_name,
-                                           'size': disk_size})
+        raw_logical_volume_name = self._getLogicalVolumeName(
+            self.Drbd_RAW_SUFFIX)
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-createLogicalVolume',
+                                            {'config': self._dumpConfig(),
+                                             'name': raw_logical_volume_name,
+                                             'size': disk_size})
 
         # Activate and zero raw volume
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-activateLogicalVolume',
-                                          {'config': self.getConfigObject()._dumpConfig(),
-                                           'name': raw_logical_volume_name})
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-zeroLogicalVolume',
-                                          {'config': self.getConfigObject()._dumpConfig(),
-                                           'name': raw_logical_volume_name,
-                                           'size': disk_size})
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-activateLogicalVolume',
+                                            {'config': self._dumpConfig(),
+                                             'name': raw_logical_volume_name})
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-zeroLogicalVolume',
+                                            {'config': self._dumpConfig(),
+                                             'name': raw_logical_volume_name,
+                                             'size': disk_size})
 
-        meta_logical_volume_name = self.getConfigObject()._getLogicalVolumeName(
-            self.getConfigObject().DRBD_META_SUFFIX)
-        meta_volume_size = self.getConfigObject()._calculateMetaDataSize()
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-createLogicalVolume',
-                                          {'config': self.getConfigObject()._dumpConfig(),
-                                           'name': meta_logical_volume_name,
-                                           'size': meta_volume_size})
+        meta_logical_volume_name = self._getLogicalVolumeName(
+            self.Drbd_META_SUFFIX)
+        meta_volume_size = self._calculateMetaDataSize()
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-createLogicalVolume',
+                                            {'config': self._dumpConfig(),
+                                             'name': meta_logical_volume_name,
+                                             'size': meta_volume_size})
 
         # Activate and zero meta volume
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-activateLogicalVolume',
-                                          {'config': self.getConfigObject()._dumpConfig(),
-                                           'name': meta_logical_volume_name})
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-zeroLogicalVolume',
-                                          {'config': self.getConfigObject()._dumpConfig(),
-                                           'name': meta_logical_volume_name,
-                                           'size': meta_volume_size})
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-activateLogicalVolume',
+                                            {'config': self._dumpConfig(),
+                                             'name': meta_logical_volume_name})
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-zeroLogicalVolume',
+                                            {'config': self._dumpConfig(),
+                                             'name': meta_logical_volume_name,
+                                             'size': meta_volume_size})
 
-        # Generate DRBD configuration on local and remote node
-        self.getConfigObject()._generateDrbdConfig()
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-generateDrbdConfig',
-                                          {'config': self.getConfigObject()._dumpConfig()})
-
-        NodeDRBD.adjustDRBDConfig(self.getVmObject().mcvirt_object,
-                                  self.getConfigObject()._getResourceName())
+        # Generate Drbd configuration on local and remote node
+        self._generateDrbdConfig()
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-drbd-generateDrbdConfig',
+                                            {'config': self._dumpConfig()})
+        NodeDrbd(self.vm_object.mcvirt_object).adjust_drbd_config(
+            self.resource_name
+        )
 
         # Initialise meta-data on destination node
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-initialiseMetaData',
-                                          {'config': self.getConfigObject()._dumpConfig()})
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-drbd-initialiseMetaData',
+                                            {'config': self._dumpConfig()})
 
-        # Bring up DRBD volume on destination node
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdUp',
-                                          {'config': self.getConfigObject()._dumpConfig()})
+        # Bring up Drbd volume on destination node
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdUp',
+                                            {'config': self._dumpConfig()})
 
         # Set destination node to secondary
-        dest_node_object.runRemoteCommand('virtual_machine-hard_drive-drbd-drbdSetSecondary',
-                                          {'vm_name': self.getVmObject().getName(),
-                                           'disk_id': self.getConfigObject().getId()})
+        dest_node_object.run_remote_command('virtual_machine-hard_drive-drbd-drbdSetSecondary',
+                                            {'vm_name': self.vm_object.get_name(),
+                                             'disk_id': self.disk_id})
 
         # Overwrite peer with data from local node
         self._drbdOverwritePeer()
 
         # Remove the raw logic volume from the source node
         if (source_node not in cluster_instance.getFailedNodes()):
-            src_node_object.runRemoteCommand('virtual_machine-hard_drive-removeLogicalVolume',
-                                             {'config': self.getConfigObject()._dumpConfig(),
-                                              'name': self.getConfigObject()._getLogicalVolumeName(
-                                                  self.getConfigObject().DRBD_RAW_SUFFIX),
-                                              'ignore_non_existent': False})
+            src_node_object.run_remote_command('virtual_machine-hard_drive-removeLogicalVolume',
+                                               {'config': self._dumpConfig(),
+                                                'name': self._getLogicalVolumeName(
+                                                    self.Drbd_RAW_SUFFIX),
+                                                'ignore_non_existent': False})
+
+    def _getAvailableDrbdPort(self):
+        """Obtains the next available Drbd port"""
+        # Obtain list of currently used Drbd ports
+        node_drbd = self._get_registered_object('node_drbd')
+        used_ports = node_drbd.get_used_drbd_ports()
+        available_port = None
+
+        # Determine a free port
+        test_port = self.INITIAL_PORT
+
+        while (available_port is None):
+            if test_port in used_ports:
+                test_port += 1
+            else:
+                available_port = test_port
+
+        return available_port
+
+    def _getAvailableDrbdMinor(self):
+        """Obtains the next available Drbd minor"""
+        # Obtain list of currently used Drbd minors
+        node_drbd = self._get_registered_object('node_drbd')
+        used_minor_ids = node_drbd.get_used_drbd_minors()
+        available_minor_id = None
+
+        # Determine a free minor
+        test_minor_id = Drbd.INITIAL_MINOR
+
+        while (available_minor_id is None):
+            if test_minor_id in used_minor_ids:
+                test_minor_id += 1
+            else:
+                available_minor_id = test_minor_id
+
+        return available_minor_id
+
+    def _getLogicalVolumeName(self, lv_type):
+        """Returns the logical volume name for a given logical volume type"""
+        return 'mcvirt_vm-%s-disk-%s-drbd-%s' % (self.vm_object.get_name(), self.disk_id, lv_type)
+
+    @property
+    def resource_name(self):
+        """Returns the Drbd resource name for the hard drive object"""
+        return 'mcvirt_vm-%s-disk-%s' % (self.vm_object.get_name(), self.disk_id)
+
+    @property
+    def drbd_minor(self):
+        """Returns the Drbd port assigned to the hard drive"""
+        if self._drbd_minor is None:
+            self._drbd_minor = self._getAvailableDrbdMinor()
+
+        return self._drbd_minor
+
+    @property
+    def drbd_port(self):
+        """Returns the Drbd port assigned to the hard drive"""
+        if self._drbd_port is None:
+            self._drbd_port = self._getAvailableDrbdPort()
+
+        return self._drbd_port
+
+    def _getDrbdDevice(self):
+        """Returns the block object path for the Drbd volume"""
+        return '/dev/drbd%s' % self.drbd_minor
+
+    def _getDiskPath(self):
+        """Returns the path of the raw disk image"""
+        return self._getDrbdDevice()
+
+    @Pyro4.expose()
+    @locking_method()
+    def generateDrbdConfig(self, *args, **kwargs):
+        """Provides an exposed method for _generateDrbdConfig
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._generateDrbdConfig(*args, **kwargs)
+
+    def _generateDrbdConfig(self):
+        """Generates the Drbd resource configuration"""
+        # Create configuration for use with the template
+        raw_lv_path = self._getLogicalVolumePath(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX))
+        meta_lv_path = self._getLogicalVolumePath(
+            self._getLogicalVolumeName(
+                self.Drbd_META_SUFFIX))
+        drbd_config = \
+            {
+                'resource_name': self.resource_name,
+                'block_device_path': self._getDrbdDevice(),
+                'raw_lv_path': raw_lv_path,
+                'meta_lv_path': meta_lv_path,
+                'drbd_port': self.drbd_port,
+                'nodes': []
+            }
+
+        # Add local node to the Drbd config
+        cluster_object = self._get_registered_object('cluster')
+        node_template_conf = \
+            {
+                'name': get_hostname(),
+                'ip_address': cluster_object.get_cluster_ip_address()
+            }
+        drbd_config['nodes'].append(node_template_conf)
+
+        # Add remote nodes to Drbd config
+        for node in self.vm_object._get_remote_nodes():
+            node_config = cluster_object.get_node_config(node)
+            node_template_conf = \
+                {
+                    'name': node,
+                    'ip_address': node_config['ip_address']
+                }
+            drbd_config['nodes'].append(node_template_conf)
+
+        # Replace the variables in the template with the local Drbd configuration
+        config_content = Template(file=self.Drbd_CONFIG_TEMPLATE, searchList=[drbd_config])
+
+        # Write the Drbd configuration
+        fh = open(self._getDrbdConfigFile(), 'w')
+        fh.write(config_content.respond())
+        fh.close()
+
+    @Pyro4.expose()
+    @locking_method()
+    def removeDrbdConfig(self, *args, **kwargs):
+        """Provides an exposed method for _removeDrbdConfig
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._removeDrbdConfig(*args, **kwargs)
+
+    def _removeDrbdConfig(self):
+        """Remove the Drbd resource configuration from the node"""
+        os.remove(self._getDrbdConfigFile())
+
+    def _getDrbdConfigFile(self):
+        """Returns the path of the Drbd resource configuration file"""
+        return NodeDrbd.CONFIG_DIRECTORY + '/' + self.resource_name + '.res'
+
+    def _calculateMetaDataSize(self):
+        """Determines the size of the Drbd meta volume"""
+        raw_logical_volume_name = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
+        logical_volume_path = self._getLogicalVolumePath(raw_logical_volume_name)
+
+        # Obtain size of raw volume
+        _, raw_size_sectors, _ = System.runCommand(['blockdev', '--getsz', logical_volume_path])
+        raw_size_sectors = int(raw_size_sectors.strip())
+
+        # Obtain size of sectors
+        _, sector_size, _ = System.runCommand(['blockdev', '--getss', logical_volume_path])
+        sector_size = int(sector_size.strip())
+
+        # Follow the Drbd meta data calculation formula, see
+        # https://drbd.linbit.com/users-guide/ch-internals.html#s-external-meta-data
+        meta_size_formula_step_1 = int(math.ceil(raw_size_sectors / 262144))
+        meta_size_formula_step_2 = meta_size_formula_step_1 * 8
+        meta_size_sectors = meta_size_formula_step_2 + 72
+
+        # Convert meta size in sectors to Mebibytes
+        meta_size_mebibytes = math.ceil((meta_size_sectors * sector_size) / (1024 ^ 2))
+
+        # Convert from float to int and return
+        return int(meta_size_mebibytes)
+
+    def _getMCVirtConfig(self):
+        """Returns the MCVirt hard drive configuration for the Drbd hard drive"""
+        config = super(Drbd, self)._getMCVirtConfig()
+        config['drbd_port'] = self.drbd_port
+        config['drbd_minor'] = self.drbd_minor
+        config['sync_state'] = self._sync_state
+        return config
+
+    def _getBackupLogicalVolume(self):
+        """Returns the storage device for the backup"""
+        return self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
+
+    def _getBackupSnapshotLogicalVolume(self):
+        """Returns the logical volume name for the backup snapshot"""
+        return self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX) + self.SNAPSHOT_SUFFIX

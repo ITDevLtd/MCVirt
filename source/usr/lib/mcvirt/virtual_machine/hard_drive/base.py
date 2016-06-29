@@ -1,3 +1,4 @@
+"""Provide base operations to manage all hard drives, used by VMs"""
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -15,239 +16,322 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from mcvirt.mcvirt import MCVirtException
+import Pyro4
 import os
-from mcvirt.system import System, MCVirtCommandException
+import xml.etree.ElementTree as ET
+from enum import Enum
+
+from mcvirt.exceptions import (HardDriveDoesNotExistException,
+                               StorageTypesCannotBeMixedException,
+                               LogicalVolumeDoesNotExistException,
+                               BackupSnapshotAlreadyExistsException,
+                               BackupSnapshotDoesNotExistException,
+                               ExternalStorageCommandErrorException,
+                               MCVirtCommandException)
+from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.system import System
+from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.exceptions import ReachedMaximumStorageDevicesException
+from mcvirt.utils import get_hostname
+from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.lock import locking_method
+from mcvirt.constants import LockStates
 
 
-class HardDriveDoesNotExistException(MCVirtException):
-    """The given hard drive does not exist"""
-    pass
+class Driver(Enum):
+    """Enums for specifying the hard drive driver type"""
+
+    VIRTIO = 'virtio'
+    IDE = 'ide'
+    SCSI = 'scsi'
+    USB = 'usb'
+    SATA = 'sata'
+    SD = 'sd'
 
 
-class StorageTypesCannotBeMixedException(MCVirtException):
-    """Storage types cannot be mixed within a single VM"""
-    pass
-
-
-class LogicalVolumeDoesNotExistException(MCVirtException):
-    """A required logical volume does not exist"""
-    pass
-
-
-class BackupSnapshotAlreadyExistsException(MCVirtException):
-    """The backup snapshot for the logical volume already exists"""
-    pass
-
-
-class BackupSnapshotDoesNotExistException(MCVirtException):
-    """The backup snapshot for the logical volume does not exist"""
-    pass
-
-
-class Base(object):
+class Base(PyroObject):
     """Provides base operations to manage all hard drives, used by VMs"""
 
-    def __init__(self, disk_id):
-        """Sets member variables"""
-        pass
+    # The maximum number of storage devices for the current type
+    MAXIMUM_DEVICES = 1
 
-    def _ensureExists(self):
-        """Ensures the disk exists on the local node"""
-        if (not self._checkExists()):
+    # The default driver for the disk
+    DEFAULT_DRIVER = Driver.IDE.name
+
+    # Set default options for snapshotting
+    SNAPSHOT_SUFFIX = '_snapshot'
+    SNAPSHOT_SIZE = '500M'
+
+    def __init__(self, vm_object, disk_id=None, driver=None):
+        """Set member variables"""
+        self._disk_id = disk_id
+        self._driver = driver
+        self.vm_object = vm_object
+
+        # If the disk is configured on a VM, obtain
+        # the details from the VM configuration
+        for key, value in self.getDiskConfig().iteritems():
+            setattr(self, key, value)
+
+    @property
+    def config_properties(self):
+        """Return the disk object config items"""
+        return ['disk_id', 'driver']
+
+    def __setattr__(self, name, value):
+        """Override setattr to ensure that the value of
+        a disk config item is written to, rather than the
+        property method
+        """
+        if name in self.config_properties:
+            name = '_%s' % name
+        return super(Base, self).__setattr__(name, value)
+
+    @property
+    def disk_id(self):
+        """Return the disk ID of the current disk, generating a new one
+        if there is not already one present
+        """
+        if self._disk_id is None:
+            self._disk_id = self._get_available_id()
+        return self._disk_id
+
+    @property
+    def _target_dev(self):
+        """Determine the target dev, based on the disk's ID"""
+        # Use ascii numbers to map 1 => a, 2 => b, etc...
+        return 'sd' + chr(96 + int(self.disk_id))
+
+    @property
+    def driver(self):
+        """Return the disk drive driver name"""
+        if self._driver is None:
+            self._driver = self.DEFAULT_DRIVER
+        return self._driver
+
+    def get_remote_object(self, node_name=None, remote_node=None, registered=True):
+        """Obtain an instance of the current hard drive object on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if remote_node is None:
+            remote_node = cluster.get_remote_node(node_name)
+
+        remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
+        remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
+        remote_hard_drive_factory = remote_node.get_connection('hard_drive_factory')
+
+        kwargs = {
+            'vm_object': remote_vm,
+            'disk_id': self.disk_id
+        }
+        if not registered:
+            kwargs['storage_type'] = self.get_type()
+            for config in self.config_properties:
+                kwargs[config] = getattr(self, config)
+
+        hard_drive_object = remote_hard_drive_factory.getObject(**kwargs)
+        remote_node.annotate_object(hard_drive_object)
+        return hard_drive_object
+
+    def _get_available_id(self):
+        """Obtain the next available ID for the VM hard drive, by scanning the IDs
+        of disks attached to the VM
+        """
+        found_available_id = False
+        disk_id = 0
+        vm_config = self.vm_object.get_config_object().get_config()
+        disks = vm_config['hard_disks']
+        while (not found_available_id):
+            disk_id += 1
+            if not str(disk_id) in disks:
+                found_available_id = True
+
+        # Check that the id is less than 4, as a VM can only have a maximum of 4 disks
+        if int(disk_id) > self.MAXIMUM_DEVICES:
+            raise ReachedMaximumStorageDevicesException(
+                'A maximum of %s hard drives can be mapped to a VM' %
+                self.MAXIMUM_DEVICES)
+
+        return disk_id
+
+    def _ensure_exists(self):
+        """Ensure the disk exists on the local node"""
+        if not self._check_exists():
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
-                (self.getConfigObject().getId(), self.getVmObject().name))
+                (self.disk_id, self.vm_object.get_name()))
 
-    def getConfigObject(self):
-        """Returns the config object for the hard drive"""
-        return self.config
-
-    def getVmObject(self):
-        """Returns the VM object that the hard drive is attached to"""
-        return self.getConfigObject().vm_object
-
-    def getType(self):
-        """Returns the type of storage for the hard drive"""
+    @Pyro4.expose()
+    def get_type(self):
+        """Return the type of storage for the hard drive"""
         return self.__class__.__name__
 
     def delete(self):
-        """Deletes the logical volume for the disk"""
-        self._ensureExists()
-        from mcvirt.virtual_machine.hard_drive.factory import Factory
-        # Remove from LibVirt, if registered, so that libvirt doesn't
-        # hold the device open when the storage is removed
-        Factory.getClass(self.getType())._unregisterLibvirt(self.getConfigObject())
+        """Delete the logical volume for the disk"""
+        self._ensure_exists()
+
+        if self.vm_object.isRegisteredLocally():
+            # Remove from LibVirt, if registered, so that libvirt doesn't
+            # hold the device open when the storage is removed
+            self._unregisterLibvirt()
 
         # Remove backing storage
         self._removeStorage()
 
         # Remove the hard drive from the MCVirt VM configuration
-        Factory.getClass(
-            self.getType())._removeFromVirtualMachine(
-            self.getConfigObject(),
-            unregister=False)
+        self.removeFromVirtualMachine(unregister=False)
 
     def duplicate(self, destination_vm_object):
         """Clone the hard drive and attach it to the new VM object"""
-        self._ensureExists()
-        from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
-        disk_size = self.getSize()
+        self._ensure_exists()
 
         # Create new disk object, using the same type, size and disk_id
-        new_disk_object = HardDriveFactory.getClass(
-            self.getType()).create(
-            destination_vm_object,
-            disk_size,
-            disk_id=self.getConfigObject().getId(),
-            driver=self.getConfigObject()._getDriver())
+        new_disk_object = self.__class__(vm_object=destination_vm_object, disk_id=self.disk_id,
+                                         driver=self.driver)
+        self._register_object(new_disk_object)
+        new_disk_object.create(self.getSize())
 
-        source_drbd_block_device = self.getConfigObject()._getDiskPath()
-        destination_drbd_block_device = new_disk_object.getConfigObject()._getDiskPath()
+        source_drbd_block_device = self._getDiskPath()
+        destination_drbd_block_device = new_disk_object._getDiskPath()
 
         # Use dd to duplicate the old disk to the new disk
-        command_args = (
-            'dd',
-            'if=%s' %
-            source_drbd_block_device,
-            'of=%s' %
-            destination_drbd_block_device,
-            'bs=1M')
+        command_args = ('dd', 'if=%s' % source_drbd_block_device,
+                        'of=%s' % destination_drbd_block_device, 'bs=1M')
         try:
             System.runCommand(command_args)
         except MCVirtCommandException, e:
             new_disk_object.delete()
-            raise MCVirtException("Error whilst duplicating disk logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst duplicating disk logical volume:\n" + str(e)
+            )
 
         return new_disk_object
 
-    @staticmethod
-    def _addToVirtualMachine(config_object, register=True):
+    @Pyro4.expose()
+    @locking_method()
+    def addToVirtualMachine(self, register=True):
         """Add the hard drive to the virtual machine,
            and performs the base function on all nodes in the cluster"""
-        from mcvirt.virtual_machine.hard_drive.factory import Factory
-
         # Update the libvirt domain XML configuration
-        if (config_object.vm_object.isRegisteredLocally()):
-            Factory.getClass(config_object._getType())._registerLibvirt(config_object)
+        if self.vm_object.isRegisteredLocally():
+            self._registerLibvirt()
 
         # Update the VM storage config
-        Factory.getClass(config_object._getType())._setVmStorageType(config_object)
+        self._setVmStorageType()
 
         # Update VM config file
-        def addDiskToConfig(vm_config):
-            vm_config['hard_disks'][str(config_object.getId())] = config_object._getMCVirtConfig()
+        def add_disk_to_config(vm_config):
+            vm_config['hard_disks'][str(self.disk_id)] = self._getMCVirtConfig()
 
-        config_object.vm_object.getConfigObject().updateConfig(
-            addDiskToConfig, 'Added disk \'%s\' to \'%s\'' %
-            (config_object.getId(), config_object.vm_object.getName()))
+        self.vm_object.get_config_object().update_config(
+            add_disk_to_config, 'Added disk \'%s\' to \'%s\'' %
+                                (self.disk_id, self.vm_object.get_name())
+        )
 
         # If the node cluster is initialised, update all remote node configurations
-        if (config_object.vm_object.mcvirt_object.initialiseNodes()):
+        if self._is_cluster_master:
 
             # Create list of nodes that the hard drive was successfully added to
-            from mcvirt.cluster.cluster import Cluster
             successful_nodes = []
-            cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
+            cluster = self._get_registered_object('cluster')
             try:
-                for node in cluster_instance.getNodes():
-                    remote_object = cluster_instance.getRemoteNode(node)
-                    remote_object.runRemoteCommand(
-                        'virtual_machine-hard_drive-addToVirtualMachine',
-                        {'config': config_object._dumpConfig()}
-                    )
+                for node in cluster.get_nodes():
+                    remote_disk_object = self.get_remote_object(node, registered=False)
+                    remote_disk_object.addToVirtualMachine()
                     successful_nodes.append(node)
             except Exception:
                 # If the hard drive fails to be added to a node, remove it from all successful nodes
                 # and remove from the local node
                 for node in successful_nodes:
-                    remote_object = cluster_instance.getRemoteNode(node)
-                    remote_object.runRemoteCommand(
-                        'virtual_machine-hard_drive-removeFromVirtualMachine',
-                        {'config': config_object._dumpConfig()}
-                    )
-                Base._removeFromVirtualMachine(config_object)
+                    self.get_remote_object(node).removeFromVirtualMachine()
+
+                self.removeFromVirtualMachine(unregister=register, all_nodes=False)
                 raise
 
     @staticmethod
-    def _removeFromVirtualMachine(config_object, unregister=False):
+    def isAvailable(pyro_object):
+        """Returns whether the storage type is available on the node"""
+        raise NotImplementedError
+
+    @Pyro4.expose()
+    @locking_method()
+    def removeFromVirtualMachine(self, unregister=False, all_nodes=True):
         """Remove the hard drive from a VM configuration and perform all nodes
            in the cluster"""
         # If the VM that the hard drive is attached to is registered on the local
         # node, remove the hard drive from the LibVirt configuration
-        if (unregister and config_object.vm_object.isRegisteredLocally()):
-            Base._unregisterLibvirt(config_object)
+        if unregister and self.vm_object.isRegisteredLocally():
+            self._unregisterLibvirt()
 
         # Update VM config file
         def removeDiskFromConfig(vm_config):
-            del(vm_config['hard_disks'][str(config_object.getId())])
+            del(vm_config['hard_disks'][str(self.disk_id)])
 
-        config_object.vm_object.getConfigObject().updateConfig(
+        self.vm_object.get_config_object().update_config(
             removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %
-            (config_object.getId(), config_object.vm_object.getName()))
+            (self.disk_id, self.vm_object.get_name()))
 
         # If the cluster is initialised, run on all nodes that the VM is available on
-        if (config_object.vm_object.mcvirt_object.initialiseNodes()):
-            from mcvirt.cluster.cluster import Cluster
-            cluster_instance = Cluster(config_object.vm_object.mcvirt_object)
-            for node in cluster_instance.getNodes():
-                remote_object = cluster_instance.getRemoteNode(node)
-                remote_object.runRemoteCommand(
-                    'virtual_machine-hard_drive-removeFromVirtualMachine',
-                    {'config': config_object._dumpConfig()}
-                )
+        if self._is_cluster_master and all_nodes:
+            cluster = self._get_registered_object('cluster')
+            for node in cluster.get_nodes():
+                remote_disk_object = self.get_remote_object(node)
+                remote_disk_object.removeFromVirtualMachine()
 
-    @staticmethod
-    def _unregisterLibvirt(config_object):
+    def _unregisterLibvirt(self):
         """Removes the hard drive from the LibVirt configuration for the VM"""
         # Update the libvirt domain XML configuration
         def updateXML(domain_xml):
             device_xml = domain_xml.find('./devices')
             disk_xml = device_xml.find(
                 './disk/target[@dev="%s"]/..' %
-                config_object._getTargetDev())
+                self._target_dev)
             device_xml.remove(disk_xml)
 
         # Update libvirt configuration
-        config_object.vm_object.editConfig(updateXML)
+        self.vm_object._editConfig(updateXML)
 
-    @staticmethod
-    def _registerLibvirt(config_object):
+    def _registerLibvirt(self):
         """Register the hard drive with the Libvirt VM configuration"""
 
         def updateXML(domain_xml):
-            drive_xml = config_object._generateLibvirtXml()
+            drive_xml = self._generateLibvirtXml()
             device_xml = domain_xml.find('./devices')
             device_xml.append(drive_xml)
 
         # Update libvirt configuration
-        config_object.vm_object.editConfig(updateXML)
+        self.vm_object._editConfig(updateXML)
 
-    @staticmethod
-    def _setVmStorageType(config_object):
+    def _setVmStorageType(self):
         """Set the VM configuration storage type to the current hard drive type"""
         # Ensure VM has not already been configured with disks that
         # do not match the type specified
-        number_of_disks = len(config_object.vm_object.getDiskObjects())
-        current_storage_type = config_object.vm_object.getConfigObject(
-        ).getConfig()['storage_type']
-        if (current_storage_type is not config_object._getType()):
-            if (number_of_disks):
+        number_of_disks = len(self.vm_object.getHardDriveObjects())
+        current_storage_type = self.vm_object.get_config_object(
+        ).get_config()['storage_type']
+        if current_storage_type != self.get_type():
+            if number_of_disks:
                 raise StorageTypesCannotBeMixedException(
                     'The VM (%s) is already configured with %s disks' %
-                    (config_object.vm_object.getName(), current_storage_type))
+                    (self.vm_object.get_name(), current_storage_type))
 
             def updateStorageTypeConfig(config):
-                config['storage_type'] = config_object._getType()
-            config_object.vm_object.getConfigObject().updateConfig(
+                config['storage_type'] = self.get_type()
+            self.vm_object.get_config_object().update_config(
                 updateStorageTypeConfig, 'Updated storage type for \'%s\' to \'%s\'' %
-                (config_object.vm_object.getName(), config_object._getType()))
+                (self.vm_object.get_name(), self.get_type()))
 
-    @staticmethod
-    def _createLogicalVolume(config_object, name, size, perform_on_nodes=False):
+    @Pyro4.expose()
+    @locking_method()
+    def createLogicalVolume(self, *args, **kwargs):
+        """Provides an exposed method for _createLogicalVolume
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._createLogicalVolume(*args, **kwargs)
+
+    def _createLogicalVolume(self, name, size, perform_on_nodes=False):
         """Creates a logical volume on the node/cluster"""
-        from mcvirt.cluster.cluster import Cluster
-        volume_group = config_object._getVolumeGroup()
+        volume_group = self._getVolumeGroup()
 
         # Create command list
         command_args = ['/sbin/lvcreate', volume_group, '--name', name, '--size', '%sM' % size]
@@ -255,61 +339,62 @@ class Base(object):
             # Create on local node
             System.runCommand(command_args)
 
-            if (perform_on_nodes and config_object.vm_object.mcvirt_object.initialiseNodes()):
-                cluster = Cluster(config_object.vm_object.mcvirt_object)
-                nodes = config_object.vm_object._getRemoteNodes()
+            if perform_on_nodes and self._is_cluster_master:
+                def remoteCommand(node):
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                    remote_disk.createLogicalVolume(name=name, size=size)
 
-                # Run on remote nodes
-                cluster.runRemoteCommand('virtual_machine-hard_drive-createLogicalVolume',
-                                         {'config': config_object._dumpConfig(),
-                                          'name': name,
-                                          'size': size},
-                                         nodes=nodes)
+                cluster = self._get_registered_object('cluster')
+                cluster.run_remote_command(callback_method=remoteCommand,
+                                           nodes=self.vm_object._get_remote_nodes())
 
         except MCVirtCommandException, e:
             # Remove any logical volumes that had been created if one of them fails
-            Base._removeLogicalVolume(
-                config_object,
+            self._removeLogicalVolume(
                 name,
                 ignore_non_existent=True,
                 perform_on_nodes=perform_on_nodes)
-            raise MCVirtException("Error whilst creating disk logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst creating disk logical volume:\n" + str(e)
+            )
 
-    @staticmethod
-    def _removeLogicalVolume(
-            config_object,
-            name,
-            ignore_non_existent=False,
-            perform_on_nodes=False):
+    @Pyro4.expose()
+    @locking_method()
+    def removeLogicalVolume(self, *args, **kwargs):
+        """Provides an exposed method for _removeLogicalVolume
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._removeLogicalVolume(*args, **kwargs)
+
+    def _removeLogicalVolume(self, name, ignore_non_existent=False,
+                             perform_on_nodes=False):
         """Removes a logical volume from the node/cluster"""
-        from mcvirt.cluster.cluster import Cluster
-
         # Create command arguments
-        command_args = ['lvremove', '-f', config_object._getLogicalVolumePath(name)]
+        command_args = ['lvremove', '-f', self._getLogicalVolumePath(name)]
         try:
             # Determine if logical volume exists before attempting to remove it
             if (not (ignore_non_existent and
-                     not Base._checkLogicalVolumeExists(config_object, name))):
+                     not self._checkLogicalVolumeExists(name))):
                 System.runCommand(command_args)
 
-            if (perform_on_nodes and config_object.vm_object.mcvirt_object.initialiseNodes()):
-                cluster = Cluster(config_object.vm_object.mcvirt_object)
-                nodes = config_object.vm_object._getRemoteNodes()
+            if perform_on_nodes and self._is_cluster_master:
+                def remoteCommand(node):
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                    remote_disk.removeLogicalVolume(
+                        name=name, ignore_non_existent=ignore_non_existent
+                    )
 
-                # Run on remote nodes
-                cluster.runRemoteCommand(
-                    'virtual_machine-hard_drive-removeLogicalVolume', {
-                        'config': config_object._dumpConfig(),
-                        'name': name,
-                        'ignore_non_existent': ignore_non_existent
-                    },
-                    nodes=nodes
-                )
+                cluster = self._get_registered_object('cluster')
+                cluster.run_remote_command(callback_method=remoteCommand,
+                                           nodes=self.vm_object._get_remote_nodes())
+
         except MCVirtCommandException, e:
-            raise MCVirtException("Error whilst removing disk logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst removing disk logical volume:\n" + str(e)
+            )
 
-    @staticmethod
-    def _getLogicalVolumeSize(config_object, name):
+    def _get_logical_volume_size(self, name):
         """Obtains the size of a logical volume"""
         # Use 'lvs' to obtain the size of the disk
         command_args = (
@@ -320,24 +405,30 @@ class Base(object):
             'm',
             '--options',
             'lv_size',
-            config_object._getLogicalVolumePath(name))
+            self._getLogicalVolumePath(name))
         try:
-            (_, command_output, _) = System.runCommand(command_args)
+            _, command_output, _ = System.runCommand(command_args)
         except MCVirtCommandException, e:
-            raise MCVirtException(
+            raise ExternalStorageCommandErrorException(
                 "Error whilst obtaining the size of the logical volume:\n" +
                 str(e))
 
         lv_size = command_output.strip().split('.')[0]
         return int(lv_size)
 
-    @staticmethod
-    def _zeroLogicalVolume(config_object, name, size, perform_on_nodes=False):
-        """Blanks a logical volume by filling it with null data"""
-        from mcvirt.cluster.cluster import Cluster
+    @Pyro4.expose()
+    @locking_method()
+    def zeroLogicalVolume(self, *args, **kwargs):
+        """Provides an exposed method for _zeroLogicalVolume
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
+        return self._zeroLogicalVolume(*args, **kwargs)
+
+    def _zeroLogicalVolume(self, name, size, perform_on_nodes=False):
+        """Blanks a logical volume by filling it with null data"""
         # Obtain the path of the logical volume
-        lv_path = config_object._getLogicalVolumePath(name)
+        lv_path = self._getLogicalVolumePath(name)
 
         # Create command arguments
         command_args = ['dd', 'if=/dev/zero', 'of=%s' % lv_path, 'bs=1M', 'count=%s' % size,
@@ -346,53 +437,55 @@ class Base(object):
             # Create logical volume on local node
             System.runCommand(command_args)
 
-            if (perform_on_nodes and config_object.vm_object.mcvirt_object.initialiseNodes()):
-                cluster = Cluster(config_object.vm_object.mcvirt_object)
-                nodes = config_object.vm_object._getRemoteNodes()
+            if perform_on_nodes and self._is_cluster_master:
+                def remoteCommand(node):
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                    remote_disk.zeroLogicalVolume(name=name, size=size)
 
-                # Create logical volume on remote nodes
-                cluster.runRemoteCommand('virtual_machine-hard_drive-zeroLogicalVolume',
-                                         {'config': config_object._dumpConfig(),
-                                          'name': name, 'size': size},
-                                         nodes=nodes)
+                cluster = self._get_registered_object('cluster')
+                cluster.run_remote_command(callback_method=remoteCommand,
+                                           nodes=self.vm_object._get_remote_nodes())
+
         except MCVirtCommandException, e:
-            raise MCVirtException("Error whilst zeroing logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst zeroing logical volume:\n" + str(e)
+            )
 
-    @staticmethod
-    def _ensureLogicalVolumeExists(config_object, name):
+    def _ensureLogicalVolumeExists(self, name):
         """Ensures that a logical volume exists, throwing an exception if it does not"""
-        if (not Base._checkLogicalVolumeExists(config_object, name)):
-            from mcvirt.cluster.cluster import Cluster
+        if not self._checkLogicalVolumeExists(name):
             raise LogicalVolumeDoesNotExistException(
                 'Logical volume %s does not exist on %s' %
-                (name, Cluster.getHostname()))
+                (name, get_hostname()))
 
-    @staticmethod
-    def _checkLogicalVolumeExists(config_object, name):
+    def _checkLogicalVolumeExists(self, name):
         """Determines if a logical volume exists, returning 1 if present and 0 if not"""
-        return os.path.lexists(config_object._getLogicalVolumePath(name))
+        return os.path.lexists(self._getLogicalVolumePath(name))
 
-    @staticmethod
-    def _ensureLogicalVolumeActive(config_object, name):
+    def _ensureLogicalVolumeActive(self, name):
         """Ensures that a logical volume is active"""
-        if (not Base._checkLogicalVolumeActive(config_object, name)):
-            from mcvirt.cluster.cluster import Cluster
+        if not self._checkLogicalVolumeActive(name):
             raise LogicalVolumeIsNotActive(
                 'Logical volume %s is not active on %s' %
-                (name, Cluster.getHostname()))
+                (name, get_hostname()))
 
-    @staticmethod
-    def _checkLogicalVolumeActive(config_object, name):
+    def _checkLogicalVolumeActive(self, name):
         """Checks that a logical volume is active"""
-        return os.path.exists(config_object._getLogicalVolumePath(name))
+        return os.path.exists(self._getLogicalVolumePath(name))
 
-    @staticmethod
-    def _activateLogicalVolume(config_object, name, perform_on_nodes=False):
+    @Pyro4.expose()
+    @locking_method()
+    def activateLogicalVolume(self, *args, **kwargs):
+        """Provides an exposed method for _activateLogicalVolume
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._activateLogicalVolume(*args, **kwargs)
+
+    def _activateLogicalVolume(self, name, perform_on_nodes=False):
         """Activates a logical volume on the node/cluster"""
-        from mcvirt.cluster.cluster import Cluster
-
         # Obtain logical volume path
-        lv_path = config_object._getLogicalVolumePath(name)
+        lv_path = self._getLogicalVolumePath(name)
 
         # Create command arguments
         command_args = ['lvchange', '-a', 'y', '--yes', lv_path]
@@ -400,89 +493,85 @@ class Base(object):
             # Run on the local node
             System.runCommand(command_args)
 
-            if (perform_on_nodes and config_object.vm_object.mcvirt_object.initialiseNodes()):
-                cluster = Cluster(config_object.vm_object.mcvirt_object)
-                nodes = config_object.vm_object._getRemoteNodes()
+            if perform_on_nodes and self._is_cluster_master:
+                def remoteCommand(node):
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                    remote_disk.activateLogicalVolume(name=name)
 
-                # Run on remote nodes
-                cluster.runRemoteCommand('virtual_machine-hard_drive-activateLogicalVolume',
-                                         {'config': config_object._dumpConfig(),
-                                          'name': name},
-                                         nodes=nodes)
+                cluster = self._get_registered_object('cluster')
+                cluster.run_remote_command(callback_method=remoteCommand,
+                                           nodes=self.vm_object._get_remote_nodes())
+
         except MCVirtCommandException, e:
-            raise MCVirtException("Error whilst activating logical volume:\n" + str(e))
+            raise ExternalStorageCommandErrorException(
+                "Error whilst activating logical volume:\n" + str(e)
+            )
 
     def createBackupSnapshot(self):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""
-        self._ensureExists()
-        from mcvirt.auth import Auth
-        from mcvirt.virtual_machine.virtual_machine import LockStates
+        self._ensure_exists()
         # Ensure the user has permission to delete snapshot backups
-        self.getConfigObject().vm_object.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.BACKUP_VM,
-            self.getConfigObject().vm_object)
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.BACKUP_VM,
+            self.vm_object
+        )
 
         # Ensure VM is registered locally
-        self.getConfigObject().vm_object.ensureRegisteredLocally()
+        self.vm_object.ensureRegisteredLocally()
 
         # Obtain logical volume names/paths
-        backup_volume_path = self.getConfigObject()._getLogicalVolumePath(
-            self.getConfigObject()._getBackupLogicalVolume())
-        snapshot_logical_volume = self.getConfigObject()._getBackupSnapshotLogicalVolume()
+        backup_volume_path = self._getLogicalVolumePath(
+            self._getBackupLogicalVolume())
+        snapshot_logical_volume = self._getBackupSnapshotLogicalVolume()
 
         # Determine if logical volume already exists
-        if (Base._checkLogicalVolumeActive(self.getConfigObject(), snapshot_logical_volume)):
+        if self._checkLogicalVolumeActive(snapshot_logical_volume):
             raise BackupSnapshotAlreadyExistsException(
                 'The backup snapshot for \'%s\' already exists: %s' %
                 (backup_volume_path, snapshot_logical_volume)
             )
 
         # Lock the VM
-        self.getConfigObject().vm_object.setLockState(LockStates.LOCKED)
+        self.vm_object._setLockState(LockStates.LOCKED)
 
         try:
             System.runCommand(['lvcreate', '--snapshot', backup_volume_path,
-                               '--name', self.getConfigObject()._getBackupSnapshotLogicalVolume(),
-                               '--size', self.getConfigObject().SNAPSHOT_SIZE])
-            return self.getConfigObject()._getLogicalVolumePath(snapshot_logical_volume)
+                               '--name', self._getBackupSnapshotLogicalVolume(),
+                               '--size', self.SNAPSHOT_SIZE])
+            return self._getLogicalVolumePath(snapshot_logical_volume)
         except:
-            self.getConfigObject().vm_object.setLockState(LockStates.UNLOCKED)
+            self.vm_object._setLockState(LockStates.UNLOCKED)
             raise
 
     def deleteBackupSnapshot(self):
         """Deletes the backup snapshot for the disk and unlocks the VM"""
-        self._ensureExists()
-        from mcvirt.auth import Auth
-        from mcvirt.virtual_machine.virtual_machine import LockStates
+        self._ensure_exists()
         # Ensure the user has permission to delete snapshot backups
-        self.getConfigObject().vm_object.mcvirt_object.getAuthObject().assertPermission(
-            Auth.PERMISSIONS.BACKUP_VM,
-            self.getConfigObject().vm_object
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.BACKUP_VM,
+            self.vm_object
         )
 
-        config = self.getConfigObject()
         # Ensure the snapshot logical volume exists
-        if (not Base._checkLogicalVolumeActive(config, config._getBackupSnapshotLogicalVolume())):
+        if not self._checkLogicalVolumeActive(self._getBackupSnapshotLogicalVolume()):
             raise BackupSnapshotDoesNotExistException(
                 'The backup snapshot for \'%s\' does not exist' %
-                config._getLogicalVolumePath(config._getBackupLogicalVolume())
+                self._getLogicalVolumePath(config._getBackupLogicalVolume())
             )
 
-        System.runCommand([
-            'lvremove', '-f',
-            self.getConfigObject()._getLogicalVolumePath(
-                self.getConfigObject()._getBackupSnapshotLogicalVolume()
-            )
-        ])
+        System.runCommand(['lvremove', '-f',
+                           self._getLogicalVolumePath(self._getBackupSnapshotLogicalVolume())])
 
         # Unlock the VM
-        self.getConfigObject().vm_object.setLockState(LockStates.UNLOCKED)
+        self.vm_object._setLockState(LockStates.UNLOCKED)
 
+    @Pyro4.expose()
+    @locking_method()
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         raise NotImplementedError
 
-    def _checkExists(self):
+    def _check_exists(self):
         """Checks if the disk exists"""
         raise NotImplementedError
 
@@ -490,8 +579,7 @@ class Base(object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
         raise NotImplementedError
 
-    @staticmethod
-    def create(vm_object, size, driver, disk_id=None):
+    def create(self):
         """Creates a new disk image, attaches the disk to the VM and records the disk
         in the VM configuration"""
         raise NotImplementedError
@@ -526,4 +614,76 @@ class Base(object):
 
     def move(self, destination_node, source_node):
         """Moves the storage to another node in the cluster"""
+        raise NotImplementedError
+
+    def _getVolumeGroup(self):
+        """Returns the node MCVirt volume group"""
+        return MCVirtConfig().get_config()['vm_storage_vg']
+
+    def getDiskConfig(self):
+        """Returns the disk configuration for the hard drive"""
+        vm_config = self.vm_object.get_config_object().get_config()
+        if str(self.disk_id) in vm_config['hard_disks']:
+            return vm_config['hard_disks'][str(self.disk_id)]
+        else:
+            return {}
+
+    def _getLogicalVolumePath(self, name):
+        """Returns the full path of a given logical volume"""
+        volume_group = self._getVolumeGroup()
+        return '/dev/' + volume_group + '/' + name
+
+    def _generateLibvirtXml(self):
+        """Creates a basic libvirt XML configuration for the connection to the disk"""
+        # Create the base disk XML element
+        device_xml = ET.Element('disk')
+        device_xml.set('type', 'block')
+        device_xml.set('device', 'disk')
+
+        # Configure the interface driver to the disk
+        driver_xml = ET.SubElement(device_xml, 'driver')
+        driver_xml.set('name', 'qemu')
+        driver_xml.set('type', 'raw')
+        driver_xml.set('cache', self.CACHE_MODE)
+
+        # Configure the source of the disk
+        source_xml = ET.SubElement(device_xml, 'source')
+        source_xml.set('dev', self._getDiskPath())
+
+        # Configure the target
+        target_xml = ET.SubElement(device_xml, 'target')
+        target_xml.set('dev', '%s' % self._target_dev)
+        target_xml.set('bus', self._getLibvirtDriver())
+
+        return device_xml
+
+    def _getLibvirtDriver(self):
+        """Returns the libvirt name of the driver for the disk"""
+        return Driver[self.driver].value
+
+    @Pyro4.expose()
+    def getDiskPath(self):
+        """Exposed method for _getDiskPath"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_CLUSTER
+        )
+        return self._getDiskPath()
+
+    def _getDiskPath(self):
+        """Returns the path of the raw disk image"""
+        raise NotImplementedError
+
+    def _getMCVirtConfig(self):
+        """Returns the MCVirt configuration for the hard drive object"""
+        config = {
+            'driver': self.driver
+        }
+        return config
+
+    def _getBackupLogicalVolume(self):
+        """Returns the storage device for the backup"""
+        raise NotImplementedError
+
+    def _getBackupSnapshotLogicalVolume(self):
+        """Returns the logical volume name for the backup snapshot"""
         raise NotImplementedError

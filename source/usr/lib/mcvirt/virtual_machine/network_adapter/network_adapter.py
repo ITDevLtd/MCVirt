@@ -1,3 +1,5 @@
+"""Provide class for network adapters."""
+
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -15,26 +17,24 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import libvirt
+import Pyro4
 import xml.etree.ElementTree as ET
 
-from mcvirt.mcvirt import MCVirtException
+from mcvirt.exceptions import NetworkAdapterDoesNotExistException
+from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.pyro_object import PyroObject
 
 
-class NetworkAdapterDoesNotExistException(MCVirtException):
-    """The network adapter does not exist"""
-    pass
-
-
-class NetworkAdapter:
+class NetworkAdapter(PyroObject):
     """Provides operations to network interfaces attached to a VM"""
 
     def __init__(self, mac_address, vm_object):
-        """Sets member variables and obtains libvirt domain object"""
+        """Set member variables and obtains libvirt domain object."""
         self.vm_object = vm_object
         self.mac_address = mac_address
 
-        if (not self._checkExists()):
+        if not self._check_exists():
             raise NetworkAdapterDoesNotExistException(
                 'No interface with MAC address \'%s\' attached to VM' %
                 self.getMacAddress())
@@ -58,9 +58,9 @@ class NetworkAdapter:
 
         return interface_xml
 
-    def _checkExists(self):
+    def _check_exists(self):
         """Determines if the network interface is present on the VM"""
-        vm_config = self.vm_object.getConfigObject().getConfig()
+        vm_config = self.vm_object.get_config_object().get_config()
         return (self.getMacAddress() in vm_config['network_interfaces'])
 
     def getLibvirtConfig(self):
@@ -71,13 +71,15 @@ class NetworkAdapter:
             self.mac_address)
 
         if (interface_config is None):
-            raise MCVirtException('Interface does not exist: %s' % self.mac_address)
+            raise NetworkAdapterDoesNotExistException(
+                'Interface does not exist: %s' % self.mac_address
+            )
 
         return interface_config
 
-    def getConfig(self):
+    def get_config(self):
         """Returns a dict of the MCVirt configuration for the network interface"""
-        vm_config = self.vm_object.getConfigObject().getConfig()
+        vm_config = self.vm_object.get_config_object().get_config()
         network_config = \
             {
                 'mac_address': self.getMacAddress(),
@@ -85,9 +87,10 @@ class NetworkAdapter:
             }
         return network_config
 
+    @Pyro4.expose()
     def getConnectedNetwork(self):
         """Returns the network that a given interface is connected to"""
-        interface_config = self.getConfig()
+        interface_config = self.get_config()
         return interface_config['network']
 
     @staticmethod
@@ -101,52 +104,20 @@ class NetworkAdapter:
 
         return ':'.join(map(lambda x: "%02x" % x, mac))
 
+    @Pyro4.expose()
     def getMacAddress(self):
         """Returns the MAC address of the current network object"""
         return self.mac_address
 
-    @staticmethod
-    def create(vm_object, network_object, mac_address=None):
-        """Add interface device to the given VM object, connected to the given network"""
-        from mcvirt.cluster.cluster import Cluster
-        from mcvirt.node.network import Network
-
-        # Generate a MAC address, if one has not been supplied
-        if (mac_address is None):
-            mac_address = NetworkAdapter.generateMacAddress()
-
-        # Obtain an instance of MCVirt from the vm_object
-        mcvirt_object = vm_object.mcvirt_object
-
-        # Add network interface to VM configuration
-        def updateVmConfig(config):
-            config['network_interfaces'][mac_address] = network_object.getName()
-        vm_object.getConfigObject().updateConfig(
-            updateVmConfig, 'Added network adapter to \'%s\' on \'%s\' network' %
-            (vm_object.getName(), network_object.getName()))
-
-        if (mcvirt_object.initialiseNodes()):
-            cluster_object = Cluster(mcvirt_object)
-            cluster_object.runRemoteCommand('network_adapter-create',
-                                            {'vm_name': vm_object.getName(),
-                                             'network_name': network_object.getName(),
-                                             'mac_address': mac_address})
-
-        network_adapter_object = NetworkAdapter(mac_address, vm_object)
-
-        # Only update the LibVirt configuration if VM is registered on this node
-        if (vm_object.isRegisteredLocally()):
-            def updateXML(domain_xml):
-                network_xml = network_adapter_object._generateLibvirtXml()
-                device_xml = domain_xml.find('./devices')
-                device_xml.append(network_xml)
-
-            vm_object.editConfig(updateXML)
-
-        return network_adapter_object
-
+    @Pyro4.expose()
+    @locking_method()
     def delete(self):
         """Remove the given interface from the VM, based on the given MAC address"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM,
+            self.vm_object
+        )
+
         def updateXML(domain_xml):
             device_xml = domain_xml.find('./devices')
             interface_xml = device_xml.find(
@@ -160,11 +131,11 @@ class NetworkAdapter:
 
             device_xml.remove(interface_xml)
 
-        self.vm_object.editConfig(updateXML)
+        self.vm_object._editConfig(updateXML)
 
         # Update the VM configuration
         def updateVmConfig(config):
             del config['network_interfaces'][self.getMacAddress()]
-        self.vm_object.getConfigObject().updateConfig(
+        self.vm_object.get_config_object().update_config(
             updateVmConfig, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
-            (self.vm_object.getName(), self.getConnectedNetwork(), self.getMacAddress()))
+            (self.vm_object.get_name(), self.getConnectedNetwork(), self.getMacAddress()))

@@ -18,10 +18,9 @@
 import unittest
 
 from mcvirt.parser import Parser
-from mcvirt.mcvirt import MCVirt, MCVirtException
-from mcvirt.virtual_machine.virtual_machine import VirtualMachine, PowerStates
-from mcvirt.auth import Auth, InsufficientPermissionsException
-from mcvirt.test.common import stop_and_delete
+from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+from mcvirt.auth.auth import Auth
+from mcvirt.exceptions import InsufficientPermissionsException
 
 
 def removeTestUserPermissions(mcvirt_instance, username):
@@ -29,15 +28,15 @@ def removeTestUserPermissions(mcvirt_instance, username):
     auth_object = mcvirt_instance.getAuthObject()
 
     try:
-        auth_object.deleteUserPermissionGroup(mcvirt_instance, 'user', username)
+        auth_object.delete_user_permission_group(mcvirt_instance, 'user', username)
     except:
         pass
     try:
-        auth_object.deleteUserPermissionGroup(mcvirt_instance, 'user', username)
+        auth_object.delete_user_permission_group(mcvirt_instance, 'user', username)
     except:
         pass
     try:
-        auth_object.deleteSuperuser(username, mcvirt_instance)
+        auth_object.delete_superuser(username, mcvirt_instance)
     except:
         pass
 
@@ -76,8 +75,8 @@ class AuthTests(unittest.TestCase):
             }
 
         self.test_user = 'test_user'
-        self.test_auth_object = Auth(self.test_user)
-        self.auth_object = Auth()
+        self.test_auth_object = Auth(self.mcvirt, self.test_user)
+        self.auth_object = Auth(self.mcvirt)
 
         # Ensure any test VM is stopped and removed from the machine
         stop_and_delete(self.mcvirt, self.test_vm['name'])
@@ -101,13 +100,13 @@ class AuthTests(unittest.TestCase):
             self.test_vm['disks'],
             self.test_vm['networks'])
         self.assertTrue(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 self.test_vm['name']))
 
         # Ensure user is not in 'user' group
         self.assertFalse(
-            self.test_user in self.auth_object.getUsersInPermissionGroup(
+            self.test_user in self.auth_object.get_users_in_permission_group(
                 'user',
                 test_vm_object))
 
@@ -120,7 +119,7 @@ class AuthTests(unittest.TestCase):
 
         # Ensure VM exists
         self.assertTrue(
-            self.test_user in self.auth_object.getUsersInPermissionGroup(
+            self.test_user in self.auth_object.get_users_in_permission_group(
                 'user',
                 test_vm_object))
 
@@ -135,15 +134,15 @@ class AuthTests(unittest.TestCase):
             self.test_vm['disks'],
             self.test_vm['networks'])
         self.assertTrue(
-            VirtualMachine._checkExists(
+            VirtualMachine._check_exists(
                 self.mcvirt.getLibvirtConnection(),
                 self.test_vm['name']))
 
         # Add user to 'user' group and ensure they have been added
-        self.auth_object.addUserPermissionGroup(self.mcvirt, 'user', self.test_user,
-                                                test_vm_object)
+        self.auth_object.add_user_permission_group(self.mcvirt, 'user', self.test_user,
+                                                   test_vm_object)
         self.assertTrue(
-            self.test_user in self.auth_object.getUsersInPermissionGroup(
+            self.test_user in self.auth_object.get_users_in_permission_group(
                 'user',
                 test_vm_object))
 
@@ -156,25 +155,26 @@ class AuthTests(unittest.TestCase):
 
         # Ensure user is no longer in 'user' group
         self.assertFalse(
-            self.test_user in self.auth_object.getUsersInPermissionGroup(
+            self.test_user in self.auth_object.get_users_in_permission_group(
                 'user',
-                test_vm_object))
+                test_vm_object
+            ))
 
     def test_add_delete_superuser(self):
         """Adds/deletes a user to/from the superuser role"""
         # Assert that the user is not already a superuser
-        self.assertFalse(self.test_auth_object.isSuperuser())
+        self.assertFalse(self.test_auth_object.is_superuser())
 
         # Add the user to the superuser group using the argument parser
         self.parser.parse_arguments('permission --add-superuser %s --global' % self.test_user,
                                     mcvirt_instance=self.mcvirt)
 
         # Ensure that the auth object asserts that the user is a superuser
-        self.assertTrue(self.test_auth_object.isSuperuser())
+        self.assertTrue(self.test_auth_object.is_superuser())
 
         # Assert that the user has access to a superuser permission
         self.assertTrue(
-            self.test_auth_object.assertPermission(Auth.PERMISSIONS.TEST_SUPERUSER_PERMISSION)
+            self.test_auth_object.assert_permission(Auth.PERMISSIONS.TEST_SUPERUSER_PERMISSION)
         )
 
         # Delete the user from the superuser group using the argument parser
@@ -182,11 +182,11 @@ class AuthTests(unittest.TestCase):
                                     mcvirt_instance=self.mcvirt)
 
         # Assert that the user is no longer considered a superuser
-        self.assertFalse(self.test_auth_object.isSuperuser())
+        self.assertFalse(self.test_auth_object.is_superuser())
 
         # Assert that the user no longer has access to the superuser permission
         with self.assertRaises(InsufficientPermissionsException):
-            self.test_auth_object.assertPermission(Auth.PERMISSIONS.TEST_SUPERUSER_PERMISSION)
+            self.test_auth_object.assert_permission(Auth.PERMISSIONS.TEST_SUPERUSER_PERMISSION)
 
     def test_attempt_add_superuser_to_vm(self):
         """Attempts to add a user as a superuser to a VM"""
@@ -207,7 +207,7 @@ class AuthTests(unittest.TestCase):
     def test_add_duplicate_superuser(self):
         """Attempts to add a superuser twice"""
         # Add the user as a superuser
-        self.auth_object.addSuperuser(self.test_user, self.mcvirt)
+        self.auth_object.add_superuser(self.test_user, self.mcvirt)
 
         with self.assertRaises(MCVirtException):
             self.parser.parse_arguments('permission --add-superuser %s --global' % self.test_user,
