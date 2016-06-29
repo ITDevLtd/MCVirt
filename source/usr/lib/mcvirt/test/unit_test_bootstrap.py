@@ -33,33 +33,33 @@ class UnitTestBootstrap(object):
     """Bootstrap daemon with unit tests"""
 
     def __init__(self):
-      """Create dameon and test suite objects"""
-      # Configure daemon
-      self.daemon_run = True
-      self.daemon = RpcNSMixinDaemon()
-      self.daemon_thread = threading.Thread(
-        target=self.daemon.start,
-        kwargs={'loopCondition': self.daemon_loop_condition}
-      )
+        """Create dameon and test suite objects"""
+        # Configure daemon
+        self.daemon_run = True
+        self.daemon = RpcNSMixinDaemon()
+        self.daemon_thread = threading.Thread(
+            target=self.daemon.start,
+            kwargs={'loopCondition': self.daemon_loop_condition}
+        )
 
-      self.runner = unittest.TextTestRunner(verbosity=4)
-      # auth_test_suite = AuthTests.suite()
-      virtual_machine_test_suite = VirtualMachineTests.suite()
-      network_test_suite = NetworkTests.suite()
-      drbd_test_suite = DrbdTests.suite()
-      update_test_suite = UpdateTests.suite()
-      node_test_suite = NodeTests.suite()
-      online_migrate_test_suite = OnlineMigrateTests.suite()
-      OnlineMigrateTests.RPC_DAEMON = self.daemon
-      self.all_tests = unittest.TestSuite([
-          virtual_machine_test_suite,
-          network_test_suite,
-          drbd_test_suite,
-          update_test_suite,
-          node_test_suite,
-          online_migrate_test_suite,
-          #auth_test_suite
-      ])
+        self.runner = unittest.TextTestRunner(verbosity=4)
+        # auth_test_suite = AuthTests.suite()
+        virtual_machine_test_suite = VirtualMachineTests.suite()
+        network_test_suite = NetworkTests.suite()
+        drbd_test_suite = DrbdTests.suite()
+        update_test_suite = UpdateTests.suite()
+        node_test_suite = NodeTests.suite()
+        online_migrate_test_suite = OnlineMigrateTests.suite()
+        OnlineMigrateTests.RPC_DAEMON = self.daemon
+        self.all_tests = unittest.TestSuite([
+            virtual_machine_test_suite,
+            network_test_suite,
+            drbd_test_suite,
+            update_test_suite,
+            node_test_suite,
+            online_migrate_test_suite,
+            #auth_test_suite
+        ])
 
     def daemon_loop_condition(self):
         """Provide a condition for the daemon loop"""
