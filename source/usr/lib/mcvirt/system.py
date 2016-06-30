@@ -19,15 +19,11 @@ import getpass
 import subprocess
 import sys
 
-from mcvirt import MCVirtException
+from mcvirt.exceptions import MCVirtCommandException, PasswordsDoNotMatchException
+from mcvirt.syslogger import Syslogger
 
 
-class MCVirtCommandException(MCVirtException):
-    """Provides an exception to be thrown after errors whilst calling external commands"""
-    pass
-
-
-class System:
+class System(object):
 
     @staticmethod
     def runCommand(command_args, raise_exception_on_failure=True, cwd=None):
@@ -37,23 +33,40 @@ class System:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=cwd)
-        if (command_process.wait() and raise_exception_on_failure):
+        Syslogger.logger().debug('Started system command: %s' % ', '.join(command_args))
+        rc = command_process.wait()
+        stdout = command_process.stdout.read()
+        stderr = command_process.stderr.read()
+        if rc and raise_exception_on_failure:
+            Syslogger.logger().error("Failed system command: %s\nRC: %s\nStdout: %s\nStderr: %s" %
+                                     (', '.join(command_args), rc, stdout, stderr))
             raise MCVirtCommandException(
                 "Command: %s\nExit code: %s\nOutput:\n%s" %
                 (' '.join(command_args),
-                 command_process.returncode,
-                 command_process.stdout.read() +
-                 command_process.stderr.read()))
-        return (
-            command_process.returncode,
-            command_process.stdout.read(),
-            command_process.stderr.read())
+                 rc,
+                 stdout + stderr))
+
+        Syslogger.logger().debug("Successful system command: %s\nRC: %s\nStdout: %s\nStderr: %s" %
+                                 (', '.join(command_args), rc, stdout, stderr))
+        return (rc, stdout, stderr)
 
     @staticmethod
     def getUserInput(display_text, password=False):
         """Prompts the user for input"""
-        if (password):
+        if password:
             return getpass.getpass(display_text)
         else:
             sys.stdout.write(display_text)
             return sys.stdin.readline()
+
+    @staticmethod
+    def getNewPassword():
+        """Prompts the user for a new password, throwing an exception is the password is not
+        repeated correctly
+        """
+        new_password = System.getUserInput("New password: ", password=True)
+        repeat_password = System.getUserInput("New password (repeat): ", password=True)
+        if new_password != repeat_password:
+            raise PasswordsDoNotMatchException('The two passwords do not match')
+
+        return new_password
