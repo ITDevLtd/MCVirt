@@ -37,6 +37,15 @@ class ArgumentValidator(object):
             raise TypeError
 
     @staticmethod
+    def validate_network_name(name):
+        """Validate the name of a network"""
+        if len(name) > 64 or not len(name):
+            raise TypeError
+        disallowed = re.compile("[^A-Z\d]", re.IGNORECASE)
+        if disallowed.search(name):
+            raise TypeError
+
+    @staticmethod
     def validate_integer(value):
         """Validate integer"""
         if str(int(value)) != str(value):
