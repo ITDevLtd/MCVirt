@@ -35,6 +35,8 @@ from mcvirt.exceptions import InvalidISOPathException
 class Factory(PyroObject):
     """Class for obtaining ISO objects"""
 
+    ISO_CLASS = Iso
+
     def get_isos(self):
         """Return a list of a ISOs"""
         # Get files in ISO directory

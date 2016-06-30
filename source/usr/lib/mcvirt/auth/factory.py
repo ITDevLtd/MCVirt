@@ -34,6 +34,8 @@ from mcvirt.auth.permissions import PERMISSIONS
 class Factory(PyroObject):
     """Class for obtaining user objects"""
 
+    USER_CLASS = UserBase
+
     def get_user_types(self):
         """Return the available user classes."""
         return [User, ConnectionUser, ClusterUser]

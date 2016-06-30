@@ -20,6 +20,7 @@ import Pyro4
 
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.syslogger import Syslogger
+from mcvirt.argument_validator import ArgumentValidator
 
 
 class Logger(PyroObject):
@@ -33,6 +34,11 @@ class Logger(PyroObject):
 
     @Pyro4.expose()
     def get_logs(self, start_log=None, back=0, newer=False):
+        if start_log is not None:
+            ArgumentValidator.validate_integer(start_log)
+        ArgumentValidator.validate_integer(back)
+        ArgumentValidator.validate_boolean(newer)
+
         if start_log is None:
             start_log = len(Logger.LOGS) - 1
 

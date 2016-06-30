@@ -27,6 +27,7 @@ class Factory(PyroObject):
     """Factory method to create/obtain network adapter instances"""
 
     OBJECT_TYPE = 'network adapter'
+    NETWORK_ADAPTER_CLASS = NetworkAdapter
 
     @Pyro4.expose()
     @locking_method()

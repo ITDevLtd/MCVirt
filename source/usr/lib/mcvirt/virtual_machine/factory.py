@@ -32,16 +32,20 @@ from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
 from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
+from mcvirt.argument_validator import ArgumentValidator
+from mcvirt.virtual_machine.hard_drive.base import Driver as HardDriveDriver
 
 
 class Factory(PyroObject):
     """Class for obtaining virtual machine objects"""
 
     OBJECT_TYPE = 'virtual machine'
+    VIRTUAL_MACHINE_CLASS = VirtualMachine
 
     @Pyro4.expose()
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
+        ArgumentValidator.validate_hostname(vm_name)
         vm_object = VirtualMachine(self, vm_name)
         self._register_object(vm_object)
         return vm_object
@@ -54,6 +58,8 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def getAllVmNames(self, node=None):
         """Returns a list of all VMs within the cluster or those registered on a specific node"""
+        if node is not None:
+            ArgumentValidator.validate_hostname(node)
         # If no node was defined, check the local configuration for all VMs
         if (node is None):
             return MCVirtConfig().get_config()['virtual_machines']
@@ -88,12 +94,14 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def check_exists(self, vm_name):
         """Determines if a VM exists, given a name"""
+        ArgumentValidator.validate_hostname(vm_name)
         return (vm_name in self.getAllVmNames())
 
     @Pyro4.expose()
     def checkName(self, name):
-        valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
-        if bool(valid_name_re(name)):
+        try:
+            ArgumentValidator.validate_hostname(name)
+        except TypeError:
             raise InvalidVirtualMachineNameException(
                 'Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes'
             )
@@ -118,6 +126,25 @@ class Factory(PyroObject):
                 network_interfaces=[], node=None, available_nodes=[], storage_type=None,
                 hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
+        ArgumentValidator.validate_hostname(name)
+        ArgumentValidator.validate_positive_integer(cpu_cores)
+        ArgumentValidator.validate_positive_integer(memory_allocation)
+        for hard_drive in hard_drives:
+            ArgumentValidator.validate_positive_integer(hard_drive)
+        if network_interfaces:
+            for network_interface in network_interfaces:
+                ArgumentValidator.validate_network_name(network_interface)
+        if node is not None:
+            ArgumentValidator.validate_hostname(node)
+        for available_node in available_nodes:
+            ArgumentValidator.validate_hostname(available_node)
+        assert storage_type in [None] + [
+            storage_type_itx.__name__ for storage_type_itx in self._get_registered_object(
+                'hard_drive_factory').STORAGE_TYPES
+        ]
+        if hard_drive_driver is not None:
+            HardDriveDriver(hard_drive_driver)
+
         # Validate the VM name
         valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
         if (bool(valid_name_re(name))):
