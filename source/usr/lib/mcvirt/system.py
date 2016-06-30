@@ -39,7 +39,7 @@ class System(object):
         stderr = command_process.stderr.read()
         if rc and raise_exception_on_failure:
             Syslogger.logger().error("Failed system command: %s\nRC: %s\nStdout: %s\nStderr: %s" %
-                                   (', '.join(command_args), rc, stdout, stderr))
+                                     (', '.join(command_args), rc, stdout, stderr))
             raise MCVirtCommandException(
                 "Command: %s\nExit code: %s\nOutput:\n%s" %
                 (' '.join(command_args),
@@ -47,7 +47,7 @@ class System(object):
                  stdout + stderr))
 
         Syslogger.logger().debug("Successful system command: %s\nRC: %s\nStdout: %s\nStderr: %s" %
-                               (', '.join(command_args), rc, stdout, stderr))
+                                 (', '.join(command_args), rc, stdout, stderr))
         return (rc, stdout, stderr)
 
     @staticmethod
