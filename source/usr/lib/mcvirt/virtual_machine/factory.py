@@ -126,7 +126,7 @@ class Factory(PyroObject):
                 network_interfaces=[], node=None, available_nodes=[], storage_type=None,
                 hard_drive_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
-        ArgumentValidator.validate_hostname(name)
+        self.checkName(name)
         ArgumentValidator.validate_positive_integer(cpu_cores)
         ArgumentValidator.validate_positive_integer(memory_allocation)
         for hard_drive in hard_drives:
@@ -143,14 +143,7 @@ class Factory(PyroObject):
                 'hard_drive_factory').STORAGE_TYPES
         ]
         if hard_drive_driver is not None:
-            HardDriveDriver(hard_drive_driver)
-
-        # Validate the VM name
-        valid_name_re = re.compile(r'[^a-z^0-9^A-Z-]').search
-        if (bool(valid_name_re(name))):
-            raise InvalidVirtualMachineNameException(
-                'Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes'
-            )
+            HardDriveDriver[hard_drive_driver]
 
         # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
         # in this state

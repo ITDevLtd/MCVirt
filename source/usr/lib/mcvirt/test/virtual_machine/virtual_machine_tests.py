@@ -588,7 +588,7 @@ class VirtualMachineTests(TestBase):
                                         (self.test_vms['TEST_VM_1']['cpu_count'],
                                          self.test_vms['TEST_VM_1']['disk_size'][0],
                                          self.test_vms['TEST_VM_1']['memory_allocation']) +
-                                        ' --network non-existent-network' +
+                                        ' --network nonexistentnetwork' +
                                         ' --storage-type Local')
 
     def test_create_alternative_driver(self):
