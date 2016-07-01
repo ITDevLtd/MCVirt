@@ -17,10 +17,13 @@
 
 import unittest
 
-from mcvirt.parser import Parser
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.auth.auth import Auth
-from mcvirt.exceptions import InsufficientPermissionsException
+from mcvirt.exceptions import (InsufficientPermissionsException, AuthenticationError,
+                               UserDoesNotExistException)
+from mcvirt.test.test_base import TestBase
+from mcvirt.client.rpc import Connection
+from mcvirt.parser import Parser
 
 
 def removeTestUserPermissions(mcvirt_instance, username):
@@ -41,53 +44,56 @@ def removeTestUserPermissions(mcvirt_instance, username):
         pass
 
 
-class AuthTests(unittest.TestCase):
+class AuthTests(TestBase):
     """Provides unit tests for the Auth class"""
+
+    TEST_USERNAME = 'test-user'
+    TEST_PASSWORD = 'test-password'
+
+    def create_test_user(self, username, password):
+        """Create a test user, annotate the user object and return it"""
+        self.user_factory.create(username, password)
+        new_user = self.user_factory.get_user_by_username(username)
+        self.rpc.annotate_object(new_user)
+        return new_user
+
+    def parse_command(self, command, username, password):
+        """Parse the specified command with the specified credentials"""
+        Parser(verbose=False).parse_arguments('%s --username %s --password %s' %
+                                              (command, username, password))
+
+    def setUp(self):
+        """Set up a test user"""
+        super(AuthTests, self).setUp()
+
+        self.user_factory = self.rpc.get_connection('user_factory')
+        self.test_user = self.create_test_user(self.TEST_USERNAME, self.TEST_PASSWORD)
+
+    def tearDown(self):
+        """Remove the test user"""
+        super(AuthTests, self).tearDown()
+        self.test_user.delete()
+        self.test_user = None
+
+        # If test_remove_user_account() failed then a user called 'user-to-delete' may still exist
+        if getattr(self, 'user_to_delete', None) is not None:
+            self.user_to_delete.delete()
 
     @staticmethod
     def suite():
         """Returns a test suite of the Auth tests"""
         suite = unittest.TestSuite()
-        suite.addTest(AuthTests('test_add_user'))
-        suite.addTest(AuthTests('test_remove_user'))
-        suite.addTest(AuthTests('test_add_delete_superuser'))
-        suite.addTest(AuthTests('test_attempt_add_superuser_to_vm'))
-        suite.addTest(AuthTests('test_add_duplicate_superuser'))
-        suite.addTest(AuthTests('test_delete_non_existant_superuser'))
+        # @TODO: update commented out tests
+        # suite.addTest(AuthTests('test_add_user'))
+        # suite.addTest(AuthTests('test_remove_user'))
+        # suite.addTest(AuthTests('test_add_delete_superuser'))
+        # suite.addTest(AuthTests('test_attempt_add_superuser_to_vm'))
+        # suite.addTest(AuthTests('test_add_duplicate_superuser'))
+        # suite.addTest(AuthTests('test_delete_non_existant_superuser'))
+        suite.addTest(AuthTests('test_change_password'))
+        suite.addTest(AuthTests('test_add_new_user'))
+        suite.addTest(AuthTests('test_remove_user_account'))
         return suite
-
-    def setUp(self):
-        """Creates various objects and deletes any test VMs"""
-        # Create MCVirt parser object
-        self.parser = Parser(print_status=False)
-
-        # Get an MCVirt instance
-        self.mcvirt = MCVirt()
-
-        # Setup variable for test VM
-        self.test_vm = \
-            {
-                'name': 'mcvirt-unittest-vm',
-                'cpu_count': '1',
-                'disks': ['100'],
-                'memory_allocation': '100',
-                'networks': ['Production']
-            }
-
-        self.test_user = 'test_user'
-        self.test_auth_object = Auth(self.mcvirt, self.test_user)
-        self.auth_object = Auth(self.mcvirt)
-
-        # Ensure any test VM is stopped and removed from the machine
-        stop_and_delete(self.mcvirt, self.test_vm['name'])
-        removeTestUserPermissions(self.mcvirt, self.test_user)
-
-    def tearDown(self):
-        """Stops and tears down any test VMs"""
-        # Ensure any test VM is stopped and removed from the machine
-        stop_and_delete(self.mcvirt, self.test_vm['name'])
-        removeTestUserPermissions(self.mcvirt, self.test_user)
-        self.mcvirt = None
 
     def test_add_user(self):
         """Adds a user to a virtual machine, using the argument parser"""
@@ -219,3 +225,76 @@ class AuthTests(unittest.TestCase):
             self.parser.parse_arguments('permission --delete-superuser %s --global' %
                                         self.test_user,
                                         mcvirt_instance=self.mcvirt)
+
+    def test_change_password(self):
+        """Change the password of a user through the parser"""
+        # Change the password of the test user
+        new_password = 'new-password-here'
+        self.parse_command('user change-password --new-password %s' % new_password,
+                           self.TEST_USERNAME, self.TEST_PASSWORD)
+
+        # Try to run a command with the old credentials and check an AuthenticationError is raised
+        with self.assertRaises(AuthenticationError):
+            self.parse_command('list', self.TEST_USERNAME, self.TEST_PASSWORD)
+
+        # Now run a command as the test user with the new password
+        try:
+            self.parse_command('list', self.TEST_USERNAME, new_password)
+        except AuthenticationError:
+            self.fail('Password not changed succesfully')
+
+    def test_add_new_user(self):
+        """Create a new user through the parser"""
+        username = 'brand-new-user'
+        password = 'pass'
+        create_command = 'user create %s --user-password %s' % (username, password)
+
+        # Try to create a new user as the test user and check an InsufficientPermissionsException
+        # is raised
+        with self.assertRaises(InsufficientPermissionsException):
+            self.parse_command(create_command, self.TEST_USERNAME, self.TEST_PASSWORD)
+
+        # Create the new user as a superuser
+        self.parser.parse_arguments(create_command)
+
+        # Check the new user exists
+        try:
+            new_user = self.user_factory.get_user_by_username(username)
+
+            # Delete the new user
+            self.rpc.annotate_object(new_user)
+            new_user.delete()
+
+        except UserDoesNotExistException:
+            self.fail('User not created')
+
+        # Create the new user again using the --generate-password flag
+        self.parser.parse_arguments('user create %s --generate-password' % username)
+        # Check the new user exists
+        try:
+            new_user = self.user_factory.get_user_by_username(username)
+
+            # Delete the new user
+            self.rpc.annotate_object(new_user)
+            new_user.delete()
+
+        except UserDoesNotExistException:
+            self.fail('User not created')
+
+    def test_remove_user_account(self):
+        """Delete a user through the parser"""
+        self.user_to_delete = self.create_test_user('user-to-delete', 'pass')
+        delete_command = 'user remove user-to-delete'
+
+        # Try to delete as test user and check InsufficientPermissionsException is raised
+        with self.assertRaises(InsufficientPermissionsException):
+            self.parse_command(delete_command, self.TEST_USERNAME, self.TEST_PASSWORD)
+
+        # Run delete command as superuser
+        self.parser.parse_arguments(delete_command)
+
+        # Check that the user no longer exists
+        with self.assertRaises(UserDoesNotExistException):
+            self.user_factory.get_user_by_username('user-to-delete')
+
+        self.user_to_delete = None

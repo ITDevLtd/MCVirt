@@ -39,11 +39,10 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 class Parser(object):
     """Provides an argument parser for MCVirt."""
 
-    SESSION_ID = None
-    USERNAME = None
-
     def __init__(self, verbose=True):
         """Configure the argument parser object."""
+        self.USERNAME = None
+        self.SESSION_ID = None
         self.verbose = verbose
         self.parent_parser = ThrowingArgumentParser(add_help=False)
 
@@ -595,8 +594,8 @@ class Parser(object):
         action = args.action
 
         # Obtain connection to Pyro server
-        if Parser.SESSION_ID and Parser.USERNAME:
-            rpc = Connection(username=Parser.USERNAME, session_id=Parser.SESSION_ID)
+        if self.SESSION_ID and self.USERNAME:
+            rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID)
         else:
             # Check if user/password have been passed. Else, ask for them.
             username = args.username if args.username else System.getUserInput(
@@ -609,8 +608,8 @@ class Parser(object):
                     'Password: ', password=True
                 ).rstrip()
             rpc = Connection(username=username, password=password)
-            Parser.SESSION_ID = rpc.session_id
-            Parser.USERNAME = username
+            self.SESSION_ID = rpc.session_id
+            self.USERNAME = username
 
         if args.ignore_failed_nodes:
             # If the user has specified to ignore the cluster,
@@ -1016,7 +1015,7 @@ class Parser(object):
         elif action == 'user':
             if args.user_action == 'change-password':
                 user_factory = rpc.get_connection('user_factory')
-                target_user = args.target_user or Parser.USERNAME
+                target_user = args.target_user or self.USERNAME
                 user = user_factory.get_user_by_username(target_user)
                 rpc.annotate_object(user)
                 new_password = args.new_password or System.getNewPassword()
