@@ -94,7 +94,7 @@ class TestBase(unittest.TestCase):
 
         self.vm_factory = self.rpc.get_connection('virtual_machine_factory')
 
-        self.test_network_name = 'test_network'
+        self.test_network_name = 'testnetwork'
         self.test_physical_interface = 'vmbr0'
         self.network_factory = self.rpc.get_connection('network_factory')
 

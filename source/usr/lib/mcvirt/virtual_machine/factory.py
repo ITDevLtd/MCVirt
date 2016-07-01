@@ -94,11 +94,15 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def check_exists(self, vm_name):
         """Determines if a VM exists, given a name"""
-        ArgumentValidator.validate_hostname(vm_name)
+        try:
+            ArgumentValidator.validate_hostname(vm_name)
+        except TypeError:
+            return False
+
         return (vm_name in self.getAllVmNames())
 
     @Pyro4.expose()
-    def checkName(self, name):
+    def checkName(self, name, ignore_exists=False):
         try:
             ArgumentValidator.validate_hostname(name)
         except TypeError:
@@ -109,7 +113,7 @@ class Factory(PyroObject):
         if len(name) < 3:
             raise InvalidVirtualMachineNameException('VM Name must be at least 3 characters long')
 
-        if self.check_exists(name):
+        if self.check_exists(name) and not ignore_exists:
             raise InvalidVirtualMachineNameException('VM already exists')
 
         return True
