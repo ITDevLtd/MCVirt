@@ -96,7 +96,7 @@ class Factory(PyroObject):
         """Determines if a VM exists, given a name"""
         try:
             ArgumentValidator.validate_hostname(vm_name)
-        except TypeError:
+        except (TypeError, InvalidVirtualMachineNameException):
             return False
 
         return (vm_name in self.getAllVmNames())
