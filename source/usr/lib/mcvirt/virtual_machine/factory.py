@@ -114,7 +114,7 @@ class Factory(PyroObject):
             raise InvalidVirtualMachineNameException('VM Name must be at least 3 characters long')
 
         if self.check_exists(name) and not ignore_exists:
-            raise InvalidVirtualMachineNameException('VM already exists')
+            raise VmAlreadyExistsException('VM already exists')
 
         return True
 
