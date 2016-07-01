@@ -27,24 +27,26 @@ except:
 for filename in glob.glob('../*.rst'):
     shutil.copy(filename, './UserGuide/')
 shutil.copy('../../README.rst', './')
+
+
 def replace_links(filename, include_dir=True):
-    f = open(filename,'r')
+    f = open(filename, 'r')
     filedata = f.read()
     f.close()
 
     newdata = re.sub(r"`(.*?)<.*?([a-zA-Z]+)\.rst>`_",
                      r"`\1<%s\2.html>`_" %
-                      ('UserGuide/' if include_dir else ''),
+                     ('UserGuide/' if include_dir else ''),
                      filedata)
 
-    f = open(filename,'w')
+    f = open(filename, 'w')
     f.write(newdata)
     f.close()
 
-  # Replace links in file
-  for filename in glob.glob('./UserGuide/*'):
-      replace_links(filename, include_dir=False)
-  replace_links('./README.rst')
+    # Replace links in file
+    for filename in glob.glob('./UserGuide/*'):
+        replace_links(filename, include_dir=False)
+    replace_links('./README.rst')
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -56,10 +58,13 @@ print sys.path
 
 from mock import MagicMock
 
+
 class Mock(MagicMock):
+
     @classmethod
     def __getattr__(cls, name):
         return Mock()
+
 
 MOCK_MODULES = ['libvirt']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
@@ -229,14 +234,14 @@ htmlhelp_basename = 'mcvirtdoc'
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-# 'papersize': 'letterpaper',
+    # The paper size ('letterpaper' or 'a4paper').
+    # 'papersize': 'letterpaper',
 
-# The font size ('10pt', '11pt' or '12pt').
-# 'pointsize': '10pt',
+    # The font size ('10pt', '11pt' or '12pt').
+    # 'pointsize': '10pt',
 
-# Additional stuff for the LaTeX preamble.
-# 'preamble': '',
+    # Additional stuff for the LaTeX preamble.
+    # 'preamble': '',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
