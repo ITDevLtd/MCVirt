@@ -25,25 +25,31 @@ class ArgumentValidator(object):
     @staticmethod
     def validate_hostname(hostname):
         """Validate a hostname"""
+        exception_message = ('Hostname must only use alpha-numeric characters and dashes,'
+                             ' be less than 255 characters in length'
+                             ' and start with an alpha-numeric character')
+
         # Check length
         if len(hostname) > 255 or not len(hostname):
-            raise TypeError
+            raise TypeError(exception_message)
 
         disallowed = re.compile("[^A-Z\d-]", re.IGNORECASE)
         if disallowed.search(hostname):
-            raise TypeError
+            raise TypeError(exception_message)
 
         if hostname.startswith('-') or hostname.endswith('-'):
-            raise TypeError
+            raise TypeError(exception_message)
 
     @staticmethod
     def validate_network_name(name):
         """Validate the name of a network"""
+        exception_message = ('Network name must only use alpha-numeric characters and'
+                             ' not be any longer than 64 characters in length')
         if len(name) > 64 or not len(name):
-            raise TypeError
+            raise TypeError(exception_message)
         disallowed = re.compile("[^A-Z\d]", re.IGNORECASE)
         if disallowed.search(name):
-            raise TypeError
+            raise TypeError(exception_message)
 
     @staticmethod
     def validate_integer(value):
