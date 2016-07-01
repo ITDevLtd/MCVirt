@@ -1136,7 +1136,8 @@ class VirtualMachine(PyroObject):
     @locking_method()
     def setNodeRemote(self, node):
         """Set node from remote _setNode command"""
-        ArgumentValidator.validate_hostname(node)
+        if node is not None:
+            ArgumentValidator.validate_hostname(node)
         # @TODO Merge with setNode and check either user type or permissions
         self._get_registered_object('auth').assert_user_type('ClusterUser')
         self._setNode(node)
