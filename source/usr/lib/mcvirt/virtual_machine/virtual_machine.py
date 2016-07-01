@@ -42,6 +42,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
+from mcvirt.argument_validator import ArgumentValidator
 
 
 class VirtualMachine(PyroObject):
@@ -137,6 +138,10 @@ class VirtualMachine(PyroObject):
             PERMISSIONS.CHANGE_VM_POWER_STATE,
             self
         )
+
+        if iso_object is not None:
+            assert isinstance(self._convert_remote_object(iso_object),
+                              self._get_registered_object('iso_factory').ISO_CLASS)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -335,6 +340,9 @@ class VirtualMachine(PyroObject):
     @locking_method()
     def delete(self, remove_data=False, local_only=False):
         """Delete the VM - removing it from LibVirt and from the filesystem"""
+        ArgumentValidator.validate_boolean(remove_data)
+        ArgumentValidator.validate_boolean(local_only)
+
         # Check the user has permission to modify VMs or
         # that the user is the owner of the VM and the VM is a clone
         if not (self._get_registered_object('auth').check_permission(
@@ -418,6 +426,9 @@ class VirtualMachine(PyroObject):
     @locking_method()
     def updateRAM(self, memory_allocation, old_value):
         """Updates the amount of RAM allocated to a VM"""
+        ArgumentValidator.validate_positive_integer(memory_allocation)
+        ArgumentValidator.validate_positive_integer(old_value)
+
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
@@ -465,6 +476,9 @@ class VirtualMachine(PyroObject):
     @locking_method()
     def updateCPU(self, cpu_count, old_value):
         """Updates the number of CPU cores attached to a VM"""
+        ArgumentValidator.validate_positive_integer(cpu_count)
+        ArgumentValidator.validate_positive_integer(old_value)
+
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
@@ -588,6 +602,14 @@ class VirtualMachine(PyroObject):
     def offlineMigrate(self, destination_node_name, start_after_migration=False,
                        wait_for_vm_shutdown=False):
         """Performs an offline migration of a VM to another node in the cluster"""
+        ArgumentValidator.validate_hostname(destination_node_name)
+        ArgumentValidator.validate_boolean(start_after_migration)
+        ArgumentValidator.validate_boolean(wait_for_vm_shutdown)
+
+        if destination_node_name not in self.getAvailableNodes():
+            raise UnsuitableNodeException('Node %s is not a valid node for this VM' %
+                                          destination_node_name)
+
         # Ensure user has permission to migrate VM
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MIGRATE_VM, self)
 
@@ -637,8 +659,14 @@ class VirtualMachine(PyroObject):
     @locking_method()
     def onlineMigrate(self, destination_node_name):
         """Performs an online migration of a VM to another node in the cluster"""
+        ArgumentValidator.validate_hostname(destination_node_name)
+
         # Ensure user has permission to migrate VM
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MIGRATE_VM, self)
+
+        if destination_node_name not in self.getAvailableNodes():
+            raise UnsuitableNodeException('Node %s is not a valid node for this VM' %
+                                          destination_node_name)
 
         factory = self._get_registered_object('virtual_machine_factory')
 
@@ -817,8 +845,11 @@ class VirtualMachine(PyroObject):
     @locking_method()
     def clone(self, clone_vm_name):
         """Clones a VM, creating an identical machine, using
-           LVM snapshotting to duplicate the Hard disk. Drbd is not
-           currently supported"""
+        LVM snapshotting to duplicate the Hard disk. Drbd is not
+        currently supported
+        """
+        ArgumentValidator.validate_hostname(clone_vm_name)
+
         # Check the user has permission to create VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CLONE_VM, self)
 
@@ -888,6 +919,8 @@ class VirtualMachine(PyroObject):
     def duplicate(self, duplicate_vm_name):
         """Duplicates a VM, creating an identical machine, making a
            copy of the storage"""
+        ArgumentValidator.validate_hostname(duplicate_vm_name)
+
         # Check the user has permission to create VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.DUPLICATE_VM, self)
 
@@ -925,8 +958,14 @@ class VirtualMachine(PyroObject):
 
         return new_vm_object
 
+    @Pyro4.expose()
+    @locking_method()
     def move(self, destination_node, source_node=None):
         """Move a VM from one node to another"""
+        ArgumentValidator.validate_hostname(destination_node)
+        if source_node is not None:
+            ArgumentValidator.validate_hostname(source_node)
+
         # Ensure user has the ability to move VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MOVE_VM, self)
 
@@ -1097,6 +1136,8 @@ class VirtualMachine(PyroObject):
     @locking_method()
     def setNodeRemote(self, node):
         """Set node from remote _setNode command"""
+        if node is not None:
+            ArgumentValidator.validate_hostname(node)
         # @TODO Merge with setNode and check either user type or permissions
         self._get_registered_object('auth').assert_user_type('ClusterUser')
         self._setNode(node)
@@ -1204,6 +1245,7 @@ class VirtualMachine(PyroObject):
 
     @Pyro4.expose()
     def setLockState(self, lock_status):
+        ArgumentValidator.validate_integer(lock_status)
         return self._setLockState(LockStates(lock_status))
 
     def _setLockState(self, lock_status):

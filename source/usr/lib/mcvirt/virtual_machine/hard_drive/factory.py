@@ -20,7 +20,7 @@ import Pyro4
 from mcvirt.exceptions import UnknownStorageTypeException, HardDriveDoesNotExistException
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import Drbd
-from mcvirt.auth.auth import Auth
+from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
@@ -32,6 +32,7 @@ class Factory(PyroObject):
     STORAGE_TYPES = [Local, Drbd]
     DEFAULT_STORAGE_TYPE = 'Local'
     OBJECT_TYPE = 'hard disk'
+    HARD_DRIVE_CLASS = Base
 
     @Pyro4.expose()
     def getObject(self, vm_object, disk_id, **config):

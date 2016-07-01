@@ -27,6 +27,7 @@ from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsExc
 from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.permissions import PERMISSIONS, PERMISSION_GROUPS
+from mcvirt.argument_validator import ArgumentValidator
 
 
 class Auth(PyroObject):
@@ -149,10 +150,14 @@ class Auth(PyroObject):
         return mcvirt_config.get_config()['superusers']
 
     @Pyro4.expose()
-    def add_superuser(self, user_object, ignore_duplicate=None):
+    def add_superuser(self, user_object, ignore_duplicate=False):
         """Add a new superuser."""
+        assert isinstance(self._convert_remote_object(user_object),
+                          self._get_registered_object('user_factory').USER_CLASS)
+        ArgumentValidator.validate_boolean(ignore_duplicate)
+
         # Ensure the user is a superuser
-        if (not self.is_superuser()):
+        if not self.is_superuser():
             raise InsufficientPermissionsException(
                 'User must be a superuser to manage superusers'
             )
@@ -162,7 +167,7 @@ class Auth(PyroObject):
         mcvirt_config = MCVirtConfig()
 
         # Ensure user is not already a superuser
-        if (username not in self.get_superusers()):
+        if username not in self.get_superusers():
             def update_config(config):
                 config['superusers'].append(username)
             mcvirt_config.update_config(update_config, 'Added superuser \'%s\'' % username)
@@ -185,6 +190,9 @@ class Auth(PyroObject):
     @Pyro4.expose()
     def delete_superuser(self, user_object):
         """Remove a superuser."""
+        assert isinstance(self._convert_remote_object(user_object),
+                          self._get_registered_object('user_factory').USER_CLASS)
+
         # Ensure the user is a superuser
         if not self.is_superuser():
             raise InsufficientPermissionsException(
@@ -220,6 +228,14 @@ class Auth(PyroObject):
     def add_user_permission_group(self, permission_group, user_object,
                                   vm_object=None, ignore_duplicate=False):
         """Add a user to a permissions group on a VM object."""
+        assert permission_group in PERMISSION_GROUPS.keys()
+        assert isinstance(self._convert_remote_object(user_object),
+                          self._get_registered_object('user_factory').USER_CLASS)
+        assert isinstance(self._convert_remote_object(vm_object),
+                          self._get_registered_object(
+                              'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
+        ArgumentValidator.validate_boolean(ignore_duplicate)
+
         # Check if user running script is able to add users to permission group
         if not (self.is_superuser() or
                 (vm_object and self.assert_permission(PERMISSIONS.MANAGE_VM_USERS,
@@ -264,6 +280,12 @@ class Auth(PyroObject):
     @locking_method()
     def delete_user_permission_group(self, permission_group, user_object, vm_object=None):
         """Remove user from a permissions group on a VM object."""
+        assert permission_group in PERMISSION_GROUPS.keys()
+        assert isinstance(self._convert_remote_object(user_object),
+                          self._get_registered_object('user_factory').USER_CLASS)
+        assert isinstance(self._convert_remote_object(vm_object),
+                          self._get_registered_object(
+                              'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
         # Check if user running script is able to remove users to permission group
         if not (self.is_superuser() or
                 (self.assert_permission(PERMISSIONS.MANAGE_VM_USERS, vm_object) and
