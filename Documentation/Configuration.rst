@@ -12,7 +12,7 @@ Remove default network
 * The 'default' network is attached to a private network, which provides NAT routing through the node's physical interfaces.
 * If you wish to use bridging, the default network can be removed by performing the following::
 
-    sudo mcvirt network delete default
+    mcvirt network delete default
 
 
 Creating/Removing Networks
@@ -35,12 +35,12 @@ Where `<Physical interface>` is the name of the interface that the bridge should
 
 * To create a network on the node, perform the following as a superuser::
 
-    sudo mcvirt network create <Network name> --interface <Bridge interface>
+    mcvirt network create <Network name> --interface <Bridge interface>
 
 
 * Assuming that there are not any VMs connected to a network, they can be removed using::
 
-    sudo mcvirt network delete <Network name>
+    mcvirt network delete <Network name>
 
 Configure MCVirt
 -----------------
@@ -48,8 +48,16 @@ Configure MCVirt
 * The first time MCVirt is run, it creates a configuration file for itself, found in **/var/lib/mcvirt/<Hostname>/config.json**.
 * The volume group, in which VM data will be stored as logical volumes, must be setup using::
 
-    sudo mcvirt node --set-vm-vg <Volume Group>
+    mcvirt node --set-vm-vg <Volume Group>
 
 * The cluster IP address must be configured if the node will be used in a cluster (See the `Cluster documentation <Cluster.rst>`_)::
 
-    sudo mcvirt node --set-ip-address <Cluster IP Address>
+    mcvirt node --set-ip-address <Cluster IP Address>
+
+* In order for the MCVirt client to connect to the daemon, the hosts file at ``/etc/hosts`` must edited by changing the line::
+
+    127.0.0.1    <hostname>
+
+  to::
+
+    <Cluster IP Address>    <hostname>

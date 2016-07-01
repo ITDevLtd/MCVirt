@@ -16,17 +16,17 @@ Create VM
 * Use the MCVirt utility to create VMs:
 
   ::
-    
-    sudo mcvirt create '<VM Name>'
-    
+
+    mcvirt create '<VM Name>'
+
 
 * The following parameters are available:
 
   * **--memory** - Amount of memory to allocate to the VM (MB) (required)
 
-  * **--disk-size** - Size of initial disk to be added to the VM (MB) (required)
-
   * **--cpu-count** - Number of vCPUs to be allocated to the VM (required)
+
+  * **--disk-size** - Size of initial disk to be added to the VM (MB) (optional)
 
   * **--network** - Provide the name of a network to be attached to the VM. (optional)
 
@@ -37,8 +37,10 @@ Create VM
     * A network can be specified multiple times to create multiple adapters connected to the same network.
 
   * **--storage-type** - Storage backing type - either ``Local`` or ``DRBD``.
-	
-  * **--nodes** - Specifies the nodes that the VM will be hosted on, if a DRBD storage-type is specified and there are more than 2 nodes in the cluster.	
+
+  * **--nodes** - Specifies the nodes that the VM will be hosted on, if a DRBD storage-type is specified and there are more than 2 nodes in the cluster.
+
+  * **--driver** - The virtual disk driver to use. If this is not specified then MCVirt will select the most appropriate driver (optional)
 
 
 Cloning a VM
@@ -80,9 +82,9 @@ Cloning
 A VM can be cloned by performing the following:
 
   ::
-    
-    sudo mcvirt clone --template <Source VM Name> <Target VM Name>
-    
+
+    mcvirt clone --template <Source VM Name> <Target VM Name>
+
 
 
 
@@ -97,9 +99,9 @@ Duplicating
 A VM can be duplicated by performing the following:
 
   ::
-    
-    sudo mcvirt duplicate --template <Source VM Name> <Target VM Name>
-    
+
+    mcvirt duplicate --template <Source VM Name> <Target VM Name>
+
 
 
 
@@ -112,9 +114,9 @@ Removing VM
 * Use the MCVirt utility to remove the VM:
 
   ::
-    
-    sudo mcvirt delete <VM Name>
-    
+
+    mcvirt delete <VM Name>
+
 
 * Without any parameters, the VM will simply be 'unregistered' from the node.
 * To remove all data associated with the VM, supply the parameter **--remove-data**

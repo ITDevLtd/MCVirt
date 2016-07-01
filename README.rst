@@ -42,13 +42,18 @@ See the `installation guide <Documentation/Installation.rst>`_ for other depende
 Configuration
 -------------
 
-Configure the volume group that MCVirt will use to store virtual machine data.
+Start the MCVirt nameserver and daemon by running::
 
-Configure the MCVirt volume group::
+  $ sudo service mcvirt-ns start
+  $ sudo service mcvirtd start
+
+Most commands require a username and password to the MCVirt daemon. During installation a superuser is created with username ``mjc`` and password ``pass`` - see `permissions <Documentation/Permissions.rst>`_ for information on creating new users.
+
+Configure the volume group that MCVirt will use to store virtual machine data::
 
   $ sudo mcvirt node --set-vm-vg <Volume Group>
 
-See the `configuration guide <Documentation/Configuration.rst.rst>`_ for further node configuration steps.
+See the `configuration guide <Documentation/Configuration.rst>`_ for further node configuration steps.
 
 Usage
 -----
@@ -64,6 +69,8 @@ Start the VM::
   $ sudo mcvirt start test_vm
 
 See the `controlling VMs guide <Documentation/ControllingVMs.rst>`_ for further user instructions.
+
+**Note:** Username and password can be provided on the command line with the ``--username`` and ``--password`` options to instead of typing them in after every command.
 
 Development
 -----------
