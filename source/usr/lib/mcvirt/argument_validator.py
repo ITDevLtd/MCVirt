@@ -26,11 +26,11 @@ class ArgumentValidator(object):
     def validate_hostname(hostname):
         """Validate a hostname"""
         exception_message = ('Hostname must only use alpha-numeric characters and dashes,'
-                             ' be less than 255 characters in length'
+                             ' be 64 characters or less in length'
                              ' and start with an alpha-numeric character')
 
         # Check length
-        if len(hostname) > 255 or not len(hostname):
+        if len(hostname) > 64 or not len(hostname):
             raise TypeError(exception_message)
 
         disallowed = re.compile("[^A-Z\d-]", re.IGNORECASE)
