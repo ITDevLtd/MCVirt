@@ -357,7 +357,7 @@ class VirtualMachine(PyroObject):
             )
 
         # Determine if VM is running
-        if self._getPowerState == PowerStates.RUNNING:
+        if self._getPowerState() == PowerStates.RUNNING:
             raise VmAlreadyStartedException('Error: Can\'t delete running VM')
 
         # Ensure VM is unlocked
