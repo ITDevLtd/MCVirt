@@ -982,7 +982,7 @@ class VirtualMachine(PyroObject):
 
             # If migrating a local VM, since the only instance of the storage will be moved,
             # ensure that the VM is stopped
-            if self._getPowerState is not PowerStates.STOPPED:
+            if self._getPowerState() is not PowerStates.STOPPED:
                 raise VmRunningException('VM must be stopped before performing a move')
 
         # Perform checks on source and remote nodes
