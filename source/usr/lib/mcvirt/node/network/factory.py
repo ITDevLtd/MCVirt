@@ -28,6 +28,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.network import Network
 from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.argument_validator import ArgumentValidator
 
 
 class Factory(PyroObject):
@@ -55,6 +56,9 @@ class Factory(PyroObject):
         """Create a network on the node"""
         # Ensure user has permission to manage networks
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
+
+        # Validate name
+        ArgumentValidator.validate_network_name(name)
 
         # Ensure network does not already exist
         if self.check_exists(name):

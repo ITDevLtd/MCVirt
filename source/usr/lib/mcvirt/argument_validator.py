@@ -54,7 +54,10 @@ class ArgumentValidator(object):
     @staticmethod
     def validate_integer(value):
         """Validate integer"""
-        if str(int(value)) != str(value):
+        try:
+            if str(int(value)) != str(value):
+                raise TypeError
+        except ValueError:
             raise TypeError
 
     @staticmethod
@@ -76,13 +79,13 @@ class ArgumentValidator(object):
     @staticmethod
     def validate_drbd_resource(variable):
         """Validate DRBD resource name"""
-        valid_name = re.compile('^mcvirt_vm-(.*)-disk-(\d+)$')
+        valid_name = re.compile('^mcvirt_vm-(.+)-disk-(\d+)$')
         result = valid_name.match(variable)
         if not result:
             raise TypeError
 
         # Validate the hostname in the DRBD resource
-        ArgumentValidator.validate_hostname(result.groups(1))
-
-        if int(result.group(2)) < 1 or int(result.group(2)) > 99:
+        ArgumentValidator.validate_hostname(result.groups()[0])
+        ArgumentValidator.validate_positive_integer(result.groups()[1])
+        if int(result.groups()[1]) > 99:
             raise TypeError
