@@ -546,9 +546,9 @@ class Cluster(PyroObject):
         cluster_config = self.get_cluster_config()
         return cluster_config['cluster_ip']
 
-    def get_remote_node(self, node):
+    def get_remote_node(self, node, ignore_cluster_master=False):
         """Obtain a Remote object for a node, caching the object"""
-        if not self._is_cluster_master:
+        if not self._is_cluster_master and not ignore_cluster_master:
             raise ClusterNotInitialisedException('Cannot get remote node %s' % node +
                                                  ' as the cluster is not initialised')
 

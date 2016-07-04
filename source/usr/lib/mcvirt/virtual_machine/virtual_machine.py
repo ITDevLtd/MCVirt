@@ -242,7 +242,7 @@ class VirtualMachine(PyroObject):
 
         elif self.isRegisteredRemotely() and not self._cluster_disabled:
             cluster = self._get_registered_object('cluster')
-            remote_object = cluster.get_remote_node(self.getNode())
+            remote_object = cluster.get_remote_node(self.getNode(), ignore_cluster_master=True)
             vm_factory = remote_object.get_connection('virtual_machine_factory')
             remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
             remote_object.annotate_object(remote_vm)
@@ -410,10 +410,13 @@ class VirtualMachine(PyroObject):
 
         if self._is_cluster_master and not local_only:
             def remote_command(remote_object):
-                vm_factory = remote_object.get_connection('virtual_machine_factory')
-                remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-                remote_object.annotate_object(remote_vm)
-                remote_vm.delete(remove_data=remove_data)
+                try:
+                    vm_factory = remote_object.get_connection('virtual_machine_factory')
+                    remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
+                    remote_object.annotate_object(remote_vm)
+                    remote_vm.delete(remove_data=remove_data)
+                except VirtualMachineDoesNotExistException:
+                    pass
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.run_remote_command(remote_command)
 
