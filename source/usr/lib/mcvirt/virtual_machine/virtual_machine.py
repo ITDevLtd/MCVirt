@@ -357,7 +357,7 @@ class VirtualMachine(PyroObject):
             )
 
         # Determine if VM is running
-        if self._getPowerState() == PowerStates.RUNNING:
+        if self._is_cluster_master and self._getPowerState() == PowerStates.RUNNING:
             raise VmAlreadyStartedException('Error: Can\'t delete running VM')
 
         # Ensure VM is unlocked
@@ -410,13 +410,10 @@ class VirtualMachine(PyroObject):
 
         if self._is_cluster_master and not local_only:
             def remote_command(remote_object):
-                try:
-                    vm_factory = remote_object.get_connection('virtual_machine_factory')
-                    remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-                    remote_object.annotate_object(remote_vm)
-                    remote_vm.delete(remove_data=remove_data)
-                except VirtualMachineDoesNotExistException:
-                    pass
+                vm_factory = remote_object.get_connection('virtual_machine_factory')
+                remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
+                remote_object.annotate_object(remote_vm)
+                remote_vm.delete(remove_data=remove_data)
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.run_remote_command(remote_command)
 
