@@ -39,7 +39,7 @@ class Node(PyroObject):
 
         # Ensure volume_group name is valid
         pattern = re.compile("^[A-Z0-9a-z_-]+$")
-        if (not pattern.match(volume_group)):
+        if not pattern.match(volume_group):
             raise InvalidVolumeGroupNameException('%s is not a valid volume group name' %
                                                   volume_group)
 
@@ -69,3 +69,7 @@ class Node(PyroObject):
         mcvirt_config = MCVirtConfig()
         mcvirt_config.update_config(update_config, 'Set node cluster IP address to %s' %
                                                    ip_address)
+
+    def is_volume_group_set(self):
+        """Determine if the volume group has been configured on the node"""
+        return bool(MCVirtConfig().get_config()['vm_storage_vg'])
