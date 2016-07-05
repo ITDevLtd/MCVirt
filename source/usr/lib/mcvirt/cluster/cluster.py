@@ -110,8 +110,8 @@ class Cluster(PyroObject):
     def add_node_configuration(self, node_name, ip_address,
                                connection_user, connection_password,
                                ca_key):
-        """Add MCVirt node to configuration and generates SSH
-        authorized_keys file
+        """Add MCVirt node to configuration, generates a cluster user on the remote node
+        and stores credentials against node in the MCVirt configuration.
         """
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
 
@@ -140,7 +140,9 @@ class Cluster(PyroObject):
     @Pyro4.expose()
     @locking_method()
     def add_node(self, node_connection_string):
-        """Connect to a remote MCVirt machine, shares SSH keys and clusters the machines."""
+        """Connect to a remote MCVirt machine, setup shared authentication
+        and clusters the machines.
+        """
         # Ensure the user has privileges to manage the cluster
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
 
@@ -152,7 +154,7 @@ class Cluster(PyroObject):
             assert 'ip_address' in node_config and node_config['ip_address']
             assert 'hostname' in node_config and node_config['hostname']
             assert 'ca_cert' in node_config and node_config['ca_cert']
-        except:
+        except (TypeError, ValueError, AssertionError):
             raise InvalidConnectionString('Connection string is invalid')
 
         # Determine if node is already connected to cluster
@@ -170,10 +172,7 @@ class Cluster(PyroObject):
         # conflicts
         remote = Connection(username=node_config['username'], password=node_config['password'],
                             host=node_config['hostname'])
-        try:
-            self.check_remote_machine(remote)
-        except:
-            raise
+        self.check_remote_machine(remote)
         remote = None
         original_cluster_nodes = self.get_nodes()
 
