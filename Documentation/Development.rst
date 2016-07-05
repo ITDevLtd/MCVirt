@@ -27,7 +27,7 @@ Before runing the tests ensure that the ``mcvirt-ns`` service is running on all 
 
 Manual Test Procedure
 ---------------------
-This test procedure is designed to compliment the automated tests.
+This test procedure is designed to compliment the automated unit tests and should be performed prior to making a new release.
 
 * Make sure the ``mcvirt-ns`` and ``mcvirtd`` daemons are started
 
