@@ -86,7 +86,7 @@ class Factory(PyroObject):
             config['users'][username] = user_config
         MCVirtConfig().update_config(update_config, 'Create user \'%s\'' % username)
 
-        if user_type == User and self._is_cluster_master:
+        if user_type.DISTRIBUTED and self._is_cluster_master:
             # Create the user on the other nodes in the cluster
             def remote_command(node_connection):
                 remote_user_factory = node_connection.get_connection('user_factory')
@@ -175,6 +175,7 @@ class Factory(PyroObject):
         self.create(username=username, password=password, user_type=user_type)
         return username, password
 
+    @Pyro4.expose()
     def get_cluster_user_by_node(self, node):
         """Obtain a cluster user for a given node"""
         for user in self.get_all_user_objects(user_class=ClusterUser):

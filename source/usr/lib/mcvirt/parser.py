@@ -878,14 +878,14 @@ class Parser(object):
             cluster_object = rpc.get_connection('cluster')
             if args.cluster_action == 'get-connect-string':
                 self.print_status(cluster_object.get_connection_string())
-            if (args.cluster_action == 'add-node'):
+            if args.cluster_action == 'add-node':
                 if args.connect_string:
                     connect_string = args.connect_string
                 else:
                     connect_string = System.getUserInput('Enter Connect String: ')
                 cluster_object.add_node(connect_string)
                 self.print_status('Successfully added node')
-            if (args.cluster_action == 'remove-node'):
+            if args.cluster_action == 'remove-node':
                 cluster_object.remove_node(args.node)
                 self.print_status('Successfully removed node %s' % args.node)
 

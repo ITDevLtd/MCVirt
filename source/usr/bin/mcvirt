@@ -18,10 +18,13 @@
 
 import sys
 import socket
+import Pyro4
 
 sys.path.insert(0, '/usr/lib')
 from mcvirt.exceptions import MCVirtException
 from mcvirt.parser import Parser
+
+sys.excepthook = Pyro4.util.excepthook
 
 if __name__ == "__main__":
 

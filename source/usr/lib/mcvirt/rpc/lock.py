@@ -36,6 +36,10 @@ class MethodLock(object):
             cls._lock = Lock()
         return cls._lock
 
+def deadlock_escape():
+    """Force clear a lock to escape deadlock"""
+    lock = MethodLock.get_lock()
+    lock.release()
 
 def locking_method(object_type=None, instance_method=True):
     """Provide a decorator method for locking the node whilst performing the method"""

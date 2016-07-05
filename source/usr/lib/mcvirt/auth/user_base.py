@@ -38,6 +38,7 @@ class UserBase(PyroObject):
     CAN_GENERATE = False
     PERMISSIONS = []
     CLUSTER_USER = False
+    DISTRIBUTED = True
 
     @property
     def allow_proxy_user(self):
@@ -106,7 +107,7 @@ class UserBase(PyroObject):
             update_config, 'Updated password for \'%s\'' % self.get_username()
         )
 
-        if self._is_cluster_master:
+        if self.DISTRIBUTED and self._is_cluster_master:
             def remote_command(node_connection):
                 remote_user_factory = node_connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(self.get_username())
@@ -160,7 +161,7 @@ class UserBase(PyroObject):
             del config['users'][self.get_username()]
         MCVirtConfig().update_config(update_config, 'Deleted user \'%s\'' % self.get_username())
 
-        if self._is_cluster_master:
+        if self.DISTRIBUTED and self._is_cluster_master:
             def remote_command(node_connection):
                 remote_user_factory = node_connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(self.get_username())

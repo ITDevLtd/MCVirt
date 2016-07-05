@@ -31,6 +31,7 @@ class ConnectionUser(UserBase):
     CAN_GENERATE = True
     PERMISSIONS = [PERMISSIONS.MANAGE_USERS]
     CLUSTER_USER = True
+    DISTRIBUTED = False
 
     @property
     def allow_proxy_user(self):
