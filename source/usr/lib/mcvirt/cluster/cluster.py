@@ -20,6 +20,7 @@
 import json
 import base64
 import Pyro4
+import socket
 from texttable import Texttable
 
 from mcvirt.utils import get_hostname
@@ -48,10 +49,8 @@ class Cluster(PyroObject):
             PERMISSIONS.MANAGE_CLUSTER
         )
 
-        # Determine IP address
-        ip_address = self.get_cluster_ip_address()
-        if not ip_address:
-            raise MissingConfigurationException('IP address has not yet been configured')
+        # Ensure that the IP address configurations has been made correctly
+        self.check_ip_configuration()
 
         # Create connection user
         user_factory = self._get_registered_object('user_factory')
@@ -69,9 +68,6 @@ class Cluster(PyroObject):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_CLUSTER
         )
-
-        # Ensure that the IP address configurations has been made correctly
-        self.check_ip_configuration()
 
         # Generate dict with connection information. Convert to JSON and base64 encode
         connection_info = self.generate_connection_info()
@@ -145,10 +141,23 @@ class Cluster(PyroObject):
         IP configuration is such that is suitable to be part of a cluster
         """
         # Ensure that the cluster IP address has been defined
+        cluster_ip = self.get_cluster_ip_address()
+        if not cluster_ip:
+            raise MissingConfigurationException('IP address has not yet been configured')
 
         # Ensure that the hostname of the local machine does not resolve
         # to 127.0.0.1
-        pass
+        if socket.gethostbyname(get_hostname()).startswith('127.'):
+            raise MissingConfigurationException(('Node hostname %s resolves to the localhost.'
+                                                 ' Instead it should resolve to the cluster'
+                                                 ' IP address'))
+        resolve_ip = socket.gethostbyname(get_hostname())
+        if resolve_ip != cluster_ip:
+            raise MissingConfigurationException(('The local hostname (%s) should resolve the'
+                                                 ' cluster IP address (%s). Instead it resolves'
+                                                 ' to \'%s\'. Please correct this issue before'
+                                                 ' continuing.') %
+                                                (get_hostname(), cluster_ip, resolve_ip))
 
     @Pyro4.expose()
     @locking_method()
