@@ -577,7 +577,6 @@ class NodeVersionMismatch(Pyro4.errors.SecurityError):
 class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
     """Unable to connect to node in the cluster"""
 
-
     pass
 
 
