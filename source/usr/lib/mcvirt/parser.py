@@ -593,9 +593,24 @@ class Parser(object):
         args = self.parser.parse_args(script_args)
         action = args.action
 
+        ignore_cluster = False
+        if args.ignore_failed_nodes:
+            # If the user has specified to ignore the cluster,
+            # print a warning and confirm the user's answer
+            if not args.accept_failed_nodes_warning:
+                self.print_status(('WARNING: Running MCVirt with --ignore-failed-nodes'
+                                   ' can leave the cluster in an inconsistent state!'))
+                continue_answer = System.getUserInput('Would you like to continue? (Y/n): ')
+
+                if continue_answer.strip() is not 'Y':
+                    self.print_status('Cancelled...')
+                    return
+            ignore_cluster = True
+
         # Obtain connection to Pyro server
         if self.SESSION_ID and self.USERNAME:
-            rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID)
+            rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID,
+                             ignore_cluster=ignore_cluster)
         else:
             # Check if user/password have been passed. Else, ask for them.
             username = args.username if args.username else System.getUserInput(
@@ -607,22 +622,9 @@ class Parser(object):
                 password = System.getUserInput(
                     'Password: ', password=True
                 ).rstrip()
-            rpc = Connection(username=username, password=password)
+            rpc = Connection(username=username, password=password, ignore_cluster=ignore_cluster)
             self.SESSION_ID = rpc.session_id
             self.USERNAME = username
-
-        if args.ignore_failed_nodes:
-            # If the user has specified to ignore the cluster,
-            # print a warning and confirm the user's answer
-            if (not args.accept_failed_nodes_warning):
-                self.print_status(('WARNING: Running MCVirt with --ignore-failed-nodes'
-                                   ' can leave the cluster in an inconsistent state!'))
-                continue_answer = System.getUserInput('Would you like to continue? (Y/n): ')
-
-                if (continue_answer.strip() is not 'Y'):
-                    self.print_status('Cancelled...')
-                    return
-            rpc.ignore_cluster()
 
         if args.ignore_drbd:
             rpc.ignore_drbd()
