@@ -70,6 +70,9 @@ class Cluster(PyroObject):
             PERMISSIONS.MANAGE_CLUSTER
         )
 
+        # Ensure that the IP address configurations has been made correctly
+        self.check_ip_configuration()
+
         # Generate dict with connection information. Convert to JSON and base64 encode
         connection_info = self.generate_connection_info()
         connection_info_dict = {
@@ -137,6 +140,16 @@ class Cluster(PyroObject):
             }
         MCVirtConfig().update_config(add_node_config)
 
+    def check_ip_configuration(self):
+        """Perform various checks to ensure that the
+        IP configuration is such that is suitable to be part of a cluster
+        """
+        # Ensure that the cluster IP address has been defined
+
+        # Ensure that the hostname of the local machine does not resolve
+        # to 127.0.0.1
+        pass
+
     @Pyro4.expose()
     @locking_method()
     def add_node(self, node_connection_string):
@@ -145,6 +158,9 @@ class Cluster(PyroObject):
         """
         # Ensure the user has privileges to manage the cluster
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
+
+        # Ensure that the IP address configurations has been made correctly
+        self.check_ip_configuration()
 
         try:
             config_json = base64.b64decode(node_connection_string)
