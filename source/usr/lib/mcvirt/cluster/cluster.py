@@ -28,7 +28,7 @@ from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
                                RemoteObjectConflict, ClusterNotInitialisedException,
                                InvalidConnectionString, DrbdNotInstalledException,
                                CouldNotConnectToNodeException,
-                               MissingConfigurationException)
+                               MissingConfigurationException, NodeVersionMismatch)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.connection_user import ConnectionUser
 from mcvirt.auth.permissions import PERMISSIONS
@@ -103,6 +103,20 @@ class Cluster(PyroObject):
             table.add_row((node, node_config['ip_address'],
                            node_status))
         return table.draw()
+
+    def check_node_versions(self):
+        """Ensure that all nodes in the cluster are connected
+        and checks the node Status
+        """
+        def check_version(connection):
+            node = connection.get_connection('node')
+            return node.get_version()
+        node_versions = self.run_remote_command(check_version)
+        local_version = self._get_registered_object('node').get_version()
+        for node in node_versions:
+            if node_versions[node] != local_version:
+                raise NodeVersionMismatch('Node %s is running MCVirt %s. Local version: %s' %
+                                          (node, node_versions[node], local_version))
 
     @Pyro4.expose()
     @locking_method()

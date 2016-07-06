@@ -17,9 +17,14 @@ function get_version {
 VERSION=$(get_version)
 ARCH=all
 
+# Put version number into version file
+echo "VERSION = '$VERSION'" >> ./source/usr/lib/mcvirt/version.py
+
 # Build the man documentation
 python build_man.py $VERSION
 
 # Build the package
 dpkg --build ./source ./mcvirt_${VERSION}_${ARCH}.deb
 
+# Remove old version number
+git checkout -- ./source/usr/lib/mcvirt/version.py

@@ -128,7 +128,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
                         Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
                     else:
                         Pyro4.current_context.ignore_drbd = False
-
+                    if Pyro4.current_context.cluster_master:
+                        self.registered_factories['cluster'].check_node_versions()
                     return session_id
 
             # If a session id has been passed, store it and check the
@@ -176,7 +177,11 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     else:
                         Pyro4.current_context.ignore_drbd = False
 
+                    if Pyro4.current_context.cluster_master:
+                        self.registered_factories['cluster'].check_node_versions()
                     return session_id
+        except Pyro4.errors.SecurityError:
+            raise
         except Exception, e:
             print str(e)
         # If no valid authentication was provided, raise an error

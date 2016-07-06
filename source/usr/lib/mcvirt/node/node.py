@@ -26,6 +26,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import locking_method
+from mcvirt.version import VERSION
 
 
 class Node(PyroObject):
@@ -73,3 +74,8 @@ class Node(PyroObject):
     def is_volume_group_set(self):
         """Determine if the volume group has been configured on the node"""
         return bool(MCVirtConfig().get_config()['vm_storage_vg'])
+
+    @Pyro4.expose()
+    def get_version(self):
+        """Returns the version of the running daemon"""
+        return VERSION
