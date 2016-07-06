@@ -133,6 +133,7 @@ class Auth(PyroObject):
 
         return False
 
+    @Pyro4.expose()
     def is_superuser(self):
         """Determine if the current user is a superuser of MCVirt."""
         # Cluster users can do anything
@@ -272,7 +273,7 @@ class Auth(PyroObject):
                     remote_auth = connection.get_connection('auth')
                     if vm_object:
                         remote_vm_factory = connection.get_connection('virtual_machine_factory')
-                        remote_vm = remote_vm_factory.get_virtual_machine_by_name(
+                        remote_vm = remote_vm_factory.getVirtualMachineByName(
                             vm_object.get_name()
                         )
                     else:
@@ -315,10 +316,8 @@ class Auth(PyroObject):
         if vm_object:
             vm_object = self._convert_remote_object(vm_object)
             config_object = vm_object.get_config_object()
-            vm_name = vm_object.get_name()
         else:
             config_object = MCVirtConfig()
-            vm_name = None
 
         # Remove user from permission configuration for VM
         def remove_user_from_group(config):
@@ -338,13 +337,13 @@ class Auth(PyroObject):
                 remote_auth = connection.get_connection('auth')
                 if vm_object:
                     remote_vm_factory = connection.get_connection('virtual_machine_factory')
-                    remote_vm = remote_vm_factory.get_virtual_machine_by_name(
+                    remote_vm = remote_vm_factory.getVirtualMachineByName(
                         vm_object.get_name()
                     )
                 else:
                     remote_vm = None
 
-                remote_auth.add_user_permission_group(permission_group, remote_user, remote_vm)
+                remote_auth.delete_user_permission_group(permission_group, remote_user, remote_vm)
             cluster_object = self._get_registered_object('cluster')
             cluster_object.run_remote_command(add_remote_user_to_group)
 

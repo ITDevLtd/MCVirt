@@ -52,7 +52,10 @@ class UnitTestBootstrap(object):
         node_test_suite = NodeTests.suite()
         online_migrate_test_suite = OnlineMigrateTests.suite()
         validation_test_suite = ValidationTests.suite()
+
         OnlineMigrateTests.RPC_DAEMON = self.daemon
+        AuthTests.RPC_DAEMON = self.daemon
+
         self.all_tests = unittest.TestSuite([
             virtual_machine_test_suite,
             network_test_suite,
@@ -81,6 +84,7 @@ class UnitTestBootstrap(object):
             # stop on next loop
             self.daemon_run = False
             OnlineMigrateTests.RPC_DAEMON = None
+            AuthTests.RPC_DAEMON = None
             try:
                 # Perform final connection to daemon to ensure that it loops
                 # to stop.
