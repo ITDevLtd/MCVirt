@@ -244,16 +244,16 @@ class Auth(PyroObject):
             raise InsufficientPermissionsException('VM owners cannot add manager other owners')
 
         user_object = self._convert_remote_object(user_object)
-        vm_object = self._convert_remote_object(vm_object) if vm_object is not None else None
         username = user_object.get_username()
 
         # Check if user is already in the group
-        if (vm_object):
+        if vm_object:
+            vm_object = self._convert_remote_object(vm_object)
             config_object = vm_object.get_config_object()
         else:
             config_object = MCVirtConfig()
 
-        if (username not in self.get_users_in_permission_group(permission_group, vm_object)):
+        if username not in self.get_users_in_permission_group(permission_group, vm_object):
 
             # Add user to permission configuration for VM
             def add_user_to_config(config):
@@ -262,14 +262,26 @@ class Auth(PyroObject):
             config_object.update_config(add_user_to_config, 'Added user \'%s\' to group \'%s\'' %
                                                             (username, permission_group))
 
-            # @TODO FIX ME
             if self._is_cluster_master:
+                def add_remote_user_to_group(connection):
+                    remote_user_factory = connection.get_connection('user_factory')
+                    remote_user = remote_user_factory.get_user_by_username(
+                        user_object.get_username()
+                    )
+                    connection.annotate_object(remote_user)
+                    remote_auth = connection.get_connection('auth')
+                    if vm_object:
+                        remote_vm_factory = connection.get_connection('virtual_machine_factory')
+                        remote_vm = remote_vm_factory.get_virtual_machine_by_name(
+                            vm_object.get_name()
+                        )
+                    else:
+                        remote_vm = None
+
+                    remote_auth.add_user_permission_group(permission_group, remote_user,
+                                                          remote_vm, ignore_duplicate)
                 cluster_object = self._get_registered_object('cluster')
-                vm_name = vm_object.get_name() if vm_object else None
-                cluster_object.run_remote_command('auth-add_user_permission_group',
-                                                  {'permission_group': permission_group,
-                                                   'username': username,
-                                                   'vm_name': vm_name})
+                cluster_object.run_remote_command(add_remote_user_to_group)
 
         elif not ignore_duplicate:
             raise DuplicatePermissionException(
@@ -293,7 +305,6 @@ class Auth(PyroObject):
             raise InsufficientPermissionsException('Does not have required permission')
 
         user_object = self._convert_remote_object(user_object)
-        vm_object = self._convert_remote_object(vm_object) if vm_object is not None else None
         username = user_object.get_username()
 
         # Check if user exists in the group
@@ -302,6 +313,7 @@ class Auth(PyroObject):
                                         (username, permission_group))
 
         if vm_object:
+            vm_object = self._convert_remote_object(vm_object)
             config_object = vm_object.get_config_object()
             vm_name = vm_object.get_name()
         else:
@@ -316,13 +328,25 @@ class Auth(PyroObject):
                                     'Removed user \'%s\' from group \'%s\'' %
                                     (username, permission_group))
 
-        # @TODO FIX ME
         if self._is_cluster_master:
+            def add_remote_user_to_group(connection):
+                remote_user_factory = connection.get_connection('user_factory')
+                remote_user = remote_user_factory.get_user_by_username(
+                    user_object.get_username()
+                )
+                connection.annotate_object(remote_user)
+                remote_auth = connection.get_connection('auth')
+                if vm_object:
+                    remote_vm_factory = connection.get_connection('virtual_machine_factory')
+                    remote_vm = remote_vm_factory.get_virtual_machine_by_name(
+                        vm_object.get_name()
+                    )
+                else:
+                    remote_vm = None
+
+                remote_auth.add_user_permission_group(permission_group, remote_user, remote_vm)
             cluster_object = self._get_registered_object('cluster')
-            cluster_object.run_remote_command('auth-delete_user_permission_group',
-                                              {'permission_group': permission_group,
-                                               'username': username,
-                                               'vm_name': vm_name})
+            cluster_object.run_remote_command(add_remote_user_to_group)
 
     def get_permission_groups(self):
         """Return list of user groups."""
@@ -343,11 +367,13 @@ class Auth(PyroObject):
                                                   'Copied permission from \'%s\' to \'%s\'' %
                                                   (source_vm.get_name(), dest_vm.get_name()))
 
+    @Pyro4.expose()
     def get_users_in_permission_group(self, permission_group, vm_object=None):
         """Obtain a list of users in a given group, either in the global permissions or
         for a specific VM.
         """
         if vm_object:
+            vm_object = self._convert_remote_object(vm_object)
             permission_config = vm_object.get_config_object().getPermissionConfig()
         else:
             mcvirt_config = MCVirtConfig()

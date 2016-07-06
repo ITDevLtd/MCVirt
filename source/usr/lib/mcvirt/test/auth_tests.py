@@ -22,26 +22,7 @@ from mcvirt.auth.auth import Auth
 from mcvirt.exceptions import (InsufficientPermissionsException, AuthenticationError,
                                UserDoesNotExistException)
 from mcvirt.test.test_base import TestBase
-from mcvirt.client.rpc import Connection
 from mcvirt.parser import Parser
-
-
-def removeTestUserPermissions(mcvirt_instance, username):
-    """Removes the test user from all permission groups"""
-    auth_object = mcvirt_instance.getAuthObject()
-
-    try:
-        auth_object.delete_user_permission_group(mcvirt_instance, 'user', username)
-    except:
-        pass
-    try:
-        auth_object.delete_user_permission_group(mcvirt_instance, 'user', username)
-    except:
-        pass
-    try:
-        auth_object.delete_superuser(username, mcvirt_instance)
-    except:
-        pass
 
 
 class AuthTests(TestBase):
@@ -49,6 +30,7 @@ class AuthTests(TestBase):
 
     TEST_USERNAME = 'test-user'
     TEST_PASSWORD = 'test-password'
+    TEST_USERNAME_ALTERNATIVE = 'user-to-delete'
 
     def create_test_user(self, username, password):
         """Create a test user, annotate the user object and return it"""
@@ -66,26 +48,33 @@ class AuthTests(TestBase):
         """Set up a test user"""
         super(AuthTests, self).setUp()
 
+        self.auth = self.rpc.get_connection('auth')
         self.user_factory = self.rpc.get_connection('user_factory')
         self.test_user = self.create_test_user(self.TEST_USERNAME, self.TEST_PASSWORD)
 
     def tearDown(self):
         """Remove the test user"""
-        super(AuthTests, self).tearDown()
+        # If test_remove_user_account() failed then a user called 'user-to-delete' may still exist
+        test_user = None
+        try:
+            test_user = self.user_factory.get_user_by_username(self.TEST_USERNAME_ALTERNATIVE)
+            test_user.delete()
+        except UserDoesNotExistException:
+            pass
+
         self.test_user.delete()
         self.test_user = None
+        self.user_factory = None
+        self.auth = None
 
-        # If test_remove_user_account() failed then a user called 'user-to-delete' may still exist
-        if getattr(self, 'user_to_delete', None) is not None:
-            self.user_to_delete.delete()
+        super(AuthTests, self).tearDown()
 
     @staticmethod
     def suite():
         """Returns a test suite of the Auth tests"""
         suite = unittest.TestSuite()
-        # @TODO: update commented out tests
-        # suite.addTest(AuthTests('test_add_user'))
-        # suite.addTest(AuthTests('test_remove_user'))
+        suite.addTest(AuthTests('test_add_user_permission'))
+        # suite.addTest(AuthTests('test_remove_user_permission'))
         # suite.addTest(AuthTests('test_add_delete_superuser'))
         # suite.addTest(AuthTests('test_attempt_add_superuser_to_vm'))
         # suite.addTest(AuthTests('test_add_duplicate_superuser'))
@@ -95,41 +84,30 @@ class AuthTests(TestBase):
         suite.addTest(AuthTests('test_remove_user_account'))
         return suite
 
-    def test_add_user(self):
+    def test_add_user_permission(self):
         """Adds a user to a virtual machine, using the argument parser"""
         # Ensure VM does not exist
-        test_vm_object = VirtualMachine.create(
-            self.mcvirt,
-            self.test_vm['name'],
-            self.test_vm['cpu_count'],
-            self.test_vm['memory_allocation'],
-            self.test_vm['disks'],
-            self.test_vm['networks'])
-        self.assertTrue(
-            VirtualMachine._check_exists(
-                self.mcvirt.getLibvirtConnection(),
-                self.test_vm['name']))
+        test_vm_object = self.create_vm('TEST_VM_1')
 
         # Ensure user is not in 'user' group
-        self.assertFalse(
-            self.test_user in self.auth_object.get_users_in_permission_group(
-                'user',
-                test_vm_object))
+        auth = self.rpc.get_connection('auth')
+        self.assertFalse(self.test_user.get_username() in self.auth.get_users_in_permission_group(
+            'user', test_vm_object)
+        )
+
+        # Assert that the test user cannot start the test VM
 
         # Add user to 'user' group using parser
-        self.parser.parse_arguments(
-            'permission --add-user %s %s' %
-            (self.test_user,
-             self.test_vm['name']),
-            mcvirt_instance=self.mcvirt)
+        self.parser.parse_arguments('permission --add-user %s %s' % (self.test_user,
+                                                                     self.test_vm['name']))
 
         # Ensure VM exists
         self.assertTrue(
-            self.test_user in self.auth_object.get_users_in_permission_group(
-                'user',
-                test_vm_object))
+            self.test_user.get_username() in self.auth_object.get_users_in_permission_group(
+                'user', test_vm_object)
+        )
 
-    def test_remove_user(self):
+    def test_remove_user_permission(self):
         """Removes a user from a virtual machine, using the argument parser"""
         # Ensure VM does not exist
         test_vm_object = VirtualMachine.create(
@@ -283,8 +261,8 @@ class AuthTests(TestBase):
 
     def test_remove_user_account(self):
         """Delete a user through the parser"""
-        self.user_to_delete = self.create_test_user('user-to-delete', 'pass')
-        delete_command = 'user remove user-to-delete'
+        self.user_to_delete = self.create_test_user(self.TEST_USERNAME_ALTERNATIVE, 'pass')
+        delete_command = 'user remove %s' % self.TEST_USERNAME_ALTERNATIVE
 
         # Try to delete as test user and check InsufficientPermissionsException is raised
         with self.assertRaises(InsufficientPermissionsException):
@@ -295,6 +273,6 @@ class AuthTests(TestBase):
 
         # Check that the user no longer exists
         with self.assertRaises(UserDoesNotExistException):
-            self.user_factory.get_user_by_username('user-to-delete')
+            self.user_factory.get_user_by_username(self.TEST_USERNAME_ALTERNATIVE)
 
         self.user_to_delete = None
