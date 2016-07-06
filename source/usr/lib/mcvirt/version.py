@@ -14,4 +14,4 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
-VERSION = '3.1.0-189-gad4c2c8-dirty'
+
