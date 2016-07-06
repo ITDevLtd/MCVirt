@@ -20,14 +20,15 @@
 import json
 import base64
 import Pyro4
+import socket
 from texttable import Texttable
 
 from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
                                RemoteObjectConflict, ClusterNotInitialisedException,
                                InvalidConnectionString, DrbdNotInstalledException,
-                               CouldNotConnectToNodeException,
-                               MissingConfigurationException)
+                               CouldNotConnectToNodeException, InaccessibleNodeException,
+                               MissingConfigurationException, NodeVersionMismatch)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.connection_user import ConnectionUser
 from mcvirt.auth.permissions import PERMISSIONS
@@ -35,6 +36,7 @@ from mcvirt.client.rpc import Connection
 from mcvirt.rpc.lock import locking_method
 from mcvirt.cluster.remote import Node
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.syslogger import Syslogger
 
 
 class Cluster(PyroObject):
@@ -48,10 +50,8 @@ class Cluster(PyroObject):
             PERMISSIONS.MANAGE_CLUSTER
         )
 
-        # Determine IP address
-        ip_address = self.get_cluster_ip_address()
-        if not ip_address:
-            raise MissingConfigurationException('IP address has not yet been configured')
+        # Ensure that the IP address configurations has been made correctly
+        self.check_ip_configuration()
 
         # Create connection user
         user_factory = self._get_registered_object('user_factory')
@@ -105,6 +105,20 @@ class Cluster(PyroObject):
                            node_status))
         return table.draw()
 
+    def check_node_versions(self):
+        """Ensure that all nodes in the cluster are connected
+        and checks the node Status
+        """
+        def check_version(connection):
+            node = connection.get_connection('node')
+            return node.get_version()
+        node_versions = self.run_remote_command(check_version)
+        local_version = self._get_registered_object('node').get_version()
+        for node in node_versions:
+            if node_versions[node] != local_version:
+                raise NodeVersionMismatch('Node %s is running MCVirt %s. Local version: %s' %
+                                          (node, node_versions[node], local_version))
+
     @Pyro4.expose()
     @locking_method()
     def add_node_configuration(self, node_name, ip_address,
@@ -137,6 +151,29 @@ class Cluster(PyroObject):
             }
         MCVirtConfig().update_config(add_node_config)
 
+    def check_ip_configuration(self):
+        """Perform various checks to ensure that the
+        IP configuration is such that is suitable to be part of a cluster
+        """
+        # Ensure that the cluster IP address has been defined
+        cluster_ip = self.get_cluster_ip_address()
+        if not cluster_ip:
+            raise MissingConfigurationException('IP address has not yet been configured')
+
+        # Ensure that the hostname of the local machine does not resolve
+        # to 127.0.0.1
+        if socket.gethostbyname(get_hostname()).startswith('127.'):
+            raise MissingConfigurationException(('Node hostname %s resolves to the localhost.'
+                                                 ' Instead it should resolve to the cluster'
+                                                 ' IP address'))
+        resolve_ip = socket.gethostbyname(get_hostname())
+        if resolve_ip != cluster_ip:
+            raise MissingConfigurationException(('The local hostname (%s) should resolve the'
+                                                 ' cluster IP address (%s). Instead it resolves'
+                                                 ' to \'%s\'. Please correct this issue before'
+                                                 ' continuing.') %
+                                                (get_hostname(), cluster_ip, resolve_ip))
+
     @Pyro4.expose()
     @locking_method()
     def add_node(self, node_connection_string):
@@ -145,6 +182,9 @@ class Cluster(PyroObject):
         """
         # Ensure the user has privileges to manage the cluster
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
+
+        # Ensure that the IP address configurations has been made correctly
+        self.check_ip_configuration()
 
         try:
             config_json = base64.b64decode(node_connection_string)
@@ -541,7 +581,9 @@ class Cluster(PyroObject):
             node_object = Node(node, node_config)
         except:
             if not self._cluster_disabled:
-                raise
+                raise InaccessibleNodeException('Cannot connect to node \'%s\'' % node)
+            else:
+                Syslogger.logger().error('Cannot connect to node: %s (Ignored)' % node)
             node_object = None
         return node_object
 
