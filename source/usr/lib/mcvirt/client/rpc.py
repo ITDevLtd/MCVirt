@@ -33,7 +33,7 @@ class Connection(object):
     SESSION_OBJECT = 'session'
 
     def __init__(self, username=None, password=None, session_id=None,
-                 host=None):
+                 host=None, ignore_cluster=False):
         """Store member variables for connecting"""
         # If the host is not provided, default to the local host
         self.__host = host if host is not None else get_hostname()
@@ -43,7 +43,7 @@ class Connection(object):
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
         self.__username = username
         self.__ignore_drbd = False
-        self.__ignore_cluster = False
+        self.__ignore_cluster = ignore_cluster
         if 'proxy_user' in dir(Pyro4.current_context):
             self.__proxy_username = Pyro4.current_context.proxy_user
         else:
@@ -65,6 +65,10 @@ class Connection(object):
             return session_id
         except Pyro4.errors.CommunicationError, e:
             raise AuthenticationError(str(e))
+        except Pyro4.errors.NamingError, e:
+            raise mcvirt.exceptions.InaccessibleNodeException(
+                'MCVirt nameserver/daemon is not running on node %s' % self.__host
+            )
 
     def _get_auth_obj(self, password=None):
         """Setup annotations for authentication"""
@@ -87,7 +91,6 @@ class Connection(object):
         auth_dict[Annotations.IGNORE_Drbd] = self.__ignore_drbd
         if 'ignore_drbd' in dir(Pyro4.current_context):
             auth_dict[Annotations.IGNORE_Drbd] |= Pyro4.current_context.ignore_drbd
-
         return auth_dict
 
     def get_connection(self, object_name, password=None):

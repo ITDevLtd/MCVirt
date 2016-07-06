@@ -27,7 +27,7 @@ from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
                                RemoteObjectConflict, ClusterNotInitialisedException,
                                InvalidConnectionString, DrbdNotInstalledException,
-                               CouldNotConnectToNodeException,
+                               CouldNotConnectToNodeException, InaccessibleNodeException,
                                MissingConfigurationException, NodeVersionMismatch)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.connection_user import ConnectionUser
@@ -36,6 +36,7 @@ from mcvirt.client.rpc import Connection
 from mcvirt.rpc.lock import locking_method
 from mcvirt.cluster.remote import Node
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.syslogger import Syslogger
 
 
 class Cluster(PyroObject):
@@ -580,7 +581,9 @@ class Cluster(PyroObject):
             node_object = Node(node, node_config)
         except:
             if not self._cluster_disabled:
-                raise
+                raise InaccessibleNodeException('Cannot connect to node \'%s\'' % node)
+            else:
+                Syslogger.logger().error('Cannot connect to node: %s (Ignored)' % node)
             node_object = None
         return node_object
 
