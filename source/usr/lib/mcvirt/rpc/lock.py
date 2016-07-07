@@ -37,12 +37,6 @@ class MethodLock(object):
         return cls._lock
 
 
-def deadlock_escape():
-    """Force clear a lock to escape deadlock"""
-    lock = MethodLock.get_lock()
-    lock.release()
-
-
 def locking_method(object_type=None, instance_method=True):
     """Provide a decorator method for locking the node whilst performing the method"""
     def wrapper(callback):
@@ -95,7 +89,8 @@ def locking_method(object_type=None, instance_method=True):
                 if log:
                     log.finish_error(e)
                 if requires_lock:
-                    lock.release()
+                    if lock.locked():
+                        lock.release()
                     Pyro4.current_context.has_lock = False
                 raise
             except Exception as e:
@@ -104,13 +99,15 @@ def locking_method(object_type=None, instance_method=True):
                 if log:
                     log.finish_error_unknown(e)
                 if requires_lock:
-                    lock.release()
+                    if lock.locked():
+                        lock.release()
                     Pyro4.current_context.has_lock = False
                 raise
             if log:
                 log.finish_success()
             if requires_lock:
-                lock.release()
+                if lock.locked():
+                    lock.release()
                 Pyro4.current_context.has_lock = False
             return response
 

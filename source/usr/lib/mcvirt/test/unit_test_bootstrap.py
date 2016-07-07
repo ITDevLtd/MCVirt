@@ -20,6 +20,7 @@ import threading
 
 from mcvirt.client.rpc import Connection
 from mcvirt.test.node.network_tests import NetworkTests
+from mcvirt.test.lock.lock_tests import LockTests
 from mcvirt.test.node.node_tests import NodeTests
 from mcvirt.test.virtual_machine.virtual_machine_tests import VirtualMachineTests
 from mcvirt.test.validation_tests import ValidationTests
@@ -52,11 +53,13 @@ class UnitTestBootstrap(object):
         node_test_suite = NodeTests.suite()
         online_migrate_test_suite = OnlineMigrateTests.suite()
         validation_test_suite = ValidationTests.suite()
+        lock_tests_suite = LockTests.suite()
 
         OnlineMigrateTests.RPC_DAEMON = self.daemon
         AuthTests.RPC_DAEMON = self.daemon
 
         self.all_tests = unittest.TestSuite([
+            auth_test_suite,
             virtual_machine_test_suite,
             network_test_suite,
             drbd_test_suite,
@@ -64,7 +67,7 @@ class UnitTestBootstrap(object):
             node_test_suite,
             online_migrate_test_suite,
             validation_test_suite,
-            auth_test_suite
+            lock_tests_suite
         ])
 
     def daemon_loop_condition(self):

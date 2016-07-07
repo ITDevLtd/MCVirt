@@ -33,7 +33,7 @@ class ArgumentValidator(object):
         if len(hostname) > 64 or not len(hostname):
             raise TypeError(exception_message)
 
-        disallowed = re.compile("[^A-Z\d-]", re.IGNORECASE)
+        disallowed = re.compile(r"[^A-Z\d-]", re.IGNORECASE)
         if disallowed.search(hostname):
             raise TypeError(exception_message)
 
@@ -47,7 +47,7 @@ class ArgumentValidator(object):
                              ' not be any longer than 64 characters in length')
         if len(name) > 64 or not len(name):
             raise TypeError(exception_message)
-        disallowed = re.compile("[^A-Z\d]", re.IGNORECASE)
+        disallowed = re.compile(r"[^A-Z\d]", re.IGNORECASE)
         if disallowed.search(name):
             raise TypeError(exception_message)
 

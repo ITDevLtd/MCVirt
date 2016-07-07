@@ -87,6 +87,13 @@ class Parser(object):
                                                        parents=[self.parent_parser])
         self.reset_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
+        # Add arguments for fixing deadlock on a vm
+        self.method_lock_parser = self.subparsers.add_parser(
+            'clear-method-lock',
+            help='Resolve the lock of a call to a method on the MCVirt daemon.',
+            parents=[self.parent_parser]
+        )
+
         # Add arguments for ISO functions
         self.iso_parser = self.subparsers.add_parser('iso', help='ISO managment',
                                                      parents=[self.parent_parser])
@@ -657,6 +664,13 @@ class Parser(object):
             rpc.annotate_object(vm_object)
             vm_object.reset()
             self.print_status('Successfully reset VM')
+
+        elif action == 'clear-method-lock':
+            node = rpc.get_connection('node')
+            if node.clear_method_lock():
+                self.print_status('Successfully cleared method lock')
+            else:
+                self.print_status('method lock already cleared')
 
         elif action == 'create':
             storage_type = args.storage_type or None
