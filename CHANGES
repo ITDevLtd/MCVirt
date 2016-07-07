@@ -1,3 +1,18 @@
+# 4.0.0
+
+* Added 'node' and 'available nodes' to the output of  the 'info' command.
+* Added the ability to remotely start/stop/reset VMs.
+* Added functionality to allow the selection of the driver used for hard drives.
+* Update network module to start network on creation and destroy on deletion.
+* Added ability to switch ISOs whilst VM is running.
+* Implemented an MCVirt daemon that accepts commands through RPC.
+* Implemented SSL support instead of using SSH.
+* Implemented a user authentication system that is synchronised across nodes.
+* Added the ability to create and remove users.
+* Implemented logging.
+* Add check to ensure that the cluster IP address has been set and that the local hostname resolves to this.
+* Add check of MCVirt version of nodes when running a command.
+
 # 3.0.0
 
 * Implemented online-migration, adding the ability to migrate DRBD-backed VMs between nodes, whilst the VM is running.
