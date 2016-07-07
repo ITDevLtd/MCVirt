@@ -1,10 +1,5 @@
 # 4.0.0
 
-* Added 'node' and 'available nodes' to the output of  the 'info' command.
-* Added the ability to remotely start/stop/reset VMs.
-* Added functionality to allow the selection of the driver used for hard drives.
-* Update network module to start network on creation and destroy on deletion.
-* Added ability to switch ISOs whilst VM is running.
 * Implemented an MCVirt daemon that accepts commands through RPC.
 * Implemented SSL support instead of using SSH.
 * Implemented a user authentication system that is synchronised across nodes.
@@ -12,6 +7,27 @@
 * Implemented logging.
 * Add check to ensure that the cluster IP address has been set and that the local hostname resolves to this.
 * Add check of MCVirt version of nodes when running a command.
+
+# 3.1.0
+
+* Added ability to switch ISOs whilst VM is running.
+* Added 'node' and 'available nodes' to the output of  the 'info' command.
+* Added the ability to remotely start/stop/reset VMs.
+* Added functionality to pass ISO name whilst starting a remote VM.
+* Added functionality to allow the selection of the driver used for hard drives.
+
+# 3.0.3
+
+* Update network module to start network on creation and destroy on deletion.
+* Update DRBD connection to only connect if the DRBD volume is not in an 'ok' state.
+
+# 3.0.2
+
+* Added a fix for an issue which caused the wrong permissions to be applied to the '.git' directory.
+
+# 3.0.1
+
+* Added a rety when performing a DRBD 'secondary' to fix issues where DRBD occasionally holds the device open.
 
 # 3.0.0
 
