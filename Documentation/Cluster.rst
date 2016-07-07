@@ -30,9 +30,9 @@ Adding a new node
 
 It is best to join a blank node (containing a default configuration without any VMs) to a cluster.
 
-When a machine is connected to a cluster, it receives the permission/network/virtual machine configuration from the node connecting to it, and all existing data (VMs, users, permissions etc...) is removed.
+When a new node is connected to a cluster, the configuration from the present nodes in the cluster (e.g. users, permissions, networks etc.) are pushed to the new node and any existing configuration is replaced.
 
-**Note:** Always run the mcvirt cluster add command from the source machine, containing VMs, connecting to a remote node that is blank.
+**Note:** Always run the ``mcvirt cluster add`` command from the source machine, containing VMs, connecting to a remote node that is blank.
 
 The new node must be configured on separate network/VLAN for MCVirt cluster communication.
 
@@ -98,11 +98,11 @@ Virtual machine migration
 
 * Additional parameters are available to aid the migration and minimise downtime:
 
-  * '--wait-for-shutdown', which will cause the migration command to poll the running state of the VM and migrate once the VM is in a powered off state, allowing the user to shutdown the VM from within the guest operating system.
+  * ``--wait-for-shutdown``, which will cause the migration command to poll the running state of the VM and migrate once the VM is in a powered off state, allowing the user to shutdown the VM from within the guest operating system.
 
-  * '--start-after-migration', which starts the VM immediately after the migration has finished
+  * ``--start-after-migration``, which starts the VM immediately after the migration has finished
 
-  * '--online',  which will perform online migration
+  * ``--online``,  which will perform online migration. Note: these cannot be used with either of the previous arguments.
 
 ====
 DRBD
@@ -117,7 +117,7 @@ Configuring DRBD
 ----------------
 
 1. Ensure the package ``drbd8-utils`` is installed on both of the nodes in the cluster
-2. Ensure that the IP to be used for DRBD traffic is configured in global MCVirt configuration, ``/var/lib/mcvirt/`hostname`/config.json``
+2. DRBD data will be transmitted over the 'cluster' address. Ensure that this has been set and that the network is segemneted from other network traffic (e.g. by using VLANs). 
 3. Perform the following MCVirt command to configure DRBD::
 
     mcvirt drbd --enable
