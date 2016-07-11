@@ -52,7 +52,6 @@ class SSLSocket(object):
             cert_gen = cert_gen_factory.get_cert_generator(hostname)
             ssl_kwargs['cert_reqs'] = ssl.CERT_REQUIRED
             ssl_kwargs['ca_certs'] = cert_gen.ca_pub_file
-        print ssl_kwargs
         return ssl.wrap_socket(socket_object, **ssl_kwargs)
 
     @staticmethod
