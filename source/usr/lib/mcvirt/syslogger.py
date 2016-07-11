@@ -36,6 +36,10 @@ class Syslogger(object):
 
             Syslogger.HANDLER = logging.FileHandler(DirectoryLocation.LOG_FILE)
             Syslogger.HANDLER.setLevel(getattr(logging, Syslogger.get_log_level(), 30))
+            formatter = logging.Formatter(('%(asctime)s %(name)-12s %(pathname)s'
+                                           ' %(lineno)d: %(funcName)s %(levelname)-8s'
+                                           ' %(message)s'))
+            Syslogger.HANDLER.setFormatter(formatter)
             Syslogger.LOGGER_INSTANCE.addHandler(Syslogger.HANDLER)
 
         return Syslogger.LOGGER_INSTANCE

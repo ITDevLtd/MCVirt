@@ -19,6 +19,7 @@
 
 import atexit
 import Pyro4
+import signal
 import time
 
 from mcvirt.auth.auth import Auth
@@ -40,7 +41,9 @@ from mcvirt.node.libvirt_config import LibvirtConfig
 from mcvirt.libvirt_connector import LibvirtConnector
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.constants import Annotations
+from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.daemon_lock import DaemonLock
+from mcvirt.client.rpc import Connection
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -57,12 +60,6 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
         # Store MCVirt instance
         self.registered_factories = {}
-        atexit.register(self.destroy)
-
-    def destroy(self):
-        """Remove references to objects"""
-        for factory in self.registered_factories:
-            self.registered_factories[factory] = None
 
     def validateHandshake(self, conn, data):  # Override name of upstream method # noqa
         """Perform authentication on new connections"""
@@ -240,13 +237,27 @@ class RpcNSMixinDaemon(object):
         cert_gen = None
         cert_gen_factory = None
 
+        atexit.register(self.shutdown, 'atexit', '')
+        for sig in (signal.SIGABRT, signal.SIGILL, signal.SIGINT,
+                    signal.SIGSEGV, signal.SIGTERM):
+            signal.signal(sig, self.shutdown)
+
     def start(self, *args, **kwargs):
         """Start the Pyro daemon"""
         Pyro4.current_context.STARTUP_PERIOD = False
-        RpcNSMixinDaemon.DAEMON.requestLoop(*args, **kwargs)
+        with DaemonLock.LOCK:
+            RpcNSMixinDaemon.DAEMON.requestLoop(*args, **kwargs)
+        Syslogger.logger().debug('Daemon request loop finished')
+
+    def shutdown(self, signum, frame):
+        """Shutdown Pyro Daemon"""
+        Syslogger.logger().error('Received signal: %s' % signum)
+        RpcNSMixinDaemon.DAEMON.shutdown()
+        Syslogger.logger().debug('finisehd shutdown')
 
     def register(self, obj_or_class, objectId, *args, **kwargs):  # Override upstream # noqa
         """Override register to register object with NS."""
+        Syslogger.logger().debug('Registering object: %s' % objectId)
         uri = RpcNSMixinDaemon.DAEMON.register(obj_or_class, *args, **kwargs)
         ns = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
         ns.register(objectId, uri)
@@ -326,6 +337,6 @@ class RpcNSMixinDaemon(object):
                 Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
                 return
             except Exception as e:
-                print e
+                Syslogger.logger().warn('Connecting to name server: %s' % str(e))
                 # Wait for 1 second for name server to come up
                 time.sleep(1)

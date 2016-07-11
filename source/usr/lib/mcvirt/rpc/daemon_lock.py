@@ -19,6 +19,7 @@
 import atexit
 from lockfile import FileLock
 import os
+import signal
 
 from mcvirt.constants import DirectoryLocation
 from mcvirt.exceptions import MCVirtLockException
@@ -26,6 +27,8 @@ from mcvirt.exceptions import MCVirtLockException
 
 class DaemonLock(object):
     """Provides a lock for the MCVirt daemon"""
+
+    LOCK = None
 
     def __init__(self, timeout=2):
         """Create the lock file and lock file object and obtains a lock"""
@@ -36,11 +39,8 @@ class DaemonLock(object):
             open(DirectoryLocation.LOCK_FILE, 'a').close()
 
         # Attempt to lock lockfile
-        self.lockfile_object = FileLock(DirectoryLocation.LOCK_FILE)
+        DaemonLock.LOCK = FileLock(DirectoryLocation.LOCK_FILE)
 
         # Check if lockfile object is already locked
-        if self.lockfile_object.is_locked():
+        if DaemonLock.LOCK.is_locked():
             raise MCVirtLockException('An instance of MCVirt is already running')
-        else:
-            self.lockfile_object.acquire(timeout=timeout)
-        atexit.register(self.lockfile_object.release)

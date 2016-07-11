@@ -18,6 +18,7 @@
 
 from Pyro4 import socketutil
 import ssl
+import socket
 
 from mcvirt.rpc.certificate_generator_factory import CertificateGeneratorFactory
 
@@ -41,9 +42,17 @@ class SSLSocket(object):
             ssl_kwargs['keyfile'] = cert_gen.server_key_file
             ssl_kwargs['certfile'] = cert_gen.server_pub_file
         else:
-            cert_gen = cert_gen_factory.get_cert_generator(kwargs['connect'][0])
+            # Determine if hostname is an IP address
+            try:
+                socket.inet_aton(kwargs['connect'][0])
+                hostname = socket.gethostbyaddr(kwargs['connect'][0])[0]
+            except socket.error:
+                hostname = kwargs['connect'][0]
+
+            cert_gen = cert_gen_factory.get_cert_generator(hostname)
             ssl_kwargs['cert_reqs'] = ssl.CERT_REQUIRED
             ssl_kwargs['ca_certs'] = cert_gen.ca_pub_file
+        print ssl_kwargs
         return ssl.wrap_socket(socket_object, **ssl_kwargs)
 
     @staticmethod
