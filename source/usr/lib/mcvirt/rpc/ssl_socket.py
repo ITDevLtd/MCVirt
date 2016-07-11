@@ -32,7 +32,7 @@ class SSLSocket(object):
         server_side = ('bind' in kwargs.keys())
         ssl_kwargs = {
             'do_handshake_on_connect': True,
-            'ssl_version': ssl.PROTOCOL_TLSv1_2,
+            'ssl_version': ssl.PROTOCOL_TLSv1,
             'server_side': server_side
         }
         cert_gen_factory = CertificateGeneratorFactory()
