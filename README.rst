@@ -41,7 +41,7 @@ Most commands require a username and password to the MCVirt daemon. During insta
 
 Configure the volume group that MCVirt will use to store virtual machine data::
 
-  $ sudo mcvirt node --set-vm-vg <Volume Group>
+  $ mcvirt node --set-vm-vg <Volume Group>
 
 See the `configuration guide <Documentation/Configuration.rst>`_ for further node configuration steps.
 
@@ -50,13 +50,13 @@ Usage
 
 Create a VM::
 
-  $ sudo mcvirt create --cpu-count 1 --memory 512 --disk-size 8000 test-vm
+  $ mcvirt create --cpu-count 1 --memory 512 --disk-size 8000 test-vm
 
 See the `create/remove VMs <Documentation/CreateRemoveVMs.rst>`_, `cluster <Documentation/Cluster.rst>`_, `permissions <Documentation/Permissions.rst>`_ and `modifying VMs <Documentation/ModifyingVMs.rst>`_ guides for further administrative instructions.
 
 Start the VM::
 
-  $ sudo mcvirt start test-vm
+  $ mcvirt start test-vm
 
 See the `controlling VMs guide <Documentation/ControllingVMs.rst>`_ for further user instructions.
 
