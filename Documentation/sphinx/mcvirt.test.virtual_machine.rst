@@ -11,6 +11,14 @@ Subpackages
 Submodules
 ----------
 
+mcvirt.test.virtual_machine.online_migrate_tests module
+-------------------------------------------------------
+
+.. automodule:: mcvirt.test.virtual_machine.online_migrate_tests
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 mcvirt.test.virtual_machine.virtual_machine_tests module
 --------------------------------------------------------
 

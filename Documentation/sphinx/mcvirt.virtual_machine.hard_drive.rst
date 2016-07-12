@@ -1,13 +1,6 @@
 mcvirt.virtual_machine.hard_drive package
 =========================================
 
-Subpackages
------------
-
-.. toctree::
-
-    mcvirt.virtual_machine.hard_drive.config
-
 Submodules
 ----------
 

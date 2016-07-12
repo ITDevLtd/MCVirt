@@ -12,6 +12,14 @@ mcvirt.test.node.network_tests module
     :undoc-members:
     :show-inheritance:
 
+mcvirt.test.node.node_tests module
+----------------------------------
+
+.. automodule:: mcvirt.test.node.node_tests
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------

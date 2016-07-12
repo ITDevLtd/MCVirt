@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
 
     mcvirt.virtual_machine.hard_drive
+    mcvirt.virtual_machine.network_adapter
 
 Submodules
 ----------
@@ -19,10 +20,10 @@ mcvirt.virtual_machine.disk_drive module
     :undoc-members:
     :show-inheritance:
 
-mcvirt.virtual_machine.network_adapter module
----------------------------------------------
+mcvirt.virtual_machine.factory module
+-------------------------------------
 
-.. automodule:: mcvirt.virtual_machine.network_adapter
+.. automodule:: mcvirt.virtual_machine.factory
     :members:
     :undoc-members:
     :show-inheritance:
