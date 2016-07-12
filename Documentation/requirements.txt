@@ -6,3 +6,4 @@ Cheetah
 mock
 Pyro4
 pbkdf2
+netifaces
