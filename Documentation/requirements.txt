@@ -4,3 +4,4 @@ lockfile
 paramiko
 Cheetah
 mock
+Pyro4
