@@ -66,7 +66,7 @@ class Mock(MagicMock):
         return Mock()
 
 
-MOCK_MODULES = ['libvirt']
+MOCK_MODULES = ['libvirt', 'Pyro4', 'enum']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # -- General configuration ------------------------------------------------
