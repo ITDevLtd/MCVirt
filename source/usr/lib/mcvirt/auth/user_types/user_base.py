@@ -39,6 +39,7 @@ class UserBase(PyroObject):
     PERMISSIONS = []
     CLUSTER_USER = False
     DISTRIBUTED = True
+    CAN_CREATE = True
 
     @property
     def allow_proxy_user(self):

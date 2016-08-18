@@ -52,6 +52,9 @@ class Factory(PyroObject):
             PERMISSIONS.MANAGE_USERS
         )
 
+        if not user_type.CAN_CREATE:
+            raise InvalidUserTypeException('Cannot create this type of user')
+
         if not password:
             raise BlankPasswordException('Password cannot be blank')
 
