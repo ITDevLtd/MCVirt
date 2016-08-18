@@ -98,7 +98,7 @@ class MCVirtConfig(ConfigFile):
                         "password": ("$p5k2$3e8$e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09"
                                      "ac8b85d7331707$ChiC2SGEokh""HietmLcCQNjtMLf30Oggr"),
                         "salt": "e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707",
-                        "user_type": "User"
+                        "user_type": "LocalUser"
                     }
                 },
                 'libvirt_configured': False,
@@ -110,4 +110,8 @@ class MCVirtConfig(ConfigFile):
 
     def _upgrade(self, config):
         """Perform an upgrade of the configuration file"""
-        pass
+        if config['version'] < 5:
+            # Rename user_type for local users to new 'LocalUser' type
+            for username in config['users']:
+                if config['users'][username]['user_type'] == 'User':
+                    config['users'][username]['user_type'] = 'LocalUser'

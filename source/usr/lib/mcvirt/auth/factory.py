@@ -24,10 +24,10 @@ from mcvirt.exceptions import (IncorrectCredentials, InvalidUsernameException,
                                UserDoesNotExistException, InvalidUserTypeException,
                                UserAlreadyExistsException, BlankPasswordException)
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.auth.user_base import UserBase
-from mcvirt.auth.user import User
-from mcvirt.auth.connection_user import ConnectionUser
-from mcvirt.auth.cluster_user import ClusterUser
+from mcvirt.auth.user_types.user_base import UserBase
+from mcvirt.auth.user_types.local_user import LocalUser
+from mcvirt.auth.user_types.connection_user import ConnectionUser
+from mcvirt.auth.user_types.cluster_user import ClusterUser
 from mcvirt.auth.permissions import PERMISSIONS
 
 
@@ -38,7 +38,7 @@ class Factory(PyroObject):
 
     def get_user_types(self):
         """Return the available user classes."""
-        return [User, ConnectionUser, ClusterUser]
+        return UserBase.__subclasses__()
 
     def ensure_valid_user_type(self, user_type):
         """Ensure that a given user_type is valid."""
@@ -46,13 +46,13 @@ class Factory(PyroObject):
             raise InvalidUserTypeException('An invalid user type has been passed')
 
     @Pyro4.expose()
-    def create(self, username, password, user_type=User):
+    def create(self, username, password, user_type=LocalUser):
         """Create a user."""
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_USERS
         )
 
-        if password == '':
+        if not password:
             raise BlankPasswordException('Password cannot be blank')
 
         # Ensure that username is not part of a reserved namespace
@@ -119,7 +119,7 @@ class Factory(PyroObject):
     def get_user_by_username(self, username):
         """Obtain a user object for the given username."""
         generic_object = UserBase(username=username)
-        for user_class in UserBase.__subclasses__():
+        for user_class in self.get_user_types():
             if str(user_class.__name__) == str(generic_object.get_user_type()):
                 user_object = user_class(username=username)
                 self._register_object(user_object)
@@ -131,7 +131,7 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def get_all_users(self):
         """Return all the users, excluding built-in users."""
-        return self.get_all_user_objects(user_class=User)
+        return self.get_all_user_objects(user_class=LocalUser)
 
     @Pyro4.expose()
     def get_all_user_objects(self, user_class=None):

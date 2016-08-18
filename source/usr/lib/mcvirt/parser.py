@@ -24,7 +24,7 @@ from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncExcept
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
-from mcvirt.auth.user_base import UserBase
+from mcvirt.auth.user_types.user_base import UserBase
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
