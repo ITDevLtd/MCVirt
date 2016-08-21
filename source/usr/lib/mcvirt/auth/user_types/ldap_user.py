@@ -63,7 +63,7 @@ class LdapUser(UserBase):
             return True
         except ldap.INVALID_CREDENTIALS:
             pass
-        except MCVirtException as e:
+        except MCVirtException:
             raise
         except:
             raise LdapConnectionFailedException('An error occurred whilst connecting to LDAP')

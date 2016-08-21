@@ -523,10 +523,10 @@ class Parser(object):
         self.ldap_enable_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
             required=False
         )
-        self.ldap_enable_mutual_group.add_argument('--enable', dest='ldap_enable',
+        self.ldap_enable_mutual_group.add_argument('--enable-ldap', dest='ldap_enable',
                                                    action='store_true',
                                                    help='Enable the LDAP authentication backend')
-        self.ldap_enable_mutual_group.add_argument('--disable', dest='ldap_disable',
+        self.ldap_enable_mutual_group.add_argument('--disable-ldap', dest='ldap_disable',
                                                    action='store_true',
                                                    help='Disable the LDAP authentication backend')
 
