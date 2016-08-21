@@ -26,8 +26,8 @@ from mcvirt.exceptions import (IncorrectCredentials, InvalidUsernameException,
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.auth.user_types.local_user import LocalUser
-from mcvirt.auth.user_types.connection_user import ConnectionUser
 from mcvirt.auth.user_types.cluster_user import ClusterUser
+from mcvirt.auth.user_types.ldap_user import LdapUser
 from mcvirt.auth.permissions import PERMISSIONS
 
 
@@ -38,7 +38,8 @@ class Factory(PyroObject):
 
     def get_user_types(self):
         """Return the available user classes."""
-        return UserBase.__subclasses__()
+        return sorted(UserBase.__subclasses__(),
+                      key=lambda user_class: user_class.SEARCH_ORDER)
 
     def ensure_valid_user_type(self, user_type):
         """Ensure that a given user_type is valid."""
@@ -68,7 +69,7 @@ class Factory(PyroObject):
                 )
 
         # Ensure that there is not a duplicate user
-        if UserBase._check_exists(username):
+        if user_type._check_exists(username):
             raise UserAlreadyExistsException('There is a user with the same username \'%s\'' %
                                              username)
 
@@ -76,8 +77,8 @@ class Factory(PyroObject):
         self.ensure_valid_user_type(user_type)
 
         # Generate password salt for user and hash password
-        salt = UserBase._generate_salt()
-        hashed_password = UserBase._hash_string(password, salt)
+        salt = user_type._generate_salt()
+        hashed_password = user_type._hash_string(password, salt)
 
         # Create config for user and update MCVirt config
         user_config = user_type.get_default_config()
@@ -121,38 +122,38 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def get_user_by_username(self, username):
         """Obtain a user object for the given username."""
-        generic_object = UserBase(username=username)
         for user_class in self.get_user_types():
-            if str(user_class.__name__) == str(generic_object.get_user_type()):
+            if username in user_class.get_all_usernames():
                 user_object = user_class(username=username)
                 self._register_object(user_object)
                 return user_object
 
         raise InvalidUserTypeException('Failed to determine user type for %s' %
-                                       generic_object.get_username())
+                                       username)
 
     @Pyro4.expose()
     def get_all_users(self):
         """Return all the users, excluding built-in users."""
-        return self.get_all_user_objects(user_class=LocalUser)
+        user_classes = filter(lambda user_class: not user_class.CLUSTER_USER,
+                              self.get_user_types())
+        return self.get_all_user_objects(user_classes=user_classes)
 
     @Pyro4.expose()
-    def get_all_user_objects(self, user_class=None):
+    def get_all_user_objects(self, user_classes=[]):
         """Return the user objects for all users, optionally filtered by user type."""
-        if user_class is not None:
+        if len(user_classes):
             # Ensure valid user type
-            self.ensure_valid_user_type(user_class)
+            for user_class in user_classes:
+                self.ensure_valid_user_type(user_class)
+        else:
+            user_classes = self.get_user_types()
 
-        # Obtain all usernames
-        all_usernames = MCVirtConfig().get_config()['users'].keys()
         user_objects = []
-        for username in all_usernames:
-            user_object = self.get_user_by_username(username)
+        for user_class in user_classes:
 
-            # Is the user object is the same type as specified, or the user type
-            # has not been specified, add to user objects list
-            if user_class is None or user_object.get_user_type() == user_class.__name__:
-                user_objects.append(user_object)
+            # Generate user objects for each user that is returned by the user class.
+            for username in user_class.get_all_usernames(self):
+                user_objects.append(self.get_user_by_username(username))
 
         # Return found user objects
         return user_objects
@@ -170,7 +171,7 @@ class Factory(PyroObject):
                                            user_type.__name__)
 
         # Delete any old connection users
-        for old_user_object in self.get_all_user_objects(user_class=user_type):
+        for old_user_object in self.get_all_user_objects(user_classes=[user_type]):
             old_user_object.delete()
 
         username = user_type.USER_PREFIX + user_type.generate_password(32, numeric_only=True)
@@ -181,7 +182,7 @@ class Factory(PyroObject):
     @Pyro4.expose()
     def get_cluster_user_by_node(self, node):
         """Obtain a cluster user for a given node"""
-        for user in self.get_all_user_objects(user_class=ClusterUser):
+        for user in self.get_all_user_objects(user_classes=[ClusterUser]):
             if user.node == node:
                 return user
         raise UserDoesNotExistException('No user found for node %s' % node)

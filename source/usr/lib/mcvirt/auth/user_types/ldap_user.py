@@ -17,21 +17,29 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import ldap
 import Pyro4
 
 from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.rpc.lock import locking_method
+from mcvirt.exceptions import MCVirtException, LdapConnectionFailedException
+from mcvirt.node.ldap_factory import LdapFactory
 
 
 class LdapUser(UserBase):
     """Provides an interaction with ldap user backend"""
 
     CAN_CREATE = False
+    SEARCH_ORDER = 2
 
-    @staticmethod
-    def _check_exists(username):
-        """Check the MCVirt config to determine if a given user exists."""
-        pass
+    @classmethod
+    def get_all_usernames(cls):
+        """Return all LDAP users."""
+        return LdapFactory().get_all_usernames()
+
+    def _get_dn(self):
+        """Obtain the DN for the given user"""
+        return self._get_registered_object('ldap_factory').search_dn(self.get_username())
 
     def _get_config(self):
         """Return the config hash for the current user"""
@@ -45,7 +53,21 @@ class LdapUser(UserBase):
 
     def _check_password(self, password):
         """Check the given password against the stored password for the user."""
-        pass
+        # If either username or password are empty strings or None, reject user.
+        if not self.get_username() or not password:
+            return False
+
+        try:
+            self._get_registered_object('ldap_factory').get_connection(bind_dn=self._get_dn(),
+                                                                       password=password)
+            return True
+        except ldap.INVALID_CREDENTIALS:
+            pass
+        except MCVirtException as e:
+            raise
+        except:
+            raise LdapConnectionFailedException('An error occurred whilst connecting to LDAP')
+        return False
 
     def _get_password_salt(self):
         """Return the user's salt"""

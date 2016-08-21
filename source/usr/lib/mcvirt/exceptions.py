@@ -23,7 +23,7 @@ from mcvirt.utils import get_all_submodules
 
 
 class MCVirtException(Exception):
-    """Provides an exception to be thrown for errors in MCVirt"""
+    """Provide an exception to be thrown for errors in MCVirt"""
 
     pass
 
@@ -568,7 +568,7 @@ class BlankPasswordException(MCVirtException):
     pass
 
 
-class NodeVersionMismatch(Pyro4.errors.SecurityError):
+class NodeVersionMismatch(MCVirtException, Pyro4.errors.SecurityError):
     """A node is running a different version of MCVirt"""
 
     pass
@@ -576,6 +576,18 @@ class NodeVersionMismatch(Pyro4.errors.SecurityError):
 
 class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
     """Unable to connect to node in the cluster"""
+
+    pass
+
+
+class LdapConnectionFailedException(MCVirtException):
+    """Connection to the LDAP server failed"""
+
+    pass
+
+
+class LdapNotEnabledException(MCVirtException):
+    """Ldap has not been enabled on the node"""
 
     pass
 
