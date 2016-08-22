@@ -119,6 +119,9 @@ class LdapFactory(PyroObject):
 
     def get_all_usernames(self):
         """Return all users in the searchable LDAP directory"""
+        if not LdapFactory.is_enabled():
+            return []
+
         ldap_config = MCVirtConfig().get_config()['ldap']
         ldap_con = self.get_connection()
 
