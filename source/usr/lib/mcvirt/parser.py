@@ -199,10 +199,13 @@ class Parser(object):
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
                                         type=str, default=None, choices=['Local', 'Drbd'])
-        self.create_parser.add_argument('--driver', metavar='Hard Drive Driver',
+        self.create_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
                                         default=None)
+        self.create_parser.add_argument('--graphics-driver', dest='graphics_driver',
+                                        metavar='Graphics Driver', type=str,
+                                        help='Driver for graphics', default=None)
 
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
@@ -254,9 +257,13 @@ class Parser(object):
         self.update_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type', type=str,
                                         default=None)
-        self.update_parser.add_argument('--driver', metavar='Hard Drive Driver',
+        self.update_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
+                                        default=None)
+        self.update_parser.add_argument('--graphics-driver', metavar='Graphics Driver',
+                                        dest='graphics_driver', type=str,
+                                        help='Driver for graphics',
                                         default=None)
         self.update_parser.add_argument('--increase-disk', dest='increase_disk',
                                         metavar='Increase Disk', type=int,
