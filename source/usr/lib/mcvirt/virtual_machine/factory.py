@@ -20,6 +20,7 @@ from texttable import Texttable
 import re
 from os.path import exists as os_path_exists
 from os import makedirs
+from enum import Enum
 
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
@@ -28,7 +29,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                ClusterNotInitialisedException, NodeDoesNotExistException,
-                               VmDirectoryAlreadyExistsException)
+                               VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException)
 from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
@@ -36,11 +37,22 @@ from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.virtual_machine.hard_drive.base import Driver as HardDriveDriver
 
 
+class GraphicsDriver(Enum):
+    """Enums for specifying the graphics driver type"""
+    VGA = 'vga'
+    CIRRUS = 'cirrus'
+    VMVGA = 'vmvga'
+    XEN = 'xen'
+    VBOX = 'vbox'
+    QXL = 'qxl'
+
+
 class Factory(PyroObject):
     """Class for obtaining virtual machine objects"""
 
     OBJECT_TYPE = 'virtual machine'
     VIRTUAL_MACHINE_CLASS = VirtualMachine
+    DEFAULT_GRAPHICS_DRIVER = GraphicsDriver.VMVGA.value
 
     @Pyro4.expose()
     def getVirtualMachineByName(self, vm_name):
@@ -128,7 +140,7 @@ class Factory(PyroObject):
     @locking_method(instance_method=True)
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                 network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-                hard_drive_driver=None):
+                hard_drive_driver=None, graphics_driver=None):
         """Creates a VM and returns the virtual_machine object for it"""
         self.checkName(name)
         ArgumentValidator.validate_positive_integer(cpu_cores)
@@ -148,6 +160,15 @@ class Factory(PyroObject):
         ]
         if hard_drive_driver is not None:
             HardDriveDriver[hard_drive_driver]
+
+        if graphics_driver is None:
+            # Set graphics driver to default
+            graphics_driver = self.DEFAULT_GRAPHICS_DRIVER
+
+        # Check the graphics driver is valid
+        if graphics_driver not in [i.value for i in list(GraphicsDriver)]:
+            raise InvalidGraphicsDriverException('Invalid graphics driver \'%s\'' % graphics_driver)
+
 
         # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
         # in this state
@@ -213,7 +234,8 @@ class Factory(PyroObject):
             name)
 
         # Create VM configuration file
-        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation)
+        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation,
+                                    graphics_driver)
 
         # Add VM to remote nodes
         if self._is_cluster_master:

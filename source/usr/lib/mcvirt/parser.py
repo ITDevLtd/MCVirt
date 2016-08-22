@@ -694,6 +694,7 @@ class Parser(object):
                 network_interfaces=args.networks,
                 storage_type=storage_type,
                 hard_drive_driver=args.hard_disk_driver,
+                graphics_driver=args.graphics_driver,
                 available_nodes=args.nodes)
 
         elif action == 'delete':

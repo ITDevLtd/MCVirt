@@ -579,6 +579,11 @@ class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
 
     pass
 
+class InvalidGraphicsDriverException(MCVirtException):
+    """The provided graphics driver name was not valid"""
+
+    pass
+
 
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[

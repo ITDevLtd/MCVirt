@@ -1066,10 +1066,11 @@ class VirtualMachine(PyroObject):
         # Obtain domain XML
         domain_xml = ET.parse(DirectoryLocation.TEMPLATE_DIR + '/domain.xml')
 
-        # Add Name, RAM and CPU variables to XML
+        # Add Name, RAM, CPU and graphics driver variables to XML
         domain_xml.find('./name').text = self.get_name()
         domain_xml.find('./memory').text = self.getRAM()
         domain_xml.find('./vcpu').text = self.getCPU()
+        domain_xml.find('./devices/video/model').set('type', self.getGraphicsDriver())
 
         device_xml = domain_xml.find('./devices')
 
@@ -1284,3 +1285,7 @@ class VirtualMachine(PyroObject):
                 os_xml.append(new_boot_xml_object)
 
         self._editConfig(updateXML)
+
+    def getGraphicsDriver(self):
+        """Returns the graphics driver for this VM"""
+        return self.get_config_object().get_config()['graphics_driver']
