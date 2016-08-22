@@ -77,7 +77,7 @@ class Node(PyroObject):
 
     @Pyro4.expose()
     def get_version(self):
-        """Returns the version of the running daemon"""
+        """Return the version of the running daemon"""
         return VERSION
 
     @Pyro4.expose()

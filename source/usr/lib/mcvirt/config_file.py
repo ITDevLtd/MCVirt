@@ -21,16 +21,20 @@ import json
 import os
 import stat
 import pwd
+import Pyro4
 
 from mcvirt.utils import get_hostname
 from mcvirt.system import System
 from mcvirt.constants import DirectoryLocation
+from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.lock import locking_method
+from mcvirt.auth.permissions import PERMISSIONS
 
 
-class ConfigFile(object):
+class ConfigFile(PyroObject):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    CURRENT_VERSION = 4
+    CURRENT_VERSION = 5
     GIT = '/usr/bin/git'
 
     def __init__(self):
@@ -50,6 +54,23 @@ class ConfigFile(object):
 
         return config
 
+    @Pyro4.expose()
+    @locking_method()
+    def get_config_remote(self):
+        """Provide an exposed method for reading MCVirt configuration"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
+        return self.get_config()
+
+    @Pyro4.expose()
+    @locking_method()
+    def manual_update_config(self, config, reason=''):
+        """Provide an exposed method for updating the config"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
+        ConfigFile._writeJSON(config, self.config_file)
+        self.config = config
+        self.gitAdd(reason)
+        self.setConfigPermissions()
+
     def update_config(self, callback_function, reason=''):
         """Write a provided configuration back to the configuration file."""
         config = self.get_config()
@@ -60,12 +81,13 @@ class ConfigFile(object):
         self.setConfigPermissions()
 
     def getPermissionConfig(self):
+        """Obtain the permission config"""
         config = self.get_config()
         return config['permissions']
 
     @staticmethod
     def _writeJSON(data, file_name):
-        """Parses and writes the JSON VM config file"""
+        """Parse and writes the JSON VM config file"""
         json_data = json.dumps(data, indent=2, separators=(',', ': '))
 
         # Open the config file and write to contents
@@ -79,12 +101,13 @@ class ConfigFile(object):
 
     @staticmethod
     def create(self):
-        """Creates a basic VM configuration for new VMs"""
+        """Create a basic VM configuration for new VMs"""
         raise NotImplementedError
 
     def setConfigPermissions(self):
-        """Sets file permissions for config directories"""
-        def setPermission(path, directory=True, owner=0):
+        """Set file permissions for config directories"""
+
+        def set_permission(path, directory=True, owner=0):
             permission_mode = stat.S_IRUSR
             if directory:
                 permission_mode = permission_mode | stat.S_IWUSR | stat.S_IXUSR
@@ -99,16 +122,16 @@ class ConfigFile(object):
             path = os.path.join(DirectoryLocation.BASE_STORAGE_DIR, directory)
             if (os.path.isdir(path)):
                 if (directory == '.git'):
-                    setPermission(path, directory=True)
+                    set_permission(path, directory=True)
                 else:
-                    setPermission(os.path.join(path, 'vm'), directory=True)
-                    setPermission(os.path.join(path, 'config.json'), directory=False)
+                    set_permission(os.path.join(path, 'vm'), directory=True)
+                    set_permission(os.path.join(path, 'config.json'), directory=False)
 
         # Set permission for base directory, node directory and ISO directory
         for directory in [DirectoryLocation.BASE_STORAGE_DIR, DirectoryLocation.NODE_STORAGE_DIR,
                           DirectoryLocation.ISO_STORAGE_DIR]:
-            setPermission(directory, directory=True,
-                          owner=pwd.getpwnam('libvirt-qemu').pw_uid)
+            set_permission(directory, directory=True,
+                           owner=pwd.getpwnam('libvirt-qemu').pw_uid)
 
     def _upgrade(self, config):
         """Updates the configuration file"""
@@ -134,7 +157,7 @@ class ConfigFile(object):
                  self.CURRENT_VERSION))
 
     def _getVersion(self):
-        """Returns the version number of the configuration file"""
+        """Return the version number of the configuration file"""
         config = self.get_config()
         if ('version' in config.keys()):
             return config['version']
@@ -142,7 +165,7 @@ class ConfigFile(object):
             return 0
 
     def gitAdd(self, message=''):
-        """Commits changes to an added or modified configuration file"""
+        """Commit changes to an added or modified configuration file"""
         from auth.session import Session
         if (self._checkGitRepo()):
             message += "\nUser: %s\nNode: %s" % (
@@ -164,7 +187,7 @@ class ConfigFile(object):
                 pass
 
     def gitRemove(self, message=''):
-        """Removes and commits a configuration file"""
+        """Remove and commits a configuration file"""
         from auth.session import Session
         if self._checkGitRepo():
             message += "\nUser: %s\nNode: %s" % (Session.get_current_user_object().get_username(),
@@ -185,7 +208,7 @@ class ConfigFile(object):
                 pass
 
     def _checkGitRepo(self):
-        """Clones the configuration repo, if necessary, and updates the repo"""
+        """Clone the configuration repo, if necessary, and updates the repo"""
         from mcvirt_config import MCVirtConfig
 
         # Only attempt to create a git repository if the git

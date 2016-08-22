@@ -98,11 +98,20 @@ class MCVirtConfig(ConfigFile):
                         "password": ("$p5k2$3e8$e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09"
                                      "ac8b85d7331707$ChiC2SGEokh""HietmLcCQNjtMLf30Oggr"),
                         "salt": "e30d99dc817ad452ec124e4ac011637652c54eeb0abe5dff09ac8b85d7331707",
-                        "user_type": "User"
+                        "user_type": "LocalUser"
                     }
                 },
                 'libvirt_configured': False,
-                'log_level': 'WARNING'
+                'log_level': 'WARNING',
+                'ldap': {
+                    'enabled': False,
+                    'server_uri': None,
+                    'base_dn': None,
+                    'user_search': None,
+                    'bind_dn': None,
+                    'bind_pass': None,
+                    'username_attribute': None
+                }
             }
 
         # Write the configuration to disk
@@ -110,4 +119,11 @@ class MCVirtConfig(ConfigFile):
 
     def _upgrade(self, config):
         """Perform an upgrade of the configuration file"""
-        pass
+        if config['version'] < 5:
+            # Rename user_type for local users to new 'LocalUser' type
+            for username in config['users']:
+                if config['users'][username]['user_type'] == 'User':
+                    config['users'][username]['user_type'] = 'LocalUser'
+            config['ldap'] = {'server_uri': None, 'base_dn': None, 'user_search': None,
+                              'bind_dn': None, 'bind_pass': None,
+                              'username_attribute': None, 'enabled': False}

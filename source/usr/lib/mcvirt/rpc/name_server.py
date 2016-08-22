@@ -20,7 +20,6 @@ import Pyro4
 
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
-from mcvirt.mcvirt_config import MCVirtConfig
 
 
 class NameServer(object):

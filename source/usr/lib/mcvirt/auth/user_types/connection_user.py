@@ -19,8 +19,8 @@
 
 import Pyro4
 
-from mcvirt.auth.user_base import UserBase
-from mcvirt.auth.cluster_user import ClusterUser
+from mcvirt.auth.user_types.user_base import UserBase
+from mcvirt.auth.user_types.cluster_user import ClusterUser
 from mcvirt.auth.permissions import PERMISSIONS
 
 
