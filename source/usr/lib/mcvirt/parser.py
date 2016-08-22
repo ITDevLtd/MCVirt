@@ -19,6 +19,7 @@
 
 import argparse
 import binascii
+import os
 
 from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
 from mcvirt.client.rpc import Connection
@@ -600,6 +601,17 @@ class Parser(object):
             dest='ldap_username_attribute_clear',
             help='Clear the username attribute configuration'
         )
+        self.ldap_ca_cert_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.ldap_ca_cert_mutual_group.add_argument('--ca-cert-file', dest='ldap_ca_cert',
+                                                    metavar='Path to CA file',
+                                                    help=('Path to CA cert file for LDAP over'
+                                                          ' TLS.'))
+        self.ldap_ca_cert_mutual_group.add_argument('--clear-ca-cert-file',
+                                                    action='store_true',
+                                                    dest='ldap_ca_cert_clear',
+                                                    help='Clear the store LDAP CA cert file.')
 
         # Create sub-parser for VM verification
         self.verify_parser = self.subparsers.add_parser(
@@ -1038,6 +1050,14 @@ class Parser(object):
                 ldap_args['username_attribute'] = args.ldap_username_attribute
             elif args.ldap_username_attribute_clear:
                 ldap_args['username_attribute'] = None
+            if args.ldap_ca_cert:
+                if not os.path.exists(args.ldap_ca_cert):
+                    raise Exception('Specified LDAP CA cert file cannot be found.')
+                with open(args.ldap_ca_cert, 'r') as ca_crt_fh:
+                    ldap_args['ca_cert'] = ca_crt_fh.read()
+            elif args.ldap_ca_cert_clear:
+                ldap_args['ca_cert'] = None
+
             if len(ldap_args):
                 ldap.set_config(**ldap_args)
 

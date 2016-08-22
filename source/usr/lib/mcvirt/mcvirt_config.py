@@ -108,7 +108,6 @@ class MCVirtConfig(ConfigFile):
                     'server_uri': None,
                     'base_dn': None,
                     'user_search': None,
-                    'ca_cert': None,
                     'bind_dn': None,
                     'bind_pass': None,
                     'username_attribute': None
@@ -126,5 +125,5 @@ class MCVirtConfig(ConfigFile):
                 if config['users'][username]['user_type'] == 'User':
                     config['users'][username]['user_type'] = 'LocalUser'
             config['ldap'] = {'server_uri': None, 'base_dn': None, 'user_search': None,
-                              'ca_cert': None, 'bind_dn': None, 'bind_pass': None,
+                              'bind_dn': None, 'bind_pass': None,
                               'username_attribute': None, 'enabled': False}

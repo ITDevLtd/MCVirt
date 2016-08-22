@@ -343,6 +343,9 @@ class Cluster(PyroObject):
         # Sync VMs
         self.sync_virtual_machines(remote_node)
 
+        # Sync MCVirt configurations
+        self.sync_config(remote_node)
+
     def sync_users(self, remote_node):
         """Synchronise the local users with the remote node"""
         # Remove all users on the remote node
@@ -440,6 +443,19 @@ class Cluster(PyroObject):
 
             # Set the VM node
             remote_virtual_machine_object.setNodeRemote(vm_object.getNode())
+
+    def sync_config(self, remote_connection):
+        """Sync MCVirt configuration"""
+        config = MCVirtConfig().get_config()
+        remote_mcvirt_config_obj = remote_connection.get_connection('mcvirt_config')
+        remote_config = remote_mcvirt_config_obj.get_config()
+
+        # Update Git and LDAP configuration to remote node
+        remote_config['git'] = config['git']
+        remote_config['ldap'] = config['ldap']
+        remote_mcvirt_config_obj.manual_update_config(remote_config,
+                                                      ('Update LDAP/Git configuration after'
+                                                       ' joining node to cluster.'))
 
     def check_remote_machine(self, remote_connection):
         """Perform checks on the remote node to ensure that there will be

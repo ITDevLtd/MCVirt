@@ -152,7 +152,7 @@ class Factory(PyroObject):
         for user_class in user_classes:
 
             # Generate user objects for each user that is returned by the user class.
-            for username in user_class.get_all_usernames(self):
+            for username in user_class.get_all_usernames():
                 user_objects.append(self.get_user_by_username(username))
 
         # Return found user objects

@@ -44,6 +44,7 @@ from mcvirt.utils import get_hostname
 from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.daemon_lock import DaemonLock
+from mcvirt.mcvirt_config import MCVirtConfig
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -330,6 +331,9 @@ class RpcNSMixinDaemon(object):
         # Create and register LDAP factory object
         ldap_factory = LdapFactory()
         self.register(ldap_factory, objectId='ldap_factory', force=True)
+
+        # Register MCVirtConfig
+        self.register(MCVirtConfig, objectId='mcvirt_config', force=True)
 
         # Create an MCVirt session
         self.register(Session(), objectId='mcvirt_session', force=True)

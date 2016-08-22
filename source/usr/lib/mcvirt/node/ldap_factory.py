@@ -62,6 +62,7 @@ class LdapFactory(PyroObject):
             ldap_connection = ldap.initialize(uri=ldap_config['server_uri'])
             ldap_connection.bind_s(bind_dn, password)
         except:
+            raise
             raise LdapConnectionFailedException(
                 'Connection attempts to the LDAP server failed'
             )
