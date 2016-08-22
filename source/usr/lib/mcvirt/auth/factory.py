@@ -28,6 +28,7 @@ from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.auth.user_types.local_user import LocalUser
 from mcvirt.auth.user_types.cluster_user import ClusterUser
 from mcvirt.auth.user_types.ldap_user import LdapUser
+from mcvirt.auth.user_types.drbd_hook_user import DrbdHookUser
 from mcvirt.auth.permissions import PERMISSIONS
 
 
