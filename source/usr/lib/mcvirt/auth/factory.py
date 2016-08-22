@@ -128,8 +128,8 @@ class Factory(PyroObject):
                 self._register_object(user_object)
                 return user_object
 
-        raise InvalidUserTypeException('Failed to determine user type for %s' %
-                                       username)
+        raise UserDoesNotExistException('User %s does not exist' %
+                                        username)
 
     @Pyro4.expose()
     def get_all_users(self):
