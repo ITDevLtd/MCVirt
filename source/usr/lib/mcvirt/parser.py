@@ -773,6 +773,9 @@ class Parser(object):
                 rpc.annotate_object(disk_drive)
                 disk_drive.attachISO(iso_object, True)
 
+            if args.graphics_driver:
+                vm_object.updateGraphicsDriver(args.graphics_driver)
+
         elif action == 'permission':
             if (args.add_superuser or args.delete_superuser) and args.vm_name:
                 raise ArgumentParserException('Superuser groups are global-only roles')

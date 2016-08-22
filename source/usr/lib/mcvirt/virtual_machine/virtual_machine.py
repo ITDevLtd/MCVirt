@@ -1286,6 +1286,33 @@ class VirtualMachine(PyroObject):
 
         self._editConfig(updateXML)
 
+    @Pyro4.expose()
+    def updateGraphicsDriver(self, driver):
+        """Update the graphics driver in the libvirt configuration for this VM"""
+        # Check the user has permission to modify VMs
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        # Check the provided driver name is valid
+        self._get_registered_object('virtual_machine_factory').checkGraphicsDriver(driver)
+
+        if self.isRegisteredRemotely():
+            vm_object = self.get_remote_object()
+            return vm_object.updateGraphicsDriver(driver)
+
+        self.ensureRegisteredLocally()
+
+        # Ensure VM is unlocked
+        self.ensureUnlocked()
+
+        def updateXML(domain_xml):
+            domain_xml.find('./devices/video/model').set('type', driver)
+
+        self._editConfig(updateXML)
+
+        # Update the MCVirt configuration
+        self.update_config(['graphics_driver'], driver,
+                           'Graphics driver has been changed to %s' % driver)
+
     def getGraphicsDriver(self):
         """Returns the graphics driver for this VM"""
         return self.get_config_object().get_config()['graphics_driver']
