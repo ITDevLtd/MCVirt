@@ -23,10 +23,10 @@ import Pyro4
 
 from mcvirt.exceptions import (AuthenticationError, CurrentUserError,
                                UserDoesNotExistException)
-from mcvirt.auth.factory import Factory as UserFactory
+from mcvirt.rpc.pyro_object import PyroObject
 
 
-class Session(object):
+class Session(PyroObject):
     """Handle daemon user sessions."""
 
     USER_SESSIONS = {}
@@ -35,7 +35,7 @@ class Session(object):
         """Authenticate using username/password and store
         session
         """
-        user_factory = UserFactory()
+        user_factory = self._get_registered_object('user_factory')
         user_object = user_factory.authenticate(username, password)
         if user_object:
             # Generate Session ID
@@ -57,7 +57,7 @@ class Session(object):
     def authenticate_session(self, username, session):
         """Authenticate user session."""
         if session in Session.USER_SESSIONS and Session.USER_SESSIONS[session] == username:
-            user_factory = UserFactory()
+            user_factory = self._get_registered_object('user_factory')
             return user_factory.get_user_by_username(username)
 
         raise AuthenticationError('Invalid session ID')
@@ -65,7 +65,7 @@ class Session(object):
     def get_proxy_user_object(self):
         """Return the user that is being proxied as."""
         current_user = self.get_current_user_object()
-        user_factory = UserFactory()
+        user_factory = self._get_registered_object('user_factory')
         if (current_user.allow_proxy_user and 'proxy_user' in dir(Pyro4.current_context) and
                 Pyro4.current_context.proxy_user):
             try:
@@ -79,6 +79,6 @@ class Session(object):
         if Pyro4.current_context.session_id:
             session_id = Pyro4.current_context.session_id
             username = Session.USER_SESSIONS[session_id]
-            user_factory = UserFactory()
+            user_factory = self._get_registered_object('user_factory')
             return user_factory.get_user_by_username(username)
         raise CurrentUserError('Cannot obtain current user')

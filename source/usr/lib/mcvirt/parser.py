@@ -19,12 +19,13 @@
 
 import argparse
 import binascii
+import os
 
 from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
-from mcvirt.auth.user_base import UserBase
+from mcvirt.auth.user_types.user_base import UserBase
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -500,14 +501,117 @@ class Parser(object):
             help='Modify configurations relating to the local node',
             parents=[self.parent_parser]
         )
-        self.node_parser.add_argument('--set-vm-vg', dest='volume_group',
-                                      metavar='VM Volume Group',
-                                      help=('Sets the local volume group used for Virtual'
-                                            ' machine HDD logical volumes'))
-        self.node_parser.add_argument('--set-ip-address', dest='ip_address',
-                                      metavar='Cluster IP Address',
-                                      help=('Sets the cluster IP address for the local node,'
-                                            ' used for Drbd and cluster management.'))
+        self.node_cluster_config = self.node_parser.add_argument_group(
+            'Storage', 'Configure the node-specific storage configurations'
+        )
+        self.node_cluster_config.add_argument('--set-vm-vg', dest='volume_group',
+                                              metavar='VM Volume Group',
+                                              help=('Sets the local volume group used for Virtual'
+                                                    ' machine HDD logical volumes'))
+
+        self.node_cluster_config = self.node_parser.add_argument_group(
+            'Cluster', 'Configure the node-specific cluster configurations'
+        )
+        self.node_cluster_config.add_argument('--set-ip-address', dest='ip_address',
+                                              metavar='Cluster IP Address',
+                                              help=('Sets the cluster IP address'
+                                                    ' for the local node,'
+                                                    ' used for Drbd and cluster management.'))
+
+        self.ldap_parser = self.node_parser.add_argument_group(
+            'Ldap', 'Configure the LDAP authentication backend'
+        )
+        self.ldap_enable_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.ldap_enable_mutual_group.add_argument('--enable-ldap', dest='ldap_enable',
+                                                   action='store_true',
+                                                   help='Enable the LDAP authentication backend')
+        self.ldap_enable_mutual_group.add_argument('--disable-ldap', dest='ldap_disable',
+                                                   action='store_true',
+                                                   help='Disable the LDAP authentication backend')
+
+        self.ldap_server_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.ldap_server_mutual_group.add_argument('--server-uri', dest='ldap_server_uri',
+                                                   metavar='LDAP Server URI',
+                                                   help=('Specify the LDAP server URI.'
+                                                         ' E.g. ldap://10.200.1.1:389'
+                                                         ' ldaps://10.200.1.1'))
+        self.ldap_server_mutual_group.add_argument('--clear-server-uri',
+                                                   action='store_true',
+                                                   dest='ldap_server_uri_clear',
+                                                   help='Clear the server URI configuration.')
+        self.ldap_base_dn_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.ldap_base_dn_mutual_group.add_argument('--base-dn', dest='ldap_base_dn',
+                                                    metavar='LDAP Base DN',
+                                                    help=('Base search DN for users. E.g. '
+                                                          'ou=People,dc=my,dc=company,dc=com'))
+        self.ldap_base_dn_mutual_group.add_argument('--clear-base-dn',
+                                                    action='store_true',
+                                                    dest='ldap_base_dn_clear',
+                                                    help='Clear the base DN configuration.')
+        self.ldap_bind_dn_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.ldap_bind_dn_mutual_group.add_argument('--bind-dn', dest='ldap_bind_dn',
+                                                    metavar='LDAP Bind DN',
+                                                    help=('DN for user to bind to LDAP. E.g. '
+                                                          'cn=Admin,ou=People,dc=my,dc=company,'
+                                                          'dc=com'))
+        self.ldap_bind_dn_mutual_group.add_argument('--clear-bind-dn',
+                                                    action='store_true',
+                                                    dest='ldap_bind_dn_clear',
+                                                    help='Clear the bind DN configuration.')
+        self.ldap_base_pw_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.ldap_base_pw_mutual_group.add_argument('--bind-pass', dest='ldap_bind_pass',
+                                                    metavar='LDAP Bind Password',
+                                                    help='Password for bind account')
+        self.ldap_base_pw_mutual_group.add_argument('--clear-bind-pass',
+                                                    action='store_true',
+                                                    dest='ldap_bind_pass_clear',
+                                                    help='Clear the bind pass configuration.')
+        self.ldap_user_search_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.ldap_user_search_mutual_group.add_argument('--user-search', dest='ldap_user_search',
+                                                        metavar='LDAP search',
+                                                        help=('LDAP query for user objects. E.g.'
+                                                              ' (objectClass=posixUser)'))
+        self.ldap_user_search_mutual_group.add_argument('--clear-user-search',
+                                                        action='store_true',
+                                                        dest='ldap_user_search_clear',
+                                                        help='Clear the user search configuration')
+        self.ldap_username_attribute_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.ldap_username_attribute_mutual_group.add_argument('--username-attribute',
+                                                               dest='ldap_username_attribute',
+                                                               metavar='LDAP Username Attribute',
+                                                               help=('LDAP username attribute.'
+                                                                     ' E.g. uid'))
+        self.ldap_username_attribute_mutual_group.add_argument(
+            '--clear-username-attribute',
+            action='store_true',
+            dest='ldap_username_attribute_clear',
+            help='Clear the username attribute configuration'
+        )
+        self.ldap_ca_cert_mutual_group = self.ldap_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.ldap_ca_cert_mutual_group.add_argument('--ca-cert-file', dest='ldap_ca_cert',
+                                                    metavar='Path to CA file',
+                                                    help=('Path to CA cert file for LDAP over'
+                                                          ' TLS.'))
+        self.ldap_ca_cert_mutual_group.add_argument('--clear-ca-cert-file',
+                                                    action='store_true',
+                                                    dest='ldap_ca_cert_clear',
+                                                    help='Clear the store LDAP CA cert file.')
 
         # Create sub-parser for VM verification
         self.verify_parser = self.subparsers.add_parser(
@@ -907,6 +1011,7 @@ class Parser(object):
 
         elif action == 'node':
             node = rpc.get_connection('node')
+            ldap = rpc.get_connection('ldap_factory')
             if args.volume_group:
                 node.set_storage_volume_group(args.volume_group)
                 self.print_status('Successfully set VM storage volume group to %s' %
@@ -915,6 +1020,46 @@ class Parser(object):
             if args.ip_address:
                 node.set_cluster_ip_address(args.ip_address)
                 self.print_status('Successfully set cluster IP address to %s' % args.ip_address)
+
+            if args.ldap_enable:
+                ldap.set_enable(True)
+            elif args.ldap_disable:
+                ldap.set_enable(False)
+            ldap_args = {}
+            if args.ldap_server_uri:
+                ldap_args['server_uri'] = args.ldap_server_uri
+            elif args.ldap_server_uri_clear:
+                ldap_args['server_uri'] = None
+            if args.ldap_base_dn:
+                ldap_args['base_dn'] = args.ldap_base_dn
+            elif args.ldap_base_dn_clear:
+                ldap_args['base_dn'] = None
+            if args.ldap_bind_dn:
+                ldap_args['bind_dn'] = args.ldap_bind_dn
+            elif args.ldap_bind_dn_clear:
+                ldap_args['bind_dn'] = None
+            if args.ldap_bind_pass:
+                ldap_args['bind_pass'] = args.ldap_bind_pass
+            elif args.ldap_bind_pass_clear:
+                ldap_args['bind_pass'] = None
+            if args.ldap_user_search:
+                ldap_args['user_search'] = args.ldap_user_search
+            elif args.ldap_user_search_clear:
+                ldap_args['user_search'] = None
+            if args.ldap_username_attribute:
+                ldap_args['username_attribute'] = args.ldap_username_attribute
+            elif args.ldap_username_attribute_clear:
+                ldap_args['username_attribute'] = None
+            if args.ldap_ca_cert:
+                if not os.path.exists(args.ldap_ca_cert):
+                    raise Exception('Specified LDAP CA cert file cannot be found.')
+                with open(args.ldap_ca_cert, 'r') as ca_crt_fh:
+                    ldap_args['ca_cert'] = ca_crt_fh.read()
+            elif args.ldap_ca_cert_clear:
+                ldap_args['ca_cert'] = None
+
+            if len(ldap_args):
+                ldap.set_config(**ldap_args)
 
         elif action == 'verify':
             vm_factory = rpc.get_connection('virtual_machine_factory')

@@ -38,12 +38,13 @@ from mcvirt.node.node import Node
 from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.rpc.certificate_generator_factory import CertificateGeneratorFactory
 from mcvirt.node.libvirt_config import LibvirtConfig
+from mcvirt.node.ldap_factory import LdapFactory
 from mcvirt.libvirt_connector import LibvirtConnector
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.daemon_lock import DaemonLock
-from mcvirt.client.rpc import Connection
+from mcvirt.mcvirt_config import MCVirtConfig
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -180,7 +181,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         except Pyro4.errors.SecurityError:
             raise
         except Exception, e:
-            print str(e)
+            Syslogger.logger().exception('Error during authentication: %s' % str(e))
         # If no valid authentication was provided, raise an error
         raise Pyro4.errors.SecurityError('Invalid username/password/session')
 
@@ -327,8 +328,15 @@ class RpcNSMixinDaemon(object):
         libvirt_connector = LibvirtConnector()
         self.register(libvirt_connector, objectId='libvirt_connector', force=True)
 
+        # Create and register LDAP factory object
+        ldap_factory = LdapFactory()
+        self.register(ldap_factory, objectId='ldap_factory', force=True)
+
+        # Register MCVirtConfig
+        self.register(MCVirtConfig, objectId='mcvirt_config', force=True)
+
         # Create an MCVirt session
-        RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session'] = Session()
+        self.register(Session(), objectId='mcvirt_session', force=True)
 
     def obtain_connection(self):
         """Attempt to obtain a connection to the name server."""

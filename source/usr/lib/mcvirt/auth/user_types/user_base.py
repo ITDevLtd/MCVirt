@@ -25,7 +25,7 @@ from pbkdf2 import crypt
 import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.exceptions import UserDoesNotExistException
+from mcvirt.exceptions import UserDoesNotExistException, InvalidUserTypeException
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.lock import locking_method
@@ -39,16 +39,28 @@ class UserBase(PyroObject):
     PERMISSIONS = []
     CLUSTER_USER = False
     DISTRIBUTED = True
+    CAN_CREATE = True
+    SEARCH_ORDER = 1
+
+    @classmethod
+    def get_all_usernames(cls):
+        """Return all local users"""
+        user_config = MCVirtConfig().get_config()['users']
+        users = []
+        for username in user_config:
+            if user_config[username]['user_type'] == cls.__name__:
+                users.append(username)
+        return users
 
     @property
     def allow_proxy_user(self):
         """Connection users can proxy for another user."""
         return False
 
-    @staticmethod
-    def _check_exists(username):
+    @classmethod
+    def _check_exists(cls, username):
         """Check the MCVirt config to determine if a given user exists."""
-        return (username in MCVirtConfig().get_config()['users'])
+        return (username in cls.get_all_usernames())
 
     @staticmethod
     def _generate_salt():
@@ -96,6 +108,11 @@ class UserBase(PyroObject):
     def _get_password_salt(self):
         """Return the user's salt"""
         return self._get_config()['salt']
+
+    @Pyro4.expose()
+    def set_password(self, new_password):
+        """Default functionality for password change is to throw an exception"""
+        raise InvalidUserTypeException('Cannot change password for this type of user')
 
     def _set_password(self, new_password):
         """Set the password for the current user"""

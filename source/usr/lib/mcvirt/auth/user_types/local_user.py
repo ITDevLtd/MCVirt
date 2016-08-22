@@ -19,11 +19,11 @@
 
 import Pyro4
 
-from mcvirt.auth.user_base import UserBase
+from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.auth.permissions import PERMISSIONS
 
 
-class User(UserBase):
+class LocalUser(UserBase):
     """Provides an interaction with the local user backend"""
 
     @Pyro4.expose()
