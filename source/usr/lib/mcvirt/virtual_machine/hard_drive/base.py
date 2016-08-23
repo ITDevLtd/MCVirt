@@ -27,7 +27,8 @@ from mcvirt.exceptions import (HardDriveDoesNotExistException,
                                BackupSnapshotAlreadyExistsException,
                                BackupSnapshotDoesNotExistException,
                                ExternalStorageCommandErrorException,
-                               MCVirtCommandException)
+                               MCVirtCommandException,
+                               ResyncNotSupportedException)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
@@ -159,6 +160,12 @@ class Base(PyroObject):
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
                 (self.disk_id, self.vm_object.get_name()))
+
+    @Pyro4.expose()
+    @locking_method()
+    def resync(self, source_node=None, auto_determine=False):
+        """Resync the volume"""
+        raise ResyncNotSupportedException('Resync is not supported on this storage type')
 
     @Pyro4.expose()
     def get_type(self):

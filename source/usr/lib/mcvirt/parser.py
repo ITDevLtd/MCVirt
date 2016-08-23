@@ -627,6 +627,27 @@ class Parser(object):
         self.verify_mutual_exclusive_group.add_argument('vm_name', metavar='VM Name', nargs='?',
                                                         help='Specify a single VM to verify')
 
+        # Create sub-parser for VM verification
+        self.verify_parser = self.subparsers.add_parser(
+            'resync',
+            help='Perform resync of DRBD volumes',
+            parents=[self.parent_parser])
+        self.resync_node_mutual_exclusive_group = self.verify_parser.add_mutually_exclusive_group(
+            required=True
+        )
+        self.resync_node_mutual_exclusive_group.add_argument(
+            '--source-node', dest='resync_node', default=None,
+            help='Specify the SOURCE node for the resync.'
+        )
+        self.resync_node_mutual_exclusive_group.add_argument(
+            '--auto-determine', dest='resync_auto_determine', action='store_true',
+            help='Automatically sync from the node that the VM is currently registered on.'
+        )
+        self.verify_parser.add_argument('vm_name', metavar='VM Name',
+                                        help='Specify a single VM to resync')
+        self.verify_parser.add_argument('--disk-id', metavar='Disk Id', default=1, type=int,
+                                        help='Specify the Disk ID to resync (default: 1)')
+
         # Create sub-parser for Drbd-related commands
         self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage Drbd clustering',
                                                       parents=[self.parent_parser])
@@ -1095,6 +1116,15 @@ class Parser(object):
             # all exception messages
             if failures:
                 raise DrbdVolumeNotInSyncException("\n".join(failures))
+
+        elif action == 'resync':
+            vm_factory = rpc.get_connection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            hard_drive_factory = rpc.get_connection('hard_drive_factory')
+            disk_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+            rpc.annotate_object(disk_object)
+            disk_object.resync(source_node=args.resync_node,
+                               auto_determine=args.resync_auto_determine)
 
         elif action == 'drbd':
             node_drbd = rpc.get_connection('node_drbd')
