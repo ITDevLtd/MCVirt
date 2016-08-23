@@ -249,7 +249,7 @@ class RpcNSMixinDaemon(object):
 
         for registered_object in RpcNSMixinDaemon.DAEMON.registered_factories:
             obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
-            if type(obj) is not types.TypeType:
+            if type(obj) is not types.TypeType:  # noqa: ignore E721
                 Syslogger.logger().debug('Initialising object %s' % registered_object)
                 obj.initialise()
 
