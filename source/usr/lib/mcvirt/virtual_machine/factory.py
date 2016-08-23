@@ -130,7 +130,7 @@ class Factory(PyroObject):
 
         return True
 
-    def checkGraphicsDriver(self, driver):
+    def check_graphics_driver(self, driver):
         """Check that the provided graphics driver name is valid"""
         if driver not in [i.value for i in list(GraphicsDriver)]:
             raise InvalidGraphicsDriverException('Invalid graphics driver \'%s\'' % driver)
@@ -169,8 +169,9 @@ class Factory(PyroObject):
         # If no graphics driver has been specified, set it to the default
         if graphics_driver is None:
             graphics_driver = self.DEFAULT_GRAPHICS_DRIVER
+
         # Check the driver name is valid
-        self.checkGraphicsDriver(graphics_driver)
+        self.check_graphics_driver(graphics_driver)
 
         # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
         # in this state

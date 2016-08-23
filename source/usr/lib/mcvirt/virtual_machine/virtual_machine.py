@@ -1293,7 +1293,7 @@ class VirtualMachine(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
         # Check the provided driver name is valid
-        self._get_registered_object('virtual_machine_factory').checkGraphicsDriver(driver)
+        self._get_registered_object('virtual_machine_factory').check_graphics_driver(driver)
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object()
