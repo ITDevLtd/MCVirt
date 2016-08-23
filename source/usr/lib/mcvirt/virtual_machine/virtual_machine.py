@@ -555,11 +555,10 @@ class VirtualMachine(PyroObject):
 
         # Update the MCVirt configuration
         self.update_config(['windows_10'], windows10,
-                                'Windows 10 flag has been set to %s' % windows10)
+                           'Windows 10 flag has been set to %s' % windows10)
 
         # Apply the changes to libvirt configuration
         self.apply_cpu_flags()
-
 
     @Pyro4.expose()
     def get_disk_drive(self):
