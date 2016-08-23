@@ -20,6 +20,7 @@
 import atexit
 import Pyro4
 import signal
+import types
 import time
 
 from mcvirt.auth.auth import Auth
@@ -225,12 +226,14 @@ class RpcNSMixinDaemon(object):
         ssl_socket = None
 
         # Wait for nameserver
+        Syslogger.logger().debug('Wait for connection to nameserver')
         self.obtain_connection()
 
         RpcNSMixinDaemon.DAEMON = BaseRpcDaemon(host=self.hostname)
         self.register_factories()
 
         # Ensure libvirt is configured
+        Syslogger.logger().debug('Start certificate check')
         cert_gen_factory = RpcNSMixinDaemon.DAEMON.registered_factories[
             'certificate_generator_factory']
         cert_gen = cert_gen_factory.get_cert_generator('localhost')
@@ -238,14 +241,23 @@ class RpcNSMixinDaemon(object):
         cert_gen = None
         cert_gen_factory = None
 
+        Syslogger.logger().debug('Register atexit')
         atexit.register(self.shutdown, 'atexit', '')
         for sig in (signal.SIGABRT, signal.SIGILL, signal.SIGINT,
                     signal.SIGSEGV, signal.SIGTERM):
             signal.signal(sig, self.shutdown)
 
+        for registered_object in RpcNSMixinDaemon.DAEMON.registered_factories:
+            obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
+            if type(obj) is not types.TypeType:
+                Syslogger.logger().debug('Initialising object %s' % registered_object)
+                obj.initialise()
+
     def start(self, *args, **kwargs):
         """Start the Pyro daemon"""
         Pyro4.current_context.STARTUP_PERIOD = False
+        Syslogger.logger().debug('Authentication enabled')
+        Syslogger.logger().debug('Starting daemon request loop')
         with DaemonLock.LOCK:
             RpcNSMixinDaemon.DAEMON.requestLoop(*args, **kwargs)
         Syslogger.logger().debug('Daemon request loop finished')
