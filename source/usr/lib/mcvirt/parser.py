@@ -203,8 +203,8 @@ class Parser(object):
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
                                         default=None)
-        self.create_parser.add_argument('--set-win10', help='Add Windows 10 CPU flags',
-                                        dest='win10', action='store_true')
+        self.create_parser.add_argument('--windows', help='Add Windows CPU flags',
+                                        dest='windows', action='store_true')
 
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
@@ -270,11 +270,11 @@ class Parser(object):
                                         help=('Attach an ISO to a running VM.'
                                               ' Specify without value to detach ISO.'))
         self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
-        self.win10_group = self.update_parser.add_mutually_exclusive_group()
-        self.win10_group.add_argument('--set-win10', dest='set_win10', action='store_true',
-                                      help='Set Windows 10 CPU flags')
-        self.win10_group.add_argument('--unset-win10', dest='unset_win10', action='store_true',
-                                      help='Unset Windows 10 CPU flags')
+        self.windows_flag_group = self.update_parser.add_mutually_exclusive_group()
+        self.windows_flag_group.add_argument('--set-windows', dest='set_windows_flag',
+                                             action='store_true', help='Set Windows CPU flags')
+        self.windows_flag_group.add_argument('--unset-windows', dest='unset_windows_flag',
+                                             action='store_true', help='Unset Windows CPU flags')
 
         # Get arguments for making permission changes to a VM
         self.permission_parser = self.subparsers.add_parser(
@@ -695,7 +695,7 @@ class Parser(object):
                 storage_type=storage_type,
                 hard_drive_driver=args.hard_disk_driver,
                 available_nodes=args.nodes,
-                windows10=args.win10)
+                windows_flag=args.windows)
 
         elif action == 'delete':
             vm_factory = rpc.get_connection('virtual_machine_factory')
@@ -773,11 +773,11 @@ class Parser(object):
                 rpc.annotate_object(disk_drive)
                 disk_drive.attachISO(iso_object, True)
 
-            if args.set_win10 or args.unset_win10:
-                flag = args.set_win10
+            if args.set_windows_flag or args.unset_windows_flag:
+                flag = args.set_windows_flag
                 vm_object.update_cpu_flags(flag)
                 self.print_status(
-                    'Windows 10 flag set to %s' % flag
+                    'Windows CPU flag set to %s' % flag
                 )
 
         elif action == 'permission':

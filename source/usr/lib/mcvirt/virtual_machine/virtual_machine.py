@@ -514,7 +514,7 @@ class VirtualMachine(PyroObject):
     @locking_method()
     def apply_cpu_flags(self):
         """Apply the XML changes for CPU flags"""
-        win10 = self.get_config_object().get_config()['windows_10']
+        windows_flag = self.get_config_object().get_config()['windows_flag']
 
         def updateXML(domain_xml):
             cpu_section = domain_xml.find('./cpu')
@@ -523,7 +523,7 @@ class VirtualMachine(PyroObject):
             if cpu_section is not None:
                 domain_xml.remove(cpu_section)
 
-            if win10:
+            if windows_flag:
                 cpu_section = ET.Element('cpu', attrib={'mode': 'custom', 'match': 'exact'})
                 domain_xml.append(cpu_section)
 
@@ -538,7 +538,7 @@ class VirtualMachine(PyroObject):
 
     @Pyro4.expose()
     @locking_method()
-    def update_cpu_flags(self, windows10):
+    def update_cpu_flags(self, windows_flag):
         """Updates the CPU flags for a VM"""
 
         # Check the user has permission to modify VMs
@@ -546,7 +546,7 @@ class VirtualMachine(PyroObject):
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object()
-            return vm_object.update_cpu_flags(windows10)
+            return vm_object.update_cpu_flags(windows_flag)
 
         self.ensureRegisteredLocally()
 
@@ -554,8 +554,8 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Update the MCVirt configuration
-        self.update_config(['windows_10'], windows10,
-                           'Windows 10 flag has been set to %s' % windows10)
+        self.update_config(['windows_flag'], windows_flag,
+                           'Windows CPU flag has been set to %s' % windows_flag)
 
         # Apply the changes to libvirt configuration
         self.apply_cpu_flags()

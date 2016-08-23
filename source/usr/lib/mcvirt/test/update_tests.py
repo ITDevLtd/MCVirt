@@ -32,7 +32,7 @@ class UpdateTests(TestBase):
         suite = unittest.TestSuite()
         suite.addTest(UpdateTests('test_remove_network'))
         suite.addTest(UpdateTests('test_remove_network_non_existant'))
-        suite.addTest(UpdateTests('test_set_windows10'))
+        suite.addTest(UpdateTests('test_set_windows_flag'))
         return suite
 
     def setUp(self):
@@ -99,8 +99,8 @@ class UpdateTests(TestBase):
         )
         self.assertEqual(len(network_adapters), 1)
 
-    def test_set_windows10(self):
-        """Set the windows 10 CPU flag and check the XML is modified correctly"""
+    def test_set_windows_flag(self):
+        """Set the Windows CPU flag and check the XML is modified correctly"""
         # Create test VM
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
@@ -112,8 +112,8 @@ class UpdateTests(TestBase):
         # Check that <cpu> section is not in XML by default
         self.assertEqual(xml.find('./cpu'), None)
 
-        # Set win10 flag
-        self.parser.parse_arguments('update %s --set-win10' % self.test_vms['TEST_VM_1']['name'])
+        # Set Windows CPU flag
+        self.parser.parse_arguments('update %s --set-windows' % self.test_vms['TEST_VM_1']['name'])
 
         xml = vm.getLibvirtConfig()
 
@@ -135,8 +135,8 @@ class UpdateTests(TestBase):
         self.assertEquals(feature_section.get('policy'), 'require')
         self.assertEquals(feature_section.get('name'), 'nx')
 
-        # Unset win10 flag
-        self.parser.parse_arguments('update %s --unset-win10' % self.test_vms['TEST_VM_1']['name'])
+        # Unset Windows flag
+        self.parser.parse_arguments('update %s --unset-windows' % self.test_vms['TEST_VM_1']['name'])
 
         # Check that <cpu> section is now not present
         xml = vm.getLibvirtConfig()
