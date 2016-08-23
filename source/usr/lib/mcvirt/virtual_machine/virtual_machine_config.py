@@ -44,7 +44,7 @@ class VirtualMachineConfig(ConfigFile):
         return ('%s/config.json' % VirtualMachine._get_vm_dir(vm_name))
 
     @staticmethod
-    def create(vm_name, available_nodes, cpu_cores, memory_allocation, windows_flag):
+    def create(vm_name, available_nodes, cpu_cores, memory_allocation):
         """Creates a basic VM configuration for new VMs"""
         from mcvirt.virtual_machine.virtual_machine import LockStates
 
@@ -67,7 +67,7 @@ class VirtualMachineConfig(ConfigFile):
                 'node': None,
                 'available_nodes': available_nodes,
                 'lock': LockStates.UNLOCKED.value,
-                'windows_flag': windows_flag
+                'modifications': []
             }
 
         # Write the configuration to disk

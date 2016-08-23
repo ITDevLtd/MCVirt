@@ -514,7 +514,7 @@ class VirtualMachine(PyroObject):
     @locking_method()
     def apply_cpu_flags(self):
         """Apply the XML changes for CPU flags"""
-        windows_flag = self.get_config_object().get_config()['windows_flag']
+        flags = self.get_modification_flags()
 
         def updateXML(domain_xml):
             cpu_section = domain_xml.find('./cpu')
@@ -523,7 +523,7 @@ class VirtualMachine(PyroObject):
             if cpu_section is not None:
                 domain_xml.remove(cpu_section)
 
-            if windows_flag:
+            if 'windows' in flags:
                 cpu_section = ET.Element('cpu', attrib={'mode': 'custom', 'match': 'exact'})
                 domain_xml.append(cpu_section)
 
@@ -537,16 +537,22 @@ class VirtualMachine(PyroObject):
         self._editConfig(updateXML)
 
     @Pyro4.expose()
+    def get_modification_flags(self):
+        """Return a list of modification flags for this VM"""
+        return self.get_config_object().get_config()['modifications']
+
+    @Pyro4.expose()
     @locking_method()
-    def update_cpu_flags(self, windows_flag):
-        """Updates the CPU flags for a VM"""
+    def update_modification_flags(self, add_flags=[], remove_flags=[]):
+        """Updates the modification flags for a VM"""
 
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object()
-            return vm_object.update_cpu_flags(windows_flag)
+            return vm_object.update_modification_flags(add_flags=add_flags,
+                                                       remove_flags=remove_flags)
 
         self.ensureRegisteredLocally()
 
@@ -554,10 +560,23 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Update the MCVirt configuration
-        self.update_config(['windows_flag'], windows_flag,
-                           'Windows CPU flag has been set to %s' % windows_flag)
+        flags = self.get_modification_flags()
 
-        # Apply the changes to libvirt configuration
+        # Add flags
+        for flag in add_flags:
+            if flag not in flags:
+                flags.append(flag)
+
+        # Remove flags
+        for flag in remove_flags:
+            if flag in flags:
+                flags.remove(flag)
+
+        flags_str = ', '.join([str(i) for i in flags])
+        self.update_config(['modifications'], flags,
+                           'Modification flags has been set to: %s' % flags_str)
+
+        # Apply CPU changes to libvirt configuration
         self.apply_cpu_flags()
 
     @Pyro4.expose()

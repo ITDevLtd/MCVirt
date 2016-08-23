@@ -128,7 +128,7 @@ class Factory(PyroObject):
     @locking_method(instance_method=True)
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                 network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-                hard_drive_driver=None, windows_flag=False):
+                hard_drive_driver=None, modification_flags=[]):
         """Creates a VM and returns the virtual_machine object for it"""
         self.checkName(name)
         ArgumentValidator.validate_positive_integer(cpu_cores)
@@ -213,8 +213,7 @@ class Factory(PyroObject):
             name)
 
         # Create VM configuration file
-        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation,
-                                    windows_flag)
+        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation)
 
         # Add VM to remote nodes
         if self._is_cluster_master:
@@ -224,7 +223,8 @@ class Factory(PyroObject):
                 )
                 virtual_machine_factory.create(
                     name=name, memory_allocation=memory_allocation, cpu_cores=cpu_cores,
-                    node=node, available_nodes=available_nodes
+                    node=node, available_nodes=available_nodes,
+                    modification_flags=modification_flags
                 )
             cluster_object.run_remote_command(callback_method=remote_command)
 
@@ -257,5 +257,8 @@ class Factory(PyroObject):
                 for network in network_interfaces:
                     network_object = network_factory.get_network_by_name(network)
                     network_adapter_factory.create(vm_object, network_object)
+
+            # Add modification flags
+            vm_object.update_modification_flags(add_flags=modification_flags)
 
         return vm_object
