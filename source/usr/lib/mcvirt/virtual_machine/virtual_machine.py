@@ -1287,7 +1287,7 @@ class VirtualMachine(PyroObject):
         self._editConfig(updateXML)
 
     @Pyro4.expose()
-    def updateGraphicsDriver(self, driver):
+    def update_graphics_driver(self, driver):
         """Update the graphics driver in the libvirt configuration for this VM"""
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
@@ -1297,7 +1297,7 @@ class VirtualMachine(PyroObject):
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object()
-            return vm_object.updateGraphicsDriver(driver)
+            return vm_object.update_graphics_driver(driver)
 
         self.ensureRegisteredLocally()
 

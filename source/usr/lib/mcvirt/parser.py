@@ -774,7 +774,7 @@ class Parser(object):
                 disk_drive.attachISO(iso_object, True)
 
             if args.graphics_driver:
-                vm_object.updateGraphicsDriver(args.graphics_driver)
+                vm_object.update_graphics_driver(args.graphics_driver)
 
         elif action == 'permission':
             if (args.add_superuser or args.delete_superuser) and args.vm_name:
