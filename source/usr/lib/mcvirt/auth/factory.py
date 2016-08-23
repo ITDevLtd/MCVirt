@@ -28,6 +28,7 @@ from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.auth.user_types.local_user import LocalUser
 from mcvirt.auth.user_types.cluster_user import ClusterUser
 from mcvirt.auth.user_types.ldap_user import LdapUser
+from mcvirt.auth.user_types.drbd_hook_user import DrbdHookUser
 from mcvirt.auth.permissions import PERMISSIONS
 
 
@@ -43,8 +44,11 @@ class Factory(PyroObject):
 
     def ensure_valid_user_type(self, user_type):
         """Ensure that a given user_type is valid."""
-        if user_type not in self.get_user_types():
-            raise InvalidUserTypeException('An invalid user type has been passed')
+        for user_type_itx in self.get_user_types():
+            if user_type is user_type_itx or user_type == user_type_itx.__name__:
+                return user_type_itx
+
+        raise InvalidUserTypeException('An invalid user type has been passed')
 
     @Pyro4.expose()
     def create(self, username, password, user_type=LocalUser):
@@ -74,7 +78,7 @@ class Factory(PyroObject):
                                              username)
 
         # Ensure valid user type
-        self.ensure_valid_user_type(user_type)
+        user_type = self.ensure_valid_user_type(user_type)
 
         # Generate password salt for user and hash password
         salt = user_type._generate_salt()
@@ -143,8 +147,8 @@ class Factory(PyroObject):
         """Return the user objects for all users, optionally filtered by user type."""
         if len(user_classes):
             # Ensure valid user type
-            for user_class in user_classes:
-                self.ensure_valid_user_type(user_class)
+            for itx, user_class in enumerate(user_classes):
+                user_classes[itx] = self.ensure_valid_user_type(user_class)
         else:
             user_classes = self.get_user_types()
 
@@ -163,7 +167,7 @@ class Factory(PyroObject):
         connection user.
         """
         # Ensure valid user type
-        self.ensure_valid_user_type(user_type)
+        user_type = self.ensure_valid_user_type(user_type)
 
         # Ensure that users can be generated
         if not user_type.CAN_GENERATE:
