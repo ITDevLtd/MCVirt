@@ -511,6 +511,57 @@ class VirtualMachine(PyroObject):
                                                           cpu_count)
 
     @Pyro4.expose()
+    @locking_method()
+    def apply_cpu_flags(self):
+        """Apply the XML changes for CPU flags"""
+        win10 = self.get_config_object().get_config()['windows_10']
+
+        def updateXML(domain_xml):
+            cpu_section = domain_xml.find('./cpu')
+
+            # Delete the CPU section if it already exists
+            if cpu_section is not None:
+                domain_xml.remove(cpu_section)
+
+            if win10:
+                cpu_section = ET.Element('cpu', attrib={'mode': 'custom', 'match': 'exact'})
+                domain_xml.append(cpu_section)
+
+                model = ET.Element('model', attrib={'fallback': 'allow'})
+                model.text = 'core2duo'
+                feature = ET.Element('feature', attrib={'policy': 'require', 'name': 'nx'})
+
+                cpu_section.append(model)
+                cpu_section.append(feature)
+
+        self._editConfig(updateXML)
+
+    @Pyro4.expose()
+    @locking_method()
+    def update_cpu_flags(self, windows10):
+        """Updates the CPU flags for a VM"""
+
+        # Check the user has permission to modify VMs
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        if self.isRegisteredRemotely():
+            vm_object = self.get_remote_object()
+            return vm_object.update_cpu_flags(windows10)
+
+        self.ensureRegisteredLocally()
+
+        # Ensure VM is unlocked
+        self.ensureUnlocked()
+
+        # Update the MCVirt configuration
+        self.update_config(['windows_10'], windows10,
+                                'Windows 10 flag has been set to %s' % windows10)
+
+        # Apply the changes to libvirt configuration
+        self.apply_cpu_flags()
+
+
+    @Pyro4.expose()
     def get_disk_drive(self):
         """Returns a disk drive object for the VM"""
         disk_drive_object = DiskDrive(self)
@@ -1096,6 +1147,8 @@ class VirtualMachine(PyroObject):
         if set_node:
             # Mark VM as being hosted on this machine
             self._setNode(get_hostname())
+
+        self.apply_cpu_flags()
 
     @Pyro4.expose()
     @locking_method()

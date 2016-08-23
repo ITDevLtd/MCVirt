@@ -128,7 +128,7 @@ class Factory(PyroObject):
     @locking_method(instance_method=True)
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                 network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-                hard_drive_driver=None):
+                hard_drive_driver=None, windows10=False):
         """Creates a VM and returns the virtual_machine object for it"""
         self.checkName(name)
         ArgumentValidator.validate_positive_integer(cpu_cores)
@@ -213,7 +213,7 @@ class Factory(PyroObject):
             name)
 
         # Create VM configuration file
-        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation)
+        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation, windows10)
 
         # Add VM to remote nodes
         if self._is_cluster_master:
