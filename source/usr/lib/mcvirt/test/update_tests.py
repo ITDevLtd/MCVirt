@@ -113,7 +113,8 @@ class UpdateTests(TestBase):
         self.assertEqual(xml.find('./cpu'), None)
 
         # Set Windows CPU flag
-        self.parser.parse_arguments('update %s --set-windows' % self.test_vms['TEST_VM_1']['name'])
+        self.parser.parse_arguments('update %s --add-flag windows' %
+                                    self.test_vms['TEST_VM_1']['name'])
 
         xml = vm.getLibvirtConfig()
 
@@ -136,7 +137,8 @@ class UpdateTests(TestBase):
         self.assertEquals(feature_section.get('name'), 'nx')
 
         # Unset Windows flag
-        self.parser.parse_arguments('update %s --unset-windows' % self.test_vms['TEST_VM_1']['name'])
+        self.parser.parse_arguments('update %s --remove-flag windows' %
+                                    self.test_vms['TEST_VM_1']['name'])
 
         # Check that <cpu> section is now not present
         xml = vm.getLibvirtConfig()

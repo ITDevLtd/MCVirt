@@ -777,7 +777,7 @@ class Parser(object):
                 add_flags = args.add_flags or []
                 remove_flags = args.remove_flags or []
                 vm_object.update_modification_flags(add_flags=add_flags, remove_flags=remove_flags)
-                flags_str = ", ".join([flag for flag in vm_object.get_modification_flags()])
+                flags_str = ", ".join(vm_object.get_modification_flags())
                 self.print_status('Modification flags set to: %s' % (flags_str or 'None'))
 
         elif action == 'permission':

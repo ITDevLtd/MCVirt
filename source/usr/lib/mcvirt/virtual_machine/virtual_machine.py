@@ -23,6 +23,7 @@ import shutil
 from texttable import Texttable
 import time
 import Pyro4
+from enum import Enum
 
 from mcvirt.constants import DirectoryLocation, PowerStates, LockStates
 from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermissionsException,
@@ -34,7 +35,8 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                CannotCloneDrbdBasedVmsException, CannotDeleteClonedVmException,
                                VirtualMachineLockException, InvalidArgumentException,
                                VirtualMachineDoesNotExistException, VmIsCloneException,
-                               VncNotEnabledException, AttributeAlreadyChanged)
+                               VncNotEnabledException, AttributeAlreadyChanged,
+                               InvalidModificationFlagException)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
@@ -43,6 +45,11 @@ from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
 from mcvirt.argument_validator import ArgumentValidator
+
+
+class Modification(Enum):
+    """An enum to represent the available modification flags"""
+    WINDOWS = 'windows'
 
 
 class VirtualMachine(PyroObject):
@@ -523,7 +530,7 @@ class VirtualMachine(PyroObject):
             if cpu_section is not None:
                 domain_xml.remove(cpu_section)
 
-            if 'windows' in flags:
+            if Modification.WINDOWS.value in flags:
                 cpu_section = ET.Element('cpu', attrib={'mode': 'custom', 'match': 'exact'})
                 domain_xml.append(cpu_section)
 
@@ -540,6 +547,12 @@ class VirtualMachine(PyroObject):
     def get_modification_flags(self):
         """Return a list of modification flags for this VM"""
         return self.get_config_object().get_config()['modifications']
+
+    @staticmethod
+    def check_modification_flag(flag):
+        """Check that the provided flag name is valid"""
+        if flag not in [i.value for i in Modification]:
+            raise InvalidModificationFlagException('Invalid modification flag \'%s\'' % flag)
 
     @Pyro4.expose()
     @locking_method()
@@ -564,15 +577,17 @@ class VirtualMachine(PyroObject):
 
         # Add flags
         for flag in add_flags:
+            VirtualMachine.check_modification_flag(flag)
             if flag not in flags:
                 flags.append(flag)
 
         # Remove flags
         for flag in remove_flags:
+            VirtualMachine.check_modification_flag(flag)
             if flag in flags:
                 flags.remove(flag)
 
-        flags_str = ', '.join([str(i) for i in flags])
+        flags_str = ', '.join(flags)
         self.update_config(['modifications'], flags,
                            'Modification flags has been set to: %s' % flags_str)
 
