@@ -625,8 +625,7 @@ class VirtualMachine(PyroObject):
            the configuration, performing a callback function to perform changes on the configuration
            and pushing the configuration back into LibVirt"""
         # Obtain VM XML
-        domain_flags = (libvirt.VIR_DOMAIN_XML_INACTIVE + libvirt.VIR_DOMAIN_XML_SECURE)
-        domain_xml = ET.fromstring(self._getLibvirtDomainObject().XMLDesc(domain_flags))
+        domain_xml = self.getLibvirtConfig()
 
         # Perform callback function to make changes to the XML
         callback_function(domain_xml)
