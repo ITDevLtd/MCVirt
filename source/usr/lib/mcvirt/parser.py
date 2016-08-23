@@ -200,10 +200,13 @@ class Parser(object):
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
                                         type=str, default=None, choices=['Local', 'Drbd'])
-        self.create_parser.add_argument('--driver', metavar='Hard Drive Driver',
+        self.create_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
                                         default=None)
+        self.create_parser.add_argument('--graphics-driver', dest='graphics_driver',
+                                        metavar='Graphics Driver', type=str,
+                                        help='Driver for graphics', default=None)
 
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
@@ -255,9 +258,13 @@ class Parser(object):
         self.update_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type', type=str,
                                         default=None)
-        self.update_parser.add_argument('--driver', metavar='Hard Drive Driver',
+        self.update_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
+                                        default=None)
+        self.update_parser.add_argument('--graphics-driver', metavar='Graphics Driver',
+                                        dest='graphics_driver', type=str,
+                                        help='Driver for graphics',
                                         default=None)
         self.update_parser.add_argument('--increase-disk', dest='increase_disk',
                                         metavar='Increase Disk', type=int,
@@ -791,6 +798,7 @@ class Parser(object):
                 network_interfaces=args.networks,
                 storage_type=storage_type,
                 hard_drive_driver=args.hard_disk_driver,
+                graphics_driver=args.graphics_driver,
                 available_nodes=args.nodes)
 
         elif action == 'delete':
@@ -868,6 +876,9 @@ class Parser(object):
                 disk_drive = vm_object.get_disk_drive()
                 rpc.annotate_object(disk_drive)
                 disk_drive.attachISO(iso_object, True)
+
+            if args.graphics_driver:
+                vm_object.update_graphics_driver(args.graphics_driver)
 
         elif action == 'permission':
             if (args.add_superuser or args.delete_superuser) and args.vm_name:

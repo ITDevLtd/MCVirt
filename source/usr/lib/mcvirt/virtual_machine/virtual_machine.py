@@ -1066,10 +1066,11 @@ class VirtualMachine(PyroObject):
         # Obtain domain XML
         domain_xml = ET.parse(DirectoryLocation.TEMPLATE_DIR + '/domain.xml')
 
-        # Add Name, RAM and CPU variables to XML
+        # Add Name, RAM, CPU and graphics driver variables to XML
         domain_xml.find('./name').text = self.get_name()
         domain_xml.find('./memory').text = self.getRAM()
         domain_xml.find('./vcpu').text = self.getCPU()
+        domain_xml.find('./devices/video/model').set('type', self.getGraphicsDriver())
 
         device_xml = domain_xml.find('./devices')
 
@@ -1284,3 +1285,34 @@ class VirtualMachine(PyroObject):
                 os_xml.append(new_boot_xml_object)
 
         self._editConfig(updateXML)
+
+    @Pyro4.expose()
+    def update_graphics_driver(self, driver):
+        """Update the graphics driver in the libvirt configuration for this VM"""
+        # Check the user has permission to modify VMs
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        # Check the provided driver name is valid
+        self._get_registered_object('virtual_machine_factory').check_graphics_driver(driver)
+
+        if self.isRegisteredRemotely():
+            vm_object = self.get_remote_object()
+            return vm_object.update_graphics_driver(driver)
+
+        self.ensureRegisteredLocally()
+
+        # Ensure VM is unlocked
+        self.ensureUnlocked()
+
+        def updateXML(domain_xml):
+            domain_xml.find('./devices/video/model').set('type', driver)
+
+        self._editConfig(updateXML)
+
+        # Update the MCVirt configuration
+        self.update_config(['graphics_driver'], driver,
+                           'Graphics driver has been changed to %s' % driver)
+
+    def getGraphicsDriver(self):
+        """Returns the graphics driver for this VM"""
+        return self.get_config_object().get_config()['graphics_driver']
