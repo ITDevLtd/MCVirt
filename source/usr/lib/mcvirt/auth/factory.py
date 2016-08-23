@@ -42,18 +42,10 @@ class Factory(PyroObject):
         return sorted(UserBase.__subclasses__(),
                       key=lambda user_class: user_class.SEARCH_ORDER)
 
-    def get_user_type_by_name(self, user_type):
-        """Return the user_type class for a given name"""
-        for user_type in self.get_user_types():
-            if user_type == user_type.__name__:
-                return user_type
-        raise InvalidUserTypeException('An invalid user type has been passed.')
-
     def ensure_valid_user_type(self, user_type):
         """Ensure that a given user_type is valid."""
         for user_type_itx in self.get_user_types():
-            if (user_type is user_type_itx or
-                    (type(user_type) is str and user_type == user_type_itx.__name__)):
+            if user_type is user_type_itx or user_type == user_type_itx.__name__:
                 return user_type_itx
 
         raise InvalidUserTypeException('An invalid user type has been passed')
