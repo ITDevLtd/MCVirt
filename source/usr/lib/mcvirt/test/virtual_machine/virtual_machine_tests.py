@@ -602,7 +602,7 @@ class VirtualMachineTests(TestBase):
                                         ' --network %s --storage-type %s' %
                                         (self.test_vms['TEST_VM_1']['networks'][0],
                                          'Local') +
-                                        ' --driver %s' % disk_driver[0])
+                                        ' --hdd-driver %s' % disk_driver[0])
 
             vm_object = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_1']['name'])
             self.rpc.annotate_object(vm_object)
