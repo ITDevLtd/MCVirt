@@ -1303,15 +1303,20 @@ class VirtualMachine(PyroObject):
             self
         )
 
+        if self.isRegisteredRemotely() and self._is_cluster_master:
+            remote_vm = self.get_remote_object()
+            return remote_vm.getVncPort()
+
+        if self._getPowerState() is not PowerStates.RUNNING:
+            return None
+
         domain_xml = ET.fromstring(
             self._getLibvirtDomainObject().XMLDesc(
                 libvirt.VIR_DOMAIN_XML_SECURE
             )
         )
 
-        if self._getPowerState() is not PowerStates.RUNNING:
-            return None
-        elif domain_xml.find('./devices/graphics[@type="vnc"]') is None:
+        if domain_xml.find('./devices/graphics[@type="vnc"]') is None:
             raise VncNotEnabledException('VNC is not enabled on the VM')
         else:
             return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
@@ -1332,7 +1337,7 @@ class VirtualMachine(PyroObject):
         if listen_el is not None:
             listen_el.set('address', address)
         else:
-            listen_el = EL.Element('listen')
+            listen_el = ET.Element('listen')
             listen_el.set('type', 'address')
             listen_el.set('address', address)
             vnc_el.append(listen_el)
@@ -1352,16 +1357,17 @@ class VirtualMachine(PyroObject):
 
         if self.isRegisteredRemotely() and self._is_cluster_master:
             remote_vm = self.get_remote_object()
-            return remote_vm.connect_vnc() 
+            return remote_vm.connect_vnc()
 
         self.ensureRegisteredLocally()
 
-        def updateXML(domain_xml):
-            updateXML.passwd = self._set_vnc_listen_address(domain_xml, '0.0.0.0')
+        def update_xml(domain_xml):
+            update_xml.passwd = self._set_vnc_listen_address(domain_xml, '0.0.0.0')
 
-        self._editConfig(updateXML)
+        self._editConfig(update_xml)
 
-        return {'hostname': self.getNode(), 'port': self.getVncPort(), 'password': updateXML.passwd}
+        return {'hostname': self.getNode(), 'port': self.getVncPort(),
+                'password': update_xml.passwd}
 
     @Pyro4.expose()
     @locking_method()
@@ -1377,10 +1383,10 @@ class VirtualMachine(PyroObject):
             remote_vm = self.get_remote_object()
             return remote_vm.disconnect_vnc() 
 
-        def updateXML(domain_xml):
+        def update_xml(domain_xml):
             self._set_vnc_listen_address(domain_xml, '127.0.0.1')
 
-        self._editConfig(updateXML)
+        self._editConfig(update_xml)
 
     def ensureUnlocked(self):
         """Ensures that the VM is in an unlocked state"""
