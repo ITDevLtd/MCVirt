@@ -28,7 +28,6 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.system import System
 from mcvirt.rpc.lock import locking_method
 from mcvirt.constants import DirectoryLocation
-from mcvirt.syslogger import Syslogger
 from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
                                DrbdVolumeNotInSyncException, MCVirtCommandException,
@@ -809,7 +808,6 @@ class Drbd(Base):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.SET_SYNC_STATE, self.vm_object
         )
-        Syslogger.logger().error('SEtting sync state of %s to %s' % (self.resource_name, sync_state))
         def update_config(config):
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.get_config_object().update_config(
