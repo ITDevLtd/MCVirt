@@ -32,6 +32,7 @@ class ConnectionUser(UserBase):
     PERMISSIONS = [PERMISSIONS.MANAGE_USERS]
     CLUSTER_USER = True
     DISTRIBUTED = False
+    UNIQUE = True
 
     @property
     def allow_proxy_user(self):
