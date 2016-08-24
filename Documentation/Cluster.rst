@@ -138,8 +138,9 @@ The status of the latest verification is captured and will stop users from start
 
 If the verification fails:
 
-* The DRBD volume must be resynced (for more information, see the `DRBD documentation for re-syncing <https://drbd.linbit.com/users-guide/ch-troubleshooting.html>`_).
-* Once this is complete, perform another MCVirt verification to mark the VM as in-sync, which will lift the limitations.
+* The DRBD volume can be resynced using resync::
+
+    mcvirt resync --source-node=<Node>|--auto-determine <VM Name>
 
 ===============
 Troubleshooting
