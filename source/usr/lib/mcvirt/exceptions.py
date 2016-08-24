@@ -598,6 +598,12 @@ class ResyncNotSupportedException(MCVirtException):
     pass
 
 
+class TooManyParametersException(MCVirtException):
+    """Too many parameters have been defined"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)
