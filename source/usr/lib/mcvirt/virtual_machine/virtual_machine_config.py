@@ -115,3 +115,7 @@ class VirtualMachineConfig(ConfigFile):
             # disk configurations
             for disk in config['hard_disks']:
                 config['hard_disks'][disk]['driver'] = 'VIRTIO'
+
+        if self._getVersion() < 6:
+            config['modifications'] = []
+            config['graphics_driver'] = 'vmvga'
