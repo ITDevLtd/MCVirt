@@ -28,6 +28,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.system import System
 from mcvirt.rpc.lock import locking_method
 from mcvirt.constants import DirectoryLocation
+from mcvirt.syslogger import Syslogger
 from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
                                DrbdVolumeNotInSyncException, MCVirtCommandException,
@@ -269,25 +270,6 @@ class Drbd(Base):
         """Gets the size of the disk (in MB)"""
         self._ensure_exists()
         return self._get_logical_volume_size(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX))
-
-    def get_remote_object(self):
-        """Return a instance of the virtual machine object
-        on the machine that the VM is registered
-        """
-        if self.vm_object.isRegisteredLocally():
-            return self
-        elif self.vm_object.isRegisteredRemotely():
-            cluster = self._get_registered_object('cluster')
-            remote_node = cluster.get_remote_node(self.vm_object.getNode())
-            remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
-            remote_node.annotate_object(remote_vm)
-            remote_hard_drive_factory = remote_node.get_connection('hard_drive_factory')
-            remote_hard_drive = remote_hard_drive_factory.getObject(remote_vm, self.disk_id)
-            remote_node.annotate_object(remote_hard_drive)
-            return remote_hard_drive
-        else:
-            raise VmNotRegistered('The VM is not registered on a node')
 
     def create(self, size):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
@@ -827,7 +809,7 @@ class Drbd(Base):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.SET_SYNC_STATE, self.vm_object
         )
-
+        Syslogger.logger().error('SEtting sync state of %s to %s' % (self.resource_name, sync_state))
         def update_config(config):
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.get_config_object().update_config(
@@ -855,7 +837,7 @@ class Drbd(Base):
         )
 
         # Check Drbd state of disk
-        if (self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
+        if self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED:
             raise DrbdStateException(
                 'Drbd resource must be connected before performing a verification: %s' %
                 self.resource_name)
@@ -937,7 +919,7 @@ class Drbd(Base):
                     break
                 time.sleep(5)
         elif not self._cluster_disable:
-            remote_object = self.get_remote_object()
+            remote_object = self.get_remote_object(remote_node=source_node)
             remote_object.resync(source_node=source_node)
 
     def move(self, destination_node, source_node):

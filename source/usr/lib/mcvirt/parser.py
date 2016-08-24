@@ -1128,10 +1128,9 @@ class Parser(object):
                         try:
                             disk_object.verify()
                             self.print_status(
-                                ('Drbd verification for %s (%s) completed '
+                                ('Drbd verification for %s completed '
                                  'without out-of-sync blocks') %
-                                (disk_object.resource_name,
-                                 vm_object.get_name())
+                                vm_object.get_name()
                             )
                         except DrbdVolumeNotInSyncException, e:
                             # Append the not-in-sync exception message to an array,

@@ -29,7 +29,7 @@ from mcvirt.constants import DirectoryLocation # noqa
 drbd_resource = os.environ['DRBD_RESOURCE']
 
 # Determine sync state from arguments
-sync_state = bool(sys.argv[1]) if len(sys.argv) > 1 else False
+sync_state = bool(int(sys.argv[1])) if len(sys.argv) > 1 else False
 
 # Ensure that the hook config exists
 if not os.path.exists(DirectoryLocation.DRBD_HOOK_CONFIG):

@@ -611,6 +611,12 @@ class VirtualMachine(PyroObject):
             disk_objects.append(hard_drive_factory.getObject(self, disk_id))
         return disk_objects
 
+    @Pyro4.expose()
+    def remote_update_config(self, *args, **kwargs):
+        """Provide an exposed method for update_config"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+        return self.update_config(*args, **kwargs)
+
     def update_config(self, attribute_path, value, reason):
         """Updates a VM configuration attribute and
            replicates change across all nodes"""
@@ -628,8 +634,8 @@ class VirtualMachine(PyroObject):
                 vm_factory = remote_object.get_connection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
                 remote_object.annotate_object(remote_vm)
-                remote_vm.update_config(attribute_path=attribute_path, value=value,
-                                        reason=reason)
+                remote_vm.remote_update_config(attribute_path=attribute_path, value=value,
+                                               reason=reason)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
@@ -815,18 +821,12 @@ class VirtualMachine(PyroObject):
             # Set the VM node to the destination node node
             self._setNode(destination_node_name)
 
-        except Exception as e:
-            # Determine which node the VM is present on
-            vm_registration_found = False
-
+        except Exception:
             # Wait 10 seconds before performing the tear-down, as Drbd
             # will hold the block device open for a short period
             time.sleep(10)
 
             if self.get_name() in factory.getAllVmNames(node=get_hostname()):
-                # VM is registered on the local node.
-                vm_registration_found = True
-
                 # Set Drbd on remote node to secondary
                 for disk_object in self.getHardDriveObjects():
                     remote_disk = disk_object.get_remote_object(remote_node=destination_node)
@@ -838,7 +838,6 @@ class VirtualMachine(PyroObject):
             if self.get_name() in factory.getAllVmNames(node=destination_node_name):
                 # Otherwise, if VM is registered on remote node, set the
                 # local Drbd state to secondary
-                vm_registration_found = True
                 for disk_object in self.getHardDriveObjects():
                     time.sleep(10)
                     disk_object._drbdSetSecondary()
@@ -1380,23 +1379,23 @@ class VirtualMachine(PyroObject):
         # Check the provided driver name is valid
         self._get_registered_object('virtual_machine_factory').check_graphics_driver(driver)
 
+        if self._is_cluster_master:
+            # Update the MCVirt configuration
+            self.update_config(['graphics_driver'], driver,
+                               'Graphics driver has been changed to %s' % driver)
+
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object()
-            return vm_object.update_graphics_driver(driver)
+            vm_object.update_graphics_driver(driver)
 
-        self.ensureRegisteredLocally()
+        elif self.isRegisteredLocally():
+            # Ensure VM is unlocked
+            self.ensureUnlocked()
 
-        # Ensure VM is unlocked
-        self.ensureUnlocked()
+            def updateXML(domain_xml):
+                domain_xml.find('./devices/video/model').set('type', driver)
 
-        def updateXML(domain_xml):
-            domain_xml.find('./devices/video/model').set('type', driver)
-
-        self._editConfig(updateXML)
-
-        # Update the MCVirt configuration
-        self.update_config(['graphics_driver'], driver,
-                           'Graphics driver has been changed to %s' % driver)
+            self._editConfig(updateXML)
 
     def getGraphicsDriver(self):
         """Returns the graphics driver for this VM"""
