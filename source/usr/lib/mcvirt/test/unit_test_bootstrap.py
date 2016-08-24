@@ -57,6 +57,7 @@ class UnitTestBootstrap(object):
 
         OnlineMigrateTests.RPC_DAEMON = self.daemon
         AuthTests.RPC_DAEMON = self.daemon
+        UpdateTests.RPC_DAEMON = self.daemon
 
         self.all_tests = unittest.TestSuite([
             auth_test_suite,

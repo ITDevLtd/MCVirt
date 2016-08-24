@@ -207,6 +207,8 @@ class Parser(object):
         self.create_parser.add_argument('--graphics-driver', dest='graphics_driver',
                                         metavar='Graphics Driver', type=str,
                                         help='Driver for graphics', default=None)
+        self.create_parser.add_argument('--modification-flag', help='Add VM modification flag',
+                                        dest='modification_flags', action='append')
 
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
@@ -276,6 +278,10 @@ class Parser(object):
                                         help=('Attach an ISO to a running VM.'
                                               ' Specify without value to detach ISO.'))
         self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        self.update_parser.add_argument('--add-flag', help='Add VM modification flag',
+                                        dest='add_flags', action='append')
+        self.update_parser.add_argument('--remove-flag', help='Remove VM modification flag',
+                                        dest='remove_flags', action='append')
 
         # Get arguments for making permission changes to a VM
         self.permission_parser = self.subparsers.add_parser(
@@ -790,6 +796,7 @@ class Parser(object):
             memory_allocation = int(args.memory) * 1024
             vm_factory = rpc.get_connection('virtual_machine_factory')
             hard_disks = [args.disk_size] if args.disk_size is not None else []
+            mod_flags = args.modification_flags or []
             vm_object = vm_factory.create(
                 name=args.vm_name,
                 cpu_cores=args.cpu_count,
@@ -799,7 +806,8 @@ class Parser(object):
                 storage_type=storage_type,
                 hard_drive_driver=args.hard_disk_driver,
                 graphics_driver=args.graphics_driver,
-                available_nodes=args.nodes)
+                available_nodes=args.nodes,
+                modification_flags=mod_flags)
 
         elif action == 'delete':
             vm_factory = rpc.get_connection('virtual_machine_factory')
@@ -879,6 +887,13 @@ class Parser(object):
 
             if args.graphics_driver:
                 vm_object.update_graphics_driver(args.graphics_driver)
+
+            if args.add_flags or args.remove_flags:
+                add_flags = args.add_flags or []
+                remove_flags = args.remove_flags or []
+                vm_object.update_modification_flags(add_flags=add_flags, remove_flags=remove_flags)
+                flags_str = ", ".join(vm_object.get_modification_flags())
+                self.print_status('Modification flags set to: %s' % (flags_str or 'None'))
 
         elif action == 'permission':
             if (args.add_superuser or args.delete_superuser) and args.vm_name:
