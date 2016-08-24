@@ -29,3 +29,4 @@ class DrbdHookUser(UserBase):
     CLUSTER_USER = True
     DISTRIBUTED = False
     PERMISSIONS = [PERMISSIONS.SET_SYNC_STATE]
+    UNIQUE = True

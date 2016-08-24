@@ -174,9 +174,10 @@ class Factory(PyroObject):
             raise InvalidUserTypeException('Users of type \'%s\' cannot be generated' %
                                            user_type.__name__)
 
-        # Delete any old connection users
-        for old_user_object in self.get_all_user_objects(user_classes=[user_type]):
-            old_user_object.delete()
+        if user_type.UNIQUE:
+            # Delete any old connection users
+            for old_user_object in self.get_all_user_objects(user_classes=[user_type]):
+                old_user_object.delete()
 
         username = user_type.USER_PREFIX + user_type.generate_password(32, numeric_only=True)
         password = user_type.generate_password(32)

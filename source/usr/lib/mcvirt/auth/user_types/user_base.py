@@ -41,6 +41,7 @@ class UserBase(PyroObject):
     DISTRIBUTED = True
     CAN_CREATE = True
     SEARCH_ORDER = 1
+    UNIQUE = False
 
     @classmethod
     def get_all_usernames(cls):
