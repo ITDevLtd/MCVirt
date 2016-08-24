@@ -873,7 +873,7 @@ class Drbd(Base):
 
     @Pyro4.expose()
     def resync(self, source_node=None, auto_determine=False):
-        """Performs a verification of a Drbd hard drive"""
+        """Perform a resync of a Drbd hard drive"""
         # Ensure user has privileges to create a Drbd volume
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.vm_object)
@@ -898,7 +898,7 @@ class Drbd(Base):
         # Check Drbd state of disk
         if self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED:
             raise DrbdStateException(
-                'Drbd resource must be connected before performing a verification: %s' %
+                'Drbd resource must be connected before performing a resync: %s' %
                 self.resource_name)
 
         if source_node == get_hostname():
