@@ -631,7 +631,7 @@ class VirtualMachine(PyroObject):
                 remote_vm.update_config(attribute_path=attribute_path, value=value,
                                         reason=reason)
             cluster = self._get_registered_object('cluster')
-            remote_object = cluster.run_remote_command(remote_command)
+            cluster.run_remote_command(remote_command)
 
     @staticmethod
     def _get_vm_dir(name):
@@ -655,8 +655,8 @@ class VirtualMachine(PyroObject):
 
     def _editConfig(self, callback_function):
         """Provides an interface for updating the libvirt configuration, by obtaining
-           the configuration, performing a callback function to perform changes on the configuration
-           and pushing the configuration back into LibVirt"""
+           the configuration, performing a callback function to perform changes on the
+           configuration and pushing the configuration back into LibVirt"""
         # Obtain VM XML
         domain_xml = self.getLibvirtConfig()
 

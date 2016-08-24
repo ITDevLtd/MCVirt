@@ -592,8 +592,20 @@ class LdapNotEnabledException(MCVirtException):
     pass
 
 
+class ResyncNotSupportedException(MCVirtException):
+    """Resync is not supported on this storage type"""
+
+    pass
+
+
 class InvalidGraphicsDriverException(MCVirtException):
     """The provided graphics driver name was not valid"""
+
+    pass
+
+
+class TooManyParametersException(MCVirtException):
+    """Too many parameters have been defined"""
 
     pass
 
