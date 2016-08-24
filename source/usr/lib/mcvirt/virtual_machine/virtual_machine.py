@@ -49,6 +49,7 @@ from mcvirt.argument_validator import ArgumentValidator
 
 class Modification(Enum):
     """An enum to represent the available modification flags"""
+
     WINDOWS = 'windows'
 
 
@@ -422,7 +423,7 @@ class VirtualMachine(PyroObject):
                 remote_object.annotate_object(remote_vm)
                 remote_vm.delete(remove_data=remove_data)
             cluster = self._get_registered_object('cluster')
-            remote_object = cluster.run_remote_command(remote_command)
+            cluster.run_remote_command(remote_command)
 
     @Pyro4.expose()
     def getRAM(self):
@@ -617,31 +618,33 @@ class VirtualMachine(PyroObject):
         self._get_registered_object('auth').assert_user_type('ClusterUser')
         return self.update_config(*args, **kwargs)
 
-    def update_config(self, attribute_path, value, reason):
-        """Updates a VM configuration attribute and
-           replicates change across all nodes"""
+    def update_config(self, attribute_path, value, reason, local_only=False):
+        """Update a VM configuration attribute and
+        replicates change across all nodes
+        """
         # Update the local configuration
-        def updateLocalConfig(config):
+
+        def update_local_config(config):
             config_level = config
             for attribute in attribute_path[:-1]:
                 config_level = config_level[attribute]
             config_level[attribute_path[-1]] = value
 
-        self.get_config_object().update_config(updateLocalConfig, reason)
+        self.get_config_object().update_config(update_local_config, reason)
 
-        if self._is_cluster_master:
+        if not local_only:
             def remote_command(remote_object):
                 vm_factory = remote_object.get_connection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
                 remote_object.annotate_object(remote_vm)
                 remote_vm.remote_update_config(attribute_path=attribute_path, value=value,
-                                               reason=reason)
+                                               reason=reason, local_only=True)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
     @staticmethod
     def _get_vm_dir(name):
-        """Returns the storage directory for a given VM"""
+        """Return the storage directory for a given VM"""
         return DirectoryLocation.BASE_VM_STORAGE_DIR + '/' + name
 
     def getLibvirtConfig(self):
