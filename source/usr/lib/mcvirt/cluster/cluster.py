@@ -28,7 +28,8 @@ from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
                                RemoteObjectConflict, ClusterNotInitialisedException,
                                InvalidConnectionString, DrbdNotInstalledException,
                                CouldNotConnectToNodeException, InaccessibleNodeException,
-                               MissingConfigurationException, NodeVersionMismatch)
+                               MissingConfigurationException, NodeVersionMismatch,
+                               MCVirtTypeError)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.user_types.connection_user import ConnectionUser
 from mcvirt.auth.permissions import PERMISSIONS
@@ -194,7 +195,7 @@ class Cluster(PyroObject):
             assert 'ip_address' in node_config and node_config['ip_address']
             assert 'hostname' in node_config and node_config['hostname']
             assert 'ca_cert' in node_config and node_config['ca_cert']
-        except (TypeError, ValueError, AssertionError):
+        except (MCVirtTypeError, TypeError, ValueError, AssertionError):
             raise InvalidConnectionString('Connection string is invalid')
 
         # Determine if node is already connected to cluster
