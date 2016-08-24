@@ -378,6 +378,29 @@ class Parser(object):
         self.network_subparser.add_parser('list', help='List the networks on the node',
                                           parents=[self.parent_parser])
 
+        # Create subparser for VNC commands
+        self.vnc_parser = self.subparsers.add_parser('vnc', help='Connect or disconnect from VNC',
+                                                     parents=[self.parent_parser])
+        self.vnc_subparser = self.vnc_parser.add_subparsers(
+            dest='vnc_action',
+            metavar='Action',
+            help='Action to perform for the VNC'
+        )
+        self.vnc_connect_parser = self.vnc_subparser.add_parser(
+            'connect',
+            help='Connect to the VNC server',
+            parents=[self.parent_parser]
+        )
+        self.vnc_connect_parser.add_argument('vm_name', metavar='VM Name', type=str,
+                                             help='Name of VM')
+        self.vnc_disconnect_parser = self.vnc_subparser.add_parser(
+            'disconnect',
+            help='Disconnect from the VNC server',
+            parents=[self.parent_parser]
+        )
+        self.vnc_disconnect_parser.add_argument('vm_name', metavar='VM Name', type=str,
+                                                help='Name of VM')
+
         # Get arguments for getting VM information
         self.info_parser = self.subparsers.add_parser('info', help='View VM information',
                                                       parents=[self.parent_parser])
@@ -999,7 +1022,8 @@ class Parser(object):
                 vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
                 rpc.annotate_object(vm_object)
                 if args.vnc_port:
-                    self.print_status(vm_object.getVncPort())
+                    msg = vm_object.getVncPort() if vm_object.getVncPort() or "VM is not running."
+                    self.print_status(msg)
                 elif args.node:
                     self.print_status(vm_object.getNode())
                 else:
@@ -1007,6 +1031,23 @@ class Parser(object):
             else:
                 cluster_object = rpc.get_connection('cluster')
                 self.print_status(cluster_object.print_info())
+
+        elif action == 'vnc':
+            vm_factory = rpc.get_connection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            if args.vnc_action == 'connect':            
+                rpc.annotate_object(vm_object)
+                results = vm_object.connect_vnc()
+                self.print_status('Hostname: %s Password: %s' %
+                                 (results['hostname'], results['password']))
+                if not results['port']:
+                    self.print_status('%s is not running. No port has been set.' % args.vm_name)
+                else:
+                    self.print_status('VNC port: %s' % results['port'])
+                
+            elif args.vnc_action == 'disconnect':
+                rpc.annotate_object(vm_object)
+                vm_object.disconnect_vnc()
 
         elif action == 'network':
             network_factory = rpc.get_connection('network_factory')

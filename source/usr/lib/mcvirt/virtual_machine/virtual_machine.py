@@ -45,6 +45,7 @@ from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
 from mcvirt.argument_validator import ArgumentValidator
+from mcvirt.auth.user_types.user_base import UserBase
 
 
 class Modification(Enum):
@@ -1302,18 +1303,84 @@ class VirtualMachine(PyroObject):
             self
         )
 
-        if self._getPowerState() is not PowerStates.RUNNING:
-            raise VmAlreadyStoppedException('The VM is not running')
         domain_xml = ET.fromstring(
             self._getLibvirtDomainObject().XMLDesc(
                 libvirt.VIR_DOMAIN_XML_SECURE
             )
         )
 
-        if domain_xml.find('./devices/graphics[@type="vnc"]') is None:
+        if self._getPowerState() is not PowerStates.RUNNING:
+            return None
+        elif domain_xml.find('./devices/graphics[@type="vnc"]') is None:
             raise VncNotEnabledException('VNC is not enabled on the VM')
         else:
             return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
+
+    def _set_vnc_listen_address(self, domain_xml, address):
+        """Sets the VNC listen address, then generates and returns new random password for VNC."""
+        # Check the user has permission to view the VM console
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.VIEW_VNC_CONSOLE,
+            self
+        )
+
+        vnc_el = domain_xml.find('./devices/graphics[@type="vnc"]')
+        if vnc_el is None:
+            raise VncNotEnabledException('VNC is not enabled on the VM')
+        vnc_el.set('listen', address)
+        listen_el = vnc_el.find('listen[@type="address"]')
+        if listen_el is not None:
+            listen_el.set('address', address)
+        else:
+            listen_el = EL.Element('listen')
+            listen_el.set('type', 'address')
+            listen_el.set('address', address)
+            vnc_el.append(listen_el)
+        passwd = UserBase.generate_password(24)
+        vnc_el.set('passwd', passwd)
+        return passwd
+
+    @Pyro4.expose()
+    @locking_method()
+    def connect_vnc(self):
+        """Returns the hostname, port, and randomly generated password used for the VNC display."""
+        # Check the user has permission to view the VM console
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.VIEW_VNC_CONSOLE,
+            self
+        )
+
+        if self.isRegisteredRemotely() and self._is_cluster_master:
+            remote_vm = self.get_remote_object()
+            return remote_vm.connect_vnc() 
+
+        self.ensureRegisteredLocally()
+
+        def updateXML(domain_xml):
+            updateXML.passwd = self._set_vnc_listen_address(domain_xml, '0.0.0.0')
+
+        self._editConfig(updateXML)
+
+        return {'hostname': self.getNode(), 'port': self.getVncPort(), 'password': updateXML.passwd}
+
+    @Pyro4.expose()
+    @locking_method()
+    def disconnect_vnc(self):
+        """Resets password and sets VNC port to listen on loopback interface only."""
+        # Check the user has permission to view the VM console
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.VIEW_VNC_CONSOLE,
+            self
+        )
+
+        if self.isRegisteredRemotely() and self._is_cluster_master:
+            remote_vm = self.get_remote_object()
+            return remote_vm.disconnect_vnc() 
+
+        def updateXML(domain_xml):
+            self._set_vnc_listen_address(domain_xml, '127.0.0.1')
+
+        self._editConfig(updateXML)
 
     def ensureUnlocked(self):
         """Ensures that the VM is in an unlocked state"""
