@@ -468,10 +468,10 @@ class VirtualMachine(PyroObject):
             domain_xml.find('./currentMemory').text = str(memory_allocation)
             domain_xml.find('./currentMemory').set('unit', 'KiB')
 
-        vm_object._editConfig(updateXML)
+        self._editConfig(updateXML)
 
         # Update the MCVirt configuration
-        vm_object.update_config(['memory_allocation'], str(memory_allocation),
+        self.update_config(['memory_allocation'], str(memory_allocation),
                                 'RAM allocation has been changed to %s' % memory_allocation)
 
     @Pyro4.expose()
