@@ -50,6 +50,9 @@ class Drbd(PyroObject):
         """
         if self.is_enabled():
             self.check_hook_configuration()
+            if MCVirtConfig.REGENERATE_DRBD_CONFIG:
+                MCVirtConfig.REGENERATE_DRBD_CONFIG = False
+                self.generate_config()
 
     def check_hook_configuration(self):
         """Ensure that DRBD user exists and that hook configuration

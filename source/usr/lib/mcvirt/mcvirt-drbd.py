@@ -22,11 +22,14 @@ import json
 
 sys.path.insert(0, '/usr/lib')
 
-from mcvirt.client.rpc import Connection
-from mcvirt.constants import DirectoryLocation
+from mcvirt.client.rpc import Connection # noqa
+from mcvirt.constants import DirectoryLocation # noqa
 
 # Obtain Drbd resource name from argument
 drbd_resource = os.environ['DRBD_RESOURCE']
+
+# Determine sync state from arguments
+sync_state = bool(sys.argv[1]) if len(sys.argv) > 1 else False
 
 # Ensure that the hook config exists
 if not os.path.exists(DirectoryLocation.DRBD_HOOK_CONFIG):
@@ -45,4 +48,4 @@ hard_drive_object = hard_drive_factory.getDrbdObjectByResourceName(
     drbd_resource
 )
 rpc.annotate_object(hard_drive_object)
-hard_drive_object.setSyncState(False, update_remote=False)
+hard_drive_object.setSyncState(sync_state, update_remote=True)
