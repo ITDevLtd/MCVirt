@@ -598,8 +598,20 @@ class ResyncNotSupportedException(MCVirtException):
     pass
 
 
+class InvalidGraphicsDriverException(MCVirtException):
+    """The provided graphics driver name was not valid"""
+
+    pass
+
+
 class TooManyParametersException(MCVirtException):
     """Too many parameters have been defined"""
+
+    pass
+
+
+class InvalidModificationFlagException(MCVirtException):
+    """The provided modification flag name was invalid"""
 
     pass
 

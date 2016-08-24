@@ -23,6 +23,7 @@ import shutil
 from texttable import Texttable
 import time
 import Pyro4
+from enum import Enum
 
 from mcvirt.constants import DirectoryLocation, PowerStates, LockStates
 from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermissionsException,
@@ -34,7 +35,8 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                CannotCloneDrbdBasedVmsException, CannotDeleteClonedVmException,
                                VirtualMachineLockException, InvalidArgumentException,
                                VirtualMachineDoesNotExistException, VmIsCloneException,
-                               VncNotEnabledException, AttributeAlreadyChanged)
+                               VncNotEnabledException, AttributeAlreadyChanged,
+                               InvalidModificationFlagException)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
@@ -43,6 +45,11 @@ from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
 from mcvirt.argument_validator import ArgumentValidator
+
+
+class Modification(Enum):
+    """An enum to represent the available modification flags"""
+    WINDOWS = 'windows'
 
 
 class VirtualMachine(PyroObject):
@@ -511,6 +518,83 @@ class VirtualMachine(PyroObject):
                                                           cpu_count)
 
     @Pyro4.expose()
+    @locking_method()
+    def apply_cpu_flags(self):
+        """Apply the XML changes for CPU flags"""
+        flags = self.get_modification_flags()
+
+        def updateXML(domain_xml):
+            cpu_section = domain_xml.find('./cpu')
+
+            # Delete the CPU section if it already exists
+            if cpu_section is not None:
+                domain_xml.remove(cpu_section)
+
+            if Modification.WINDOWS.value in flags:
+                cpu_section = ET.Element('cpu', attrib={'mode': 'custom', 'match': 'exact'})
+                domain_xml.append(cpu_section)
+
+                model = ET.Element('model', attrib={'fallback': 'allow'})
+                model.text = 'core2duo'
+                feature = ET.Element('feature', attrib={'policy': 'require', 'name': 'nx'})
+
+                cpu_section.append(model)
+                cpu_section.append(feature)
+
+        self._editConfig(updateXML)
+
+    @Pyro4.expose()
+    def get_modification_flags(self):
+        """Return a list of modification flags for this VM"""
+        return self.get_config_object().get_config()['modifications']
+
+    @staticmethod
+    def check_modification_flag(flag):
+        """Check that the provided flag name is valid"""
+        if flag not in [i.value for i in Modification]:
+            raise InvalidModificationFlagException('Invalid modification flag \'%s\'' % flag)
+
+    @Pyro4.expose()
+    @locking_method()
+    def update_modification_flags(self, add_flags=[], remove_flags=[]):
+        """Updates the modification flags for a VM"""
+
+        # Check the user has permission to modify VMs
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        if self.isRegisteredRemotely():
+            vm_object = self.get_remote_object()
+            return vm_object.update_modification_flags(add_flags=add_flags,
+                                                       remove_flags=remove_flags)
+
+        self.ensureRegisteredLocally()
+
+        # Ensure VM is unlocked
+        self.ensureUnlocked()
+
+        # Update the MCVirt configuration
+        flags = self.get_modification_flags()
+
+        # Add flags
+        for flag in add_flags:
+            VirtualMachine.check_modification_flag(flag)
+            if flag not in flags:
+                flags.append(flag)
+
+        # Remove flags
+        for flag in remove_flags:
+            VirtualMachine.check_modification_flag(flag)
+            if flag in flags:
+                flags.remove(flag)
+
+        flags_str = ', '.join(flags)
+        self.update_config(['modifications'], flags,
+                           'Modification flags has been set to: %s' % flags_str)
+
+        # Apply CPU changes to libvirt configuration
+        self.apply_cpu_flags()
+
+    @Pyro4.expose()
     def get_disk_drive(self):
         """Returns a disk drive object for the VM"""
         disk_drive_object = DiskDrive(self)
@@ -574,8 +658,7 @@ class VirtualMachine(PyroObject):
            the configuration, performing a callback function to perform changes on the
            configuration and pushing the configuration back into LibVirt"""
         # Obtain VM XML
-        domain_flags = (libvirt.VIR_DOMAIN_XML_INACTIVE + libvirt.VIR_DOMAIN_XML_SECURE)
-        domain_xml = ET.fromstring(self._getLibvirtDomainObject().XMLDesc(domain_flags))
+        domain_xml = self.getLibvirtConfig()
 
         # Perform callback function to make changes to the XML
         callback_function(domain_xml)
@@ -1066,10 +1149,11 @@ class VirtualMachine(PyroObject):
         # Obtain domain XML
         domain_xml = ET.parse(DirectoryLocation.TEMPLATE_DIR + '/domain.xml')
 
-        # Add Name, RAM and CPU variables to XML
+        # Add Name, RAM, CPU and graphics driver variables to XML
         domain_xml.find('./name').text = self.get_name()
         domain_xml.find('./memory').text = self.getRAM()
         domain_xml.find('./vcpu').text = self.getCPU()
+        domain_xml.find('./devices/video/model').set('type', self.getGraphicsDriver())
 
         device_xml = domain_xml.find('./devices')
 
@@ -1096,6 +1180,8 @@ class VirtualMachine(PyroObject):
         if set_node:
             # Mark VM as being hosted on this machine
             self._setNode(get_hostname())
+
+        self.apply_cpu_flags()
 
     @Pyro4.expose()
     @locking_method()
@@ -1284,3 +1370,34 @@ class VirtualMachine(PyroObject):
                 os_xml.append(new_boot_xml_object)
 
         self._editConfig(updateXML)
+
+    @Pyro4.expose()
+    def update_graphics_driver(self, driver):
+        """Update the graphics driver in the libvirt configuration for this VM"""
+        # Check the user has permission to modify VMs
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        # Check the provided driver name is valid
+        self._get_registered_object('virtual_machine_factory').check_graphics_driver(driver)
+
+        if self.isRegisteredRemotely():
+            vm_object = self.get_remote_object()
+            return vm_object.update_graphics_driver(driver)
+
+        self.ensureRegisteredLocally()
+
+        # Ensure VM is unlocked
+        self.ensureUnlocked()
+
+        def updateXML(domain_xml):
+            domain_xml.find('./devices/video/model').set('type', driver)
+
+        self._editConfig(updateXML)
+
+        # Update the MCVirt configuration
+        self.update_config(['graphics_driver'], driver,
+                           'Graphics driver has been changed to %s' % driver)
+
+    def getGraphicsDriver(self):
+        """Returns the graphics driver for this VM"""
+        return self.get_config_object().get_config()['graphics_driver']

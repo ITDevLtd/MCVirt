@@ -824,6 +824,10 @@ class Drbd(Base):
     @locking_method()
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.SET_SYNC_STATE, self.vm_object
+        )
+
         def update_config(config):
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.get_config_object().update_config(
@@ -846,6 +850,10 @@ class Drbd(Base):
     @Pyro4.expose()
     def verify(self):
         """Performs a verification of a Drbd hard drive"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object
+        )
+
         # Check Drbd state of disk
         if (self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
             raise DrbdStateException(
