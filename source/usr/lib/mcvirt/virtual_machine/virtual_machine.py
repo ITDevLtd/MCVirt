@@ -472,7 +472,7 @@ class VirtualMachine(PyroObject):
 
         # Update the MCVirt configuration
         self.update_config(['memory_allocation'], str(memory_allocation),
-                                'RAM allocation has been changed to %s' % memory_allocation)
+                           'RAM allocation has been changed to %s' % memory_allocation)
 
     @Pyro4.expose()
     def getCPU(self):
