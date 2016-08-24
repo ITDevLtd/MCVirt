@@ -270,25 +270,6 @@ class Drbd(Base):
         self._ensure_exists()
         return self._get_logical_volume_size(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX))
 
-    def get_remote_object(self):
-        """Return a instance of the virtual machine object
-        on the machine that the VM is registered
-        """
-        if self.vm_object.isRegisteredLocally():
-            return self
-        elif self.vm_object.isRegisteredRemotely():
-            cluster = self._get_registered_object('cluster')
-            remote_node = cluster.get_remote_node(self.vm_object.getNode())
-            remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
-            remote_node.annotate_object(remote_vm)
-            remote_hard_drive_factory = remote_node.get_connection('hard_drive_factory')
-            remote_hard_drive = remote_hard_drive_factory.getObject(remote_vm, self.disk_id)
-            remote_node.annotate_object(remote_hard_drive)
-            return remote_hard_drive
-        else:
-            raise VmNotRegistered('The VM is not registered on a node')
-
     def create(self, size):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
         in the VM configuration"""
@@ -827,7 +808,6 @@ class Drbd(Base):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.SET_SYNC_STATE, self.vm_object
         )
-
         def update_config(config):
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.get_config_object().update_config(
@@ -855,7 +835,7 @@ class Drbd(Base):
         )
 
         # Check Drbd state of disk
-        if (self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
+        if self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED:
             raise DrbdStateException(
                 'Drbd resource must be connected before performing a verification: %s' %
                 self.resource_name)
@@ -893,7 +873,7 @@ class Drbd(Base):
 
     @Pyro4.expose()
     def resync(self, source_node=None, auto_determine=False):
-        """Performs a verification of a Drbd hard drive"""
+        """Perform a resync of a Drbd hard drive"""
         # Ensure user has privileges to create a Drbd volume
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.vm_object)
@@ -918,7 +898,7 @@ class Drbd(Base):
         # Check Drbd state of disk
         if self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED:
             raise DrbdStateException(
-                'Drbd resource must be connected before performing a verification: %s' %
+                'Drbd resource must be connected before performing a resync: %s' %
                 self.resource_name)
 
         if source_node == get_hostname():
@@ -937,7 +917,7 @@ class Drbd(Base):
                     break
                 time.sleep(5)
         elif not self._cluster_disable:
-            remote_object = self.get_remote_object()
+            remote_object = self.get_remote_object(remote_node=source_node)
             remote_object.resync(source_node=source_node)
 
     def move(self, destination_node, source_node):

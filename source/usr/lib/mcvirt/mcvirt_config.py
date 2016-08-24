@@ -26,6 +26,8 @@ class MCVirtConfig(ConfigFile):
     configuration for a VM
     """
 
+    REGENERATE_DRBD_CONFIG = False
+
     def __init__(self):
         """Set member variables and obtains libvirt domain object"""
         self.config_file = DirectoryLocation.NODE_STORAGE_DIR + '/config.json'
@@ -127,3 +129,6 @@ class MCVirtConfig(ConfigFile):
             config['ldap'] = {'server_uri': None, 'base_dn': None, 'user_search': None,
                               'bind_dn': None, 'bind_pass': None,
                               'username_attribute': None, 'enabled': False}
+
+        if config['version'] < 6:
+            MCVirtConfig.REGENERATE_DRBD_CONFIG = True
