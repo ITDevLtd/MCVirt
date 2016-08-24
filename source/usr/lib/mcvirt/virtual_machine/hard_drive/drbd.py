@@ -808,6 +808,7 @@ class Drbd(Base):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.SET_SYNC_STATE, self.vm_object
         )
+
         def update_config(config):
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.get_config_object().update_config(

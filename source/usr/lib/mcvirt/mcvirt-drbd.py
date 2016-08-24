@@ -22,8 +22,8 @@ import json
 
 sys.path.insert(0, '/usr/lib')
 
-from mcvirt.client.rpc import Connection # noqa
-from mcvirt.constants import DirectoryLocation # noqa
+from mcvirt.client.rpc import Connection  # noqa
+from mcvirt.constants import DirectoryLocation  # noqa
 
 # Obtain Drbd resource name from argument
 drbd_resource = os.environ['DRBD_RESOURCE']
