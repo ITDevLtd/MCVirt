@@ -58,7 +58,7 @@ def locking_method(object_type=None, instance_method=True):
             requires_lock = (not ('has_lock' in dir(Pyro4.current_context) and
                                   Pyro4.current_context.has_lock))
 
-            logger = Logger()
+            logger = Logger.get_logger()
             if 'proxy_user' in dir(Pyro4.current_context) and Pyro4.current_context.proxy_user:
                 username = Pyro4.current_context.proxy_user
             elif 'username' in dir(Pyro4.current_context):
@@ -66,7 +66,7 @@ def locking_method(object_type=None, instance_method=True):
             else:
                 username = ''
             if requires_lock:
-                log = logger.create_log(callback, user=username,
+                log = logger.create_log(callback.func_name, user=username,
                                         object_name=object_name,
                                         object_type=object_type)
             else:

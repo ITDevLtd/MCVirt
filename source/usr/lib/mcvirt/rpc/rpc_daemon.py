@@ -324,7 +324,7 @@ class RpcNSMixinDaemon(object):
         self.register(node, objectId='node', force=True)
 
         # Create logger object and register with daemon
-        logger = Logger()
+        logger = Logger.get_logger()
         self.register(logger, objectId='logger', force=True)
 
         # Create and register SSLSocketFactory object
