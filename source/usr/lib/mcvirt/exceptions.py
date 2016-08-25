@@ -622,6 +622,12 @@ class MCVirtTypeError(MCVirtException):
     pass
 
 
+class UnknownLdapError(MCVirtException):
+    """An unknown LDAP error has occurred"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)
