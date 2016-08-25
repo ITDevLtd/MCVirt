@@ -151,6 +151,7 @@ class Auth(PyroObject):
         return mcvirt_config.get_config()['superusers']
 
     @Pyro4.expose()
+    @locking_method()
     def add_superuser(self, user_object, ignore_duplicate=False):
         """Add a new superuser."""
         assert isinstance(self._convert_remote_object(user_object),
@@ -189,6 +190,7 @@ class Auth(PyroObject):
             cluster.run_remote_command(remote_command)
 
     @Pyro4.expose()
+    @locking_method()
     def delete_superuser(self, user_object):
         """Remove a superuser."""
         assert isinstance(self._convert_remote_object(user_object),

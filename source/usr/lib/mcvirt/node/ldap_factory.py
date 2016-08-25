@@ -179,6 +179,6 @@ class LdapFactory(PyroObject):
         if self._is_cluster_master:
             def remote_command(node_connection):
                 remote_ldap_factory = node_connection.get_connection('ldap_factory')
-                remote_ldap_factory.set_config(config_changes)
+                remote_ldap_factory.set_config(**config_changes)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
