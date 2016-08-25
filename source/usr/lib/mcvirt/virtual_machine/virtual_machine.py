@@ -21,6 +21,7 @@ import xml.etree.ElementTree as ET
 import libvirt
 import shutil
 from texttable import Texttable
+import datetime
 import time
 import Pyro4
 from enum import Enum
@@ -1322,7 +1323,7 @@ class VirtualMachine(PyroObject):
             return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
 
     def _set_vnc_listen_address(self, domain_xml, address):
-        """Sets the VNC listen address, then generates and returns new random password for VNC."""
+        """Set the VNC listen address, then generates and returns new random password for VNC."""
         # Check the user has permission to view the VM console
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.VIEW_VNC_CONSOLE,
@@ -1334,6 +1335,7 @@ class VirtualMachine(PyroObject):
             raise VncNotEnabledException('VNC is not enabled on the VM')
         vnc_el.set('listen', address)
         listen_el = vnc_el.find('listen[@type="address"]')
+
         if listen_el is not None:
             listen_el.set('address', address)
         else:
@@ -1343,6 +1345,10 @@ class VirtualMachine(PyroObject):
             vnc_el.append(listen_el)
         passwd = UserBase.generate_password(24)
         vnc_el.set('passwd', passwd)
+
+        # Set password expiry to 10 minutes
+        password_expire = datetime.datetime.now() + datetime.timedelta(minutes=1)
+        vnc_el.set('passwdValidTo', password_expire.strftime('%Y-%m-%dT%H:%M:%S'))
         return passwd
 
     @Pyro4.expose()
