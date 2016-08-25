@@ -538,7 +538,7 @@ class Parser(object):
             required=False
         )
         self.ldap_enable_mutual_group.add_argument('--enable-ldap', dest='ldap_enable',
-                                                   action='store_true',
+                                                   action='store_true', default=None,
                                                    help='Enable the LDAP authentication backend')
         self.ldap_enable_mutual_group.add_argument('--disable-ldap', dest='ldap_disable',
                                                    action='store_true',
@@ -548,7 +548,7 @@ class Parser(object):
             required=False
         )
         self.ldap_server_mutual_group.add_argument('--server-uri', dest='ldap_server_uri',
-                                                   metavar='LDAP Server URI',
+                                                   metavar='LDAP Server URI', default=None,
                                                    help=('Specify the LDAP server URI.'
                                                          ' E.g. ldap://10.200.1.1:389'
                                                          ' ldaps://10.200.1.1'))
@@ -560,7 +560,7 @@ class Parser(object):
             required=False
         )
         self.ldap_base_dn_mutual_group.add_argument('--base-dn', dest='ldap_base_dn',
-                                                    metavar='LDAP Base DN',
+                                                    metavar='LDAP Base DN', default=None,
                                                     help=('Base search DN for users. E.g. '
                                                           'ou=People,dc=my,dc=company,dc=com'))
         self.ldap_base_dn_mutual_group.add_argument('--clear-base-dn',
@@ -571,7 +571,7 @@ class Parser(object):
             required=False
         )
         self.ldap_bind_dn_mutual_group.add_argument('--bind-dn', dest='ldap_bind_dn',
-                                                    metavar='LDAP Bind DN',
+                                                    metavar='LDAP Bind DN', default=None,
                                                     help=('DN for user to bind to LDAP. E.g. '
                                                           'cn=Admin,ou=People,dc=my,dc=company,'
                                                           'dc=com'))
@@ -583,7 +583,7 @@ class Parser(object):
             required=False
         )
         self.ldap_base_pw_mutual_group.add_argument('--bind-pass', dest='ldap_bind_pass',
-                                                    metavar='LDAP Bind Password',
+                                                    metavar='LDAP Bind Password', default=None,
                                                     help='Password for bind account')
         self.ldap_base_pw_mutual_group.add_argument('--clear-bind-pass',
                                                     action='store_true',
@@ -593,7 +593,7 @@ class Parser(object):
             required=False
         )
         self.ldap_user_search_mutual_group.add_argument('--user-search', dest='ldap_user_search',
-                                                        metavar='LDAP search',
+                                                        metavar='LDAP search', default=None,
                                                         help=('LDAP query for user objects. E.g.'
                                                               ' (objectClass=posixUser)'))
         self.ldap_user_search_mutual_group.add_argument('--clear-user-search',
@@ -604,6 +604,7 @@ class Parser(object):
             required=False
         )
         self.ldap_username_attribute_mutual_group.add_argument('--username-attribute',
+                                                               default=None,
                                                                dest='ldap_username_attribute',
                                                                metavar='LDAP Username Attribute',
                                                                help=('LDAP username attribute.'
@@ -618,7 +619,7 @@ class Parser(object):
             required=False
         )
         self.ldap_ca_cert_mutual_group.add_argument('--ca-cert-file', dest='ldap_ca_cert',
-                                                    metavar='Path to CA file',
+                                                    metavar='Path to CA file', default=None,
                                                     help=('Path to CA cert file for LDAP over'
                                                           ' TLS.'))
         self.ldap_ca_cert_mutual_group.add_argument('--clear-ca-cert-file',
@@ -1072,28 +1073,29 @@ class Parser(object):
                 ldap.set_enable(True)
             elif args.ldap_disable:
                 ldap.set_enable(False)
+
             ldap_args = {}
-            if args.ldap_server_uri:
+            if args.ldap_server_uri is not None:
                 ldap_args['server_uri'] = args.ldap_server_uri
             elif args.ldap_server_uri_clear:
                 ldap_args['server_uri'] = None
-            if args.ldap_base_dn:
+            if args.ldap_base_dn is not None:
                 ldap_args['base_dn'] = args.ldap_base_dn
             elif args.ldap_base_dn_clear:
                 ldap_args['base_dn'] = None
-            if args.ldap_bind_dn:
+            if args.ldap_bind_dn is not None:
                 ldap_args['bind_dn'] = args.ldap_bind_dn
             elif args.ldap_bind_dn_clear:
                 ldap_args['bind_dn'] = None
-            if args.ldap_bind_pass:
+            if args.ldap_bind_pass is not None:
                 ldap_args['bind_pass'] = args.ldap_bind_pass
             elif args.ldap_bind_pass_clear:
                 ldap_args['bind_pass'] = None
-            if args.ldap_user_search:
+            if args.ldap_user_search is not None:
                 ldap_args['user_search'] = args.ldap_user_search
             elif args.ldap_user_search_clear:
                 ldap_args['user_search'] = None
-            if args.ldap_username_attribute:
+            if args.ldap_username_attribute is not None:
                 ldap_args['username_attribute'] = args.ldap_username_attribute
             elif args.ldap_username_attribute_clear:
                 ldap_args['username_attribute'] = None
