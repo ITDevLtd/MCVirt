@@ -18,9 +18,17 @@
 
 import Pyro4
 
+from mcvirt.syslogger import Syslogger
+
 
 class PyroObject(object):
     """Base class for providing Pyro-based methods for objects"""
+
+    def initialise(self):
+        """Method to override, which is run once all factory objects
+        have been added to the daemon
+        """
+        pass
 
     @property
     def _is_pyro_initialised(self):
@@ -55,6 +63,7 @@ class PyroObject(object):
     def _register_object(self, local_object):
         """Register an object with the pyro daemon"""
         if self._is_pyro_initialised:
+            Syslogger.logger().debug('Registering object (dynamic): %s' % local_object)
             self._pyroDaemon.register(local_object)
 
     def _convert_remote_object(self, remote_object):

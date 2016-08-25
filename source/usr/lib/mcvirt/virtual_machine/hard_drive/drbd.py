@@ -31,7 +31,9 @@ from mcvirt.constants import DirectoryLocation
 from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
                                DrbdVolumeNotInSyncException, MCVirtCommandException,
-                               DrbdNotEnabledOnNode)
+                               DrbdNotEnabledOnNode, InvalidNodesException,
+                               TooManyParametersException, ArgumentParserException,
+                               VmNotRegistered)
 
 
 class DrbdConnectionState(Enum):
@@ -803,6 +805,10 @@ class Drbd(Base):
     @locking_method()
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.SET_SYNC_STATE, self.vm_object
+        )
+
         def update_config(config):
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.get_config_object().update_config(
@@ -825,8 +831,12 @@ class Drbd(Base):
     @Pyro4.expose()
     def verify(self):
         """Performs a verification of a Drbd hard drive"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object
+        )
+
         # Check Drbd state of disk
-        if (self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED):
+        if self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED:
             raise DrbdStateException(
                 'Drbd resource must be connected before performing a verification: %s' %
                 self.resource_name)
@@ -861,6 +871,55 @@ class Drbd(Base):
         else:
             raise DrbdVolumeNotInSyncException('The Drbd verification for \'%s\' failed' %
                                                self.resource_name)
+
+    @Pyro4.expose()
+    def resync(self, source_node=None, auto_determine=False):
+        """Perform a resync of a Drbd hard drive"""
+        # Ensure user has privileges to create a Drbd volume
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+
+        if source_node:
+            if source_node not in self.vm_object.getAvailableNodes():
+                raise InvalidNodesException('Invalid node name')
+            if auto_determine:
+                raise TooManyParametersException(
+                    'Only one of source_node an auto_determine should be specified'
+                )
+        else:
+            if not auto_determine:
+                raise ArgumentParserException(
+                    'Either source_node or auto_determine must be specified'
+                )
+            elif self.vm_object.getNode():
+                source_node = self.vm_object.getNode()
+            else:
+                raise VmNotRegistered('Cannot auto-determine node - VM is not registered')
+
+        # Check Drbd state of disk
+        if self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED:
+            raise DrbdStateException(
+                'Drbd resource must be connected before performing a resync: %s' %
+                self.resource_name)
+
+        if source_node == get_hostname():
+            System.runCommand([NodeDrbd.DrbdADM, 'invalidate-remote',
+                               self.resource_name])
+
+            # Monitor the Drbd status, until the VM has started syncing
+            while True:
+                if self._drbdGetConnectionState() == DrbdConnectionState.SYNC_SOURCE:
+                    break
+                time.sleep(5)
+
+            # Monitor the Drbd status, until the VM has finished syncing
+            while True:
+                if self._drbdGetConnectionState() != DrbdConnectionState.SYNC_SOURCE:
+                    break
+                time.sleep(5)
+        elif not self._cluster_disable:
+            remote_object = self.get_remote_object(remote_node=source_node)
+            remote_object.resync(source_node=source_node)
 
     def move(self, destination_node, source_node):
         """Replaces a remote node for the Drbd volume with a new node

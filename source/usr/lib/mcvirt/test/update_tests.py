@@ -32,6 +32,7 @@ class UpdateTests(TestBase):
         suite = unittest.TestSuite()
         suite.addTest(UpdateTests('test_remove_network'))
         suite.addTest(UpdateTests('test_remove_network_non_existant'))
+        suite.addTest(UpdateTests('test_set_windows_flag'))
         return suite
 
     def setUp(self):
@@ -97,3 +98,48 @@ class UpdateTests(TestBase):
             test_vm_object
         )
         self.assertEqual(len(network_adapters), 1)
+
+    def test_set_windows_flag(self):
+        """Set the Windows CPU flag and check the XML is modified correctly"""
+        # Create test VM
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Obtain VM XML
+        vm_factory = self.RPC_DAEMON.DAEMON.registered_factories['virtual_machine_factory']
+        vm = vm_factory.getVirtualMachineByName('mcvirt-unittest-vm')
+        xml = vm.getLibvirtConfig()
+
+        # Check that <cpu> section is not in XML by default
+        self.assertEqual(xml.find('./cpu'), None)
+
+        # Set Windows CPU flag
+        self.parser.parse_arguments('update %s --add-flag windows' %
+                                    self.test_vms['TEST_VM_1']['name'])
+
+        xml = vm.getLibvirtConfig()
+
+        # Check CPU section exists
+        cpu_section = xml.find('./cpu')
+        self.assertTrue(cpu_section is not None)
+        self.assertEquals(cpu_section.get('mode'), 'custom')
+        self.assertEquals(cpu_section.get('match'), 'exact')
+
+        # Check mode section exists
+        model_section = cpu_section.find('./model')
+        self.assertTrue(model_section is not None)
+        self.assertEquals(model_section.get('fallback'), 'allow')
+        self.assertEquals(model_section.text, 'core2duo')
+
+        # Check feature section exists
+        feature_section = cpu_section.find('./feature')
+        self.assertTrue(feature_section is not None)
+        self.assertEquals(feature_section.get('policy'), 'require')
+        self.assertEquals(feature_section.get('name'), 'nx')
+
+        # Unset Windows flag
+        self.parser.parse_arguments('update %s --remove-flag windows' %
+                                    self.test_vms['TEST_VM_1']['name'])
+
+        # Check that <cpu> section is now not present
+        xml = vm.getLibvirtConfig()
+        self.assertEqual(xml.find('./cpu'), None)

@@ -26,7 +26,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import locking_method
 from mcvirt.exceptions import (LdapConnectionFailedException, LdapNotEnabledException,
-                               UserDoesNotExistException)
+                               UserDoesNotExistException, UnknownLdapError)
 from mcvirt.constants import DirectoryLocation
 
 
@@ -62,9 +62,8 @@ class LdapFactory(PyroObject):
             ldap_connection = ldap.initialize(uri=ldap_config['server_uri'])
             ldap_connection.bind_s(bind_dn, password)
         except:
-            raise
             raise LdapConnectionFailedException(
-                'Connection attempts to the LDAP server failed'
+                'Connection attempts to the LDAP server failed.'
             )
 
         return ldap_connection
@@ -126,9 +125,13 @@ class LdapFactory(PyroObject):
         ldap_config = MCVirtConfig().get_config()['ldap']
         ldap_con = self.get_connection()
 
-        res = ldap_con.search_s(ldap_config['base_dn'], ldap.SCOPE_SUBTREE,
-                                self.get_user_filter(),
-                                [str(ldap_config['username_attribute'])])
+        try:
+            res = ldap_con.search_s(ldap_config['base_dn'], ldap.SCOPE_SUBTREE,
+                                    self.get_user_filter(),
+                                    [str(ldap_config['username_attribute'])])
+        except:
+            raise UnknownLdapError(('An LDAP search error occurred. Please read the MCVirt'
+                                    ' logs for more information'))
         return [user_obj[1][ldap_config['username_attribute']][0] for user_obj in res]
 
     def search_dn(self, username):
@@ -136,9 +139,13 @@ class LdapFactory(PyroObject):
         ldap_config = MCVirtConfig().get_config()['ldap']
         ldap_con = self.get_connection()
 
-        res = ldap_con.search_s(str(ldap_config['base_dn']), ldap.SCOPE_SUBTREE,
-                                self.get_user_filter(username),
-                                [str(ldap_config['username_attribute'])])
+        try:
+            res = ldap_con.search_s(str(ldap_config['base_dn']), ldap.SCOPE_SUBTREE,
+                                    self.get_user_filter(username),
+                                    [str(ldap_config['username_attribute'])])
+        except:
+            raise UnknownLdapError(('An LDAP search error occurred. Please read the MCVirt'
+                                    ' logs for more information'))
         if len(res):
             return res[0][0]
         else:
@@ -179,6 +186,6 @@ class LdapFactory(PyroObject):
         if self._is_cluster_master:
             def remote_command(node_connection):
                 remote_ldap_factory = node_connection.get_connection('ldap_factory')
-                remote_ldap_factory.set_config(config_changes)
+                remote_ldap_factory.set_config(**config_changes)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)

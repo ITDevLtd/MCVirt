@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 
 import re
+from mcvirt.exceptions import MCVirtTypeError
 
 
 class ArgumentValidator(object):
@@ -31,14 +32,14 @@ class ArgumentValidator(object):
 
         # Check length
         if len(hostname) > 64 or not len(hostname):
-            raise TypeError(exception_message)
+            raise MCVirtTypeError(exception_message)
 
         disallowed = re.compile(r"[^A-Z\d-]", re.IGNORECASE)
         if disallowed.search(hostname):
-            raise TypeError(exception_message)
+            raise MCVirtTypeError(exception_message)
 
         if hostname.startswith('-') or hostname.endswith('-'):
-            raise TypeError(exception_message)
+            raise MCVirtTypeError(exception_message)
 
     @staticmethod
     def validate_network_name(name):
@@ -46,19 +47,19 @@ class ArgumentValidator(object):
         exception_message = ('Network name must only use alpha-numeric characters and'
                              ' not be any longer than 64 characters in length')
         if len(name) > 64 or not len(name):
-            raise TypeError(exception_message)
+            raise MCVirtTypeError(exception_message)
         disallowed = re.compile(r"[^A-Z\d]", re.IGNORECASE)
         if disallowed.search(name):
-            raise TypeError(exception_message)
+            raise MCVirtTypeError(exception_message)
 
     @staticmethod
     def validate_integer(value):
         """Validate integer"""
         try:
             if str(int(value)) != str(value):
-                raise TypeError
+                raise MCVirtTypeError
         except ValueError:
-            raise TypeError
+            raise MCVirtTypeError
 
     @staticmethod
     def validate_positive_integer(value):
@@ -68,13 +69,13 @@ class ArgumentValidator(object):
         ArgumentValidator.validate_integer(value)
 
         if int(value) < 1:
-            raise TypeError
+            raise MCVirtTypeError
 
     @staticmethod
     def validate_boolean(variable):
         """Ensure variable is a boolean"""
         if type(variable) is not bool:
-            raise TypeError
+            raise MCVirtTypeError
 
     @staticmethod
     def validate_drbd_resource(variable):
@@ -82,10 +83,10 @@ class ArgumentValidator(object):
         valid_name = re.compile('^mcvirt_vm-(.+)-disk-(\d+)$')
         result = valid_name.match(variable)
         if not result:
-            raise TypeError
+            raise MCVirtTypeError
 
         # Validate the hostname in the DRBD resource
         ArgumentValidator.validate_hostname(result.groups()[0])
         ArgumentValidator.validate_positive_integer(result.groups()[1])
         if int(result.groups()[1]) > 99:
-            raise TypeError
+            raise MCVirtTypeError

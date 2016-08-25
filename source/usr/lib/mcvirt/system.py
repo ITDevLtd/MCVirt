@@ -40,11 +40,8 @@ class System(object):
         if rc and raise_exception_on_failure:
             Syslogger.logger().error("Failed system command: %s\nRC: %s\nStdout: %s\nStderr: %s" %
                                      (', '.join(command_args), rc, stdout, stderr))
-            raise MCVirtCommandException(
-                "Command: %s\nExit code: %s\nOutput:\n%s" %
-                (' '.join(command_args),
-                 rc,
-                 stdout + stderr))
+            raise MCVirtCommandException(('External command failure. '
+                                          'See MCVirt log for more information'))
 
         Syslogger.logger().debug("Successful system command: %s\nRC: %s\nStdout: %s\nStderr: %s" %
                                  (', '.join(command_args), rc, stdout, stderr))
@@ -52,7 +49,7 @@ class System(object):
 
     @staticmethod
     def getUserInput(display_text, password=False):
-        """Prompts the user for input"""
+        """Prompt the user for input"""
         if password:
             return getpass.getpass(display_text)
         else:
@@ -61,7 +58,7 @@ class System(object):
 
     @staticmethod
     def getNewPassword():
-        """Prompts the user for a new password, throwing an exception is the password is not
+        """Prompt the user for a new password, throwing an exception is the password is not
         repeated correctly
         """
         new_password = System.getUserInput("New password: ", password=True)

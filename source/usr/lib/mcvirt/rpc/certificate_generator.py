@@ -43,7 +43,7 @@ class CertificateGenerator(PyroObject):
         if not os.path.isfile(self.OPENSSL):
             raise OpenSSLNotFoundException('openssl not found: %s' % self.OPENSSL)
 
-        if server == 'localhost' or server == '127.0.0.1' or server is None:
+        if server == 'localhost' or server.startswith('127.') or server is None:
             self.server = get_hostname()
         else:
             self.server = server

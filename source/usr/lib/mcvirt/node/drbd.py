@@ -23,6 +23,7 @@ from texttable import Texttable
 import Pyro4
 import random
 import string
+import json
 
 from mcvirt.exceptions import DrbdNotInstalledException, DrbdAlreadyEnabled
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -42,6 +43,31 @@ class Drbd(PyroObject):
     GLOBAL_CONFIG_TEMPLATE = DirectoryLocation.TEMPLATE_DIR + '/drbd_global.conf'
     DrbdADM = '/sbin/drbdadm'
     CLUSTER_SIZE = 2
+
+    def initialise(self):
+        """Ensure that DRBD user exists and that hook configuration
+        exists
+        """
+        if self.is_enabled():
+            self.check_hook_configuration()
+            if MCVirtConfig.REGENERATE_DRBD_CONFIG:
+                MCVirtConfig.REGENERATE_DRBD_CONFIG = False
+                self.generate_config()
+
+    def check_hook_configuration(self):
+        """Ensure that DRBD user exists and that hook configuration
+        exists
+        """
+        user_factory = self._get_registered_object('user_factory')
+        if (not os.path.exists(DirectoryLocation.DRBD_HOOK_CONFIG) or
+                not len(user_factory.get_all_user_objects(user_classes=['DrbdHookUser']))):
+
+            # Generate hook user
+            hook_user, hook_pass = user_factory.generate_user(user_type='DrbdHookUser')
+
+            # Write DRBD hook script configuration file
+            with open(DirectoryLocation.DRBD_HOOK_CONFIG, 'w') as fh:
+                json.dump({'username': hook_user, 'password': hook_pass}, fh)
 
     @Pyro4.expose()
     def is_enabled(self):
@@ -76,6 +102,8 @@ class Drbd(PyroObject):
 
         if secret is None:
             secret = self.generate_secret()
+
+        self.check_hook_configuration()
 
         # Set the secret in the local configuration
         self.set_secret(secret)

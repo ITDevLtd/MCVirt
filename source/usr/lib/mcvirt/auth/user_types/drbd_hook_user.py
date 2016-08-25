@@ -1,3 +1,5 @@
+"""Provide class for managing DRBD hook users."""
+
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -14,3 +16,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
+
+from mcvirt.auth.user_types.user_base import UserBase
+from mcvirt.auth.permissions import PERMISSIONS
+
+
+class DrbdHookUser(UserBase):
+    """User type for DRBD hook users."""
+
+    USER_PREFIX = 'drbd-hook-'
+    CAN_GENERATE = True
+    CLUSTER_USER = True
+    DISTRIBUTED = False
+    PERMISSIONS = [PERMISSIONS.SET_SYNC_STATE]
+    UNIQUE = True

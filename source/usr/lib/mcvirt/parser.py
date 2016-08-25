@@ -200,10 +200,15 @@ class Parser(object):
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
                                         type=str, default=None, choices=['Local', 'Drbd'])
-        self.create_parser.add_argument('--driver', metavar='Hard Drive Driver',
+        self.create_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
                                         default=None)
+        self.create_parser.add_argument('--graphics-driver', dest='graphics_driver',
+                                        metavar='Graphics Driver', type=str,
+                                        help='Driver for graphics', default=None)
+        self.create_parser.add_argument('--modification-flag', help='Add VM modification flag',
+                                        dest='modification_flags', action='append')
 
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
@@ -255,9 +260,13 @@ class Parser(object):
         self.update_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type', type=str,
                                         default=None)
-        self.update_parser.add_argument('--driver', metavar='Hard Drive Driver',
+        self.update_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
+                                        default=None)
+        self.update_parser.add_argument('--graphics-driver', metavar='Graphics Driver',
+                                        dest='graphics_driver', type=str,
+                                        help='Driver for graphics',
                                         default=None)
         self.update_parser.add_argument('--increase-disk', dest='increase_disk',
                                         metavar='Increase Disk', type=int,
@@ -269,6 +278,10 @@ class Parser(object):
                                         help=('Attach an ISO to a running VM.'
                                               ' Specify without value to detach ISO.'))
         self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        self.update_parser.add_argument('--add-flag', help='Add VM modification flag',
+                                        dest='add_flags', action='append')
+        self.update_parser.add_argument('--remove-flag', help='Remove VM modification flag',
+                                        dest='remove_flags', action='append')
 
         # Get arguments for making permission changes to a VM
         self.permission_parser = self.subparsers.add_parser(
@@ -525,7 +538,7 @@ class Parser(object):
             required=False
         )
         self.ldap_enable_mutual_group.add_argument('--enable-ldap', dest='ldap_enable',
-                                                   action='store_true',
+                                                   action='store_true', default=None,
                                                    help='Enable the LDAP authentication backend')
         self.ldap_enable_mutual_group.add_argument('--disable-ldap', dest='ldap_disable',
                                                    action='store_true',
@@ -535,7 +548,7 @@ class Parser(object):
             required=False
         )
         self.ldap_server_mutual_group.add_argument('--server-uri', dest='ldap_server_uri',
-                                                   metavar='LDAP Server URI',
+                                                   metavar='LDAP Server URI', default=None,
                                                    help=('Specify the LDAP server URI.'
                                                          ' E.g. ldap://10.200.1.1:389'
                                                          ' ldaps://10.200.1.1'))
@@ -547,7 +560,7 @@ class Parser(object):
             required=False
         )
         self.ldap_base_dn_mutual_group.add_argument('--base-dn', dest='ldap_base_dn',
-                                                    metavar='LDAP Base DN',
+                                                    metavar='LDAP Base DN', default=None,
                                                     help=('Base search DN for users. E.g. '
                                                           'ou=People,dc=my,dc=company,dc=com'))
         self.ldap_base_dn_mutual_group.add_argument('--clear-base-dn',
@@ -558,7 +571,7 @@ class Parser(object):
             required=False
         )
         self.ldap_bind_dn_mutual_group.add_argument('--bind-dn', dest='ldap_bind_dn',
-                                                    metavar='LDAP Bind DN',
+                                                    metavar='LDAP Bind DN', default=None,
                                                     help=('DN for user to bind to LDAP. E.g. '
                                                           'cn=Admin,ou=People,dc=my,dc=company,'
                                                           'dc=com'))
@@ -570,7 +583,7 @@ class Parser(object):
             required=False
         )
         self.ldap_base_pw_mutual_group.add_argument('--bind-pass', dest='ldap_bind_pass',
-                                                    metavar='LDAP Bind Password',
+                                                    metavar='LDAP Bind Password', default=None,
                                                     help='Password for bind account')
         self.ldap_base_pw_mutual_group.add_argument('--clear-bind-pass',
                                                     action='store_true',
@@ -580,7 +593,7 @@ class Parser(object):
             required=False
         )
         self.ldap_user_search_mutual_group.add_argument('--user-search', dest='ldap_user_search',
-                                                        metavar='LDAP search',
+                                                        metavar='LDAP search', default=None,
                                                         help=('LDAP query for user objects. E.g.'
                                                               ' (objectClass=posixUser)'))
         self.ldap_user_search_mutual_group.add_argument('--clear-user-search',
@@ -591,6 +604,7 @@ class Parser(object):
             required=False
         )
         self.ldap_username_attribute_mutual_group.add_argument('--username-attribute',
+                                                               default=None,
                                                                dest='ldap_username_attribute',
                                                                metavar='LDAP Username Attribute',
                                                                help=('LDAP username attribute.'
@@ -605,7 +619,7 @@ class Parser(object):
             required=False
         )
         self.ldap_ca_cert_mutual_group.add_argument('--ca-cert-file', dest='ldap_ca_cert',
-                                                    metavar='Path to CA file',
+                                                    metavar='Path to CA file', default=None,
                                                     help=('Path to CA cert file for LDAP over'
                                                           ' TLS.'))
         self.ldap_ca_cert_mutual_group.add_argument('--clear-ca-cert-file',
@@ -626,6 +640,27 @@ class Parser(object):
                                                         help='Verifies all of the VMs')
         self.verify_mutual_exclusive_group.add_argument('vm_name', metavar='VM Name', nargs='?',
                                                         help='Specify a single VM to verify')
+
+        # Create sub-parser for VM verification
+        self.verify_parser = self.subparsers.add_parser(
+            'resync',
+            help='Perform resync of DRBD volumes',
+            parents=[self.parent_parser])
+        self.resync_node_mutual_exclusive_group = self.verify_parser.add_mutually_exclusive_group(
+            required=True
+        )
+        self.resync_node_mutual_exclusive_group.add_argument(
+            '--source-node', dest='resync_node', default=None,
+            help='Specify the SOURCE node for the resync.'
+        )
+        self.resync_node_mutual_exclusive_group.add_argument(
+            '--auto-determine', dest='resync_auto_determine', action='store_true',
+            help='Automatically sync from the node that the VM is currently registered on.'
+        )
+        self.verify_parser.add_argument('vm_name', metavar='VM Name',
+                                        help='Specify a single VM to resync')
+        self.verify_parser.add_argument('--disk-id', metavar='Disk Id', default=1, type=int,
+                                        help='Specify the Disk ID to resync (default: 1)')
 
         # Create sub-parser for Drbd-related commands
         self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage Drbd clustering',
@@ -783,6 +818,7 @@ class Parser(object):
             memory_allocation = int(args.memory) * 1024
             vm_factory = rpc.get_connection('virtual_machine_factory')
             hard_disks = [args.disk_size] if args.disk_size is not None else []
+            mod_flags = args.modification_flags or []
             vm_object = vm_factory.create(
                 name=args.vm_name,
                 cpu_cores=args.cpu_count,
@@ -791,7 +827,9 @@ class Parser(object):
                 network_interfaces=args.networks,
                 storage_type=storage_type,
                 hard_drive_driver=args.hard_disk_driver,
-                available_nodes=args.nodes)
+                graphics_driver=args.graphics_driver,
+                available_nodes=args.nodes,
+                modification_flags=mod_flags)
 
         elif action == 'delete':
             vm_factory = rpc.get_connection('virtual_machine_factory')
@@ -868,6 +906,16 @@ class Parser(object):
                 disk_drive = vm_object.get_disk_drive()
                 rpc.annotate_object(disk_drive)
                 disk_drive.attachISO(iso_object, True)
+
+            if args.graphics_driver:
+                vm_object.update_graphics_driver(args.graphics_driver)
+
+            if args.add_flags or args.remove_flags:
+                add_flags = args.add_flags or []
+                remove_flags = args.remove_flags or []
+                vm_object.update_modification_flags(add_flags=add_flags, remove_flags=remove_flags)
+                flags_str = ", ".join(vm_object.get_modification_flags())
+                self.print_status('Modification flags set to: %s' % (flags_str or 'None'))
 
         elif action == 'permission':
             if (args.add_superuser or args.delete_superuser) and args.vm_name:
@@ -1025,28 +1073,29 @@ class Parser(object):
                 ldap.set_enable(True)
             elif args.ldap_disable:
                 ldap.set_enable(False)
+
             ldap_args = {}
-            if args.ldap_server_uri:
+            if args.ldap_server_uri is not None:
                 ldap_args['server_uri'] = args.ldap_server_uri
             elif args.ldap_server_uri_clear:
                 ldap_args['server_uri'] = None
-            if args.ldap_base_dn:
+            if args.ldap_base_dn is not None:
                 ldap_args['base_dn'] = args.ldap_base_dn
             elif args.ldap_base_dn_clear:
                 ldap_args['base_dn'] = None
-            if args.ldap_bind_dn:
+            if args.ldap_bind_dn is not None:
                 ldap_args['bind_dn'] = args.ldap_bind_dn
             elif args.ldap_bind_dn_clear:
                 ldap_args['bind_dn'] = None
-            if args.ldap_bind_pass:
+            if args.ldap_bind_pass is not None:
                 ldap_args['bind_pass'] = args.ldap_bind_pass
             elif args.ldap_bind_pass_clear:
                 ldap_args['bind_pass'] = None
-            if args.ldap_user_search:
+            if args.ldap_user_search is not None:
                 ldap_args['user_search'] = args.ldap_user_search
             elif args.ldap_user_search_clear:
                 ldap_args['user_search'] = None
-            if args.ldap_username_attribute:
+            if args.ldap_username_attribute is not None:
                 ldap_args['username_attribute'] = args.ldap_username_attribute
             elif args.ldap_username_attribute_clear:
                 ldap_args['username_attribute'] = None
@@ -1081,10 +1130,9 @@ class Parser(object):
                         try:
                             disk_object.verify()
                             self.print_status(
-                                ('Drbd verification for %s (%s) completed '
+                                ('Drbd verification for %s completed '
                                  'without out-of-sync blocks') %
-                                (disk_object.resource_name,
-                                 vm_object.get_name())
+                                vm_object.get_name()
                             )
                         except DrbdVolumeNotInSyncException, e:
                             # Append the not-in-sync exception message to an array,
@@ -1095,6 +1143,15 @@ class Parser(object):
             # all exception messages
             if failures:
                 raise DrbdVolumeNotInSyncException("\n".join(failures))
+
+        elif action == 'resync':
+            vm_factory = rpc.get_connection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            hard_drive_factory = rpc.get_connection('hard_drive_factory')
+            disk_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+            rpc.annotate_object(disk_object)
+            disk_object.resync(source_node=args.resync_node,
+                               auto_determine=args.resync_auto_determine)
 
         elif action == 'drbd':
             node_drbd = rpc.get_connection('node_drbd')

@@ -18,32 +18,34 @@
 
 import sys
 import os
+import json
 
 sys.path.insert(0, '/usr/lib')
 
-from mcvirt.node.drbd import DrbdSocket
+from mcvirt.client.rpc import Connection  # noqa
+from mcvirt.constants import DirectoryLocation  # noqa
 
 # Obtain Drbd resource name from argument
-drbd_resource = os.environ['Drbd_RESOURCE']
+drbd_resource = os.environ['DRBD_RESOURCE']
 
-# Determine if Drbd socket exists
-if (os.path.exists(DrbdSocket.SOCKET_PATH)):
-    import socket
+# Determine sync state from arguments
+sync_state = bool(int(sys.argv[1])) if len(sys.argv) > 1 else False
 
-    # Connect to socket and send Drbd resource name to be set as out-of-sync
-    socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+# Ensure that the hook config exists
+if not os.path.exists(DirectoryLocation.DRBD_HOOK_CONFIG):
+    sys.exit(0)
 
-    socket.connect(DrbdSocket.SOCKET_PATH)
-    socket.send(drbd_resource)
-    socket.close()
-else:
-    from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
+# Read the hook config
+with open(DirectoryLocation.DRBD_HOOK_CONFIG, 'r') as fh:
+    config = json.load(fh)
 
-    # Otherwise, create an MCVirt object and update the VM directly
-    mcvirt_instance = MCVirt(obtain_lock=True, initialise_nodes=False)
-    hard_drive_object = HardDriveFactory.getDrbdObjectByResourceName(
-        mcvirt_instance,
-        drbd_resource
-    )
-    hard_drive_object.setSyncState(False, update_remote=False)
-    mcvirt_instance = None
+# Create RPC connection and obtain hard drive factory
+rpc = Connection(username=config['username'], password=config['password'])
+hard_drive_factory = rpc.get_connection('hard_drive_factory')
+
+# Obtain hard drive object and set sync state
+hard_drive_object = hard_drive_factory.getDrbdObjectByResourceName(
+    drbd_resource
+)
+rpc.annotate_object(hard_drive_object)
+hard_drive_object.setSyncState(sync_state, update_remote=True)

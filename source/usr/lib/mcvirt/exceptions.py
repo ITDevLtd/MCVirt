@@ -592,6 +592,42 @@ class LdapNotEnabledException(MCVirtException):
     pass
 
 
+class ResyncNotSupportedException(MCVirtException):
+    """Resync is not supported on this storage type"""
+
+    pass
+
+
+class InvalidGraphicsDriverException(MCVirtException):
+    """The provided graphics driver name was not valid"""
+
+    pass
+
+
+class TooManyParametersException(MCVirtException):
+    """Too many parameters have been defined"""
+
+    pass
+
+
+class InvalidModificationFlagException(MCVirtException):
+    """The provided modification flag name was invalid"""
+
+    pass
+
+
+class MCVirtTypeError(MCVirtException):
+    """TypeError raised by MCVirt"""
+
+    pass
+
+
+class UnknownLdapError(MCVirtException):
+    """An unknown LDAP error has occurred"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)
