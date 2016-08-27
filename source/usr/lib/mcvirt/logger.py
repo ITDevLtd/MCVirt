@@ -60,8 +60,11 @@ class Logger(PyroObject):
                 )
                 remote_node.annotate_object(remote_log)
                 log_item.remote_logs.append(remote_log)
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_command)
+            try:
+                cluster = self._get_registered_object('cluster')
+                cluster.run_remote_command(remote_command)
+            except:
+                pass
 
         return log_item
 
@@ -181,7 +184,10 @@ class LogItem(PyroObject):
             self.method_name or ''
         ]))
         for remote_log in self.remote_logs:
-            remote_log.start()
+            try:
+                remote_log.start()
+            except:
+                pass
 
     @Pyro4.expose()
     def finish_success(self):
@@ -205,7 +211,10 @@ class LogItem(PyroObject):
             self.method_name or '', self.exception_message or ''
         ]))
         for remote_log in self.remote_logs:
-            remote_log.finish_error_unknown(str(exception))
+            try:
+                remote_log.finish_error_unknown(str(exception))
+            except:
+                pass
 
     @Pyro4.expose()
     def finish_error(self, exception):
@@ -218,8 +227,10 @@ class LogItem(PyroObject):
             self.method_name or '', self.exception_message or ''
         ]))
         for remote_log in self.remote_logs:
-            remote_log.finish_error(str(exception))
-
+            try:
+                remote_log.finish_error(str(exception))
+            except:
+                pass
 
 def getLogNames(callback, instance_method, object_type, args, kwargs):
     """Attempts to determine object name and object type, based on method"""
