@@ -53,7 +53,7 @@ class Factory(PyroObject):
     OBJECT_TYPE = 'virtual machine'
     VIRTUAL_MACHINE_CLASS = VirtualMachine
     DEFAULT_GRAPHICS_DRIVER = GraphicsDriver.VMVGA.value
-    CACHED_OBJECTED = {}
+    CACHED_OBJECTS = {}
 
     @Pyro4.expose()
     def getVirtualMachineByName(self, vm_name):
