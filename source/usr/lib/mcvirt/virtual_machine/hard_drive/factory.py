@@ -55,7 +55,7 @@ class Factory(PyroObject):
             self._register_object(hard_drive_object)
             Factory.CACHED_OBJECTS[(self.vm_object.get_name(), self.disk_id)] = hard_drive_object
 
-        return Factory.CACHED_OBJECTS[(self.vm_object.get_name(), self.disk_id)]
+        return Factory.CACHED_OBJECTS[(vm_object.get_name(), disk_id)]
 
     @Pyro4.expose()
     @locking_method()
