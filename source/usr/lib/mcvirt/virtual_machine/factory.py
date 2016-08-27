@@ -53,14 +53,17 @@ class Factory(PyroObject):
     OBJECT_TYPE = 'virtual machine'
     VIRTUAL_MACHINE_CLASS = VirtualMachine
     DEFAULT_GRAPHICS_DRIVER = GraphicsDriver.VMVGA.value
+    CACHED_OBJECTED = {}
 
     @Pyro4.expose()
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
         ArgumentValidator.validate_hostname(vm_name)
-        vm_object = VirtualMachine(self, vm_name)
-        self._register_object(vm_object)
-        return vm_object
+        if vm_name not in Factory.CACHED_OBJECTED:
+            vm_object = VirtualMachine(self, vm_name)
+            self._register_object(vm_object)
+            Factory.CACHED_OBJECTED[vm_name] = vm_object
+        return Factory.CACHED_OBJECTED[vm_name]
 
     @Pyro4.expose()
     def getAllVirtualMachines(self):

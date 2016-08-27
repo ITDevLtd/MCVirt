@@ -80,3 +80,10 @@ class PyroObject(object):
             return self._pyroDaemon.registered_factories[object_name]
         else:
             return None
+
+    def unregister_object(self, obj=None):
+        """Unregister object from the Pyro Daemon"""
+        if self._is_pyro_initialised:
+            if obj is None:
+                obj = self
+            self._pyroDaemon.unregister(obj)
