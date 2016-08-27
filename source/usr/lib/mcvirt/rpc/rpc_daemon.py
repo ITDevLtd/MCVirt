@@ -46,6 +46,7 @@ from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.daemon_lock import DaemonLock
 from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.exceptions import AuthenticationError
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -184,7 +185,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         except Exception, e:
             Syslogger.logger().exception('Error during authentication: %s' % str(e))
         # If no valid authentication was provided, raise an error
-        raise Pyro4.errors.SecurityError('Invalid username/password/session')
+        raise AuthenticationError('Invalid username/password/session')
 
 
 class DaemonSession(object):

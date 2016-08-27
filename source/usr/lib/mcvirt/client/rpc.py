@@ -64,10 +64,16 @@ class Connection(object):
             session_id = session_object._pyroHandshake[Annotations.SESSION_ID]
             return session_id
         except Pyro4.errors.CommunicationError, e:
-            raise AuthenticationError(str(e))
-        except Pyro4.errors.NamingError, e:
+            if 'refused' in str(e):
+                raise mcvirt.exceptions.InaccessibleNodeException('Error connecting to daemon')
+            raise AuthenticationError('Invalid username/password')
+        except Pyro4.errors.NamingError:
             raise mcvirt.exceptions.InaccessibleNodeException(
                 'MCVirt nameserver/daemon is not running on node %s' % self.__host
+            )
+        except:
+            raise mcvirt.exceptions.InaccessibleNodeException(
+                'An unknown error occurred whilst connecting to daemon'
             )
 
     def _get_auth_obj(self, password=None):

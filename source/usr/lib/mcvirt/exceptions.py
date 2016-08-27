@@ -580,6 +580,12 @@ class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
     pass
 
 
+class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
+    """Unable to connect to node in the cluster"""
+
+    pass
+
+
 class LdapConnectionFailedException(MCVirtException):
     """Connection to the LDAP server failed"""
 
