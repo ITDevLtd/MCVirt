@@ -59,11 +59,11 @@ class Factory(PyroObject):
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
         ArgumentValidator.validate_hostname(vm_name)
-        if vm_name not in Factory.CACHED_OBJECTED:
+        if vm_name not in Factory.CACHED_OBJECTS:
             vm_object = VirtualMachine(self, vm_name)
             self._register_object(vm_object)
-            Factory.CACHED_OBJECTED[vm_name] = vm_object
-        return Factory.CACHED_OBJECTED[vm_name]
+            Factory.CACHED_OBJECTS[vm_name] = vm_object
+        return Factory.CACHED_OBJECTS[vm_name]
 
     @Pyro4.expose()
     def getAllVirtualMachines(self):
