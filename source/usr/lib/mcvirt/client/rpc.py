@@ -66,7 +66,9 @@ class Connection(object):
         except Pyro4.errors.CommunicationError, e:
             if 'refused' in str(e):
                 raise mcvirt.exceptions.InaccessibleNodeException('Error connecting to daemon')
-            raise AuthenticationError('Invalid username/password')
+            elif 'Cannot connect to node' in str(e):
+                raise mcvirt.exceptions.InaccessibleNodeException(str(e))
+            raise AuthenticationError('Invalid username/password: %s' % str(e))
         except Pyro4.errors.NamingError:
             raise mcvirt.exceptions.InaccessibleNodeException(
                 'MCVirt nameserver/daemon is not running on node %s' % self.__host
