@@ -188,9 +188,9 @@ class Base(PyroObject):
         self.removeFromVirtualMachine(unregister=False)
 
         # Unregister object and remove from factory cache
-        del(self._get_registered_object('hard_drive_factory').CACHED_OBJECTS[
-            (self.vm_object.get_name(), self.disk_id)
-        ])
+        hdd_factory = self._get_registered_object('hard_drive_factory')
+        if (self.vm_object.get_name(), self.disk_id) in hdd_factory.CACHED_OBJECTS:
+            del(hdd_factory.CACHED_OBJECTS[(self.vm_object.get_name(), self.disk_id)])
         self.unregister_object()
 
     def duplicate(self, destination_vm_object):

@@ -425,7 +425,9 @@ class VirtualMachine(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
-        del(self._get_registered_object('vm_factory').CACHED_OBJECTED[self.get_name()])
+        vm_factory = self._get_registered_object('virtual_machine_factory')
+        if self.get_name() in vm_factory.CACHED_OBJECTS:
+            del(vm_factory.CACHED_OBJECTS[self.get_name()])
         self.unregister_object()
 
     @Pyro4.expose()
