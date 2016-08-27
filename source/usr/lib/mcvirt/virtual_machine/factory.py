@@ -17,7 +17,6 @@
 
 import Pyro4
 from texttable import Texttable
-import re
 from os.path import exists as os_path_exists
 from os import makedirs
 from enum import Enum
@@ -29,7 +28,8 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                ClusterNotInitialisedException, NodeDoesNotExistException,
-                               VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException)
+                               VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException,
+                               MCVirtTypeError)
 from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
@@ -107,7 +107,7 @@ class Factory(PyroObject):
         """Determines if a VM exists, given a name"""
         try:
             ArgumentValidator.validate_hostname(vm_name)
-        except (TypeError, InvalidVirtualMachineNameException):
+        except (MCVirtTypeError, InvalidVirtualMachineNameException):
             return False
 
         return (vm_name in self.getAllVmNames())
@@ -116,7 +116,7 @@ class Factory(PyroObject):
     def checkName(self, name, ignore_exists=False):
         try:
             ArgumentValidator.validate_hostname(name)
-        except TypeError:
+        except MCVirtTypeError:
             raise InvalidVirtualMachineNameException(
                 'Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes'
             )
