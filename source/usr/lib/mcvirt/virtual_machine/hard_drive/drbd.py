@@ -924,6 +924,7 @@ class Drbd(Base):
     def move(self, destination_node, source_node):
         """Replaces a remote node for the Drbd volume with a new node
            and syncs the data"""
+        raise NotImplemented
         # @TODO Update
         cluster_instance = self._get_registered_object('cluster')
 

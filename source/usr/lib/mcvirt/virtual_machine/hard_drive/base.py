@@ -189,7 +189,8 @@ class Base(PyroObject):
 
         # Unregister object and remove from factory cache
         hdd_factory = self._get_registered_object('hard_drive_factory')
-        if (self.vm_object.get_name(), self.disk_id, self.get_type()) in hdd_factory.CACHED_OBJECTS:
+        if ((self.vm_object.get_name(), self.disk_id, self.get_type()) in
+                hdd_factory.CACHED_OBJECTS):
             del(hdd_factory.CACHED_OBJECTS[(self.vm_object.get_name(),
                                             self.disk_id,
                                             self.get_type())])
