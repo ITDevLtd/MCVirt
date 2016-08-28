@@ -199,6 +199,7 @@ class LogItem(PyroObject):
         ]))
         for remote_log in self.remote_logs:
             remote_log.finish_success()
+        self.unregister()
 
     @Pyro4.expose()
     def finish_error_unknown(self, exception):
@@ -215,6 +216,7 @@ class LogItem(PyroObject):
                 remote_log.finish_error_unknown(str(exception))
             except:
                 pass
+        self.unregister()
 
     @Pyro4.expose()
     def finish_error(self, exception):
@@ -231,6 +233,17 @@ class LogItem(PyroObject):
                 remote_log.finish_error(str(exception))
             except:
                 pass
+        self.unregister()
+
+    def unregister(self):
+        """Unregister connections to remote objects"""
+        for log in self.remote_logs:
+            try:
+                log.unregister()
+            except:
+                pass
+        self.remote_logs = []
+        self._unregister_object()
 
 def getLogNames(callback, instance_method, object_type, args, kwargs):
     """Attempts to determine object name and object type, based on method"""
