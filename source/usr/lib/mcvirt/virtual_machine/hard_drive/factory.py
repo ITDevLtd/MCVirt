@@ -39,23 +39,25 @@ class Factory(PyroObject):
     def getObject(self, vm_object, disk_id, **config):
         """Returns the storage object for a given disk"""
         vm_object = self._convert_remote_object(vm_object)
-        if (vm_object.get_name(), disk_id) not in Factory.CACHED_OBJECTS:
-            vm_config = vm_object.get_config_object().get_config()
-            storage_type = None
-            if vm_config['storage_type']:
-                storage_type = vm_config['storage_type']
+        vm_config = vm_object.get_config_object().get_config()
+        storage_type = None
+        if vm_config['storage_type']:
+            storage_type = vm_config['storage_type']
 
-            if 'storage_type' in config:
-                if storage_type is None:
-                    storage_type = config['storage_type']
-                del(config['storage_type'])
-
+        if 'storage_type' in config:
+            if storage_type is None:
+                storage_type = config['storage_type']
+            del(config['storage_type'])
+        storage_type_key = storage_type or ''
+        if (vm_object.get_name(), disk_id, storage_type_key) not in Factory.CACHED_OBJECTS:
             hard_drive_object = self.getClass(storage_type)(
                 vm_object=vm_object, disk_id=disk_id, **config)
             self._register_object(hard_drive_object)
-            Factory.CACHED_OBJECTS[(vm_object.get_name(), disk_id)] = hard_drive_object
+            Factory.CACHED_OBJECTS[(vm_object.get_name(),
+                                    disk_id,
+                                    storage_type_key)] = hard_drive_object
 
-        return Factory.CACHED_OBJECTS[(vm_object.get_name(), disk_id)]
+        return Factory.CACHED_OBJECTS[(vm_object.get_name(), disk_id, storage_type_key)]
 
     @Pyro4.expose()
     @locking_method()

@@ -189,8 +189,10 @@ class Base(PyroObject):
 
         # Unregister object and remove from factory cache
         hdd_factory = self._get_registered_object('hard_drive_factory')
-        if (self.vm_object.get_name(), self.disk_id) in hdd_factory.CACHED_OBJECTS:
-            del(hdd_factory.CACHED_OBJECTS[(self.vm_object.get_name(), self.disk_id)])
+        if (self.vm_object.get_name(), self.disk_id, self.get_type()) in hdd_factory.CACHED_OBJECTS:
+            del(hdd_factory.CACHED_OBJECTS[(self.vm_object.get_name(),
+                                            self.disk_id,
+                                            self.get_type())])
         self.unregister_object()
 
     def duplicate(self, destination_vm_object):
@@ -569,7 +571,7 @@ class Base(PyroObject):
         if not self._checkLogicalVolumeActive(self._getBackupSnapshotLogicalVolume()):
             raise BackupSnapshotDoesNotExistException(
                 'The backup snapshot for \'%s\' does not exist' %
-                self._getLogicalVolumePath(config._getBackupLogicalVolume())
+                self._getLogicalVolumePath(self._getBackupLogicalVolume())
             )
 
         System.runCommand(['lvremove', '-f',
