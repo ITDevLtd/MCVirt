@@ -27,6 +27,7 @@ from mcvirt.exceptions import (InvalidISOPathException, NameNotSpecifiedExceptio
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.constants import DirectoryLocation
+from mcvirt.auth.permissions import PERMISSIONS
 
 
 class Iso(PyroObject):
@@ -83,8 +84,13 @@ class Iso(PyroObject):
 
         return True
 
+    @Pyro4.expose()
     def delete(self):
         """Delete an ISO"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_ISO
+        )
+
         # Check exists
         if self.in_use:
             raise IsoInUseException(

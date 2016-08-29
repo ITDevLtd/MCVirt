@@ -30,6 +30,7 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import locking_method
 from mcvirt.constants import DirectoryLocation
 from mcvirt.exceptions import InvalidISOPathException
+from mcvirt.auth.permissions import PERMISSIONS
 
 
 class Factory(PyroObject):
@@ -82,6 +83,9 @@ class Factory(PyroObject):
     @locking_method()
     def add_from_url(self, url, name=None):
         """Download an ISO from given URL and save in ISO directory"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_ISO
+        )
         # Work out name from URL if name is not supplied
         if name is None:
             # Parse URL to get path part
@@ -117,6 +121,9 @@ class Factory(PyroObject):
     @locking_method()
     def add_iso_from_stream(self, path, name=None):
         """Import ISO, writing binary data to the ISO file"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_ISO
+        )
         if name is None:
             name = Iso.get_filename_from_path(path)
 
@@ -149,11 +156,17 @@ class IsoWriter(PyroObject):
     @Pyro4.expose()
     def write_data(self, data):
         """Write data to the ISO file"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_ISO
+        )
         self.fh.write(binascii.unhexlify(data))
 
     @Pyro4.expose()
     def write_end(self):
         """End writing object, close FH and import ISO"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_ISO
+        )
         if self.fh:
             self.fh.close()
             self.fh = None

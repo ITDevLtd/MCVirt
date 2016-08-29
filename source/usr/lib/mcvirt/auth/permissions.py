@@ -28,7 +28,8 @@ PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY
                                    'CAN_IGNORE_CLUSTER', 'MOVE_VM', 'SET_VM_NODE',
                                    'MANAGE_USERS', 'TEST_SUPERUSER_PERMISSION',
                                    'TEST_OWNER_PERMISSION', 'TEST_USER_PERMISSION',
-                                   'SUPERUSER', 'MANAGE_NODE', 'SET_SYNC_STATE'])
+                                   'SUPERUSER', 'MANAGE_NODE', 'SET_SYNC_STATE',
+                                   'MANAGE_ISO'])
 
 # Set the permissions for the permissions groups
 PERMISSION_GROUPS = \
