@@ -68,7 +68,7 @@ class VirtualMachine(PyroObject):
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
 
-    def get_remote_object(self):
+    def get_remote_object(self, include_node=False):
         """Return a instance of the virtual machine object
         on the machine that the VM is registered
         """
@@ -80,6 +80,8 @@ class VirtualMachine(PyroObject):
             remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
             remote_node.annotate_object(remote_vm)
+            if include_node:
+                return remote_vm, remote_node
             return remote_vm
         else:
             raise VmNotRegistered('The VM is not registered on a node')
@@ -951,6 +953,8 @@ class VirtualMachine(PyroObject):
 
         # Check the user has permission to create VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CLONE_VM, self)
+
+        self.ensureRegisteredLocally()
 
         # Ensure the storage type for the VM is not Drbd, as Drbd-based VMs cannot be cloned
         if self.getStorageType() == 'Drbd':
