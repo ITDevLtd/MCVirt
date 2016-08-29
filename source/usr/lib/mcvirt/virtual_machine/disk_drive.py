@@ -58,7 +58,7 @@ class DiskDrive(PyroObject):
         if libvirt_object.updateDeviceFlags(cdrom_xml_string, flags):
             raise LibvirtException('An error occurred whilst attaching ISO')
 
-    def removeISO(self):
+    def removeISO(self, live=False):
         """Removes ISO attached to the disk drive of a VM"""
 
         # Import cdrom XML template
@@ -68,12 +68,13 @@ class DiskDrive(PyroObject):
         cdrom_xml = cdrom_xml.getroot()
         source_xml = cdrom_xml.find('source')
 
-        if (source_xml is not None):
+        if source_xml is not None:
             cdrom_xml.remove(source_xml)
             cdrom_xml_string = ET.tostring(cdrom_xml, encoding='utf8', method='xml')
+            flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
 
             # Update the libvirt cdrom device
-            if (self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):
+            if self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string, flags):
                 raise LibvirtException('An error occurred whilst detaching ISO')
 
     def getCurrentDisk(self):

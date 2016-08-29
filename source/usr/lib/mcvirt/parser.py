@@ -75,7 +75,7 @@ class Parser(object):
         self.start_parser = self.subparsers.add_parser('start', help='Start VM',
                                                        parents=[self.parent_parser])
         self.start_parser.add_argument('--iso', metavar='ISO Name', type=str,
-                                       help='Path of ISO to attach to VM')
+                                       help='Path of ISO to attach to VM', default=None)
         self.start_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Add arguments for stopping a VM
@@ -106,6 +106,9 @@ class Parser(object):
                                      metavar='NAME')
         self.iso_parser.add_argument('--add-from-url', dest='add_url',
                                      help='Download and add an ISO', metavar='URL')
+        self.iso_parser.add_argument('--node', dest='iso_node',
+                                     help='Specify the node to perform the action on',
+                                     metavar='Node', default=None)
 
         # Add arguments for managing users
         self.user_parser = self.subparsers.add_parser('user', help='User managment',
@@ -274,7 +277,7 @@ class Parser(object):
         self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
                                         help='The ID of the disk to be increased by')
         self.update_parser.add_argument('--attach-iso', '--iso', dest='iso', metavar='ISO Name',
-                                        type=str,
+                                        type=str, default=None, nargs='?',
                                         help=('Attach an ISO to a running VM.'
                                               ' Specify without value to detach ISO.'))
         self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
@@ -780,14 +783,7 @@ class Parser(object):
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotate_object(vm_object)
-
-            if args.iso:
-                iso_factory = rpc.get_connection('iso_factory')
-                iso_object = iso_factory.get_iso_by_name(args.iso)
-                rpc.annotate_object(iso_object)
-            else:
-                iso_object = None
-            vm_object.start(iso_object=iso_object)
+            vm_object.start(iso_name=args.iso)
             self.print_status('Successfully started VM')
 
         elif action == 'stop':
@@ -880,7 +876,7 @@ class Parser(object):
                 rpc.annotate_object(network_adapter_object)
                 network_adapter_object.delete()
 
-            if (args.add_network):
+            if args.add_network:
                 network_factory = rpc.get_connection('network_factory')
                 network_adapter_factory = rpc.get_connection('network_adapter_factory')
                 network_object = network_factory.get_network_by_name(args.add_network)
@@ -899,13 +895,8 @@ class Parser(object):
                 rpc.annotate_object(hard_drive_object)
                 hard_drive_object.increaseSize(args.increase_disk)
 
-            if args.iso:
-                iso_factory = rpc.get_connection('iso_factory')
-                iso_object = iso_factory.get_iso_by_name(args.iso)
-                rpc.annotate_object(iso_object)
-                disk_drive = vm_object.get_disk_drive()
-                rpc.annotate_object(disk_drive)
-                disk_drive.attachISO(iso_object, True)
+            if args.iso or args.iso is None:
+                vm_object.update_iso(args.iso)
 
             if args.graphics_driver:
                 vm_object.update_graphics_driver(args.graphics_driver)
@@ -1202,9 +1193,11 @@ class Parser(object):
         elif action == 'iso':
             iso_factory = rpc.get_connection('iso_factory')
             if args.list:
-                self.print_status(iso_factory.get_iso_list())
+                self.print_status(iso_factory.get_iso_list(node=args.iso_node))
 
             if args.add_path:
+                if args.iso_node:
+                    raise ArgumentParserException('Cannot add to remote node from local path')
                 iso_writer = iso_factory.add_iso_from_stream(args.add_path)
                 rpc.annotate_object(iso_writer)
                 with open(args.add_path, 'rb') as iso_fh:
@@ -1220,11 +1213,12 @@ class Parser(object):
                 self.print_status('Successfully added ISO: %s' % iso_object.get_name())
 
             if args.add_url:
-                iso_object = iso_factory.add_from_url(args.add_url)
-                rpc.annotate_object(iso_object)
-                self.print_status('Successfully added ISO: %s' % iso_object.get_name())
+                iso_name = iso_factory.add_from_url(args.add_url, node=args.iso_node)
+                self.print_status('Successfully added ISO: %s' % iso_name)
 
             if args.delete_path:
+                if args.iso_node:
+                    raise ArgumentParserException('Cannot remove ISO from remote node')
                 iso_object = iso_factory.get_iso_by_name(args.delete_path)
                 rpc.annotate_object(iso_object)
                 iso_object.delete()
