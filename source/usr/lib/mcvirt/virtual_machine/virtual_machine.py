@@ -207,13 +207,14 @@ class VirtualMachine(PyroObject):
 
         self.ensureRegisteredLocally()
         disk_drive = self.get_disk_drive()
+        live = (self._getPowerState() is PowerStates.RUNNING)
         if iso_name:
             iso_factory = self._get_registered_object('iso_factory')
             iso_object = iso_factory.get_iso_by_name(iso_name)
-            disk_drive.attachISO(iso_object, live=True)
+            disk_drive.attachISO(iso_object, live=live)
 
         else:
-            disk_drive.removeISO(live=True)
+            disk_drive.removeISO(live=live)
 
     @Pyro4.expose()
     @locking_method()
