@@ -68,7 +68,7 @@ class VirtualMachine(PyroObject):
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
 
-    def get_remote_object(self):
+    def get_remote_object(self, include_node=False):
         """Return a instance of the virtual machine object
         on the machine that the VM is registered
         """
@@ -80,6 +80,8 @@ class VirtualMachine(PyroObject):
             remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
             remote_node.annotate_object(remote_vm)
+            if include_node:
+                return remote_vm, remote_node
             return remote_vm
         else:
             raise VmNotRegistered('The VM is not registered on a node')
@@ -139,17 +141,13 @@ class VirtualMachine(PyroObject):
 
     @Pyro4.expose()
     @locking_method()
-    def start(self, iso_object=None):
+    def start(self, iso_name=None):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.CHANGE_VM_POWER_STATE,
             self
         )
-
-        if iso_object is not None:
-            assert isinstance(self._convert_remote_object(iso_object),
-                              self._get_registered_object('iso_factory').ISO_CLASS)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -168,9 +166,11 @@ class VirtualMachine(PyroObject):
                 disk_object.activateDisk()
 
             disk_drive_object = self.get_disk_drive()
-            if iso_object:
+            if iso_name:
                 # If an ISO has been specified, attach it to the VM before booting
                 # and adjust boot order to boot from ISO first
+                iso_factory = self._get_registered_object('iso_factory')
+                iso_object = iso_factory.get_iso_by_name(iso_name)
                 disk_drive_object.attachISO(iso_object)
                 self.setBootOrder(['cdrom', 'hd'])
             else:
@@ -191,18 +191,30 @@ class VirtualMachine(PyroObject):
             vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
             remote_node.annotate_object(remote_vm)
-            if iso_object:
-                remote_iso_factory = remote_node.get_connection('iso_factory')
-                remote_iso = remote_iso_factory.get_iso_by_name(iso_object.get_name())
-                remote_node.annotate_object(remote_iso)
-            else:
-                remote_iso = None
-            remote_vm.start(iso_object=remote_iso)
+            remote_vm.start(iso_name=iso_name)
 
         else:
             raise VmRegisteredElsewhereException(
                 'VM registered elsewhere and cluster is not initialised'
             )
+
+    @Pyro4.expose()
+    @locking_method()
+    def update_iso(self, iso_name=None):
+        """Update the ISO attached to the VM"""
+        if self.isRegisteredRemotely():
+            return self.get_remote_object().update_iso(iso_name)
+
+        self.ensureRegisteredLocally()
+        disk_drive = self.get_disk_drive()
+        live = (self._getPowerState() is PowerStates.RUNNING)
+        if iso_name:
+            iso_factory = self._get_registered_object('iso_factory')
+            iso_object = iso_factory.get_iso_by_name(iso_name)
+            disk_drive.attachISO(iso_object, live=live)
+
+        else:
+            disk_drive.removeISO(live=live)
 
     @Pyro4.expose()
     @locking_method()
@@ -942,6 +954,8 @@ class VirtualMachine(PyroObject):
 
         # Check the user has permission to create VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CLONE_VM, self)
+
+        self.ensureRegisteredLocally()
 
         # Ensure the storage type for the VM is not Drbd, as Drbd-based VMs cannot be cloned
         if self.getStorageType() == 'Drbd':

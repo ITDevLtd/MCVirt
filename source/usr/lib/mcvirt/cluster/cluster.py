@@ -449,7 +449,7 @@ class Cluster(PyroObject):
         """Sync MCVirt configuration"""
         config = MCVirtConfig().get_config()
         remote_mcvirt_config_obj = remote_connection.get_connection('mcvirt_config')
-        remote_config = remote_mcvirt_config_obj.get_config()
+        remote_config = remote_mcvirt_config_obj.get_config_remote()
 
         # Update Git and LDAP configuration to remote node
         remote_config['git'] = config['git']

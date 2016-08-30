@@ -30,6 +30,8 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import locking_method
 from mcvirt.constants import DirectoryLocation
 from mcvirt.exceptions import InvalidISOPathException
+from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.utils import get_hostname
 
 
 class Factory(PyroObject):
@@ -37,6 +39,15 @@ class Factory(PyroObject):
 
     ISO_CLASS = Iso
 
+    def get_remote_factory(self, node=None):
+        if node is None or node == get_hostname():
+            return self
+        node = self._get_registered_object('cluster').get_remote_node(node)
+        remote_factory = node.get_connection('iso_factory')
+        node.annotate_object(remote_factory)
+        return remote_factory
+
+    @Pyro4.expose()
     def get_isos(self):
         """Return a list of a ISOs"""
         # Get files in ISO directory
@@ -50,16 +61,16 @@ class Factory(PyroObject):
         return iso_list
 
     @Pyro4.expose()
-    def get_iso_by_name(self, iso_name):
+    def get_iso_by_name(self, iso_name, node=None):
         """Create and register Iso object"""
         iso_object = Iso(iso_name)
         self._register_object(iso_object)
         return iso_object
 
     @Pyro4.expose()
-    def get_iso_list(self):
+    def get_iso_list(self, node=None):
         """Return a user-readable list of ISOs"""
-        iso_list = self.get_isos()
+        iso_list = self.get_remote_factory(node).get_isos()
         if len(iso_list) == 0:
             return 'No ISOs found'
         else:
@@ -80,8 +91,19 @@ class Factory(PyroObject):
 
     @Pyro4.expose()
     @locking_method()
-    def add_from_url(self, url, name=None):
+    def add_from_url(self, url, name=None, node=None):
         """Download an ISO from given URL and save in ISO directory"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_ISO
+        )
+
+        if node is not None and node != get_hostname():
+            remote_node = self._get_registered_object('cluster').get_remote_node(node)
+            remote_factory = remote_node.get_connection('iso_factory')
+            remote_iso = remote_factory.add_from_url(url=url, name=name)
+            remote_node.annotate_object(remote_iso)
+            return remote_iso.get_name()
+
         # Work out name from URL if name is not supplied
         if name is None:
             # Parse URL to get path part
@@ -111,12 +133,15 @@ class Factory(PyroObject):
 
         os.remove(output_path)
         os.rmdir(temp_directory)
-        return iso_object
+        return iso_object.get_name()
 
     @Pyro4.expose()
     @locking_method()
     def add_iso_from_stream(self, path, name=None):
         """Import ISO, writing binary data to the ISO file"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_ISO
+        )
         if name is None:
             name = Iso.get_filename_from_path(path)
 
@@ -149,11 +174,17 @@ class IsoWriter(PyroObject):
     @Pyro4.expose()
     def write_data(self, data):
         """Write data to the ISO file"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_ISO
+        )
         self.fh.write(binascii.unhexlify(data))
 
     @Pyro4.expose()
     def write_end(self):
         """End writing object, close FH and import ISO"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_ISO
+        )
         if self.fh:
             self.fh.close()
             self.fh = None
