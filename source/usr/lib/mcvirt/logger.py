@@ -246,6 +246,7 @@ class LogItem(PyroObject):
         self.remote_logs = []
         self.unregister_object()
 
+
 def getLogNames(callback, instance_method, object_type, args, kwargs):
     """Attempts to determine object name and object type, based on method"""
     # Determine if object is a method of an object
