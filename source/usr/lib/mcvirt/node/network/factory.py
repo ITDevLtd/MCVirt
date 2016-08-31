@@ -31,7 +31,7 @@ from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.syslogger import Syslogger
-
+from mcvirt.utils import get_hostname
 
 class Factory(PyroObject):
     """Class for obtaining network objects"""
@@ -66,11 +66,24 @@ class Factory(PyroObject):
         if self.check_exists(name):
             raise NetworkAlreadyExistsException('Network already exists: %s' % name)
 
-        # Ensure that the physical interface eixsts
+        if self._is_cluster_master:
+            print("cluster master")
+            def remote_command(remote_connection):
+                network_factory = remote_connection.get_connection('network_factory')
+                cluster = remote_connection.get_connection('cluster')
+                if not network_factory.interface_exists(physical_interface):
+                    raise InterfaceDoesNotExist(
+                        'Physical interface %s does not exist on remote node: %s'
+                        % (physical_interface, cluster.generate_connection_info()[0])
+                        )
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(remote_command)
+
         if not self._interface_exists(physical_interface):
             raise InterfaceDoesNotExist(
-                'Physical interface %s does not exist' % physical_interface
-            )
+                'Physical interface %s does not exist on local node: %s' % (physical_interface,
+                                                                        get_hostname())
+                )
 
         # Create XML for network
         network_xml = ET.Element('network')
