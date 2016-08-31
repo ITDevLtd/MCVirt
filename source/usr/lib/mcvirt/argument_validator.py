@@ -49,6 +49,10 @@ class ArgumentValidator(object):
         """Validate the name of a network"""
         exception_message = ('Network name must only use alpha-numeric characters and'
                              ' not be any longer than 64 characters in length')
+
+        if name == 'default':
+            raise MCVirtTypeError('Network name cannot be \'default\'')
+
         try:
             if len(name) > 64 or not len(name):
                 raise MCVirtTypeError(exception_message)
@@ -81,7 +85,7 @@ class ArgumentValidator(object):
     def validate_boolean(variable):
         """Ensure variable is a boolean"""
         if type(variable) is not bool:
-            raise MCVirtTypeError('Not an boolean')
+            raise MCVirtTypeError('Not a boolean')
 
     @staticmethod
     def validate_drbd_resource(variable):
