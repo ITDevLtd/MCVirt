@@ -67,23 +67,20 @@ class Factory(PyroObject):
             raise NetworkAlreadyExistsException('Network already exists: %s' % name)
 
         if self._is_cluster_master:
-            print("cluster master")
             def remote_command(remote_connection):
                 network_factory = remote_connection.get_connection('network_factory')
                 cluster = remote_connection.get_connection('cluster')
                 if not network_factory.interface_exists(physical_interface):
                     raise InterfaceDoesNotExist(
                         'Physical interface %s does not exist on remote node: %s'
-                        % (physical_interface, cluster.generate_connection_info()[0])
-                        )
+                        % (physical_interface, cluster.generate_connection_info()[0]))
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
         if not self._interface_exists(physical_interface):
             raise InterfaceDoesNotExist(
                 'Physical interface %s does not exist on local node: %s' % (physical_interface,
-                                                                        get_hostname())
-                )
+                                                                            get_hostname()))
 
         # Create XML for network
         network_xml = ET.Element('network')
