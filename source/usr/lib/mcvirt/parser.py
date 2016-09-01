@@ -98,17 +98,36 @@ class Parser(object):
         # Add arguments for ISO functions
         self.iso_parser = self.subparsers.add_parser('iso', help='ISO managment',
                                                      parents=[self.parent_parser])
-        self.iso_parser.add_argument('--list', dest='list', action='store_true',
-                                     help='List available ISOs')
-        self.iso_parser.add_argument('--add-from-path', dest='add_path',
-                                     help='Copy an ISO to ISO directory', metavar='PATH')
-        self.iso_parser.add_argument('--delete', dest='delete_path', help='Delete an ISO',
-                                     metavar='NAME')
-        self.iso_parser.add_argument('--add-from-url', dest='add_url',
-                                     help='Download and add an ISO', metavar='URL')
-        self.iso_parser.add_argument('--node', dest='iso_node',
-                                     help='Specify the node to perform the action on',
-                                     metavar='Node', default=None)
+
+
+        self.iso_subparser = self.iso_parser.add_subparsers(dest='iso_action',
+                                                            help='ISO action to perform',
+                                                            metavar='Action')
+
+        self.delete_iso_subparser = self.iso_subparser.add_parser('delete', help='Delete an ISO',
+                                                                  parents=[self.parent_parser])
+        self.delete_iso_subparser.add_argument('delete_path', metavar='NAME', type=str,
+                                               help='ISO to delete')
+
+        self.list_iso_subparser = self.iso_subparser.add_parser('list', help='List available ISOs',
+                                                                parents=[self.parent_parser])
+
+        self.add_iso_subparser = self.iso_subparser.add_parser('add', help='Add an ISO',
+                                                               parents=[self.parent_parser])
+        self.add_iso_subparser.add_argument('iso_name', metavar='ISO', type=str,
+                                            help='Path/URL of ISO to add')
+
+        self.add_iso_methods = self.add_iso_subparser.add_mutually_exclusive_group(required=True)
+        self.add_iso_methods.add_argument('--from-path', dest='add_path', action='store_true',
+                                          help='Copy an ISO to ISO directory')
+        self.add_iso_methods.add_argument('--from-url', dest='add_url', action='store_true',
+                                          help='Download and add an ISO')
+
+        for parser in [self.iso_parser, self.delete_iso_subparser, self.list_iso_subparser,
+                       self.add_iso_subparser]:
+            parser.add_argument('--node', dest='iso_node',
+                                help='Specify the node to perform the action on',
+                                metavar='Node', default=None)
 
         # Add arguments for managing users
         self.user_parser = self.subparsers.add_parser('user', help='User managment',
@@ -161,16 +180,16 @@ class Parser(object):
             action='store_true',
             help='Generate a password for the new user'
         )
-        self.remove_user_subparser = self.user_subparser.add_parser(
-            'remove',
-            help='Remove a user',
+        self.delete_user_subparser = self.user_subparser.add_parser(
+            'delete',
+            help='Delete a user',
             parents=[self.parent_parser]
         )
-        self.remove_user_subparser.add_argument(
-            'remove_username',
+        self.delete_user_subparser.add_argument(
+            'delete_username',
             metavar='User',
             type=str,
-            help='The user to remove'
+            help='The user to delete'
         )
 
         # Add arguments for creating a VM
@@ -216,8 +235,8 @@ class Parser(object):
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
                                                         parents=[self.parent_parser])
-        self.delete_parser.add_argument('--remove-data', dest='remove_data', action='store_true',
-                                        help='Removes the VM data from the host')
+        self.delete_parser.add_argument('--delete-data', dest='delete_data', action='store_true',
+                                        help='Deletes the VM data from the host')
         self.delete_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Get arguments for registering a VM
@@ -668,46 +687,42 @@ class Parser(object):
         # Create sub-parser for Drbd-related commands
         self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage Drbd clustering',
                                                       parents=[self.parent_parser])
-        self.drbd_mutually_exclusive_group = self.drbd_parser.add_mutually_exclusive_group(
-            required=True
-        )
-        self.drbd_mutually_exclusive_group.add_argument(
-            '--enable', dest='enable', action='store_true',
-            help='Enable Drbd support on the cluster'
-        )
-        self.drbd_mutually_exclusive_group.add_argument(
-            '--list', dest='list', action='store_true',
-            help='List Drbd volumes on the system'
-        )
+        self.drbd_subparser = self.drbd_parser.add_subparsers(dest='drbd_action', metavar='Action',
+                                                              help='Drbd action to perform')
+        self.drbd_subparser.add_parser('enable', help='Enable Drbd support on the cluster',
+                                       parents=[self.parent_parser])
+        self.drbd_subparser.add_parser('list', help='List Drbd volumes on the system',
+                                       parents=[self.parent_parser])
 
         # Create sub-parser for backup commands
         self.backup_parser = self.subparsers.add_parser('backup',
                                                         help='Performs backup-related tasks',
                                                         parents=[self.parent_parser])
-        self.backup_mutual_exclusive_group = self.backup_parser.add_mutually_exclusive_group(
-            required=True
+        self.backup_subparser = self.backup_parser.add_subparsers(
+            dest='backup_action',
+            metavar='Action',
+            help='Backup action to perform'
         )
-        self.backup_mutual_exclusive_group.add_argument(
-            '--create-snapshot',
-            dest='create_snapshot',
-            help='Enable Drbd support on the cluster',
-            action='store_true'
+        self.create_snapshot_subparser = self.backup_subparser.add_parser(
+            'create-snapshot',
+            help='Create a snapshot of the specified disk',
+            parents=[self.parent_parser]
         )
-        self.backup_mutual_exclusive_group.add_argument(
-            '--delete-snapshot',
-            dest='delete_snapshot',
-            help='Enable Drbd support on the cluster',
-            action='store_true'
+        self.delete_snapshot_subparser = self.backup_subparser.add_parser(
+            'delete-snapshot',
+            help='Delete the snapshot of the specified disk',
+            parents=[self.parent_parser]
         )
-        self.backup_parser.add_argument(
-            '--disk-id',
-            dest='disk_id',
-            metavar='Disk Id',
-            type=int,
-            required=True,
-            help='The ID of the disk to manage the backup snapshot of'
-        )
-        self.backup_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        for parser in [self.create_snapshot_subparser, self.delete_snapshot_subparser]:
+            parser.add_argument(
+                '--disk-id',
+                dest='disk_id',
+                metavar='Disk Id',
+                type=int,
+                required=True,
+                help='The ID of the disk to manage the backup snapshot of'
+            )
+            parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Create sub-parser for managing VM locks
         self.lock_parser = self.subparsers.add_parser('lock', help='Perform verification of VMs',
@@ -831,7 +846,7 @@ class Parser(object):
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotate_object(vm_object)
-            vm_object.delete(args.remove_data)
+            vm_object.delete(args.delete_data)
 
         elif action == 'register':
             vm_factory = rpc.get_connection('virtual_machine_factory')
@@ -1146,9 +1161,9 @@ class Parser(object):
 
         elif action == 'drbd':
             node_drbd = rpc.get_connection('node_drbd')
-            if args.enable:
+            if args.drbd_action == 'enable':
                 node_drbd.enable()
-            if (args.list):
+            if args.drbd_action == 'list':
                 self.print_status(node_drbd.list())
 
         elif action == 'backup':
@@ -1158,9 +1173,9 @@ class Parser(object):
             hard_drive_factory = rpc.get_connection('hard_drive_factory')
             hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
             rpc.annotate_object(hard_drive_object)
-            if args.create_snapshot:
+            if args.backup_action == 'create_snapshot':
                 self.print_status(hard_drive_object.createBackupSnapshot())
-            elif (args.delete_snapshot):
+            elif args.backup_action == 'delete_snapshot':
                 hard_drive_object.deleteBackupSnapshot()
 
         elif action == 'lock':
@@ -1192,15 +1207,15 @@ class Parser(object):
 
         elif action == 'iso':
             iso_factory = rpc.get_connection('iso_factory')
-            if args.list:
+            if args.iso_action == 'list':
                 self.print_status(iso_factory.get_iso_list(node=args.iso_node))
 
-            if args.add_path:
+            if args.iso_action == 'add' and args.add_path:
                 if args.iso_node:
                     raise ArgumentParserException('Cannot add to remote node from local path')
-                iso_writer = iso_factory.add_iso_from_stream(args.add_path)
+                iso_writer = iso_factory.add_iso_from_stream(args.iso_name)
                 rpc.annotate_object(iso_writer)
-                with open(args.add_path, 'rb') as iso_fh:
+                with open(args.iso_name, 'rb') as iso_fh:
                     while True:
                         data_chunk = iso_fh.read(1024)
                         if data_chunk:
@@ -1212,11 +1227,11 @@ class Parser(object):
                 rpc.annotate_object(iso_object)
                 self.print_status('Successfully added ISO: %s' % iso_object.get_name())
 
-            if args.add_url:
-                iso_name = iso_factory.add_from_url(args.add_url, node=args.iso_node)
+            if args.iso_action == 'add' and args.add_url:
+                iso_name = iso_factory.add_from_url(args.iso_name, node=args.iso_node)
                 self.print_status('Successfully added ISO: %s' % iso_name)
 
-            if args.delete_path:
+            if args.iso_action == 'delete':
                 if args.iso_node:
                     raise ArgumentParserException('Cannot remove ISO from remote node')
                 iso_object = iso_factory.get_iso_by_name(args.delete_path)
@@ -1247,8 +1262,8 @@ class Parser(object):
                 if args.generate_password:
                     self.print_status('Password: %s' % new_password)
 
-            elif args.user_action == 'remove':
+            elif args.user_action == 'delete':
                 user_factory = rpc.get_connection('user_factory')
-                user = user_factory.get_user_by_username(args.remove_username)
+                user = user_factory.get_user_by_username(args.delete_username)
                 rpc.annotate_object(user)
                 user.delete()

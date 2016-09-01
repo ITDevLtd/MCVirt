@@ -119,5 +119,5 @@ Removing VM
 
 
 * Without any parameters, the VM will simply be 'unregistered' from the node.
-* To remove all data associated with the VM, supply the parameter **--remove-data**
+* To delete all data associated with the VM, supply the parameter **--delete-data**
 * Only a superuser can delete a VM

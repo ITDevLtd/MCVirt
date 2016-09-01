@@ -270,18 +270,6 @@ class NetworkUtilizedException(MCVirtException):
     pass
 
 
-class InvalidVolumeGroupNameException(MCVirtException):
-    """The specified name of the volume group is invalid"""
-
-    pass
-
-
-class InvalidIPAddressException(MCVirtException):
-    """The specified IP address is invalid"""
-
-    pass
-
-
 class ArgumentParserException(MCVirtException):
     """An invalid argument was provided"""
 

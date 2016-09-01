@@ -87,7 +87,7 @@ Attaching ISO
 
     mcvirt start <VM Name> --iso <Name of ISO file>
 
-* The ISO file must be stored within /var/lib/mcvirt/iso.
+* The ISO file must be stored within /var/lib/mcvirt/<hostname>/iso.
 
 
 VM Locking

@@ -100,3 +100,18 @@ class ArgumentValidator(object):
         ArgumentValidator.validate_positive_integer(result.groups()[1])
         if int(result.groups()[1]) > 99:
             raise MCVirtTypeError('Not a valid resource name')
+
+    @staticmethod
+    def validate_ip_address(ip_address):
+        """Validate an IPv4 IP address"""
+        pattern = re.compile(r"^((([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])[ (\[]?(\.|dot)"
+                              "[ )\]]?){3}([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5]))$")
+        if not pattern.match(ip_address):
+            raise MCVirtTypeError('%s is not a valid IP address' % ip_address)
+
+    @staticmethod
+    def validate_vg_name(vg_name):
+        """Validate a volume group name"""
+        pattern = re.compile("^[A-Z0-9a-z_-]+$")
+        if not pattern.match(vg_name):
+            raise MCVirtTypeError('%s is not a valid volume group name' % vg_name)

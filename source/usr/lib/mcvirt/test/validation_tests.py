@@ -37,6 +37,8 @@ class ValidationTests(TestBase):
         suite.addTest(ValidationTests('test_pos_integer'))
         suite.addTest(ValidationTests('test_boolean'))
         suite.addTest(ValidationTests('test_drbd_resource'))
+        suite.addTest(ValidationTests('test_ip_address'))
+        suite.addTest(ValidationTests('test_vg_name'))
         return suite
 
     def test_validity(self, validator, valid_list, invalid_list,
@@ -123,3 +125,15 @@ class ValidationTests(TestBase):
                    'mcvirt_vm-blah-disk-2x', 'mcvirt_vm--disk-1', 'mcvirt_vm-test-disk-0',
                    'mcvirt_vm-blah-disk-100']
         self.test_validity(ArgumentValidator.validate_drbd_resource, valid, invalid)
+
+    def test_ip_address(self):
+        """Test the validation of IP addresses"""
+        valid = ['1.2.3.4', '192.168.1.143', '255.255.255.255', '0.0.0.0']
+        invalid = ['1.2.3', '256.1.1.1', '-1.2.3.4', 'one.two.three.four', 'invalid_ip', '1.2.3.4a']
+        self.test_validity(ArgumentValidator.validate_ip_address, valid, invalid)
+
+    def test_vg_name(self):
+        valid = ['valid', 'withnumbers1', '0startwithanumber', 'dashes-in-the-name',
+                 'underscores_here']
+        invalid = ['', 'invalid!', 'not.valid', '[adg', 'vg;', '@vg_name']
+        self.test_validity(ArgumentValidator.validate_vg_name, valid, invalid)

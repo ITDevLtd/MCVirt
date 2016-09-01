@@ -171,7 +171,7 @@ MCVirt can provide access to snapshots of the raw volumes of VM disks, allowing 
 
   ::
 
-    mcvirt backup --create-snapshot --disk-id <Disk ID> <VM Name>
+    mcvirt backup create-snapshot --disk-id <Disk ID> <VM Name>
 
 2. The returned path provides access to the disk at the time that the snapshot was created
 
@@ -181,7 +181,7 @@ MCVirt can provide access to snapshots of the raw volumes of VM disks, allowing 
 
   ::
 
-    mcvirt backup --delete-snapshot --disk-id <Disk ID> <VM Name>
+    mcvirt backup delete-snapshot --disk-id <Disk ID> <VM Name>
 
 
 * This can only be performed by a superuser

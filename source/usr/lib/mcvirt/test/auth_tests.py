@@ -181,7 +181,7 @@ class AuthTests(TestBase):
                            username=self.TEST_USERNAME,
                            password=self.TEST_PASSWORD)
 
-        self.parse_command('delete --remove-data %s' % test_vm.get_name(),
+        self.parse_command('delete --delete-data %s' % test_vm.get_name(),
                            username=self.TEST_USERNAME,
                            password=self.TEST_PASSWORD)
 
@@ -280,7 +280,7 @@ class AuthTests(TestBase):
     def test_remove_user_account(self):
         """Delete a user through the parser"""
         self.user_to_delete = self.create_test_user(self.TEST_USERNAME_ALTERNATIVE, 'pass')
-        delete_command = 'user remove %s' % self.TEST_USERNAME_ALTERNATIVE
+        delete_command = 'user delete %s' % self.TEST_USERNAME_ALTERNATIVE
 
         # Try to delete as test user and check InsufficientPermissionsException is raised
         with self.assertRaises(InsufficientPermissionsException):

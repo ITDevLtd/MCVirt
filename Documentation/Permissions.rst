@@ -27,11 +27,11 @@ Managing users
 
   The password for the new user can be provided interactively, passed on the command line with ``--user-password <new password>``, or generated automatically with ``--generate-password``. The generated password will be displayed when the user is created.
 
-* To remove a user, perform the following as a superuser:
+* To delete a user, perform the following as a superuser:
 
   ::
 
-    mcvirt user remove <user>
+    mcvirt user delete <user>
 
 * To change your password, perform the following:
 

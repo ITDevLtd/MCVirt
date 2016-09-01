@@ -165,7 +165,7 @@ class VirtualMachineTests(TestBase):
         self.create_vm('TEST_VM_1', storage_type)
 
         # Remove VM using parser
-        self.parser.parse_arguments('delete %s --remove-data' % self.test_vms['TEST_VM_1']['name'])
+        self.parser.parse_arguments('delete %s --delete-data' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure VM has been deleted
         self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))

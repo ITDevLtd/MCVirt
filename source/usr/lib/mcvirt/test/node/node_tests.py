@@ -17,7 +17,7 @@
 
 import unittest
 
-from mcvirt.exceptions import InvalidIPAddressException, InvalidVolumeGroupNameException
+from mcvirt.exceptions import MCVirtTypeError
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.test.test_base import TestBase
 
@@ -60,14 +60,9 @@ class NodeTests(TestBase):
         self.assertEqual(MCVirtConfig().get_config()['cluster']['cluster_ip'], test_ip_address)
 
     def test_set_invalid_ip_address(self):
-        """Test the validity checks for IP addresses"""
-        test_fake_ip_addresses = [
-            '1.1.1.256', 'test_string', '1.1.1', '1.2.3.4a'
-        ]
-        for ip_address in test_fake_ip_addresses:
-            with self.assertRaises(InvalidIPAddressException):
-                self.parser.parse_arguments('node --set-ip-address %s' %
-                                            ip_address)
+        """Test the validity checks for IP addresses uses ArgumentValidator"""
+        with self.assertRaises(MCVirtTypeError):
+            self.parser.parse_arguments('node --set-ip-address test_string')
 
     def test_set_volume_group(self):
         """Change the cluster IP address using the argument parser"""
@@ -76,8 +71,6 @@ class NodeTests(TestBase):
         self.assertEqual(MCVirtConfig().get_config()['vm_storage_vg'], test_vg)
 
     def test_set_invalid_volume_group(self):
-        """Test the validity checks for volume group name"""
-        test_fake_volume_groups = ('[adg', 'vg;', '@vg_name')
-        for volume_group in test_fake_volume_groups:
-            with self.assertRaises(InvalidVolumeGroupNameException):
-                self.parser.parse_arguments('node --set-vm-vg %s' % volume_group)
+        """Test the validity checks for volume group name uses ArgumentValidator"""
+        with self.assertRaises(MCVirtTypeError):
+            self.parser.parse_arguments('node --set-vm-vg @vg_name')

@@ -117,10 +117,10 @@ Configuring DRBD
 ----------------
 
 1. Ensure the package ``drbd8-utils`` is installed on both of the nodes in the cluster
-2. DRBD data will be transmitted over the 'cluster' address. Ensure that this has been set and that the network is segemneted from other network traffic (e.g. by using VLANs). 
+2. DRBD data will be transmitted over the 'cluster' address. Ensure that this has been set and that the network is segemneted from other network traffic (e.g. by using VLANs).
 3. Perform the following MCVirt command to configure DRBD::
 
-    mcvirt drbd --enable
+    mcvirt drbd enable
 
 
 DRBD verification

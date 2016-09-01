@@ -17,16 +17,14 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import re
 import Pyro4
 
-from mcvirt.exceptions import (InvalidVolumeGroupNameException,
-                               InvalidIPAddressException)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import locking_method, MethodLock
 from mcvirt.version import VERSION
+from mcvirt.argument_validator import ArgumentValidator
 
 
 class Node(PyroObject):
@@ -38,11 +36,7 @@ class Node(PyroObject):
         """Update the MCVirt configuration to set the volume group for VM storage."""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
 
-        # Ensure volume_group name is valid
-        pattern = re.compile("^[A-Z0-9a-z_-]+$")
-        if not pattern.match(volume_group):
-            raise InvalidVolumeGroupNameException('%s is not a valid volume group name' %
-                                                  volume_group)
+        ArgumentValidator.validate_vg_name(volume_group)
 
         # Update global MCVirt configuration
         def update_config(config):
@@ -58,11 +52,7 @@ class Node(PyroObject):
         """Update the cluster IP address for the node."""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
 
-        # Check validity of IP address (mainly to ensure that )
-        pattern = re.compile(r"^((([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])[ (\[]?(\.|dot)"
-                             "[ )\]]?){3}([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5]))$")
-        if not pattern.match(ip_address):
-            raise InvalidIPAddressException('%s is not a valid IP address' % ip_address)
+        ArgumentValidator.validate_ip_address(ip_address)
 
         # Update global MCVirt configuration
         def update_config(config):
