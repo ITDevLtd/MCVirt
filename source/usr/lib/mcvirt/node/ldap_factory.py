@@ -43,7 +43,6 @@ class LdapFactory(PyroObject):
 
     def get_connection(self, bind_dn=None, password=None):
         """Return an LDAP object"""
-
         if not LdapFactory.is_enabled():
             raise LdapNotEnabledException('Ldap has not been configured on this node')
 
