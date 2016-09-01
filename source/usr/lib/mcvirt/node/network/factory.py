@@ -53,6 +53,14 @@ class Factory(PyroObject):
         return (netifaces.AF_INET in addr)
 
     @Pyro4.expose()
+    def assert_interface_exists(self, interface):
+        if not self.interface_exists(interface):
+            raise InterfaceDoesNotExist(
+                'Physical interface %s does not exist on remote node: %s'
+                % (interface, get_hostname()))
+        return True
+
+    @Pyro4.expose()
     @locking_method()
     def create(self, name, physical_interface):
         """Create a network on the node"""
@@ -69,11 +77,8 @@ class Factory(PyroObject):
         if self._is_cluster_master:
             def remote_command(remote_connection):
                 network_factory = remote_connection.get_connection('network_factory')
-                cluster = remote_connection.get_connection('cluster')
-                if not network_factory.interface_exists(physical_interface):
-                    raise InterfaceDoesNotExist(
-                        'Physical interface %s does not exist on remote node: %s'
-                        % (physical_interface, cluster.generate_connection_info()[0]))
+                network_factory.assert_interface_exists(physical_interface)
+
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
