@@ -25,7 +25,8 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import locking_method, MethodLock
 from mcvirt.version import VERSION
 from mcvirt.argument_validator import ArgumentValidator
-
+from mcvirt.system import System
+from mcvirt.constants import DirectoryLocation
 
 class Node(PyroObject):
     """Provides methods to configure the local node."""
@@ -61,9 +62,26 @@ class Node(PyroObject):
         mcvirt_config.update_config(update_config, 'Set node cluster IP address to %s' %
                                                    ip_address)
 
+    def get_free_vg_space(self):
+        """Returns the free space in megabytes."""
+        _, out, err = System.runCommand(
+                        ['vgs', MCVirtConfig().get_config()['vm_storage_vg'], '-o',
+                        'free', '--noheadings', '--nosuffix', '--units', 'm'],
+                        False,
+                        DirectoryLocation.BASE_STORAGE_DIR)
+        return float(out)
+
     def is_volume_group_set(self):
         """Determine if the volume group has been configured on the node"""
         return bool(MCVirtConfig().get_config()['vm_storage_vg'])
+
+    def volume_group_exists(self):
+        """Determine if the volume group actually exists on the node."""
+        _, out, err = System.runCommand(
+                        ['vgs', '|', 'grep', MCVirtConfig().get_config()['vm_storage_vg']],
+                        False,
+                        DirectoryLocation.BASE_STORAGE_DIR)
+        return bool(out)
 
     @Pyro4.expose()
     def get_version(self):

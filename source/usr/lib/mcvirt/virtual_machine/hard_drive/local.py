@@ -44,7 +44,8 @@ class Local(Base):
     @staticmethod
     def isAvailable(pyro_object):
         """Determine if local storage is available on the node"""
-        return pyro_object._get_registered_object('node').is_volume_group_set()
+        return (pyro_object._get_registered_object('node').is_volume_group_set() and
+                pyro_object._get_registered_object('node').volume_group_exists())
 
     @Pyro4.expose()
     @locking_method()

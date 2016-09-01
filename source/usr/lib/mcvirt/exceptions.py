@@ -347,6 +347,11 @@ class DrbdVolumeNotInSyncException(MCVirtException):
 
     pass
 
+class InsufficientSpaceException(MCVirtException):
+    """A hard drive object was initialised when the volume group did not have enough space."""
+
+    pass
+
 
 class UnknownStorageTypeException(MCVirtException):
     """An hard drive object with an unknown disk type has been initialised"""

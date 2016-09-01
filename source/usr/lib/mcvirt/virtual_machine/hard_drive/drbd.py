@@ -236,6 +236,7 @@ class Drbd(Base):
     def isAvailable(pyro_object):
         """Determine if Drbd is available on the node"""
         return (pyro_object._get_registered_object('node').is_volume_group_set() and
+                pyro_object._get_registered_object('node').volume_group_exists() and
                 pyro_object._get_registered_object('node_drbd').is_enabled())
 
     def _check_exists(self):
