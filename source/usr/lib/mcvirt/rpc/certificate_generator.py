@@ -26,6 +26,7 @@ from mcvirt.exceptions import (CACertificateNotFoundException, OpenSSLNotFoundEx
                                MustGenerateCertificateException)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.syslogger import Syslogger
 
 
 class CertificateGenerator(PyroObject):
@@ -193,6 +194,20 @@ class CertificateGenerator(PyroObject):
         if not self._ensure_exists(path, assert_raise=False):
             # Generate new SSL private key
             System.runCommand([self.OPENSSL, 'genrsa', '-out', path, '2048'])
+        return path
+
+    @property
+    def dh_params_file(self):
+        """Return the path to the DH parameters file, and create it if it does not exist"""
+        if not self.is_local:
+            raise CACertificateNotFoundException('DH params file not available for remote node')
+
+        path = self._get_certificate_path('dh_params')
+        if not self._ensure_exists(path, assert_raise=False):
+            # Generate new DH parameters
+            Syslogger.logger().info('Generating DH parameters file')
+            System.runCommand([self.OPENSSL, 'dhparam', '-out', path, '2048'])
+            Syslogger.logger().info('DH parameters file generated')
         return path
 
     def _get_certificate_path(self, certname, base_dir=None, allow_remote=False):

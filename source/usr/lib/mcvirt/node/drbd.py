@@ -21,9 +21,9 @@ from Cheetah.Template import Template
 import os
 from texttable import Texttable
 import Pyro4
-import random
 import string
 import json
+from binascii import hexlify
 
 from mcvirt.exceptions import DrbdNotInstalledException, DrbdAlreadyEnabled
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -164,7 +164,7 @@ class Drbd(PyroObject):
 
     def generate_secret(self):
         """Generate a random secret for Drbd"""
-        return ''.join([random.choice(string.ascii_letters + string.digits) for _ in xrange(16)])
+        return hexlify(os.urandom(16))
 
     def set_secret(self, secret):
         """Set the Drbd configuration in the global MCVirt config file"""
