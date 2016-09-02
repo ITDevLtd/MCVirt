@@ -79,17 +79,17 @@ class Parser(object):
                                                        parents=[self.parent_parser])
         self.start_parser.add_argument('--iso', metavar='ISO Name', type=str,
                                        help='Path of ISO to attach to VM', default=None)
-        self.start_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        self.start_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str, help='Names of VMs')
 
         # Add arguments for stopping a VM
         self.stop_parser = self.subparsers.add_parser('stop', help='Stop VM',
                                                       parents=[self.parent_parser])
-        self.stop_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        self.stop_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str, help='Names of VMs')
 
         # Add arguments for resetting a VM
         self.reset_parser = self.subparsers.add_parser('reset', help='Reset VM',
                                                        parents=[self.parent_parser])
-        self.reset_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        self.reset_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str, help='Names of VM')
 
         # Add arguments for fixing deadlock on a vm
         self.method_lock_parser = self.subparsers.add_parser(
@@ -826,24 +826,36 @@ class Parser(object):
         # Perform functions on the VM based on the action passed to the script
         if action == 'start':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotate_object(vm_object)
-            vm_object.start(iso_name=args.iso)
-            self.print_status('Successfully started VM')
+            for vm_name in args.vm_names:
+                try:
+                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
+                    rpc.annotate_object(vm_object)
+                    vm_object.start(iso_name=args.iso)
+                    self.print_status('Successfully started VM %s' % vm_name)
+                except Exception, e:
+                    self.print_status('Error while starting VM %s: %s' % (vm_name, e))
 
         elif action == 'stop':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotate_object(vm_object)
-            vm_object.stop()
-            self.print_status('Successfully stopped VM')
+            for vm_name in args.vm_names:
+                try:
+                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
+                    rpc.annotate_object(vm_object)
+                    vm_object.stop()
+                    self.print_status('Successfully stopped VM %s' % vm_name)
+                except Exception, e:
+                    self.print_status('Error while stopping VM %s: %s' % (vm_name, e))
 
         elif action == 'reset':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotate_object(vm_object)
-            vm_object.reset()
-            self.print_status('Successfully reset VM')
+            for vm_name in args.vm_names:
+                try:
+                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
+                    rpc.annotate_object(vm_object)
+                    vm_object.reset()
+                    self.print_status('Successfully reset VM %s' % vm_name)
+                except Exception, e:
+                    self.print_status('Error while resetting VM %s: %s' % (vm_name, e))
 
         elif action == 'clear-method-lock':
             node = rpc.get_connection('node')
