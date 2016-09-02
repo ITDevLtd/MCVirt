@@ -46,18 +46,29 @@ class SSLSocket(object):
             'server_side': server_side
         }
 
-        # Create an SSL context
-        ssl_context = ssl.create_default_context()
-        ssl_context.set_ciphers(SSLSocket.CIPHERS)
+        legacy = ('create_default_context' not in dir(ssl))
+
+        # Support old Ubuntu 14.04 machines that have a python version < 2.7.9, which do
+        # not support create_default_context in the SSL library
+        if legacy:
+            ssl_kwargs['ssl_version'] = ssl.PROTOCOL_TLSv1
+        else:
+            # Create an SSL context
+            ssl_context = ssl.create_default_context()
+            ssl_context.set_ciphers(SSLSocket.CIPHERS)
 
         cert_gen_factory = CertificateGeneratorFactory()
         if server_side:
             cert_gen = cert_gen_factory.get_cert_generator(server='localhost')
             cert_gen.check_certificates(check_client=False)
-            ssl_context.load_cert_chain(cert_gen.server_pub_file, keyfile=cert_gen.server_key_file)
-            ssl_context.check_hostname = False
-            ssl_context.load_dh_params(cert_gen.dh_params_file)
-            ssl_context.verify_mode = ssl.CERT_OPTIONAL
+            if legacy:
+                ssl_kwargs['keyfile'] = cert_gen.server_key_file
+                ssl_kwargs['certfile'] = cert_gen.server_pub_file
+            else:
+                ssl_context.load_cert_chain(cert_gen.server_pub_file, keyfile=cert_gen.server_key_file)
+                ssl_context.check_hostname = False
+                ssl_context.load_dh_params(cert_gen.dh_params_file)
+                ssl_context.verify_mode = ssl.CERT_OPTIONAL
         else:
             # Determine if hostname is an IP address
             try:
@@ -66,13 +77,20 @@ class SSLSocket(object):
             except socket.error:
                 hostname = kwargs['connect'][0]
 
-            ssl_context.check_hostname = True
-            ssl_kwargs['server_hostname'] = hostname
             cert_gen = cert_gen_factory.get_cert_generator(hostname)
-            ssl_context.verify_mode = ssl.CERT_REQUIRED
-            ssl_context.load_verify_locations(cafile=cert_gen.ca_pub_file)
+            if legacy:
+                ssl_kwargs['cert_reqs'] = ssl.CERT_REQUIRED
+                ssl_kwargs['ca_certs'] = cert_gen.ca_pub_file
+            else:
+                ssl_context.check_hostname = True
+                ssl_kwargs['server_hostname'] = hostname
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
+                ssl_context.load_verify_locations(cafile=cert_gen.ca_pub_file)
 
-        return ssl_context.wrap_socket(socket_object, **ssl_kwargs)
+        if legacy:
+            return ssl.wrap_socket(socket_object, **ssl_kwargs)
+        else:
+            return ssl_context.wrap_socket(socket_object, **ssl_kwargs)
 
     @staticmethod
     def create_ssl_socket(*args, **kwargs):
