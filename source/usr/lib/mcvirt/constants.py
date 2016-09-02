@@ -34,7 +34,6 @@ class DirectoryLocation(object):
     LOG_FILE = '/var/log/mcvirt.log'
     DRBD_HOOK_CONFIG = NODE_STORAGE_DIR + '/drbd-hook-config.json'
 
-
 class LockStates(Enum):
     """Library of virtual machine lock states."""
 

@@ -21,12 +21,13 @@ import argparse
 import binascii
 import os
 
-from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
+from mcvirt.exceptions import (ArgumentParserException, DrbdVolumeNotInSyncException,
+                               AuthenticationError)
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
 from mcvirt.auth.user_types.user_base import UserBase
-
+from subprocess import call
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
     """Override the ArgumentParser class, in order to change the handling of errors."""
@@ -39,6 +40,8 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 
 class Parser(object):
     """Provides an argument parser for MCVirt."""
+
+    AUTH_FILE = '.mcvirt-auth'
 
     def __init__(self, verbose=True):
         """Configure the argument parser object."""
@@ -771,24 +774,51 @@ class Parser(object):
                     return
             ignore_cluster = True
 
-        # Obtain connection to Pyro server
         if self.SESSION_ID and self.USERNAME:
             rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID,
-                             ignore_cluster=ignore_cluster)
+                                ignore_cluster=ignore_cluster)
         else:
-            # Check if user/password have been passed. Else, ask for them.
-            username = args.username if args.username else System.getUserInput(
-                'Username: '
-            ).rstrip()
-            if args.password:
-                password = args.password
-            else:
-                password = System.getUserInput(
-                    'Password: ', password=True
+             # Obtain connection to Pyro server
+            use_auth_session = False
+            if not (args.password or args.username):
+                # Try logging in with saved session
+                try:
+                    with open(os.getenv('HOME') + '/' + self.AUTH_FILE, 'r') as f:
+                        for line in f:
+                            line = line.split()
+                            auth_username = line[0]
+                            auth_session = line[1]
+                except IOError:
+                    auth_session = None
+                    pass
+
+                if auth_session:
+                    try:
+                        rpc = Connection(username=auth_username, session_id=auth_session,
+                                         ignore_cluster=ignore_cluster)
+                    except AuthenticationError:
+                        self.print_status('Authentication error occured when using saved session.')
+                    else:
+                        use_auth_session = True
+
+            if not use_auth_session:
+                # Check if user/password have been passed. Else, ask for them.
+                username = args.username if args.username else System.getUserInput(
+                    'Username: '
                 ).rstrip()
-            rpc = Connection(username=username, password=password, ignore_cluster=ignore_cluster)
-            self.SESSION_ID = rpc.session_id
-            self.USERNAME = username
+                if args.password:
+                    password = args.password
+                else:
+                    password = System.getUserInput(
+                        'Password: ', password=True
+                    ).rstrip()
+                rpc = Connection(username=username, password=password, ignore_cluster=ignore_cluster)
+                self.SESSION_ID = rpc.session_id
+                self.USERNAME = rpc.username
+
+        # If successfully authenticated then store session ID and username in auth file
+        with open(os.getenv('HOME') + '/' + self.AUTH_FILE, 'w') as f:
+            f.write(rpc.username + " " + rpc.session_id)
 
         if args.ignore_drbd:
             rpc.ignore_drbd()

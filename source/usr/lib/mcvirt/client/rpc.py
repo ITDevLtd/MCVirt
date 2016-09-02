@@ -133,3 +133,8 @@ class Connection(object):
     def session_id(self):
         """Property for the session ID"""
         return self.__session_id
+
+    @property
+    def username(self):
+        """Property for the username"""
+        return self.__username
