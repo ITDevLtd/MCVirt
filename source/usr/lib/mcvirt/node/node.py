@@ -22,7 +22,8 @@ import Pyro4
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import locking_method, MethodLock
+from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.lock import MethodLock
 from mcvirt.version import VERSION
 from mcvirt.argument_validator import ArgumentValidator
 
@@ -30,8 +31,7 @@ from mcvirt.argument_validator import ArgumentValidator
 class Node(PyroObject):
     """Provides methods to configure the local node."""
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def set_storage_volume_group(self, volume_group):
         """Update the MCVirt configuration to set the volume group for VM storage."""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
@@ -46,8 +46,7 @@ class Node(PyroObject):
                                     'Set virtual machine storage volume group to %s' %
                                     volume_group)
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def set_cluster_ip_address(self, ip_address):
         """Update the cluster IP address for the node."""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
@@ -65,12 +64,12 @@ class Node(PyroObject):
         """Determine if the volume group has been configured on the node"""
         return bool(MCVirtConfig().get_config()['vm_storage_vg'])
 
-    @Pyro4.expose()
+    @Expose()
     def get_version(self):
         """Return the version of the running daemon"""
         return VERSION
 
-    @Pyro4.expose()
+    @Expose()
     def clear_method_lock(self):
         """Force clear a method lock to escape deadlock"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)

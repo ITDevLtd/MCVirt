@@ -21,9 +21,9 @@ import ldap
 import Pyro4
 
 from mcvirt.auth.user_types.user_base import UserBase
-from mcvirt.rpc.lock import locking_method
 from mcvirt.exceptions import MCVirtException, LdapConnectionFailedException
 from mcvirt.node.ldap_factory import LdapFactory
+from mcvirt.rpc.expose_method import Expose
 
 
 class LdapUser(UserBase):
@@ -77,8 +77,7 @@ class LdapUser(UserBase):
         """Set the password for the current user"""
         raise NotImplemented
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def delete(self):
         """Delete the current user from MCVirt config"""
         raise NotImplemented

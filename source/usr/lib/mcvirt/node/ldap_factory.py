@@ -24,7 +24,7 @@ import os
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.exceptions import (LdapConnectionFailedException, LdapNotEnabledException,
                                UserDoesNotExistException, UnknownLdapError)
 from mcvirt.constants import DirectoryLocation
@@ -73,8 +73,7 @@ class LdapFactory(PyroObject):
         """Determine if LDAP authentication is enabled"""
         return MCVirtConfig().get_config()['ldap']['enabled']
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def set_enable(self, enable):
         """Flag as to whether LDAP authentication
         is enabled or disabled.
@@ -151,8 +150,7 @@ class LdapFactory(PyroObject):
         else:
             raise UserDoesNotExistException('User not returned by LDAP search')
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def set_config(self, server_uri=UNCHANGED, base_dn=UNCHANGED,
                    user_search=UNCHANGED, ca_cert=UNCHANGED,
                    bind_dn=UNCHANGED, bind_pass=UNCHANGED,

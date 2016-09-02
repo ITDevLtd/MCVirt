@@ -30,8 +30,8 @@ from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                ClusterNotInitialisedException, NodeDoesNotExistException,
                                VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException,
                                MCVirtTypeError)
-from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.virtual_machine.hard_drive.base import Driver as HardDriveDriver
@@ -55,7 +55,7 @@ class Factory(PyroObject):
     DEFAULT_GRAPHICS_DRIVER = GraphicsDriver.VMVGA.value
     CACHED_OBJECTS = {}
 
-    @Pyro4.expose()
+    @Expose()
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
         ArgumentValidator.validate_hostname(vm_name)
@@ -65,12 +65,12 @@ class Factory(PyroObject):
             Factory.CACHED_OBJECTS[vm_name] = vm_object
         return Factory.CACHED_OBJECTS[vm_name]
 
-    @Pyro4.expose()
+    @Expose()
     def getAllVirtualMachines(self):
         """Return objects for all virtual machines"""
         return [self.getVirtualMachineByName(vm_name) for vm_name in self.getAllVmNames()]
 
-    @Pyro4.expose()
+    @Expose()
     def getAllVmNames(self, node=None):
         """Returns a list of all VMs within the cluster or those registered on a specific node"""
         if node is not None:
@@ -92,7 +92,7 @@ class Factory(PyroObject):
                 return virtual_machine_factory.getAllVmNames(node=node)
             return cluster.run_remote_command(callback_method=remote_command, nodes=[node])[node]
 
-    @Pyro4.expose()
+    @Expose()
     def listVms(self):
         """Lists the VMs that are currently on the host"""
         table = Texttable()
@@ -105,7 +105,7 @@ class Factory(PyroObject):
         table_output = table.draw()
         return table_output
 
-    @Pyro4.expose()
+    @Expose()
     def check_exists(self, vm_name):
         """Determines if a VM exists, given a name"""
         try:
@@ -115,7 +115,7 @@ class Factory(PyroObject):
 
         return (vm_name in self.getAllVmNames())
 
-    @Pyro4.expose()
+    @Expose()
     def checkName(self, name, ignore_exists=False):
         try:
             ArgumentValidator.validate_hostname(name)
@@ -137,14 +137,12 @@ class Factory(PyroObject):
         if driver not in [i.value for i in list(GraphicsDriver)]:
             raise InvalidGraphicsDriverException('Invalid graphics driver \'%s\'' % driver)
 
-    @Pyro4.expose()
-    @locking_method(instance_method=True)
+    @Expose(locking=True, instance_method=True)
     def create(self, *args, **kwargs):
         """Exposed method for creating a VM, that performs a permission check"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
-    @locking_method(instance_method=True)
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                 network_interfaces=[], node=None, available_nodes=[], storage_type=None,
                 hard_drive_driver=None, graphics_driver=None, modification_flags=[]):

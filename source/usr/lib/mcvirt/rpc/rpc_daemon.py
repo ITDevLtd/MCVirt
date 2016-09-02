@@ -47,6 +47,7 @@ from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.daemon_lock import DaemonLock
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import AuthenticationError
+from mcvirt.rpc.expose_method import Expose
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -188,16 +189,6 @@ class BaseRpcDaemon(Pyro4.Daemon):
         raise AuthenticationError('Invalid username/password/session')
 
 
-class DaemonSession(object):
-    """Class for allowing client to obtain the session ID"""
-
-    @Pyro4.expose()
-    def get_session_id(self):
-        """Return the client's current session ID"""
-        if Pyro4.current_context.session_id:
-            return Pyro4.current_context.session_id
-
-
 class RpcNSMixinDaemon(object):
     """Wrapper for the daemon. Required since the
     Pyro daemon class overrides get/setattr and other
@@ -281,9 +272,6 @@ class RpcNSMixinDaemon(object):
 
     def register_factories(self):
         """Register base MCVirt factories with RPC daemon"""
-        # Register session class
-        self.register(DaemonSession, objectId='session', force=True)
-
         # Create Virtual machine factory object and register with daemon
         virtual_machine_factory = VirtualMachineFactory()
         self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
@@ -349,7 +337,9 @@ class RpcNSMixinDaemon(object):
         self.register(MCVirtConfig, objectId='mcvirt_config', force=True)
 
         # Create an MCVirt session
-        self.register(Session(), objectId='mcvirt_session', force=True)
+        session_object = Session()
+        self.register(session_object, objectId='mcvirt_session', force=True)
+        Expose.SESSION_OBJECT = session_object
 
     def obtain_connection(self):
         """Attempt to obtain a connection to the name server."""

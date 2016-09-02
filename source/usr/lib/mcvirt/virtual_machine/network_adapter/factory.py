@@ -18,7 +18,7 @@
 import Pyro4
 
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.expose_method import Expose
 from network_adapter import NetworkAdapter
 from mcvirt.auth.permissions import PERMISSIONS
 
@@ -29,8 +29,7 @@ class Factory(PyroObject):
     OBJECT_TYPE = 'network adapter'
     NETWORK_ADAPTER_CLASS = NetworkAdapter
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def create(self, virtual_machine, network_object, mac_address=None):
         """Create a network interface for the local VM"""
         virtual_machine = self._convert_remote_object(virtual_machine)
@@ -77,7 +76,7 @@ class Factory(PyroObject):
             virtual_machine._editConfig(updateXML)
         return network_adapter_object
 
-    @Pyro4.expose()
+    @Expose()
     def getNetworkAdaptersByVirtualMachine(self, virtual_machine):
         """Returns an array of network interface objects for each of the
         interfaces attached to the VM"""
@@ -90,7 +89,7 @@ class Factory(PyroObject):
             interfaces.append(interface_object)
         return interfaces
 
-    @Pyro4.expose()
+    @Expose()
     def getNetworkAdapterByMacAdress(self, virtual_machine, mac_address):
         """Returns the network adapter by a given MAC address"""
         # Ensure that MAC address is a valid network adapter for the VM

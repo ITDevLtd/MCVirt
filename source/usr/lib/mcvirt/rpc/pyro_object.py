@@ -17,7 +17,9 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
+from threading import Lock
 
+from mcvirt.exceptions import MCVirtException
 from mcvirt.syslogger import Syslogger
 
 

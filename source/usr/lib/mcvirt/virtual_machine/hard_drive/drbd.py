@@ -19,6 +19,7 @@ from enum import Enum
 import os
 import math
 import Pyro4
+
 import time
 from Cheetah.Template import Template
 
@@ -26,7 +27,7 @@ from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.node.drbd import Drbd as NodeDrbd
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.system import System
-from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.constants import DirectoryLocation
 from mcvirt.utils import get_hostname
 from mcvirt.syslogger import Syslogger
@@ -466,8 +467,7 @@ class Drbd(Base):
         self._removeLogicalVolume(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX),
                                   perform_on_nodes=(not local_only))
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def initialiseMetaData(self, *args, **kwargs):
         """Provides an exposed method for _initialiseMetaData
            with permission checking"""
@@ -479,8 +479,7 @@ class Drbd(Base):
         """Performs an initialisation of the meta data, using drbdadm"""
         System.runCommand([NodeDrbd.DrbdADM, 'create-md', self.resource_name])
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def drbdUp(self, *args, **kwargs):
         """Provides an exposed method for _drbdUp
            with permission checking"""
@@ -492,8 +491,7 @@ class Drbd(Base):
         """Performs a Drbd 'up' on the hard drive Drbd resource"""
         System.runCommand([NodeDrbd.DrbdADM, 'up', self.resource_name])
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def drbdDown(self, *args, **kwargs):
         """Provides an exposed method for _drbdDown
            with permission checking"""
@@ -510,8 +508,7 @@ class Drbd(Base):
             time.sleep(5)
             System.runCommand([NodeDrbd.DrbdADM, 'down', self.resource_name])
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def drbdConnect(self, *args, **kwargs):
         """Provides an exposed method for _drbdConnect
            with permission checking"""
@@ -524,8 +521,7 @@ class Drbd(Base):
         if self._drbdGetConnectionState() not in Drbd.Drbd_STATES['CONNECTION']['CONNECTED']:
             System.runCommand([NodeDrbd.DrbdADM, 'connect', self.resource_name])
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def drbdDisconnect(self, *args, **kwargs):
         """Provides an exposed method for _drbdDisconnect
            with permission checking"""
@@ -537,8 +533,7 @@ class Drbd(Base):
         """Performs a Drbd 'disconnect' on the hard drive Drbd resource"""
         System.runCommand([NodeDrbd.DrbdADM, 'disconnect', self.resource_name])
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def setTwoPrimariesConfig(self, *args, **kwargs):
         """Provides an exposed method for _setTwoPrimariesConfig
            with permission checking"""
@@ -587,8 +582,7 @@ class Drbd(Base):
             cluster_instance.run_remote_command(callback_method=remoteCommand,
                                                 nodes=self.vm_object._get_remote_nodes())
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def drbdSetPrimary(self, *args, **kwargs):
         """Provides an exposed method for _drbdSetPrimary
            with permission checking"""
@@ -622,8 +616,7 @@ class Drbd(Base):
         # Set Drbd resource to primary
         System.runCommand([NodeDrbd.DrbdADM, 'primary', self.resource_name])
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def drbdSetSecondary(self, *args, **kwargs):
         """Provides an exposed method for _drbdSetSecondary
            with permission checking"""
@@ -691,7 +684,7 @@ class Drbd(Base):
                     (self.resource_name, state.value)
                 )
 
-    @Pyro4.expose()
+    @Expose()
     def drbdGetConnectionState(self):
         """Provide an exposed method for _drbdGetConnectionState"""
         self._get_registered_object('auth').assert_permission(
@@ -706,7 +699,7 @@ class Drbd(Base):
         state = stdout.strip()
         return DrbdConnectionState(state)
 
-    @Pyro4.expose()
+    @Expose()
     def drbdGetDiskState(self):
         """Provide an exposed method for drbdGetDiskState"""
         self._get_registered_object('auth').assert_permission(
@@ -807,8 +800,7 @@ class Drbd(Base):
             # assume the disk is being created and is in-sync
             return True
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync"""
         self._get_registered_object('auth').assert_permission(
@@ -834,7 +826,7 @@ class Drbd(Base):
             cluster.run_remote_command(callback_method=remoteCommand,
                                        nodes=self.vm_object._get_remote_nodes())
 
-    @Pyro4.expose()
+    @Expose()
     def verify(self):
         """Performs a verification of a Drbd hard drive"""
         self._get_registered_object('auth').assert_permission(
@@ -878,7 +870,7 @@ class Drbd(Base):
             raise DrbdVolumeNotInSyncException('The Drbd verification for \'%s\' failed' %
                                                self.resource_name)
 
-    @Pyro4.expose()
+    @Expose()
     def resync(self, source_node=None, auto_determine=False):
         """Perform a resync of a Drbd hard drive"""
         # Ensure user has privileges to create a Drbd volume
@@ -1073,8 +1065,7 @@ class Drbd(Base):
         """Returns the path of the raw disk image"""
         return self._getDrbdDevice()
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def generateDrbdConfig(self, *args, **kwargs):
         """Provides an exposed method for _generateDrbdConfig
            with permission checking"""
@@ -1126,8 +1117,7 @@ class Drbd(Base):
         fh.write(config_content.respond())
         fh.close()
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def removeDrbdConfig(self, *args, **kwargs):
         """Provides an exposed method for _removeDrbdConfig
            with permission checking"""

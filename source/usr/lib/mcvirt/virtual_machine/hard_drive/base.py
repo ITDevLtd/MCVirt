@@ -35,7 +35,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import ReachedMaximumStorageDevicesException
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.constants import LockStates
 
 
@@ -161,13 +161,12 @@ class Base(PyroObject):
                 'Disk %s for %s does not exist' %
                 (self.disk_id, self.vm_object.get_name()))
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def resync(self, source_node=None, auto_determine=False):
         """Resync the volume"""
         raise ResyncNotSupportedException('Resync is not supported on this storage type')
 
-    @Pyro4.expose()
+    @Expose()
     def get_type(self):
         """Return the type of storage for the hard drive"""
         return self.__class__.__name__
@@ -222,8 +221,7 @@ class Base(PyroObject):
 
         return new_disk_object
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def addToVirtualMachine(self, register=True):
         """Add the hard drive to the virtual machine,
            and performs the base function on all nodes in the cluster"""
@@ -268,8 +266,7 @@ class Base(PyroObject):
         """Returns whether the storage type is available on the node"""
         raise NotImplementedError
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def removeFromVirtualMachine(self, unregister=False, all_nodes=True):
         """Remove the hard drive from a VM configuration and perform all nodes
            in the cluster"""
@@ -336,8 +333,7 @@ class Base(PyroObject):
                 updateStorageTypeConfig, 'Updated storage type for \'%s\' to \'%s\'' %
                 (self.vm_object.get_name(), self.get_type()))
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def createLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _createLogicalVolume
            with permission checking"""
@@ -374,8 +370,7 @@ class Base(PyroObject):
                 "Error whilst creating disk logical volume:\n" + str(e)
             )
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def removeLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _removeLogicalVolume
            with permission checking"""
@@ -432,8 +427,7 @@ class Base(PyroObject):
         lv_size = command_output.strip().split('.')[0]
         return int(lv_size)
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def zeroLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _zeroLogicalVolume
            with permission checking"""
@@ -489,8 +483,7 @@ class Base(PyroObject):
         """Checks that a logical volume is active"""
         return os.path.exists(self._getLogicalVolumePath(name))
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def activateLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _activateLogicalVolume
            with permission checking"""
@@ -581,8 +574,7 @@ class Base(PyroObject):
         # Unlock the VM
         self.vm_object._setLockState(LockStates.UNLOCKED)
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         raise NotImplementedError
@@ -677,7 +669,7 @@ class Base(PyroObject):
         """Returns the libvirt name of the driver for the disk"""
         return Driver[self.driver].value
 
-    @Pyro4.expose()
+    @Expose()
     def getDiskPath(self):
         """Exposed method for _getDiskPath"""
         self._get_registered_object('auth').assert_permission(

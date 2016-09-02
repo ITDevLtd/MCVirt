@@ -25,7 +25,9 @@ import time
 from mcvirt.exceptions import (AuthenticationError, CurrentUserError,
                                UserDoesNotExistException)
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.syslogger import Syslogger
 
 
 class SessionInfo(object):
@@ -36,22 +38,22 @@ class SessionInfo(object):
         self.username = username
 
         if user_class.EXPIRE_SESSION:
-            self.expires = time.time() + SessionInfo.get_timeout()
+            self.disabled = False
+            self.renew()
         else:
+            self.disabled = True
             self.expires = False
 
     def is_valid(self):
         """Return True if this session is valid"""
-        if self.expires:
-            return self.expires > time.time()
-        else:
-            return True
+        return (not self.expires or self.expires > time.time())
 
     def renew(self):
-        """Renew this session by increasing the expiry time if applicable"""
-        if self.expires:
-            self.expires += SessionInfo.get_timeout()
+        """Renew this session by increasing the expiry time (if applicable)"""
+        self.expires = False if self.disabled else time.time() + SessionInfo.get_timeout()
 
+    def disable(self):
+        self.expires = False
 
     @staticmethod
     def get_timeout():
@@ -89,6 +91,7 @@ class Session(PyroObject):
 
     def authenticate_session(self, username, session):
         """Authenticate user session."""
+        Syslogger.logger().debug("Authenticating session for user %s: %s" % (username, session))
 
         if (session in Session.USER_SESSIONS and
                 Session.USER_SESSIONS[session].username == username):
@@ -123,3 +126,13 @@ class Session(PyroObject):
             user_factory = self._get_registered_object('user_factory')
             return user_factory.get_user_by_username(username)
         raise CurrentUserError('Cannot obtain current user')
+
+    @Expose()
+    def get_session_id(self):
+        """Return the client's current session ID"""
+        return self._get_session_id()
+
+    def _get_session_id(self):
+        """Return the client's current session ID"""
+        if 'session_id' in dir(Pyro4.current_context) and Pyro4.current_context.session_id:
+            return Pyro4.current_context.session_id

@@ -20,6 +20,7 @@
 import json
 import base64
 import Pyro4
+
 import socket
 from texttable import Texttable
 
@@ -34,16 +35,16 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.user_types.connection_user import ConnectionUser
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.client.rpc import Connection
-from mcvirt.rpc.lock import locking_method
 from mcvirt.cluster.remote import Node
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.syslogger import Syslogger
 
 
 class Cluster(PyroObject):
     """Class to perform node management within the MCVirt cluster"""
 
-    @Pyro4.expose()
+    @Expose()
     def generate_connection_info(self):
         """Generate required information to connect to this node from a remote node"""
         # Ensure user has required permissions
@@ -63,7 +64,7 @@ class Cluster(PyroObject):
                 connection_username, connection_password,
                 ssl_object.get_ca_contents()]
 
-    @Pyro4.expose()
+    @Expose()
     def get_connection_string(self):
         """Generate a string to connect to this node from a remote cluster"""
         # Only superusers can generate a connection string
@@ -83,7 +84,7 @@ class Cluster(PyroObject):
         connection_info_json = json.dumps(connection_info_dict)
         return base64.b64encode(connection_info_json)
 
-    @Pyro4.expose()
+    @Expose()
     def print_info(self):
         """Print information about the nodes in the cluster"""
         table = Texttable()
@@ -120,8 +121,7 @@ class Cluster(PyroObject):
                 raise NodeVersionMismatch('Node %s is running MCVirt %s. Local version: %s' %
                                           (node, node_versions[node], local_version))
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def add_node_configuration(self, node_name, ip_address,
                                connection_user, connection_password,
                                ca_key):
@@ -175,8 +175,7 @@ class Cluster(PyroObject):
                                                  ' continuing.') %
                                                 (get_hostname(), cluster_ip, resolve_ip))
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def add_node(self, node_connection_string):
         """Connect to a remote MCVirt machine, setup shared authentication
         and clusters the machines.
@@ -496,8 +495,7 @@ class Cluster(PyroObject):
         if remote_node_drbd.is_enabled():
             raise DrbdNotInstalledException('Drbd is already enabled on the remote node')
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def remove_node(self, node_name_to_remove):
         """Remove a node from the MCVirt cluster"""
         # Ensure the user has privileges to manage the cluster
@@ -538,7 +536,7 @@ class Cluster(PyroObject):
         # Remove the SSL certificates from the other nodes
         self._remove_node_ssl_certificates(node_name_to_remove)
 
-    @Pyro4.expose()
+    @Expose()
     def remove_node_ssl_certificates(self, remote_node):
         """Exposed method for _remove_node_ssl_certificates"""
         self._get_registered_object('auth').check_user_type('ClusterUser')
@@ -613,7 +611,7 @@ class Cluster(PyroObject):
         self.ensure_node_exists(node)
         return self.get_cluster_config()['nodes'][node]
 
-    @Pyro4.expose()
+    @Expose()
     def get_nodes(self, return_all=False):
         """Return an array of node configurations"""
         cluster_config = self.get_cluster_config()
