@@ -834,8 +834,9 @@ class Parser(object):
                     rpc.annotate_object(vm_object)
                     vm_object.start(iso_name=args.iso)
                     self.print_status('Successfully started VM %s' % vm_name)
-                except Exception, e:
-                    self.print_status('Error while starting VM %s: %s' % (vm_name, e))
+                except Exception:
+                    self.print_status('Error while starting VM %s' % vm_name)
+                    raise
 
         elif action == 'stop':
             vm_factory = rpc.get_connection('virtual_machine_factory')
@@ -845,8 +846,9 @@ class Parser(object):
                     rpc.annotate_object(vm_object)
                     vm_object.stop()
                     self.print_status('Successfully stopped VM %s' % vm_name)
-                except Exception, e:
-                    self.print_status('Error while stopping VM %s: %s' % (vm_name, e))
+                except Exception:
+                    self.print_status('Error while stopping VM %s:' % vm_name)
+                    raise
 
         elif action == 'reset':
             vm_factory = rpc.get_connection('virtual_machine_factory')
@@ -856,8 +858,9 @@ class Parser(object):
                     rpc.annotate_object(vm_object)
                     vm_object.reset()
                     self.print_status('Successfully reset VM %s' % vm_name)
-                except Exception, e:
-                    self.print_status('Error while resetting VM %s: %s' % (vm_name, e))
+                except Exception:
+                    self.print_status('Error while resetting VM %s' % vm_name)
+                    raise
 
         elif action == 'clear-method-lock':
             node = rpc.get_connection('node')
