@@ -34,7 +34,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 class ConfigFile(PyroObject):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    CURRENT_VERSION = 6
+    CURRENT_VERSION = 7
     GIT = '/usr/bin/git'
 
     def __init__(self):

@@ -42,6 +42,7 @@ class UserBase(PyroObject):
     CAN_CREATE = True
     SEARCH_ORDER = 1
     UNIQUE = False
+    EXPIRE_SESSION = False
 
     @classmethod
     def get_all_usernames(cls):

@@ -26,6 +26,8 @@ from mcvirt.auth.permissions import PERMISSIONS
 class LocalUser(UserBase):
     """Provides an interaction with the local user backend"""
 
+    EXPIRE_SESSION = True
+
     @Pyro4.expose()
     def set_password(self, new_password):
         """Change the current user's password."""
