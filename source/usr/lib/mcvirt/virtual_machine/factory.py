@@ -218,7 +218,8 @@ class Factory(PyroObject):
         # add an option that forces the user to specify the nodes for the Drbd VM
         # to be added to
         if storage_type == 'Drbd' and len(available_nodes) != node_drbd.CLUSTER_SIZE:
-            raise InvalidNodesException('Exactly two nodes must be specified')
+            raise InvalidNodesException('Exactly %i nodes must be specified'
+                                        % node_drbd.CLUSTER_SIZE)
 
         for check_node in available_nodes:
             if check_node not in all_nodes:
@@ -226,6 +227,13 @@ class Factory(PyroObject):
 
         if get_hostname() not in available_nodes and self._is_cluster_master:
             raise InvalidNodesException('One of the nodes must be the local node')
+
+        # Check whether the hard drives can be created.
+        if self._is_cluster_master:
+            hard_drive_factory = self._get_registered_object('hard_drive_factory')
+            for hard_drive_size in hard_drives:
+                remote_nodes = [node for node in available_nodes if node != get_hostname()]
+                hard_drive_factory.ensure_hdd_valid(hard_drive_size, storage_type, remote_nodes)
 
         # Create directory for VM
         makedirs(VirtualMachine._get_vm_dir(name))
