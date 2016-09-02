@@ -27,7 +27,7 @@ import Pyro4
 
 from mcvirt.iso.iso import Iso
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.constants import DirectoryLocation
 from mcvirt.exceptions import InvalidISOPathException
 from mcvirt.auth.permissions import PERMISSIONS
@@ -47,7 +47,7 @@ class Factory(PyroObject):
         node.annotate_object(remote_factory)
         return remote_factory
 
-    @Pyro4.expose()
+    @Expose()
     def get_isos(self):
         """Return a list of a ISOs"""
         # Get files in ISO directory
@@ -60,14 +60,14 @@ class Factory(PyroObject):
                 iso_list.append(iso_name)
         return iso_list
 
-    @Pyro4.expose()
+    @Expose()
     def get_iso_by_name(self, iso_name, node=None):
         """Create and register Iso object"""
         iso_object = Iso(iso_name)
         self._register_object(iso_object)
         return iso_object
 
-    @Pyro4.expose()
+    @Expose()
     def get_iso_list(self, node=None):
         """Return a user-readable list of ISOs"""
         iso_list = self.get_remote_factory(node).get_isos()
@@ -89,8 +89,7 @@ class Factory(PyroObject):
 
         return self.get_iso_by_name(filename)
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def add_from_url(self, url, name=None, node=None):
         """Download an ISO from given URL and save in ISO directory"""
         self._get_registered_object('auth').assert_permission(
@@ -135,8 +134,7 @@ class Factory(PyroObject):
         os.rmdir(temp_directory)
         return iso_object.get_name()
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def add_iso_from_stream(self, path, name=None):
         """Import ISO, writing binary data to the ISO file"""
         self._get_registered_object('auth').assert_permission(
@@ -171,7 +169,7 @@ class IsoWriter(PyroObject):
             self.fh.close()
             self.fh = None
 
-    @Pyro4.expose()
+    @Expose()
     def write_data(self, data):
         """Write data to the ISO file"""
         self._get_registered_object('auth').assert_permission(
@@ -179,7 +177,7 @@ class IsoWriter(PyroObject):
         )
         self.fh.write(binascii.unhexlify(data))
 
-    @Pyro4.expose()
+    @Expose()
     def write_end(self):
         """End writing object, close FH and import ISO"""
         self._get_registered_object('auth').assert_permission(

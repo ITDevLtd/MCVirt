@@ -19,6 +19,7 @@
 
 import Pyro4
 
+
 import mcvirt.exceptions  # Import necessary for Pyro # noqa
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.utils import get_hostname
@@ -30,7 +31,7 @@ class Connection(object):
     """Connection class, providing connections to the Pyro MCVirt daemon"""
 
     NS_PORT = 9090
-    SESSION_OBJECT = 'session'
+    SESSION_OBJECT = 'mcvirt_session'
 
     def __init__(self, username=None, password=None, session_id=None,
                  host=None, ignore_cluster=False):

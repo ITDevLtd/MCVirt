@@ -26,6 +26,7 @@ from mcvirt.exceptions import (InvalidISOPathException, NameNotSpecifiedExceptio
                                IsoInUseException)
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.constants import DirectoryLocation
 from mcvirt.auth.permissions import PERMISSIONS
 
@@ -44,12 +45,12 @@ class Iso(PyroObject):
 
         self.set_iso_permissions()
 
-    @Pyro4.expose()
+    @Expose()
     def get_name(self):
         """Return the name of the ISO"""
         return self.name
 
-    @Pyro4.expose()
+    @Expose()
     def get_path(self):
         """Return the full path of the ISO"""
         return DirectoryLocation.ISO_STORAGE_DIR + '/' + self.get_name()
@@ -84,7 +85,7 @@ class Iso(PyroObject):
 
         return True
 
-    @Pyro4.expose()
+    @Expose()
     def delete(self):
         """Delete an ISO"""
         self._get_registered_object('auth').assert_permission(

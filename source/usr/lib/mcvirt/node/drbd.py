@@ -30,7 +30,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
 from mcvirt.constants import DirectoryLocation
 
@@ -69,12 +69,12 @@ class Drbd(PyroObject):
             with open(DirectoryLocation.DRBD_HOOK_CONFIG, 'w') as fh:
                 json.dump({'username': hook_user, 'password': hook_pass}, fh)
 
-    @Pyro4.expose()
+    @Expose()
     def is_enabled(self):
         """Determine whether Drbd is enabled on the node or not"""
         return self.get_config()['enabled']
 
-    @Pyro4.expose()
+    @Expose()
     def is_installed(self):
         """Determine if the 'drbdadm' command is present to determine if the
         'drbd8-utils' package is installed
@@ -87,8 +87,7 @@ class Drbd(PyroObject):
             raise DrbdNotInstalledException('drbdadm not found' +
                                             ' (Is the drbd8-utils package installed?)')
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def enable(self, secret=None):
         """Ensure the machine is suitable to run Drbd"""
         # Ensure user has the ability to manage Drbd
@@ -199,7 +198,7 @@ class Drbd(PyroObject):
         """Return a list of used Drbd minor IDs"""
         return [hdd.drbd_minor for hdd in self.get_all_drbd_hard_drive_object(include_remote=True)]
 
-    @Pyro4.expose()
+    @Expose()
     def list(self):
         """List the Drbd volumes and statuses"""
         # Create table and add headers

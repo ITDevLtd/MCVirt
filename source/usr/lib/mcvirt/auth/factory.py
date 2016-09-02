@@ -24,6 +24,7 @@ from mcvirt.exceptions import (IncorrectCredentials, InvalidUsernameException,
                                UserDoesNotExistException, InvalidUserTypeException,
                                UserAlreadyExistsException, BlankPasswordException)
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.auth.user_types.local_user import LocalUser
 from mcvirt.auth.user_types.cluster_user import ClusterUser
@@ -50,7 +51,7 @@ class Factory(PyroObject):
 
         raise InvalidUserTypeException('An invalid user type has been passed')
 
-    @Pyro4.expose()
+    @Expose()
     def create(self, username, password, user_type=LocalUser):
         """Create a user."""
         self._get_registered_object('auth').assert_permission(
@@ -103,7 +104,7 @@ class Factory(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
-    @Pyro4.expose()
+    @Expose()
     def add_config(self, username, user_config):
         """Add a user config to the local node."""
         # Ensure this is being run as a Cluster User
@@ -123,7 +124,7 @@ class Factory(PyroObject):
             pass
         raise IncorrectCredentials('Incorrect username/password')
 
-    @Pyro4.expose()
+    @Expose()
     def get_user_by_username(self, username):
         """Obtain a user object for the given username."""
         for user_class in self.get_user_types():
@@ -135,14 +136,14 @@ class Factory(PyroObject):
         raise UserDoesNotExistException('User %s does not exist' %
                                         username)
 
-    @Pyro4.expose()
+    @Expose()
     def get_all_users(self):
         """Return all the users, excluding built-in users."""
         user_classes = filter(lambda user_class: not user_class.CLUSTER_USER,
                               self.get_user_types())
         return self.get_all_user_objects(user_classes=user_classes)
 
-    @Pyro4.expose()
+    @Expose()
     def get_all_user_objects(self, user_classes=[]):
         """Return the user objects for all users, optionally filtered by user type."""
         if len(user_classes):
@@ -184,7 +185,7 @@ class Factory(PyroObject):
         self.create(username=username, password=password, user_type=user_type)
         return username, password
 
-    @Pyro4.expose()
+    @Expose()
     def get_cluster_user_by_node(self, node):
         """Obtain a cluster user for a given node"""
         for user in self.get_all_user_objects(user_classes=[ClusterUser]):

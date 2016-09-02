@@ -35,7 +35,7 @@ class Logger(PyroObject):
             Logger.LOGGER = Logger()
         return Logger.LOGGER
 
-    @Pyro4.expose()
+    @Pyro4.expose
     def create_log_remote(self, *args, **kwargs):
         """Remotely accessible create_log method"""
         self._get_registered_object('auth').check_user_type('ClusterUser')
@@ -68,7 +68,7 @@ class Logger(PyroObject):
 
         return log_item
 
-    @Pyro4.expose()
+    @Pyro4.expose
     def get_logs(self, start_log=None, back=0, newer=False):
         """Return a dict containing log information"""
         if start_log is not None:
@@ -175,7 +175,7 @@ class LogItem(PyroObject):
     def description(self):
         pass
 
-    @Pyro4.expose()
+    @Pyro4.expose
     def start(self):
         self.start_time = datetime.now()
         self.status = LogState.RUNNING
@@ -189,7 +189,7 @@ class LogItem(PyroObject):
             except:
                 pass
 
-    @Pyro4.expose()
+    @Pyro4.expose
     def finish_success(self):
         self.finish_time = datetime.now()
         self.status = LogState.SUCCESS
@@ -201,7 +201,7 @@ class LogItem(PyroObject):
             remote_log.finish_success()
         self.unregister()
 
-    @Pyro4.expose()
+    @Pyro4.expose
     def finish_error_unknown(self, exception):
         self.finish_time = datetime.now()
         self.status = LogState.FAILED
@@ -218,7 +218,7 @@ class LogItem(PyroObject):
                 pass
         self.unregister()
 
-    @Pyro4.expose()
+    @Pyro4.expose
     def finish_error(self, exception):
         self.finish_time = datetime.now()
         self.status = LogState.FAILED
@@ -235,7 +235,7 @@ class LogItem(PyroObject):
                 pass
         self.unregister()
 
-    @Pyro4.expose()
+    @Pyro4.expose
     def unregister(self):
         """Unregister connections to remote objects"""
         for log in self.remote_logs:

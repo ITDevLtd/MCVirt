@@ -22,6 +22,7 @@ import Pyro4
 from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.auth.user_types.cluster_user import ClusterUser
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.rpc.expose_method import Expose
 
 
 class ConnectionUser(UserBase):
@@ -39,7 +40,7 @@ class ConnectionUser(UserBase):
         """Connection users can proxy for another user."""
         return True
 
-    @Pyro4.expose()
+    @Expose()
     def create_cluster_user(self, host):
         """Create a cluster user for the remote node."""
         assert self.get_username() == Pyro4.current_context.username

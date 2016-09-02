@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
 import os
 import shutil
 
@@ -25,6 +24,7 @@ from mcvirt.system import System
 from mcvirt.exceptions import (CACertificateNotFoundException, OpenSSLNotFoundException,
                                MustGenerateCertificateException)
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.syslogger import Syslogger
 
@@ -255,7 +255,7 @@ class CertificateGenerator(PyroObject):
             pub_key = local_remote._sign_csr(csr)
             self._add_public_key(pub_key)
 
-    @Pyro4.expose()
+    @Expose()
     def generate_csr(self):
         """Generate a certificate request for the remote server"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
@@ -266,7 +266,7 @@ class CertificateGenerator(PyroObject):
                            '-out', self.client_csr, '-subj', self.ssl_dn])
         return self._read_file(self.client_csr)
 
-    @Pyro4.expose()
+    @Expose()
     def sign_csr(self, csr):
         """Sign the CSR for a remote SSL certificate."""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
@@ -288,13 +288,13 @@ class CertificateGenerator(PyroObject):
         self._get_registered_object('libvirt_config').generate_config()
         return self._read_file(self.client_pub_file)
 
-    @Pyro4.expose()
+    @Expose()
     def remove_certificates(self):
         """Remove a certificate directory for a node"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         shutil.rmtree(self.ssl_directory)
 
-    @Pyro4.expose()
+    @Expose()
     def add_public_key(self, key):
         """Add the public key for a remote node"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)

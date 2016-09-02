@@ -27,14 +27,14 @@ from mcvirt.utils import get_hostname
 from mcvirt.system import System
 from mcvirt.constants import DirectoryLocation
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 
 
 class ConfigFile(PyroObject):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    CURRENT_VERSION = 6
+    CURRENT_VERSION = 7
     GIT = '/usr/bin/git'
 
     def __init__(self):
@@ -54,15 +54,13 @@ class ConfigFile(PyroObject):
 
         return config
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def get_config_remote(self):
         """Provide an exposed method for reading MCVirt configuration"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
         return self.get_config()
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def manual_update_config(self, config, reason=''):
         """Provide an exposed method for updating the config"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)

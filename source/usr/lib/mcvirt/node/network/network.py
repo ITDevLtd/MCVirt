@@ -19,10 +19,11 @@
 
 import Pyro4
 
+
 from mcvirt.exceptions import LibvirtException, NetworkUtilizedException
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 
 
 class Network(PyroObject):
@@ -39,8 +40,7 @@ class Network(PyroObject):
         mcvirt_config = MCVirtConfig().get_config()
         return mcvirt_config['networks']
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def delete(self):
         """Delete a network from the node"""
         # Ensure user has permission to manage networks
@@ -108,12 +108,12 @@ class Network(PyroObject):
             'libvirt_connector'
         ).get_connection().networkLookupByName(self.name)
 
-    @Pyro4.expose()
+    @Expose()
     def get_name(self):
         """Return the name of the network"""
         return self.name
 
-    @Pyro4.expose()
+    @Expose()
     def get_adapter(self):
         """Return the name of the physical bridge adapter for the network"""
         return Network.get_network_config()[self.get_name()]

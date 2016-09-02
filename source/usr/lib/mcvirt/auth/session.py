@@ -20,10 +20,45 @@
 import os
 from binascii import hexlify
 import Pyro4
+import time
 
 from mcvirt.exceptions import (AuthenticationError, CurrentUserError,
                                UserDoesNotExistException)
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
+from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.syslogger import Syslogger
+
+
+class SessionInfo(object):
+    """Store information about a session"""
+
+    def __init__(self, username, user_class):
+        """Set member variables and expiry time if applicable"""
+        self.username = username
+
+        if user_class.EXPIRE_SESSION:
+            self.disabled = False
+            self.renew()
+        else:
+            self.disabled = True
+            self.expires = False
+
+    def is_valid(self):
+        """Return True if this session is valid"""
+        return (not self.expires or self.expires > time.time())
+
+    def renew(self):
+        """Renew this session by increasing the expiry time (if applicable)"""
+        self.expires = False if self.disabled else time.time() + SessionInfo.get_timeout()
+
+    def disable(self):
+        self.expires = False
+
+    @staticmethod
+    def get_timeout():
+        """Return the session timeout in seconds"""
+        return MCVirtConfig().get_config()['session_timeout'] * 60
 
 
 class Session(PyroObject):
@@ -42,7 +77,7 @@ class Session(PyroObject):
             session_id = Session._generate_session_id()
 
             # Store session ID and return
-            Session.USER_SESSIONS[session_id] = username
+            Session.USER_SESSIONS[session_id] = SessionInfo(username, user_object.__class__)
 
             # Return session ID
             return session_id
@@ -56,9 +91,18 @@ class Session(PyroObject):
 
     def authenticate_session(self, username, session):
         """Authenticate user session."""
-        if session in Session.USER_SESSIONS and Session.USER_SESSIONS[session] == username:
-            user_factory = self._get_registered_object('user_factory')
-            return user_factory.get_user_by_username(username)
+        Syslogger.logger().debug("Authenticating session for user %s: %s" % (username, session))
+
+        if (session in Session.USER_SESSIONS and
+                Session.USER_SESSIONS[session].username == username):
+
+            # Check session has not expired
+            if Session.USER_SESSIONS[session].is_valid():
+                Session.USER_SESSIONS[session].renew()
+                user_factory = self._get_registered_object('user_factory')
+                return user_factory.get_user_by_username(username)
+            else:
+                del Session.USER_SESSIONS[session]
 
         raise AuthenticationError('Invalid session ID')
 
@@ -78,7 +122,17 @@ class Session(PyroObject):
         """Return the current user object, based on pyro session."""
         if Pyro4.current_context.session_id:
             session_id = Pyro4.current_context.session_id
-            username = Session.USER_SESSIONS[session_id]
+            username = Session.USER_SESSIONS[session_id].username
             user_factory = self._get_registered_object('user_factory')
             return user_factory.get_user_by_username(username)
         raise CurrentUserError('Cannot obtain current user')
+
+    @Expose()
+    def get_session_id(self):
+        """Return the client's current session ID"""
+        return self._get_session_id()
+
+    def _get_session_id(self):
+        """Return the client's current session ID"""
+        if 'session_id' in dir(Pyro4.current_context) and Pyro4.current_context.session_id:
+            return Pyro4.current_context.session_id

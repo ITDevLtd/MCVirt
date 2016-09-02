@@ -21,12 +21,15 @@ import Pyro4
 
 from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.rpc.expose_method import Expose
 
 
 class LocalUser(UserBase):
     """Provides an interaction with the local user backend"""
 
-    @Pyro4.expose()
+    EXPIRE_SESSION = True
+
+    @Expose()
     def set_password(self, new_password):
         """Change the current user's password."""
         # Check that the current user is the same as this user, or that current user has the correct

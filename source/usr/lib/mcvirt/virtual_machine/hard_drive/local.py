@@ -16,6 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
+
 import libvirt
 import os
 
@@ -28,7 +29,7 @@ from mcvirt.exceptions import (VmAlreadyStartedException, VmIsCloneException,
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.expose_method import Expose
 
 
 class Local(Base):
@@ -47,8 +48,7 @@ class Local(Base):
         return (pyro_object._get_registered_object('node').is_volume_group_set() and
                 pyro_object._get_registered_object('node').volume_group_exists())
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         self._get_registered_object('auth').assert_permission(

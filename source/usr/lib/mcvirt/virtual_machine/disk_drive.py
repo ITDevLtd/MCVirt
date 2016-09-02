@@ -22,6 +22,7 @@ import Pyro4
 from mcvirt.exceptions import LibvirtException, IsoNotPresentOnDestinationNodeException
 from mcvirt.iso.iso import Iso
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.constants import DirectoryLocation
 
@@ -33,7 +34,7 @@ class DiskDrive(PyroObject):
         """Sets member variables and obtains libvirt domain object"""
         self.vm_object = self._convert_remote_object(vm_object)
 
-    @Pyro4.expose()
+    @Expose()
     def attachISO(self, iso_object, live=False):
         """Attaches an ISO image to the disk drive of the VM"""
         iso_object = self._convert_remote_object(iso_object)

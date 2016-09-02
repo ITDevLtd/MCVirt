@@ -23,9 +23,10 @@ from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import Drbd
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
+from mcvirt.rpc.expose_method import Expose
+
 
 class Factory(PyroObject):
     """Provides a factory for creating hard drive/hard drive config objects"""
@@ -36,7 +37,7 @@ class Factory(PyroObject):
     HARD_DRIVE_CLASS = Base
     CACHED_OBJECTS = {}
 
-    @Pyro4.expose()
+    @Expose()
     def getObject(self, vm_object, disk_id, **config):
         """Returns the storage object for a given disk"""
         vm_object = self._convert_remote_object(vm_object)
@@ -60,7 +61,7 @@ class Factory(PyroObject):
 
         return Factory.CACHED_OBJECTS[(vm_object.get_name(), disk_id, storage_type_key)]
 
-    @Pyro4.expose()
+    @Expose()
     def ensure_hdd_valid(self, size, storage_type, remote_nodes):
         """Ensures the HDD can be created on all nodes, and returns the storage type to be used."""
         available_storage_types = self._getAvailableStorageTypes()
@@ -93,8 +94,7 @@ class Factory(PyroObject):
 
         return storage_type
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def create(self, vm_object, size, storage_type, driver):
         """Performs the creation of a hard drive, using a given storage type"""
         vm_object = self._convert_remote_object(vm_object)
@@ -142,7 +142,7 @@ class Factory(PyroObject):
             (storage_type)
         )
 
-    @Pyro4.expose()
+    @Expose()
     def getDrbdObjectByResourceName(self, resource_name):
         """Obtains a hard drive object for a Drbd drive, based on the resource name"""
         node_drbd = self._get_registered_object('node_drbd')

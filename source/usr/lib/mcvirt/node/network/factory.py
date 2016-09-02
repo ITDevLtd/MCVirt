@@ -18,6 +18,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
+
 from texttable import Texttable
 import xml.etree.ElementTree as ET
 import netifaces
@@ -27,8 +28,8 @@ from mcvirt.exceptions import (NetworkAlreadyExistsException, LibvirtException,
                                InterfaceDoesNotExist, NetworkDoesNotExistException)
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.network import Network
-from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.syslogger import Syslogger
 from mcvirt.utils import get_hostname
@@ -38,7 +39,7 @@ class Factory(PyroObject):
 
     OBJECT_TYPE = 'network'
 
-    @Pyro4.expose()
+    @Expose()
     def interface_exists(self, interface):
         """Public method for to determine if an interface exists"""
         self._get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')
@@ -52,7 +53,7 @@ class Factory(PyroObject):
         addr = netifaces.ifaddresses(interface)
         return (netifaces.AF_INET in addr)
 
-    @Pyro4.expose()
+    @Expose()
     def assert_interface_exists(self, interface):
         if not self.interface_exists(interface):
             raise InterfaceDoesNotExist(
@@ -60,8 +61,7 @@ class Factory(PyroObject):
                 % (interface, get_hostname()))
         return True
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def create(self, name, physical_interface):
         """Create a network on the node"""
         # Ensure user has permission to manage networks
@@ -135,7 +135,7 @@ class Factory(PyroObject):
 
         return network_instance
 
-    @Pyro4.expose()
+    @Expose()
     def get_network_by_name(self, network_name):
         """Return a network object of the network for a given name."""
         self.ensure_exists(network_name)
@@ -143,12 +143,12 @@ class Factory(PyroObject):
         self._register_object(network_object)
         return network_object
 
-    @Pyro4.expose()
+    @Expose()
     def get_all_network_names(self):
         """Return a list of network names"""
         return Network.get_network_config().keys()
 
-    @Pyro4.expose()
+    @Expose()
     def get_all_network_objects(self):
         """Return all network objects"""
         network_objects = []
@@ -156,7 +156,7 @@ class Factory(PyroObject):
             network_objects.append(self.get_network_by_name(network_name))
         return network_objects
 
-    @Pyro4.expose()
+    @Expose()
     def get_network_list_table(self):
         """Return a table of networks registered on the node"""
         # Create table and set headings
@@ -174,7 +174,7 @@ class Factory(PyroObject):
         if not self.check_exists(name):
             raise NetworkDoesNotExistException('Network does not exist: %s' % name)
 
-    @Pyro4.expose()
+    @Expose()
     def check_exists(self, name):
         """Check if a network exists"""
         # Obtain array of all networks from libvirt
