@@ -104,7 +104,7 @@ class ArgumentValidator(object):
     def validate_ip_address(ip_address):
         """Validate an IPv4 IP address"""
         pattern = re.compile(r"^((([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])[ (\[]?(\.|dot)"
-                              "[ )\]]?){3}([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5]))$")
+                             "[ )\]]?){3}([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5]))$")
         if not pattern.match(ip_address):
             raise MCVirtTypeError('%s is not a valid IP address' % ip_address)
 

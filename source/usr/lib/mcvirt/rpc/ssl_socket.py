@@ -65,7 +65,8 @@ class SSLSocket(object):
                 ssl_kwargs['keyfile'] = cert_gen.server_key_file
                 ssl_kwargs['certfile'] = cert_gen.server_pub_file
             else:
-                ssl_context.load_cert_chain(cert_gen.server_pub_file, keyfile=cert_gen.server_key_file)
+                ssl_context.load_cert_chain(cert_gen.server_pub_file,
+                                            keyfile=cert_gen.server_key_file)
                 ssl_context.check_hostname = False
                 ssl_context.load_dh_params(cert_gen.dh_params_file)
                 ssl_context.verify_mode = ssl.CERT_OPTIONAL

@@ -80,9 +80,9 @@ class Factory(PyroObject):
 
         free = self._get_registered_object('node').get_free_vg_space()
         if free < size:
-            raise InsufficientSpaceException('Attempted to create a disk with %i MiB, but there '\
-                                             'is only %i MiB of free space available on node %s.'
-                                              % (size, free, get_hostname()))
+            raise InsufficientSpaceException('Attempted to create a disk with %i MiB, but there '
+                                             'is only %i MiB of free space available on node %s.' %
+                                             (size, free, get_hostname()))
 
         if self._is_cluster_master:
             def remote_command(remote_connection):

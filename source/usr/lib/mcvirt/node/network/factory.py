@@ -34,6 +34,7 @@ from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.syslogger import Syslogger
 from mcvirt.utils import get_hostname
 
+
 class Factory(PyroObject):
     """Class for obtaining network objects"""
 

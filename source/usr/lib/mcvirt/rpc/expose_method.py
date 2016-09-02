@@ -35,8 +35,9 @@ class Expose(object):
             # been set
             if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
                 # Renew session expiry
-                Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT._get_session_id()].disable()
-            # TODO: lock if locking is True
+                Expose.SESSION_OBJECT.USER_SESSIONS[
+                    Expose.SESSION_OBJECT._get_session_id()
+                ].disable()
             if self.locking:
                 return_value = lock_log_and_call(callback, args, kwargs, self.instance_method,
                                                  self.object_type)
@@ -52,3 +53,4 @@ class Expose(object):
             return return_value
         # Expose the function
         return Pyro4.expose(inner)
+

@@ -347,6 +347,7 @@ class DrbdVolumeNotInSyncException(MCVirtException):
 
     pass
 
+
 class InsufficientSpaceException(MCVirtException):
     """A hard drive object was initialised when the volume group did not have enough space."""
 
@@ -427,6 +428,8 @@ class VmRunningException(MCVirtException):
 
 class VmStoppedException(MCVirtException):
     """An online migraiton can only be performed on a powered on VM"""
+
+    pass
 
 
 class UnsuitableNodeException(MCVirtException):

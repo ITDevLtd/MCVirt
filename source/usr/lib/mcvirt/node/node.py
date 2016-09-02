@@ -64,11 +64,10 @@ class Node(PyroObject):
 
     def get_free_vg_space(self):
         """Returns the free space in megabytes."""
-        _, out, err = System.runCommand(
-                        ['vgs', MCVirtConfig().get_config()['vm_storage_vg'], '-o',
-                        'free', '--noheadings', '--nosuffix', '--units', 'm'],
-                        False,
-                        DirectoryLocation.BASE_STORAGE_DIR)
+        _, out, err = System.runCommand(['vgs', MCVirtConfig().get_config()['vm_storage_vg'],
+                                         '-o', 'free', '--noheadings', '--nosuffix', '--units',
+                                         'm'], False,
+                                        DirectoryLocation.BASE_STORAGE_DIR)
         return float(out)
 
     def is_volume_group_set(self):
@@ -77,10 +76,9 @@ class Node(PyroObject):
 
     def volume_group_exists(self):
         """Determine if the volume group actually exists on the node."""
-        _, out, err = System.runCommand(
-                        ['vgs', '|', 'grep', MCVirtConfig().get_config()['vm_storage_vg']],
-                        False,
-                        DirectoryLocation.BASE_STORAGE_DIR)
+        _, out, err = System.runCommand(['vgs', '|', 'grep',
+                                         MCVirtConfig().get_config()['vm_storage_vg']],
+                                        False, DirectoryLocation.BASE_STORAGE_DIR)
         return bool(out)
 
     @Expose()

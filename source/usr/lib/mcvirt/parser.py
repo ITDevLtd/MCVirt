@@ -27,7 +27,7 @@ from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
 from mcvirt.auth.user_types.user_base import UserBase
-from subprocess import call
+
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
     """Override the ArgumentParser class, in order to change the handling of errors."""
@@ -79,17 +79,20 @@ class Parser(object):
                                                        parents=[self.parent_parser])
         self.start_parser.add_argument('--iso', metavar='ISO Name', type=str,
                                        help='Path of ISO to attach to VM', default=None)
-        self.start_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str, help='Names of VMs')
+        self.start_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
+                                       help='Names of VMs')
 
         # Add arguments for stopping a VM
         self.stop_parser = self.subparsers.add_parser('stop', help='Stop VM',
                                                       parents=[self.parent_parser])
-        self.stop_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str, help='Names of VMs')
+        self.stop_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
+                                      help='Names of VMs')
 
         # Add arguments for resetting a VM
         self.reset_parser = self.subparsers.add_parser('reset', help='Reset VM',
                                                        parents=[self.parent_parser])
-        self.reset_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str, help='Names of VM')
+        self.reset_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
+                                       help='Names of VM')
 
         # Add arguments for fixing deadlock on a vm
         self.method_lock_parser = self.subparsers.add_parser(
@@ -101,7 +104,6 @@ class Parser(object):
         # Add arguments for ISO functions
         self.iso_parser = self.subparsers.add_parser('iso', help='ISO managment',
                                                      parents=[self.parent_parser])
-
 
         self.iso_subparser = self.iso_parser.add_subparsers(dest='iso_action',
                                                             help='ISO action to perform',
@@ -813,7 +815,8 @@ class Parser(object):
                     password = System.getUserInput(
                         'Password: ', password=True
                     ).rstrip()
-                rpc = Connection(username=username, password=password, ignore_cluster=ignore_cluster)
+                rpc = Connection(username=username, password=password,
+                                 ignore_cluster=ignore_cluster)
                 self.SESSION_ID = rpc.session_id
                 self.USERNAME = rpc.username
 
