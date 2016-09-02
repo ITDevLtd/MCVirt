@@ -27,7 +27,6 @@ class MCVirtConfig(ConfigFile):
     """
 
     REGENERATE_DRBD_CONFIG = False
-    DEFAULT_SESSION_TIMEOUT = 0.05
 
     def __init__(self):
         """Set member variables and obtains libvirt domain object"""
@@ -114,7 +113,7 @@ class MCVirtConfig(ConfigFile):
                     'bind_pass': None,
                     'username_attribute': None
                 },
-                'session_timeout': DEFAULT_SESSION_TIMEOUT
+                'session_timeout': 30
             }
 
         # Write the configuration to disk
@@ -135,4 +134,4 @@ class MCVirtConfig(ConfigFile):
             MCVirtConfig.REGENERATE_DRBD_CONFIG = True
 
         if config['version'] < 7:
-            config['session_timeout'] = DEFAULT_SESSION_TIMEOUT
+            config['session_timeout'] = 30
