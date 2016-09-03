@@ -104,4 +104,3 @@ def lock_log_and_call(callback, args, kwargs, instance_method, object_type):
             lock.release()
         Pyro4.current_context.has_lock = False
     return response
-

@@ -53,4 +53,3 @@ class Expose(object):
             return return_value
         # Expose the function
         return Pyro4.expose(inner)
-
