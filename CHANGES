@@ -1,3 +1,7 @@
+# 7.2.0
+
+* Add VM autostart watchdog, allowing VMs to be started on boot or on poll
+
 # 7.1.0
 
 * Add support for multiple VMs for start, stop and resetting in parser
