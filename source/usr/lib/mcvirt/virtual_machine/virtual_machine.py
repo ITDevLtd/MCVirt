@@ -25,7 +25,7 @@ import time
 import Pyro4
 from enum import Enum
 
-from mcvirt.constants import DirectoryLocation, PowerStates, LockStates
+from mcvirt.constants import DirectoryLocation, PowerStates, LockStates, AutoStartStates
 from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermissionsException,
                                VmAlreadyExistsException, LibvirtException,
                                VmAlreadyStoppedException, VmAlreadyStartedException,
@@ -36,7 +36,7 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                VirtualMachineLockException, InvalidArgumentException,
                                VirtualMachineDoesNotExistException, VmIsCloneException,
                                VncNotEnabledException, AttributeAlreadyChanged,
-                               InvalidModificationFlagException)
+                               InvalidModificationFlagException, MCVirtTypeError)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
@@ -109,6 +109,16 @@ class VirtualMachine(PyroObject):
         """Obtain domain XML from libvirt"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
         return self._getLibvirtDomainObject().XMLDesc()
+
+    @property
+    def is_running(self):
+        """Return True if VM is running"""
+        return (self._getPowerState() is PowerStates.RUNNING)
+
+    @property
+    def is_stopped(self):
+        """Return true is VM is stopped"""
+        return (self._getPowerState() is PowerStates.STOPPED)
 
     @Expose(locking=True)
     def stop(self):
@@ -289,6 +299,7 @@ class VirtualMachine(PyroObject):
         table.add_row(('CPU Cores', self.getCPU()))
         table.add_row(('Memory Allocation', str(int(self.getRAM()) / 1024) + 'MB'))
         table.add_row(('State', self._getPowerState().name))
+        table.add_row(('Autostart', self._get_autostart_state().name))
         table.add_row(('Node', self.getNode()))
         table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
 
@@ -1324,8 +1335,28 @@ class VirtualMachine(PyroObject):
         if self._getLockState() is LockStates.LOCKED:
             raise VirtualMachineLockException('VM \'%s\' is locked' % self.get_name())
 
+    @Expose(locking=True)
+    def set_autostart_state(self, state):
+        """Set the autostart state of the VM"""
+        # Ensure the state is valid
+        try:
+            AutoStartStates(state)
+        except TypeError:
+            raise MCVirtTypeError('Invalid autostart state')
+        self.update_config(['autostart'], state, 'Update autostart')
+
+    @Expose()
+    def get_autostart_state(self):
+        """Return the enum value for autostart"""
+        return self._get_autostart_state().value
+
+    def _get_autostart_state(self):
+        """Return the autostart enum"""
+        return AutoStartStates(self.get_config_object().get_config()['autostart'])
+
     @Expose()
     def getLockState(self):
+        """Return the lock state for the VM"""
         return self._getLockState().value
 
     def _getLockState(self):
@@ -1334,8 +1365,12 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def setLockState(self, lock_status):
+        """Set the lock state for the VM"""
         ArgumentValidator.validate_integer(lock_status)
-        return self._setLockState(LockStates(lock_status))
+        try:
+            return self._setLockState(LockStates(lock_status))
+        except ValueError:
+            raise MCVirtTypeError('Invalid lock state')
 
     def _setLockState(self, lock_status):
         """Sets the lock status of the VM"""

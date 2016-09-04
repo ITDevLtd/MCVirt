@@ -48,3 +48,11 @@ class PowerStates(Enum):
     STOPPED = 0
     RUNNING = 1
     UNKNOWN = 2
+
+
+class AutoStartStates(Enum):
+    """States that autostart can be"""
+
+    NO_AUTOSTART = 0
+    ON_BOOT = 1
+    ON_POLL = 2

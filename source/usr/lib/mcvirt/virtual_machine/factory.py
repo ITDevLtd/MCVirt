@@ -35,6 +35,8 @@ from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.virtual_machine.hard_drive.base import Driver as HardDriveDriver
+from mcvirt.constants import AutoStartStates
+from mcvirt.syslogger import Syslogger
 
 
 class GraphicsDriver(Enum):
@@ -54,6 +56,21 @@ class Factory(PyroObject):
     VIRTUAL_MACHINE_CLASS = VirtualMachine
     DEFAULT_GRAPHICS_DRIVER = GraphicsDriver.VMVGA.value
     CACHED_OBJECTS = {}
+
+    def autostart(self, start_type=AutoStartStates.ON_POLL):
+        """Autostart VMs"""
+        Syslogger.logger().info('Starting autostart: %s' % start_type.name)
+        for vm in self.getAllVirtualMachines():
+            if (vm.isRegisteredLocally() and vm.is_stopped and
+                    vm._get_autostart_state() in [AutoStartStates.ON_POLL, AutoStartStates.ON_BOOT] and
+                    (start_type == vm._get_autostart_state() or start_type == AutoStartStates.ON_BOOT)):
+                try:
+                    Syslogger.logger().info('Autostarting: %s' % vm.get_name())
+                    vm.start()
+                    Syslogger.logger().info('Autostart successful: %s' % vm.get_name())
+                except Exception, e:
+                    Syslogger.logger().error('Failed to autostart: %s: %s' % (vm.get_name(), str(e)))
+        Syslogger.logger().info('Finished autostsart: %s' % start_type.name)
 
     @Expose()
     def getVirtualMachineByName(self, vm_name):

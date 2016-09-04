@@ -48,6 +48,7 @@ from mcvirt.rpc.daemon_lock import DaemonLock
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.rpc.expose_method import Expose
+from mcvirt.thread.auto_start_watchdog import AutoStartWatchdog
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -340,6 +341,10 @@ class RpcNSMixinDaemon(object):
         session_object = Session()
         self.register(session_object, objectId='mcvirt_session', force=True)
         Expose.SESSION_OBJECT = session_object
+
+        # Create autostart watchdog object
+        autostart_watchdog = AutoStartWatchdog()
+        self.register(autostart_watchdog, objectId='autostart_watchdog', force=True)
 
     def obtain_connection(self):
         """Attempt to obtain a connection to the name server."""

@@ -19,6 +19,7 @@ import os
 
 from mcvirt.exceptions import ConfigFileCouldNotBeFoundException
 from mcvirt.config_file import ConfigFile
+from mcvirt.constants import AutoStartStates
 
 
 class VirtualMachineConfig(ConfigFile):
@@ -119,3 +120,6 @@ class VirtualMachineConfig(ConfigFile):
         if self._getVersion() < 6:
             config['modifications'] = []
             config['graphics_driver'] = 'vmvga'
+
+        if self._getVersion() < 8:
+            config['autostart'] = AutoStartStates.NO_AUTOSTART.value
