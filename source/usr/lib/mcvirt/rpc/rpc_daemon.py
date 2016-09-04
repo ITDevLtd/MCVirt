@@ -69,7 +69,9 @@ class BaseRpcDaemon(Pyro4.Daemon):
     def validateHandshake(self, conn, data):  # Override name of upstream method # noqa
         """Perform authentication on new connections"""
         # Reset session_id for current context
+        Syslogger.logger().info(dir(Pyro4.current_context))
         Pyro4.current_context.STARTUP_PERIOD = False
+        Pyro4.current_context.INTERNAL_REQUEST = False
         Pyro4.current_context.session_id = None
         Pyro4.current_context.username = None
         Pyro4.current_context.proxy_user = None
@@ -205,6 +207,7 @@ class RpcNSMixinDaemon(object):
 
         # Store nameserver, MCVirt instance and create daemon
         self.daemon_lock = DaemonLock()
+        self.timer_objects = []
 
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
@@ -258,6 +261,12 @@ class RpcNSMixinDaemon(object):
     def shutdown(self, signum, frame):
         """Shutdown Pyro Daemon"""
         Syslogger.logger().error('Received signal: %s' % signum)
+        for timer in self.timer_objects:
+            Syslogger.logger().info('Shutting down timer: %s' % timer)
+            try:
+                timer.timer.cancel()
+            except:
+                pass
         RpcNSMixinDaemon.DAEMON.shutdown()
         Syslogger.logger().debug('finisehd shutdown')
 
@@ -344,6 +353,7 @@ class RpcNSMixinDaemon(object):
 
         # Create autostart watchdog object
         autostart_watchdog = AutoStartWatchdog()
+        self.timer_objects.append(autostart_watchdog)
         self.register(autostart_watchdog, objectId='autostart_watchdog', force=True)
 
     def obtain_connection(self):

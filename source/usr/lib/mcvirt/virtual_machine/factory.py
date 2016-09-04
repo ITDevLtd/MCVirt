@@ -20,6 +20,7 @@ from texttable import Texttable
 from os.path import exists as os_path_exists
 from os import makedirs
 from enum import Enum
+import time
 
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig

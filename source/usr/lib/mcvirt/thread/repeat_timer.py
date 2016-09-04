@@ -41,7 +41,7 @@ class RepeatTimer(PyroObject):
 
     def repeat_run(self):
         """Re-start timer once run has complete"""
-        Syslogger.logger().error('reat run running')
+        self.timer = Timer(float(self.interval), self.repeat_run)
         if not self.repeat_after_run and self.repeat:
             self.timer.start()
         return_output = self.run(*self.run_args, **self.run_kwargs)

@@ -53,7 +53,9 @@ def lock_log_and_call(callback, args, kwargs, instance_method, object_type):
                           Pyro4.current_context.has_lock))
 
     logger = Logger.get_logger()
-    if 'proxy_user' in dir(Pyro4.current_context) and Pyro4.current_context.proxy_user:
+    if 'INTERNAL_REQUEST' in dir(Pyro4.current_context) and Pyro4.current_context.INTERNAL_REQUEST:
+        username = 'MCVirt Daemon'
+    elif 'proxy_user' in dir(Pyro4.current_context) and Pyro4.current_context.proxy_user:
         username = Pyro4.current_context.proxy_user
     elif 'username' in dir(Pyro4.current_context):
         username = Pyro4.current_context.username
