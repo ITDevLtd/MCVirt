@@ -31,20 +31,23 @@ class RepeatTimer(PyroObject):
     def __init__(self, args=[], kwargs={}, repeat_after_run=True):
         """Create member variables for repeat status and position of restart"""
         self.repeat = True
+        self.timer = None
         self.run_args = args
         self.run_kwargs = kwargs
         self.repeat_after_run = repeat_after_run
 
     def initialise(self):
-        self.timer = Timer(float(self.interval), self.repeat_run)
-        self.timer.start()
+        if self.interval and self.interval > 0:
+            self.timer = Timer(float(self.interval), self.repeat_run)
+            self.timer.start()
 
     def repeat_run(self):
         """Re-start timer once run has complete"""
-        self.timer = Timer(float(self.interval), self.repeat_run)
         if not self.repeat_after_run and self.repeat:
+            self.timer = Timer(float(self.interval), self.repeat_run)
             self.timer.start()
         return_output = self.run(*self.run_args, **self.run_kwargs)
         if self.repeat_after_run and self.repeat:
+            self.timer = Timer(float(self.interval), self.repeat_run)
             self.timer.start()
         return return_output

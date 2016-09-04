@@ -1340,10 +1340,10 @@ class VirtualMachine(PyroObject):
         """Set the autostart state of the VM"""
         # Ensure the state is valid
         try:
-            AutoStartStates(state)
+            autostart = AutoStartStates[state]
         except TypeError:
             raise MCVirtTypeError('Invalid autostart state')
-        self.update_config(['autostart'], state, 'Update autostart')
+        self.update_config(['autostart'], autostart.value, 'Update autostart')
 
     @Expose()
     def get_autostart_state(self):
