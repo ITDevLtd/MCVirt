@@ -69,7 +69,8 @@ class VirtualMachineConfig(ConfigFile):
                 'available_nodes': available_nodes,
                 'lock': LockStates.UNLOCKED.value,
                 'graphics_driver': graphics_driver,
-                'modifications': []
+                'modifications': [],
+                'autostart': AutoStartStates.NO_AUTOSTART.value
             }
 
         # Write the configuration to disk
