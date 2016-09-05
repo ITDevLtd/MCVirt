@@ -93,16 +93,6 @@ class UnitTestBootstrap(object):
             OnlineMigrateTests.RPC_DAEMON = None
             AuthTests.RPC_DAEMON = None
             self.daemon.shutdown(0, 0)
-            try:
-                # Perform final connection to daemon to ensure that it loops
-                # to stop.
-                Connection(username='fake', password='fake')
-            except:
-                pass
-            try:
-                Connection(username='fake', password='fake')
-            except:
-                pass
 
             # Wait for daemon to stop
             self.daemon_thread.join()
