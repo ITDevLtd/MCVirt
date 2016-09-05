@@ -48,7 +48,8 @@ class Auth(PyroObject):
         if 'STARTUP_PERIOD' in dir(Pyro4.current_context) and Pyro4.current_context.STARTUP_PERIOD:
             return True
 
-        if 'INTERNAL_REQUEST' in dir(Pyro4.current_context) and Pyro4.current_context.INTERNAL_REQUEST:
+        if ('INTERNAL_REQUEST' in dir(Pyro4.current_context) and
+                Pyro4.current_context.INTERNAL_REQUEST):
             return True
 
         user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
@@ -84,7 +85,8 @@ class Auth(PyroObject):
         if 'STARTUP_PERIOD' in dir(Pyro4.current_context) and Pyro4.current_context.STARTUP_PERIOD:
             return True
 
-        if 'INTERNAL_REQUEST' in dir(Pyro4.current_context) and Pyro4.current_context.INTERNAL_REQUEST:
+        if ('INTERNAL_REQUEST' in dir(Pyro4.current_context) and
+                Pyro4.current_context.INTERNAL_REQUEST):
             return True
 
         # If the user is a superuser, all permissions are attached to the user

@@ -25,6 +25,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 
 
 class AutoStartWatchdog(RepeatTimer):
+    """Object to perform regular checks to determine that VMs are running"""
 
     @property
     def interval(self):
@@ -42,11 +43,14 @@ class AutoStartWatchdog(RepeatTimer):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
         ArgumentValidator.validate_integer(interval_time)
         interval_time = int(interval_time)
+
         def update_config(config):
             config['autostart_interval'] = interval_time
-        self._get_registered_object('mcvirt_config')().update_config(update_config, 'Update autostart interval')
+        self._get_registered_object('mcvirt_config')().update_config(update_config,
+                                                                     'Update autostart interval')
 
         if self._is_cluster_master:
+
             def remote_update(node):
                 autostart_watchdog = node.get_connection('autostart_watchdog')
                 autostart_watchdog.set_autostart_interval(interval_time)

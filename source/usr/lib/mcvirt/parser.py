@@ -304,13 +304,20 @@ class Parser(object):
                                         type=str, default=None, nargs='?',
                                         help=('Attach an ISO to a running VM.'
                                               ' Specify without value to detach ISO.'))
-        self.vm_autostart_mutual_group = self.update_parser.add_mutually_exclusive_group(required=False)
-        self.vm_autostart_mutual_group.add_argument('--autostart-on-boot', action='store_true', dest='autostart_boot',
-                                                    help='Update VM to automatically start on boot')
-        self.vm_autostart_mutual_group.add_argument('--autostart-on-poll', action='store_true', dest='autostart_poll',
-                                                    help='Update VM to automatically start on autostart watchdog poll')
+        self.vm_autostart_mutual_group = self.update_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.vm_autostart_mutual_group.add_argument('--autostart-on-boot', action='store_true',
+                                                    dest='autostart_boot',
+                                                    help=('Update VM to automatically '
+                                                          'start on boot'))
+        self.vm_autostart_mutual_group.add_argument('--autostart-on-poll', action='store_true',
+                                                    dest='autostart_poll',
+                                                    help=('Update VM to automatically start on '
+                                                          'autostart watchdog poll'))
         self.vm_autostart_mutual_group.add_argument('--autostart-disable', action='store_true',
-                                                    dest='autostart_disable', help='Disable autostart of VM')
+                                                    dest='autostart_disable',
+                                                    help='Disable autostart of VM')
         self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
         self.update_parser.add_argument('--add-flag', help='Add VM modification flag',
                                         dest='add_flags', action='append')
@@ -559,13 +566,18 @@ class Parser(object):
         self.node_watchdog_parser = self.node_parser.add_argument_group(
             'Watchdog', 'Update configurations for watchdogs'
         )
-        self.node_watchdog_parser.add_argument('--set-autostart-interval', dest='autostart_interval',
-                                                metavar='Autostart Time (Seconds)',
-                                                help=('Set the interval period (seconds) for the autostart watchdog. '
-                                                      'Setting to \'0\' will disable the watchdog polling.'),
-                                                type=int)
-        self.node_watchdog_parser.add_argument('--get-autostart-interval', dest='get_autostart_interval',
-                                               action='store_true', help='Return the current autostart interval.')
+        self.node_watchdog_parser.add_argument('--set-autostart-interval',
+                                               dest='autostart_interval',
+                                               metavar='Autostart Time (Seconds)',
+                                               help=(('Set the interval period (seconds) for '
+                                                      'the autostart watchdog. '
+                                                      'Setting to \'0\' will disable the '
+                                                      'watchdog polling.'),
+                                               type=int)
+        self.node_watchdog_parser.add_argument('--get-autostart-interval',
+                                               dest='get_autostart_interval',
+                                               action='store_true',
+                                               help='Return the current autostart interval.')
 
         self.node_cluster_config = self.node_parser.add_argument_group(
             'Cluster', 'Configure the node-specific cluster configurations'
