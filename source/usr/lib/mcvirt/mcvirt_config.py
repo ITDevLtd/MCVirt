@@ -113,7 +113,8 @@ class MCVirtConfig(ConfigFile):
                     'bind_pass': None,
                     'username_attribute': None
                 },
-                'session_timeout': 30
+                'session_timeout': 30,
+                'autostart_interval': 300
             }
 
         # Write the configuration to disk
@@ -135,3 +136,6 @@ class MCVirtConfig(ConfigFile):
 
         if config['version'] < 7:
             config['session_timeout'] = 30
+
+        if config['version'] < 8:
+            config['autostart_interval'] = 300

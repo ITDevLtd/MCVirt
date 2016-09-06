@@ -19,6 +19,7 @@ import os
 
 from mcvirt.exceptions import ConfigFileCouldNotBeFoundException
 from mcvirt.config_file import ConfigFile
+from mcvirt.constants import AutoStartStates
 
 
 class VirtualMachineConfig(ConfigFile):
@@ -68,7 +69,8 @@ class VirtualMachineConfig(ConfigFile):
                 'available_nodes': available_nodes,
                 'lock': LockStates.UNLOCKED.value,
                 'graphics_driver': graphics_driver,
-                'modifications': []
+                'modifications': [],
+                'autostart': AutoStartStates.NO_AUTOSTART.value
             }
 
         # Write the configuration to disk
@@ -119,3 +121,6 @@ class VirtualMachineConfig(ConfigFile):
         if self._getVersion() < 6:
             config['modifications'] = []
             config['graphics_driver'] = 'vmvga'
+
+        if self._getVersion() < 8:
+            config['autostart'] = AutoStartStates.NO_AUTOSTART.value

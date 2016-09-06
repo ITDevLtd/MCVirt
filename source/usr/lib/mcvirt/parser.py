@@ -304,6 +304,20 @@ class Parser(object):
                                         type=str, default=None, nargs='?',
                                         help=('Attach an ISO to a running VM.'
                                               ' Specify without value to detach ISO.'))
+        self.vm_autostart_mutual_group = self.update_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.vm_autostart_mutual_group.add_argument('--autostart-on-boot', action='store_true',
+                                                    dest='autostart_boot',
+                                                    help=('Update VM to automatically '
+                                                          'start on boot'))
+        self.vm_autostart_mutual_group.add_argument('--autostart-on-poll', action='store_true',
+                                                    dest='autostart_poll',
+                                                    help=('Update VM to automatically start on '
+                                                          'autostart watchdog poll'))
+        self.vm_autostart_mutual_group.add_argument('--autostart-disable', action='store_true',
+                                                    dest='autostart_disable',
+                                                    help='Disable autostart of VM')
         self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
         self.update_parser.add_argument('--add-flag', help='Add VM modification flag',
                                         dest='add_flags', action='append')
@@ -548,6 +562,22 @@ class Parser(object):
                                               metavar='VM Volume Group',
                                               help=('Sets the local volume group used for Virtual'
                                                     ' machine HDD logical volumes'))
+
+        self.node_watchdog_parser = self.node_parser.add_argument_group(
+            'Watchdog', 'Update configurations for watchdogs'
+        )
+        self.node_watchdog_parser.add_argument('--set-autostart-interval',
+                                               dest='autostart_interval',
+                                               metavar='Autostart Time (Seconds)',
+                                               help=(('Set the interval period (seconds) for '
+                                                      'the autostart watchdog. '
+                                                      'Setting to \'0\' will disable the '
+                                                      'watchdog polling.'),
+                                               type=int)
+        self.node_watchdog_parser.add_argument('--get-autostart-interval',
+                                               dest='get_autostart_interval',
+                                               action='store_true',
+                                               help='Return the current autostart interval.')
 
         self.node_cluster_config = self.node_parser.add_argument_group(
             'Cluster', 'Configure the node-specific cluster configurations'
@@ -966,6 +996,13 @@ class Parser(object):
             if args.graphics_driver:
                 vm_object.update_graphics_driver(args.graphics_driver)
 
+            if args.autostart_boot:
+                vm_object.set_autostart_state('ON_BOOT')
+            elif args.autostart_poll:
+                vm_object.set_autostart_state('ON_POLL')
+            else:
+                vm_object.set_autostart_state('NO_AUTOSTART')
+
             if args.add_flags or args.remove_flags:
                 add_flags = args.add_flags or []
                 remove_flags = args.remove_flags or []
@@ -1124,6 +1161,13 @@ class Parser(object):
             if args.ip_address:
                 node.set_cluster_ip_address(args.ip_address)
                 self.print_status('Successfully set cluster IP address to %s' % args.ip_address)
+
+            if args.autostart_interval or args.autostart_interval == 0:
+                autostart_watchdog = rpc.get_connection('autostart_watchdog')
+                autostart_watchdog.set_autostart_interval(args.autostart_interval)
+            elif args.get_autostart_interval:
+                autostart_watchdog = rpc.get_connection('autostart_watchdog')
+                self.print_status(autostart_watchdog.get_autostart_interval())
 
             if args.ldap_enable:
                 ldap.set_enable(True)
