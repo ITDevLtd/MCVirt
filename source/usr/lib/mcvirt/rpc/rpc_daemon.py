@@ -69,7 +69,6 @@ class BaseRpcDaemon(Pyro4.Daemon):
     def validateHandshake(self, conn, data):  # Override name of upstream method # noqa
         """Perform authentication on new connections"""
         # Reset session_id for current context
-        Syslogger.logger().info(dir(Pyro4.current_context))
         Pyro4.current_context.STARTUP_PERIOD = False
         Pyro4.current_context.INTERNAL_REQUEST = False
         Pyro4.current_context.session_id = None
