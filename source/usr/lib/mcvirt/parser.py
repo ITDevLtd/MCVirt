@@ -569,10 +569,10 @@ class Parser(object):
         self.node_watchdog_parser.add_argument('--set-autostart-interval',
                                                dest='autostart_interval',
                                                metavar='Autostart Time (Seconds)',
-                                               help=(('Set the interval period (seconds) for '
-                                                      'the autostart watchdog. '
-                                                      'Setting to \'0\' will disable the '
-                                                      'watchdog polling.'),
+                                               help=('Set the interval period (seconds) for '
+                                                     'the autostart watchdog. '
+                                                     'Setting to \'0\' will disable the '
+                                                     'watchdog polling.'),
                                                type=int)
         self.node_watchdog_parser.add_argument('--get-autostart-interval',
                                                dest='get_autostart_interval',
