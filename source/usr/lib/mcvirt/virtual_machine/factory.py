@@ -72,7 +72,8 @@ class Factory(PyroObject):
                     vm.start()
                     Syslogger.logger().info('Autostart successful: %s' % vm.get_name())
                 except Exception, e:
-                    Syslogger.logger().error('Failed to autostart: %s: %s' % (vm.get_name(), str(e)))
+                    Syslogger.logger().error('Failed to autostart: %s: %s' %
+                                             (vm.get_name(), str(e)))
         Syslogger.logger().info('Finished autostsart: %s' % start_type.name)
 
     @Expose()
