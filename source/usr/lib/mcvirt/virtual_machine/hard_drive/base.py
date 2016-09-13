@@ -360,6 +360,39 @@ class Base(PyroObject):
 
     @Pyro4.expose()
     @locking_method()
+    def resize_logical_volume(self, *args, **kwargs):
+        """Provides an exposed method for _createLogicalVolume
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._resize_logical_volume(*args, **kwargs)
+
+    def _resize_logical_volume(self, name, size, perform_on_nodes=False):
+        """Creates a logical volume on the node/cluster"""
+
+        # Create command list
+        command_args = ['/sbin/lvresize', '--size', '%sM' % size,
+                        self._getLogicalVolumePath(name)]
+        try:
+            # Create on local node
+            System.runCommand(command_args)
+
+            if perform_on_nodes and self._is_cluster_master:
+                def remoteCommand(node):
+                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                    remote_disk.resize_logical_volume(name=name, size=size)
+
+                cluster = self._get_registered_object('cluster')
+                cluster.run_remote_command(callback_method=remoteCommand,
+                                           nodes=self.vm_object._get_remote_nodes())
+
+        except MCVirtCommandException, e:
+            raise ExternalStorageCommandErrorException(
+                "Error whilst resizing disk logical volume:\n" + str(e)
+            )
+
+    @Pyro4.expose()
+    @locking_method()
     def removeLogicalVolume(self, *args, **kwargs):
         """Provides an exposed method for _removeLogicalVolume
            with permission checking"""
