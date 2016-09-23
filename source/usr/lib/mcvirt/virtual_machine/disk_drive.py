@@ -22,6 +22,7 @@ import Pyro4
 from mcvirt.exceptions import LibvirtException, IsoNotPresentOnDestinationNodeException
 from mcvirt.iso.iso import Iso
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.constants import DirectoryLocation
 
@@ -33,7 +34,7 @@ class DiskDrive(PyroObject):
         """Sets member variables and obtains libvirt domain object"""
         self.vm_object = self._convert_remote_object(vm_object)
 
-    @Pyro4.expose()
+    @Expose()
     def attachISO(self, iso_object, live=False):
         """Attaches an ISO image to the disk drive of the VM"""
         iso_object = self._convert_remote_object(iso_object)
@@ -58,7 +59,7 @@ class DiskDrive(PyroObject):
         if libvirt_object.updateDeviceFlags(cdrom_xml_string, flags):
             raise LibvirtException('An error occurred whilst attaching ISO')
 
-    def removeISO(self):
+    def removeISO(self, live=False):
         """Removes ISO attached to the disk drive of a VM"""
 
         # Import cdrom XML template
@@ -68,12 +69,13 @@ class DiskDrive(PyroObject):
         cdrom_xml = cdrom_xml.getroot()
         source_xml = cdrom_xml.find('source')
 
-        if (source_xml is not None):
+        if source_xml is not None:
             cdrom_xml.remove(source_xml)
             cdrom_xml_string = ET.tostring(cdrom_xml, encoding='utf8', method='xml')
+            flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
 
             # Update the libvirt cdrom device
-            if (self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string)):
+            if self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string, flags):
                 raise LibvirtException('An error occurred whilst detaching ISO')
 
     def getCurrentDisk(self):

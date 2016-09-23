@@ -20,14 +20,20 @@ import Pyro4
 
 from mcvirt.rpc.certificate_generator import CertificateGenerator
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 
 
 class CertificateGeneratorFactory(PyroObject):
     """Provides an interface to obtain certificate generator objects"""
 
-    @Pyro4.expose()
+    CACHED_OBJECTS = {}
+
+    @Expose()
     def get_cert_generator(self, server, remote=False):
         """Obtain a certificate generator object for a given server"""
-        cert_generator = CertificateGenerator(server, remote=remote)
-        self._register_object(cert_generator)
-        return cert_generator
+        if server not in CertificateGeneratorFactory.CACHED_OBJECTS:
+            cert_generator = CertificateGenerator(server, remote=remote)
+            self._register_object(cert_generator)
+            CertificateGeneratorFactory.CACHED_OBJECTS[server] = cert_generator
+
+        return CertificateGeneratorFactory.CACHED_OBJECTS[server]

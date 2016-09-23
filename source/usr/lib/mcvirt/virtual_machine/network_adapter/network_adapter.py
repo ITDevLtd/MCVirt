@@ -22,8 +22,8 @@ import xml.etree.ElementTree as ET
 
 from mcvirt.exceptions import NetworkAdapterDoesNotExistException
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 
 
 class NetworkAdapter(PyroObject):
@@ -87,7 +87,7 @@ class NetworkAdapter(PyroObject):
             }
         return network_config
 
-    @Pyro4.expose()
+    @Expose()
     def getConnectedNetwork(self):
         """Returns the network that a given interface is connected to"""
         interface_config = self.get_config()
@@ -104,13 +104,12 @@ class NetworkAdapter(PyroObject):
 
         return ':'.join(map(lambda x: "%02x" % x, mac))
 
-    @Pyro4.expose()
+    @Expose()
     def getMacAddress(self):
         """Returns the MAC address of the current network object"""
         return self.mac_address
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def delete(self):
         """Remove the given interface from the VM, based on the given MAC address"""
         self._get_registered_object('auth').assert_permission(

@@ -17,9 +17,10 @@
 
 import Pyro4
 from texttable import Texttable
-import re
 from os.path import exists as os_path_exists
 from os import makedirs
+from enum import Enum
+import time
 
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
@@ -28,12 +29,25 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                ClusterNotInitialisedException, NodeDoesNotExistException,
-                               VmDirectoryAlreadyExistsException)
-from mcvirt.rpc.lock import locking_method
+                               VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException,
+                               MCVirtTypeError)
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.virtual_machine.hard_drive.base import Driver as HardDriveDriver
+from mcvirt.constants import AutoStartStates
+from mcvirt.syslogger import Syslogger
+
+
+class GraphicsDriver(Enum):
+    """Enums for specifying the graphics driver type"""
+    VGA = 'vga'
+    CIRRUS = 'cirrus'
+    VMVGA = 'vmvga'
+    XEN = 'xen'
+    VBOX = 'vbox'
+    QXL = 'qxl'
 
 
 class Factory(PyroObject):
@@ -41,21 +55,43 @@ class Factory(PyroObject):
 
     OBJECT_TYPE = 'virtual machine'
     VIRTUAL_MACHINE_CLASS = VirtualMachine
+    DEFAULT_GRAPHICS_DRIVER = GraphicsDriver.VMVGA.value
+    CACHED_OBJECTS = {}
 
-    @Pyro4.expose()
+    def autostart(self, start_type=AutoStartStates.ON_POLL):
+        """Autostart VMs"""
+        Syslogger.logger().info('Starting autostart: %s' % start_type.name)
+        for vm in self.getAllVirtualMachines():
+            if (vm.isRegisteredLocally() and vm.is_stopped and
+                    vm._get_autostart_state() in
+                    [AutoStartStates.ON_POLL, AutoStartStates.ON_BOOT] and
+                    (start_type == vm._get_autostart_state() or
+                     start_type == AutoStartStates.ON_BOOT)):
+                try:
+                    Syslogger.logger().info('Autostarting: %s' % vm.get_name())
+                    vm.start()
+                    Syslogger.logger().info('Autostart successful: %s' % vm.get_name())
+                except Exception, e:
+                    Syslogger.logger().error('Failed to autostart: %s: %s' %
+                                             (vm.get_name(), str(e)))
+        Syslogger.logger().info('Finished autostsart: %s' % start_type.name)
+
+    @Expose()
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
         ArgumentValidator.validate_hostname(vm_name)
-        vm_object = VirtualMachine(self, vm_name)
-        self._register_object(vm_object)
-        return vm_object
+        if vm_name not in Factory.CACHED_OBJECTS:
+            vm_object = VirtualMachine(self, vm_name)
+            self._register_object(vm_object)
+            Factory.CACHED_OBJECTS[vm_name] = vm_object
+        return Factory.CACHED_OBJECTS[vm_name]
 
-    @Pyro4.expose()
+    @Expose()
     def getAllVirtualMachines(self):
         """Return objects for all virtual machines"""
         return [self.getVirtualMachineByName(vm_name) for vm_name in self.getAllVmNames()]
 
-    @Pyro4.expose()
+    @Expose()
     def getAllVmNames(self, node=None):
         """Returns a list of all VMs within the cluster or those registered on a specific node"""
         if node is not None:
@@ -77,8 +113,7 @@ class Factory(PyroObject):
                 return virtual_machine_factory.getAllVmNames(node=node)
             return cluster.run_remote_command(callback_method=remote_command, nodes=[node])[node]
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose()
     def listVms(self):
         """Lists the VMs that are currently on the host"""
         table = Texttable()
@@ -91,21 +126,21 @@ class Factory(PyroObject):
         table_output = table.draw()
         return table_output
 
-    @Pyro4.expose()
+    @Expose()
     def check_exists(self, vm_name):
         """Determines if a VM exists, given a name"""
         try:
             ArgumentValidator.validate_hostname(vm_name)
-        except (TypeError, InvalidVirtualMachineNameException):
+        except (MCVirtTypeError, InvalidVirtualMachineNameException):
             return False
 
         return (vm_name in self.getAllVmNames())
 
-    @Pyro4.expose()
+    @Expose()
     def checkName(self, name, ignore_exists=False):
         try:
             ArgumentValidator.validate_hostname(name)
-        except TypeError:
+        except MCVirtTypeError:
             raise InvalidVirtualMachineNameException(
                 'Error: Invalid VM Name - VM Name can only contain 0-9 a-Z and dashes'
             )
@@ -118,18 +153,21 @@ class Factory(PyroObject):
 
         return True
 
-    @Pyro4.expose()
-    @locking_method(instance_method=True)
+    def check_graphics_driver(self, driver):
+        """Check that the provided graphics driver name is valid"""
+        if driver not in [i.value for i in list(GraphicsDriver)]:
+            raise InvalidGraphicsDriverException('Invalid graphics driver \'%s\'' % driver)
+
+    @Expose(locking=True, instance_method=True)
     def create(self, *args, **kwargs):
         """Exposed method for creating a VM, that performs a permission check"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
-    @locking_method(instance_method=True)
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
                 network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-                hard_drive_driver=None):
-        """Creates a VM and returns the virtual_machine object for it"""
+                hard_drive_driver=None, graphics_driver=None, modification_flags=[]):
+        """Create a VM and returns the virtual_machine object for it"""
         self.checkName(name)
         ArgumentValidator.validate_positive_integer(cpu_cores)
         ArgumentValidator.validate_positive_integer(memory_allocation)
@@ -148,6 +186,13 @@ class Factory(PyroObject):
         ]
         if hard_drive_driver is not None:
             HardDriveDriver[hard_drive_driver]
+
+        # If no graphics driver has been specified, set it to the default
+        if graphics_driver is None:
+            graphics_driver = self.DEFAULT_GRAPHICS_DRIVER
+
+        # Check the driver name is valid
+        self.check_graphics_driver(graphics_driver)
 
         # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
         # in this state
@@ -192,7 +237,8 @@ class Factory(PyroObject):
         # add an option that forces the user to specify the nodes for the Drbd VM
         # to be added to
         if storage_type == 'Drbd' and len(available_nodes) != node_drbd.CLUSTER_SIZE:
-            raise InvalidNodesException('Exactly two nodes must be specified')
+            raise InvalidNodesException('Exactly %i nodes must be specified'
+                                        % node_drbd.CLUSTER_SIZE)
 
         for check_node in available_nodes:
             if check_node not in all_nodes:
@@ -200,6 +246,13 @@ class Factory(PyroObject):
 
         if get_hostname() not in available_nodes and self._is_cluster_master:
             raise InvalidNodesException('One of the nodes must be the local node')
+
+        # Check whether the hard drives can be created.
+        if self._is_cluster_master:
+            hard_drive_factory = self._get_registered_object('hard_drive_factory')
+            for hard_drive_size in hard_drives:
+                remote_nodes = [node for node in available_nodes if node != get_hostname()]
+                hard_drive_factory.ensure_hdd_valid(hard_drive_size, storage_type, remote_nodes)
 
         # Create directory for VM
         makedirs(VirtualMachine._get_vm_dir(name))
@@ -213,7 +266,8 @@ class Factory(PyroObject):
             name)
 
         # Create VM configuration file
-        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation)
+        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation,
+                                    graphics_driver)
 
         # Add VM to remote nodes
         if self._is_cluster_master:
@@ -223,7 +277,8 @@ class Factory(PyroObject):
                 )
                 virtual_machine_factory.create(
                     name=name, memory_allocation=memory_allocation, cpu_cores=cpu_cores,
-                    node=node, available_nodes=available_nodes
+                    node=node, available_nodes=available_nodes,
+                    modification_flags=modification_flags
                 )
             cluster_object.run_remote_command(callback_method=remote_command)
 
@@ -256,5 +311,8 @@ class Factory(PyroObject):
                 for network in network_interfaces:
                     network_object = network_factory.get_network_by_name(network)
                     network_adapter_factory.create(vm_object, network_object)
+
+            # Add modification flags
+            vm_object.update_modification_flags(add_flags=modification_flags)
 
         return vm_object

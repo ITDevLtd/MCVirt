@@ -19,6 +19,7 @@ import os
 
 from mcvirt.exceptions import ConfigFileCouldNotBeFoundException
 from mcvirt.config_file import ConfigFile
+from mcvirt.constants import AutoStartStates
 
 
 class VirtualMachineConfig(ConfigFile):
@@ -44,7 +45,7 @@ class VirtualMachineConfig(ConfigFile):
         return ('%s/config.json' % VirtualMachine._get_vm_dir(vm_name))
 
     @staticmethod
-    def create(vm_name, available_nodes, cpu_cores, memory_allocation):
+    def create(vm_name, available_nodes, cpu_cores, memory_allocation, graphics_driver):
         """Creates a basic VM configuration for new VMs"""
         from mcvirt.virtual_machine.virtual_machine import LockStates
 
@@ -66,7 +67,10 @@ class VirtualMachineConfig(ConfigFile):
                 'network_interfaces': {},
                 'node': None,
                 'available_nodes': available_nodes,
-                'lock': LockStates.UNLOCKED.value
+                'lock': LockStates.UNLOCKED.value,
+                'graphics_driver': graphics_driver,
+                'modifications': [],
+                'autostart': AutoStartStates.NO_AUTOSTART.value
             }
 
         # Write the configuration to disk
@@ -113,3 +117,10 @@ class VirtualMachineConfig(ConfigFile):
             # disk configurations
             for disk in config['hard_disks']:
                 config['hard_disks'][disk]['driver'] = 'VIRTIO'
+
+        if self._getVersion() < 6:
+            config['modifications'] = []
+            config['graphics_driver'] = 'vmvga'
+
+        if self._getVersion() < 8:
+            config['autostart'] = AutoStartStates.NO_AUTOSTART.value

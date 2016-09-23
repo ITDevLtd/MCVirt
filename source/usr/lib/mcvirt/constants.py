@@ -32,6 +32,7 @@ class DirectoryLocation(object):
     LOCK_FILE_DIR = '/var/run/lock/mcvirt'
     LOCK_FILE = LOCK_FILE_DIR + '/lock'
     LOG_FILE = '/var/log/mcvirt.log'
+    DRBD_HOOK_CONFIG = NODE_STORAGE_DIR + '/drbd-hook-config.json'
 
 
 class LockStates(Enum):
@@ -47,3 +48,11 @@ class PowerStates(Enum):
     STOPPED = 0
     RUNNING = 1
     UNKNOWN = 2
+
+
+class AutoStartStates(Enum):
+    """States that autostart can be"""
+
+    NO_AUTOSTART = 0
+    ON_BOOT = 1
+    ON_POLL = 2

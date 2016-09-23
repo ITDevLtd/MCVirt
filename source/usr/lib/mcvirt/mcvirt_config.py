@@ -26,6 +26,8 @@ class MCVirtConfig(ConfigFile):
     configuration for a VM
     """
 
+    REGENERATE_DRBD_CONFIG = False
+
     def __init__(self):
         """Set member variables and obtains libvirt domain object"""
         self.config_file = DirectoryLocation.NODE_STORAGE_DIR + '/config.json'
@@ -80,7 +82,6 @@ class MCVirtConfig(ConfigFile):
                 },
                 'virtual_machines': [],
                 'networks': {
-                    'default': 'virbr0'
                 },
                 'drbd': NodeDrbd.get_default_config(),
                 'git':
@@ -111,7 +112,9 @@ class MCVirtConfig(ConfigFile):
                     'bind_dn': None,
                     'bind_pass': None,
                     'username_attribute': None
-                }
+                },
+                'session_timeout': 30,
+                'autostart_interval': 300
             }
 
         # Write the configuration to disk
@@ -127,3 +130,12 @@ class MCVirtConfig(ConfigFile):
             config['ldap'] = {'server_uri': None, 'base_dn': None, 'user_search': None,
                               'bind_dn': None, 'bind_pass': None,
                               'username_attribute': None, 'enabled': False}
+
+        if config['version'] < 6:
+            MCVirtConfig.REGENERATE_DRBD_CONFIG = True
+
+        if config['version'] < 7:
+            config['session_timeout'] = 30
+
+        if config['version'] < 8:
+            config['autostart_interval'] = 300

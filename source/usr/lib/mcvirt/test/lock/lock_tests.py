@@ -18,8 +18,8 @@
 import unittest
 import threading
 
-from mcvirt.rpc.lock import locking_method
 from mcvirt.test.test_base import TestBase
+from mcvirt.rpc.expose_method import Expose
 
 
 class LockTests(TestBase):
@@ -41,12 +41,12 @@ class LockTests(TestBase):
         thread_is_running_event = threading.Event()
         thread_should_stop_event = threading.Event()
 
-        @locking_method()
+        @Expose(locking=True)
         def hold_lock_forever(self):
             while not thread_should_stop_event.is_set():
                 thread_is_running_event.set()
 
-        @locking_method()
+        @Expose(locking=True)
         def take_lock(self):
             return True
 
@@ -90,7 +90,7 @@ class LockTests(TestBase):
             thread_is_running_event = threading.Event()
             thread_should_stop_event = threading.Event()
 
-            @locking_method()
+            @Expose(locking=True)
             def hold_lock_forever(self):
                 while not thread_should_stop_event.is_set():
                     thread_is_running_event.set()

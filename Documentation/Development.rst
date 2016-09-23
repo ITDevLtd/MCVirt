@@ -49,7 +49,7 @@ This test procedure is designed to compliment the automated unit tests and shoul
 
 * If the node is part of a cluster:
 
-  * Make sure DRBD is enabled by running ``mcvirt drbd --enable``
+  * Make sure DRBD is enabled by running ``mcvirt drbd enable``
 
   * Create a new VM called 'cluster-vm', specifying the storage type as 'Drbd'
 

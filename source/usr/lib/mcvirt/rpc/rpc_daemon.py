@@ -20,6 +20,7 @@
 import atexit
 import Pyro4
 import signal
+import types
 import time
 
 from mcvirt.auth.auth import Auth
@@ -45,6 +46,9 @@ from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.daemon_lock import DaemonLock
 from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.exceptions import AuthenticationError
+from mcvirt.rpc.expose_method import Expose
+from mcvirt.thread.auto_start_watchdog import AutoStartWatchdog
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -66,6 +70,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         """Perform authentication on new connections"""
         # Reset session_id for current context
         Pyro4.current_context.STARTUP_PERIOD = False
+        Pyro4.current_context.INTERNAL_REQUEST = False
         Pyro4.current_context.session_id = None
         Pyro4.current_context.username = None
         Pyro4.current_context.proxy_user = None
@@ -183,17 +188,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         except Exception, e:
             Syslogger.logger().exception('Error during authentication: %s' % str(e))
         # If no valid authentication was provided, raise an error
-        raise Pyro4.errors.SecurityError('Invalid username/password/session')
-
-
-class DaemonSession(object):
-    """Class for allowing client to obtain the session ID"""
-
-    @Pyro4.expose()
-    def get_session_id(self):
-        """Return the client's current session ID"""
-        if Pyro4.current_context.session_id:
-            return Pyro4.current_context.session_id
+        raise AuthenticationError('Invalid username/password/session')
 
 
 class RpcNSMixinDaemon(object):
@@ -211,6 +206,7 @@ class RpcNSMixinDaemon(object):
 
         # Store nameserver, MCVirt instance and create daemon
         self.daemon_lock = DaemonLock()
+        self.timer_objects = []
 
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
@@ -225,12 +221,14 @@ class RpcNSMixinDaemon(object):
         ssl_socket = None
 
         # Wait for nameserver
+        Syslogger.logger().debug('Wait for connection to nameserver')
         self.obtain_connection()
 
         RpcNSMixinDaemon.DAEMON = BaseRpcDaemon(host=self.hostname)
         self.register_factories()
 
         # Ensure libvirt is configured
+        Syslogger.logger().debug('Start certificate check')
         cert_gen_factory = RpcNSMixinDaemon.DAEMON.registered_factories[
             'certificate_generator_factory']
         cert_gen = cert_gen_factory.get_cert_generator('localhost')
@@ -238,14 +236,23 @@ class RpcNSMixinDaemon(object):
         cert_gen = None
         cert_gen_factory = None
 
+        Syslogger.logger().debug('Register atexit')
         atexit.register(self.shutdown, 'atexit', '')
         for sig in (signal.SIGABRT, signal.SIGILL, signal.SIGINT,
                     signal.SIGSEGV, signal.SIGTERM):
             signal.signal(sig, self.shutdown)
 
+        for registered_object in RpcNSMixinDaemon.DAEMON.registered_factories:
+            obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
+            if type(obj) is not types.TypeType:  # noqa
+                Syslogger.logger().debug('Initialising object %s' % registered_object)
+                obj.initialise()
+
     def start(self, *args, **kwargs):
         """Start the Pyro daemon"""
         Pyro4.current_context.STARTUP_PERIOD = False
+        Syslogger.logger().debug('Authentication enabled')
+        Syslogger.logger().debug('Starting daemon request loop')
         with DaemonLock.LOCK:
             RpcNSMixinDaemon.DAEMON.requestLoop(*args, **kwargs)
         Syslogger.logger().debug('Daemon request loop finished')
@@ -253,6 +260,12 @@ class RpcNSMixinDaemon(object):
     def shutdown(self, signum, frame):
         """Shutdown Pyro Daemon"""
         Syslogger.logger().error('Received signal: %s' % signum)
+        for timer in self.timer_objects:
+            Syslogger.logger().info('Shutting down timer: %s' % timer)
+            try:
+                timer.timer.cancel()
+            except:
+                pass
         RpcNSMixinDaemon.DAEMON.shutdown()
         Syslogger.logger().debug('finisehd shutdown')
 
@@ -268,9 +281,6 @@ class RpcNSMixinDaemon(object):
 
     def register_factories(self):
         """Register base MCVirt factories with RPC daemon"""
-        # Register session class
-        self.register(DaemonSession, objectId='session', force=True)
-
         # Create Virtual machine factory object and register with daemon
         virtual_machine_factory = VirtualMachineFactory()
         self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
@@ -312,7 +322,7 @@ class RpcNSMixinDaemon(object):
         self.register(node, objectId='node', force=True)
 
         # Create logger object and register with daemon
-        logger = Logger()
+        logger = Logger.get_logger()
         self.register(logger, objectId='logger', force=True)
 
         # Create and register SSLSocketFactory object
@@ -336,7 +346,14 @@ class RpcNSMixinDaemon(object):
         self.register(MCVirtConfig, objectId='mcvirt_config', force=True)
 
         # Create an MCVirt session
-        self.register(Session(), objectId='mcvirt_session', force=True)
+        session_object = Session()
+        self.register(session_object, objectId='mcvirt_session', force=True)
+        Expose.SESSION_OBJECT = session_object
+
+        # Create autostart watchdog object
+        autostart_watchdog = AutoStartWatchdog()
+        self.timer_objects.append(autostart_watchdog)
+        self.register(autostart_watchdog, objectId='autostart_watchdog', force=True)
 
     def obtain_connection(self):
         """Attempt to obtain a connection to the name server."""

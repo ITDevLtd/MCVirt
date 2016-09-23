@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
 import os
 import shutil
 
@@ -25,7 +24,9 @@ from mcvirt.system import System
 from mcvirt.exceptions import (CACertificateNotFoundException, OpenSSLNotFoundException,
                                MustGenerateCertificateException)
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.syslogger import Syslogger
 
 
 class CertificateGenerator(PyroObject):
@@ -43,7 +44,7 @@ class CertificateGenerator(PyroObject):
         if not os.path.isfile(self.OPENSSL):
             raise OpenSSLNotFoundException('openssl not found: %s' % self.OPENSSL)
 
-        if server == 'localhost' or server == '127.0.0.1' or server is None:
+        if server == 'localhost' or server.startswith('127.') or server is None:
             self.server = get_hostname()
         else:
             self.server = server
@@ -195,6 +196,20 @@ class CertificateGenerator(PyroObject):
             System.runCommand([self.OPENSSL, 'genrsa', '-out', path, '2048'])
         return path
 
+    @property
+    def dh_params_file(self):
+        """Return the path to the DH parameters file, and create it if it does not exist"""
+        if not self.is_local:
+            raise CACertificateNotFoundException('DH params file not available for remote node')
+
+        path = self._get_certificate_path('dh_params')
+        if not self._ensure_exists(path, assert_raise=False):
+            # Generate new DH parameters
+            Syslogger.logger().info('Generating DH parameters file')
+            System.runCommand([self.OPENSSL, 'dhparam', '-out', path, '2048'])
+            Syslogger.logger().info('DH parameters file generated')
+        return path
+
     def _get_certificate_path(self, certname, base_dir=None, allow_remote=False):
         if base_dir is None:
             if allow_remote and self.remote:
@@ -240,7 +255,7 @@ class CertificateGenerator(PyroObject):
             pub_key = local_remote._sign_csr(csr)
             self._add_public_key(pub_key)
 
-    @Pyro4.expose()
+    @Expose()
     def generate_csr(self):
         """Generate a certificate request for the remote server"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
@@ -251,7 +266,7 @@ class CertificateGenerator(PyroObject):
                            '-out', self.client_csr, '-subj', self.ssl_dn])
         return self._read_file(self.client_csr)
 
-    @Pyro4.expose()
+    @Expose()
     def sign_csr(self, csr):
         """Sign the CSR for a remote SSL certificate."""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
@@ -273,13 +288,13 @@ class CertificateGenerator(PyroObject):
         self._get_registered_object('libvirt_config').generate_config()
         return self._read_file(self.client_pub_file)
 
-    @Pyro4.expose()
+    @Expose()
     def remove_certificates(self):
         """Remove a certificate directory for a node"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         shutil.rmtree(self.ssl_directory)
 
-    @Pyro4.expose()
+    @Expose()
     def add_public_key(self, key):
         """Add the public key for a remote node"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)

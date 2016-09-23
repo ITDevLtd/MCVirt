@@ -24,8 +24,8 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsException,
                                UnprivilegedUserException, InvalidPermissionGroupException,
                                DuplicatePermissionException)
-from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS, PERMISSION_GROUPS
 from mcvirt.argument_validator import ArgumentValidator
 
@@ -45,7 +45,11 @@ class Auth(PyroObject):
 
     def check_user_type(self, *user_type_names):
         """Check that the currently logged-in user is of a specified type."""
-        if Pyro4.current_context.STARTUP_PERIOD:
+        if 'STARTUP_PERIOD' in dir(Pyro4.current_context) and Pyro4.current_context.STARTUP_PERIOD:
+            return True
+
+        if ('INTERNAL_REQUEST' in dir(Pyro4.current_context) and
+                Pyro4.current_context.INTERNAL_REQUEST):
             return True
 
         user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
@@ -78,7 +82,11 @@ class Auth(PyroObject):
         """Check that the user has a given permission, either globally through MCVirt or for a
         given VM.
         """
-        if Pyro4.current_context.STARTUP_PERIOD:
+        if 'STARTUP_PERIOD' in dir(Pyro4.current_context) and Pyro4.current_context.STARTUP_PERIOD:
+            return True
+
+        if ('INTERNAL_REQUEST' in dir(Pyro4.current_context) and
+                Pyro4.current_context.INTERNAL_REQUEST):
             return True
 
         # If the user is a superuser, all permissions are attached to the user
@@ -133,7 +141,7 @@ class Auth(PyroObject):
 
         return False
 
-    @Pyro4.expose()
+    @Expose()
     def is_superuser(self):
         """Determine if the current user is a superuser of MCVirt."""
         # Cluster users can do anything
@@ -150,7 +158,7 @@ class Auth(PyroObject):
         mcvirt_config = MCVirtConfig()
         return mcvirt_config.get_config()['superusers']
 
-    @Pyro4.expose()
+    @Expose(locking=True)
     def add_superuser(self, user_object, ignore_duplicate=False):
         """Add a new superuser."""
         assert isinstance(self._convert_remote_object(user_object),
@@ -188,7 +196,7 @@ class Auth(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
-    @Pyro4.expose()
+    @Expose(locking=True)
     def delete_superuser(self, user_object):
         """Remove a superuser."""
         assert isinstance(self._convert_remote_object(user_object),
@@ -224,8 +232,7 @@ class Auth(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def add_user_permission_group(self, permission_group, user_object,
                                   vm_object=None, ignore_duplicate=False):
         """Add a user to a permissions group on a VM object."""
@@ -289,8 +296,7 @@ class Auth(PyroObject):
                 'User \'%s\' already in group \'%s\'' % (username, permission_group)
             )
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def delete_user_permission_group(self, permission_group, user_object, vm_object=None):
         """Remove user from a permissions group on a VM object."""
         assert permission_group in PERMISSION_GROUPS.keys()
@@ -366,7 +372,7 @@ class Auth(PyroObject):
                                                   'Copied permission from \'%s\' to \'%s\'' %
                                                   (source_vm.get_name(), dest_vm.get_name()))
 
-    @Pyro4.expose()
+    @Expose()
     def get_users_in_permission_group(self, permission_group, vm_object=None):
         """Obtain a list of users in a given group, either in the global permissions or
         for a specific VM.

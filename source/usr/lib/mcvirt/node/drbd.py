@@ -21,15 +21,16 @@ from Cheetah.Template import Template
 import os
 from texttable import Texttable
 import Pyro4
-import random
 import string
+import json
+from binascii import hexlify
 
 from mcvirt.exceptions import DrbdNotInstalledException, DrbdAlreadyEnabled
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.lock import locking_method
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
 from mcvirt.constants import DirectoryLocation
 
@@ -43,12 +44,37 @@ class Drbd(PyroObject):
     DrbdADM = '/sbin/drbdadm'
     CLUSTER_SIZE = 2
 
-    @Pyro4.expose()
+    def initialise(self):
+        """Ensure that DRBD user exists and that hook configuration
+        exists
+        """
+        if self.is_enabled():
+            self.check_hook_configuration()
+            if MCVirtConfig.REGENERATE_DRBD_CONFIG:
+                MCVirtConfig.REGENERATE_DRBD_CONFIG = False
+                self.generate_config()
+
+    def check_hook_configuration(self):
+        """Ensure that DRBD user exists and that hook configuration
+        exists
+        """
+        user_factory = self._get_registered_object('user_factory')
+        if (not os.path.exists(DirectoryLocation.DRBD_HOOK_CONFIG) or
+                not len(user_factory.get_all_user_objects(user_classes=['DrbdHookUser']))):
+
+            # Generate hook user
+            hook_user, hook_pass = user_factory.generate_user(user_type='DrbdHookUser')
+
+            # Write DRBD hook script configuration file
+            with open(DirectoryLocation.DRBD_HOOK_CONFIG, 'w') as fh:
+                json.dump({'username': hook_user, 'password': hook_pass}, fh)
+
+    @Expose()
     def is_enabled(self):
         """Determine whether Drbd is enabled on the node or not"""
         return self.get_config()['enabled']
 
-    @Pyro4.expose()
+    @Expose()
     def is_installed(self):
         """Determine if the 'drbdadm' command is present to determine if the
         'drbd8-utils' package is installed
@@ -61,8 +87,7 @@ class Drbd(PyroObject):
             raise DrbdNotInstalledException('drbdadm not found' +
                                             ' (Is the drbd8-utils package installed?)')
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def enable(self, secret=None):
         """Ensure the machine is suitable to run Drbd"""
         # Ensure user has the ability to manage Drbd
@@ -76,6 +101,8 @@ class Drbd(PyroObject):
 
         if secret is None:
             secret = self.generate_secret()
+
+        self.check_hook_configuration()
 
         # Set the secret in the local configuration
         self.set_secret(secret)
@@ -136,7 +163,7 @@ class Drbd(PyroObject):
 
     def generate_secret(self):
         """Generate a random secret for Drbd"""
-        return ''.join([random.choice(string.ascii_letters + string.digits) for _ in xrange(16)])
+        return hexlify(os.urandom(16))
 
     def set_secret(self, secret):
         """Set the Drbd configuration in the global MCVirt config file"""
@@ -171,7 +198,7 @@ class Drbd(PyroObject):
         """Return a list of used Drbd minor IDs"""
         return [hdd.drbd_minor for hdd in self.get_all_drbd_hard_drive_object(include_remote=True)]
 
-    @Pyro4.expose()
+    @Expose()
     def list(self):
         """List the Drbd volumes and statuses"""
         # Create table and add headers

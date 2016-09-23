@@ -37,6 +37,7 @@ from mcvirt.libvirt_connector import LibvirtConnector
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
+from mcvirt.rpc.expose_method import Expose
 
 
 class LibvirtFailureMode(Enum):
@@ -64,7 +65,7 @@ class LibvirtConnectorUnitTest(LibvirtConnector):
 
 class VirtualMachineFactoryUnitTest(VirtualMachineFactory):
 
-    @Pyro4.expose()
+    @Expose()
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
         vm_object = VirtualMachineLibvirtFail(self, vm_name)

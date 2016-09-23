@@ -19,6 +19,7 @@
 
 import Pyro4
 
+
 import mcvirt.exceptions  # Import necessary for Pyro # noqa
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.utils import get_hostname
@@ -30,7 +31,7 @@ class Connection(object):
     """Connection class, providing connections to the Pyro MCVirt daemon"""
 
     NS_PORT = 9090
-    SESSION_OBJECT = 'session'
+    SESSION_OBJECT = 'mcvirt_session'
 
     def __init__(self, username=None, password=None, session_id=None,
                  host=None, ignore_cluster=False):
@@ -64,10 +65,18 @@ class Connection(object):
             session_id = session_object._pyroHandshake[Annotations.SESSION_ID]
             return session_id
         except Pyro4.errors.CommunicationError, e:
-            raise AuthenticationError(str(e))
-        except Pyro4.errors.NamingError, e:
+            if 'refused' in str(e):
+                raise mcvirt.exceptions.InaccessibleNodeException('Error connecting to daemon')
+            elif 'Cannot connect to node' in str(e):
+                raise mcvirt.exceptions.InaccessibleNodeException(str(e))
+            raise AuthenticationError('Invalid username/password: %s' % str(e))
+        except Pyro4.errors.NamingError:
             raise mcvirt.exceptions.InaccessibleNodeException(
                 'MCVirt nameserver/daemon is not running on node %s' % self.__host
+            )
+        except:
+            raise mcvirt.exceptions.InaccessibleNodeException(
+                'An unknown error occurred whilst connecting to daemon'
             )
 
     def _get_auth_obj(self, password=None):
@@ -125,3 +134,8 @@ class Connection(object):
     def session_id(self):
         """Property for the session ID"""
         return self.__session_id
+
+    @property
+    def username(self):
+        """Property for the username"""
+        return self.__username

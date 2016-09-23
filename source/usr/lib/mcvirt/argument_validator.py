@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 
 import re
+from mcvirt.exceptions import MCVirtTypeError
 
 
 class ArgumentValidator(object):
@@ -29,36 +30,45 @@ class ArgumentValidator(object):
                              ' be 64 characters or less in length'
                              ' and start with an alpha-numeric character')
 
-        # Check length
-        if len(hostname) > 64 or not len(hostname):
-            raise TypeError(exception_message)
+        try:
+            # Check length
+            if len(hostname) > 64 or not len(hostname):
+                raise MCVirtTypeError(exception_message)
 
-        disallowed = re.compile(r"[^A-Z\d-]", re.IGNORECASE)
-        if disallowed.search(hostname):
-            raise TypeError(exception_message)
+            disallowed = re.compile(r"[^A-Z\d-]", re.IGNORECASE)
+            if disallowed.search(hostname):
+                raise MCVirtTypeError(exception_message)
 
-        if hostname.startswith('-') or hostname.endswith('-'):
-            raise TypeError(exception_message)
+            if hostname.startswith('-') or hostname.endswith('-'):
+                raise MCVirtTypeError(exception_message)
+        except (ValueError, TypeError):
+            raise MCVirtTypeError(exception_message)
 
     @staticmethod
     def validate_network_name(name):
         """Validate the name of a network"""
         exception_message = ('Network name must only use alpha-numeric characters and'
                              ' not be any longer than 64 characters in length')
-        if len(name) > 64 or not len(name):
-            raise TypeError(exception_message)
-        disallowed = re.compile(r"[^A-Z\d]", re.IGNORECASE)
-        if disallowed.search(name):
-            raise TypeError(exception_message)
+
+        if name == 'default':
+            raise MCVirtTypeError('Network name cannot be \'default\'')
+        try:
+            if len(name) > 64 or not len(name):
+                raise MCVirtTypeError(exception_message)
+            disallowed = re.compile(r"[^A-Z\d]", re.IGNORECASE)
+            if disallowed.search(name):
+                raise MCVirtTypeError(exception_message)
+        except (ValueError, TypeError):
+            raise MCVirtTypeError(exception_message)
 
     @staticmethod
     def validate_integer(value):
         """Validate integer"""
         try:
             if str(int(value)) != str(value):
-                raise TypeError
-        except ValueError:
-            raise TypeError
+                raise MCVirtTypeError('Must be an integer')
+        except (ValueError, TypeError):
+            raise MCVirtTypeError('Must be an integer')
 
     @staticmethod
     def validate_positive_integer(value):
@@ -68,13 +78,13 @@ class ArgumentValidator(object):
         ArgumentValidator.validate_integer(value)
 
         if int(value) < 1:
-            raise TypeError
+            raise MCVirtTypeError('Not a positive integer')
 
     @staticmethod
     def validate_boolean(variable):
         """Ensure variable is a boolean"""
         if type(variable) is not bool:
-            raise TypeError
+            raise MCVirtTypeError('Not a boolean')
 
     @staticmethod
     def validate_drbd_resource(variable):
@@ -82,10 +92,25 @@ class ArgumentValidator(object):
         valid_name = re.compile('^mcvirt_vm-(.+)-disk-(\d+)$')
         result = valid_name.match(variable)
         if not result:
-            raise TypeError
+            raise MCVirtTypeError('Not a valid resource name')
 
         # Validate the hostname in the DRBD resource
         ArgumentValidator.validate_hostname(result.groups()[0])
         ArgumentValidator.validate_positive_integer(result.groups()[1])
         if int(result.groups()[1]) > 99:
-            raise TypeError
+            raise MCVirtTypeError('Not a valid resource name')
+
+    @staticmethod
+    def validate_ip_address(ip_address):
+        """Validate an IPv4 IP address"""
+        pattern = re.compile(r"^((([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])[ (\[]?(\.|dot)"
+                             "[ )\]]?){3}([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5]))$")
+        if not pattern.match(ip_address):
+            raise MCVirtTypeError('%s is not a valid IP address' % ip_address)
+
+    @staticmethod
+    def validate_vg_name(vg_name):
+        """Validate a volume group name"""
+        pattern = re.compile("^[A-Z0-9a-z_-]+$")
+        if not pattern.match(vg_name):
+            raise MCVirtTypeError('%s is not a valid volume group name' % vg_name)

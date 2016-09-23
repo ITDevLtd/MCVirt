@@ -17,7 +17,7 @@
 
 import unittest
 
-from mcvirt.exceptions import InvalidVirtualMachineNameException
+from mcvirt.exceptions import InvalidVirtualMachineNameException, MCVirtTypeError
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.test.test_base import TestBase
 
@@ -37,12 +37,16 @@ class ValidationTests(TestBase):
         suite.addTest(ValidationTests('test_pos_integer'))
         suite.addTest(ValidationTests('test_boolean'))
         suite.addTest(ValidationTests('test_drbd_resource'))
+        suite.addTest(ValidationTests('test_ip_address'))
+        suite.addTest(ValidationTests('test_vg_name'))
         return suite
 
-    def test_validity(self, validator, valid_list, invalid_list, expected_exception=TypeError):
+    def test_validity(self, validator, valid_list, invalid_list,
+                      expected_exception=MCVirtTypeError):
         """Use the provided validator function to test each string in valid_list and invalid_list,
         failing the test if expected_exception is raised for anything in valid_list, and failing
-        if the exception is NOT raised for anything in invalid_list"""
+        if the exception is NOT raised for anything in invalid_list
+        """
         for i in valid_list:
             try:
                 validator(i)
@@ -72,18 +76,17 @@ class ValidationTests(TestBase):
         ArgumentValidator"""
         network_name = 'not-valid'
         try:
-            with self.assertRaises(TypeError):
+            with self.assertRaises(MCVirtTypeError):
                 self.parser.parse_arguments('network create --interface %s %s' %
                                             (self.test_physical_interface, network_name))
-        except AssertionError as e:
-            # If no TypeError was raised then the network was probably created succesfully, so need
-            # to remove it
+        except AssertionError:
+            # If no MCVirtTypeError was raised then the network was probably created succesfully,
+            # so need to remove it
             if self.network_factory.check_exists(network_name):
                 network = self.network_factory.get_network_by_name(network_name)
                 self.rpc.annotate_object(network)
                 network.delete()
-
-            raise e
+            raise
 
     def test_hostnames(self):
         """Test the validation of hostnames"""
@@ -116,8 +119,21 @@ class ValidationTests(TestBase):
         self.test_validity(ArgumentValidator.validate_boolean, valid, invalid)
 
     def test_drbd_resource(self):
+        """Test the validation of DRBD resource names"""
         valid = ['mcvirt_vm-blah-disk-32', 'mcvirt_vm-test-disk-1', 'mcvirt_vm-blah-disk-99']
         invalid = ['xmcvirt_vm-blah-disk-1', 'mcvirt_vm-blah-disk-', 'MCVirt_vm-blah-disk-2',
                    'mcvirt_vm-blah-disk-2x', 'mcvirt_vm--disk-1', 'mcvirt_vm-test-disk-0',
                    'mcvirt_vm-blah-disk-100']
         self.test_validity(ArgumentValidator.validate_drbd_resource, valid, invalid)
+
+    def test_ip_address(self):
+        """Test the validation of IP addresses"""
+        valid = ['1.2.3.4', '192.168.1.143', '255.255.255.255', '0.0.0.0']
+        invalid = ['1.2.3', '256.1.1.1', '-1.2.3.4', 'one.two.three.four', 'invalid_ip', '1.2.3.4a']
+        self.test_validity(ArgumentValidator.validate_ip_address, valid, invalid)
+
+    def test_vg_name(self):
+        valid = ['valid', 'withnumbers1', '0startwithanumber', 'dashes-in-the-name',
+                 'underscores_here']
+        invalid = ['', 'invalid!', 'not.valid', '[adg', 'vg;', '@vg_name']
+        self.test_validity(ArgumentValidator.validate_vg_name, valid, invalid)

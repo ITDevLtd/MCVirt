@@ -17,13 +17,15 @@
 
 import Pyro4
 
-from mcvirt.exceptions import UnknownStorageTypeException, HardDriveDoesNotExistException
+from mcvirt.exceptions import (UnknownStorageTypeException, HardDriveDoesNotExistException,
+                               InsufficientSpaceException)
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import Drbd
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import locking_method
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.utils import get_hostname
+from mcvirt.rpc.expose_method import Expose
 
 
 class Factory(PyroObject):
@@ -33,8 +35,9 @@ class Factory(PyroObject):
     DEFAULT_STORAGE_TYPE = 'Local'
     OBJECT_TYPE = 'hard disk'
     HARD_DRIVE_CLASS = Base
+    CACHED_OBJECTS = {}
 
-    @Pyro4.expose()
+    @Expose()
     def getObject(self, vm_object, disk_id, **config):
         """Returns the storage object for a given disk"""
         vm_object = self._convert_remote_object(vm_object)
@@ -47,15 +50,51 @@ class Factory(PyroObject):
             if storage_type is None:
                 storage_type = config['storage_type']
             del(config['storage_type'])
+        storage_type_key = storage_type or ''
+        if (vm_object.get_name(), disk_id, storage_type_key) not in Factory.CACHED_OBJECTS:
+            hard_drive_object = self.getClass(storage_type)(
+                vm_object=vm_object, disk_id=disk_id, **config)
+            self._register_object(hard_drive_object)
+            Factory.CACHED_OBJECTS[(vm_object.get_name(),
+                                    disk_id,
+                                    storage_type_key)] = hard_drive_object
 
-        hard_drive_object = self.getClass(storage_type)(
-            vm_object=vm_object, disk_id=disk_id, **config)
-        self._register_object(hard_drive_object)
+        return Factory.CACHED_OBJECTS[(vm_object.get_name(), disk_id, storage_type_key)]
 
-        return hard_drive_object
+    @Expose()
+    def ensure_hdd_valid(self, size, storage_type, remote_nodes):
+        """Ensures the HDD can be created on all nodes, and returns the storage type to be used."""
+        available_storage_types = self._getAvailableStorageTypes()
+        if storage_type:
+            if (storage_type not in
+                    [available_storage.__name__ for available_storage in available_storage_types]):
+                raise UnknownStorageTypeException('%s is not supported by node %s' %
+                                                  (storage_type, get_hostname()))
+        else:
+            if len(available_storage_types) > 1:
+                raise UnknownStorageTypeException('Storage type must be specified')
+            elif len(available_storage_types) == 1:
+                storage_type = available_storage_types[0].__name__
+            else:
+                raise UnknownStorageTypeException('There are no storage types available')
 
-    @Pyro4.expose()
-    @locking_method()
+        free = self._get_registered_object('node').get_free_vg_space()
+        if free < size:
+            raise InsufficientSpaceException('Attempted to create a disk with %i MiB, but there '
+                                             'is only %i MiB of free space available on node %s.' %
+                                             (size, free, get_hostname()))
+
+        if self._is_cluster_master:
+            def remote_command(remote_connection):
+                hard_drive_factory = remote_connection.get_connection('hard_drive_factory')
+                hard_drive_factory.ensure_hdd_valid(size, storage_type, remote_nodes)
+
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(callback_method=remote_command, nodes=remote_nodes)
+
+        return storage_type
+
+    @Expose(locking=True)
     def create(self, vm_object, size, storage_type, driver):
         """Performs the creation of a hard drive, using a given storage type"""
         vm_object = self._convert_remote_object(vm_object)
@@ -66,31 +105,16 @@ class Factory(PyroObject):
             vm_object
         )
 
-        # Ensure that the storage type:
-        # If the VM's storage type has been defined that the specified storage type
-        #   matches or has not been defined.
-        # Or that the storage type has been specified if the VM's storage type is
-        #   not defined
+        remote_nodes = [node for node in vm_object.getAvailableNodes() if node != get_hostname()]
+        storage_type = self.ensure_hdd_valid(size, storage_type, remote_nodes)
+
+        # Ensure the VM storage type matches the storage type passed in
         if vm_object.getStorageType():
             if storage_type and storage_type != vm_object.getStorageType():
                 raise UnknownStorageTypeException(
                     'Storage type does not match VMs current storage type'
                 )
-            storage_type = vm_object.getStorageType()
 
-        available_storage_types = self._getAvailableStorageTypes()
-        if storage_type:
-            if (storage_type not in
-                    [available_storage.__name__ for available_storage in available_storage_types]):
-                raise UnknownStorageTypeException('%s is not supported by this node' %
-                                                  storage_type)
-        else:
-            if len(available_storage_types) > 1:
-                raise UnknownStorageTypeException('Storage type must be specified')
-            elif len(available_storage_types) == 1:
-                storage_type = available_storage_types[0].__name__
-            else:
-                raise UnknownStorageTypeException('There are no storage types available')
         hdd_object = self.getClass(storage_type)(vm_object=vm_object, driver=driver)
         self._register_object(hdd_object)
         hdd_object.create(size=size)
@@ -118,7 +142,7 @@ class Factory(PyroObject):
             (storage_type)
         )
 
-    @Pyro4.expose()
+    @Expose()
     def getDrbdObjectByResourceName(self, resource_name):
         """Obtains a hard drive object for a Drbd drive, based on the resource name"""
         node_drbd = self._get_registered_object('node_drbd')

@@ -117,10 +117,10 @@ Configuring DRBD
 ----------------
 
 1. Ensure the package ``drbd8-utils`` is installed on both of the nodes in the cluster
-2. DRBD data will be transmitted over the 'cluster' address. Ensure that this has been set and that the network is segemneted from other network traffic (e.g. by using VLANs). 
+2. DRBD data will be transmitted over the 'cluster' address. Ensure that this has been set and that the network is segemneted from other network traffic (e.g. by using VLANs).
 3. Perform the following MCVirt command to configure DRBD::
 
-    mcvirt drbd --enable
+    mcvirt drbd enable
 
 
 DRBD verification
@@ -138,8 +138,9 @@ The status of the latest verification is captured and will stop users from start
 
 If the verification fails:
 
-* The DRBD volume must be resynced (for more information, see the `DRBD documentation for re-syncing <https://drbd.linbit.com/users-guide/ch-troubleshooting.html>`_).
-* Once this is complete, perform another MCVirt verification to mark the VM as in-sync, which will lift the limitations.
+* The DRBD volume can be resynced using resync::
+
+    mcvirt resync --source-node=<Node>|--auto-determine <VM Name>
 
 ===============
 Troubleshooting

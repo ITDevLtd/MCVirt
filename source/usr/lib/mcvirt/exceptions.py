@@ -270,18 +270,6 @@ class NetworkUtilizedException(MCVirtException):
     pass
 
 
-class InvalidVolumeGroupNameException(MCVirtException):
-    """The specified name of the volume group is invalid"""
-
-    pass
-
-
-class InvalidIPAddressException(MCVirtException):
-    """The specified IP address is invalid"""
-
-    pass
-
-
 class ArgumentParserException(MCVirtException):
     """An invalid argument was provided"""
 
@@ -360,6 +348,12 @@ class DrbdVolumeNotInSyncException(MCVirtException):
     pass
 
 
+class InsufficientSpaceException(MCVirtException):
+    """A hard drive object was initialised when the volume group did not have enough space."""
+
+    pass
+
+
 class UnknownStorageTypeException(MCVirtException):
     """An hard drive object with an unknown disk type has been initialised"""
 
@@ -434,6 +428,8 @@ class VmRunningException(MCVirtException):
 
 class VmStoppedException(MCVirtException):
     """An online migraiton can only be performed on a powered on VM"""
+
+    pass
 
 
 class UnsuitableNodeException(MCVirtException):
@@ -580,6 +576,12 @@ class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
     pass
 
 
+class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
+    """Unable to connect to node in the cluster"""
+
+    pass
+
+
 class LdapConnectionFailedException(MCVirtException):
     """Connection to the LDAP server failed"""
 
@@ -588,6 +590,42 @@ class LdapConnectionFailedException(MCVirtException):
 
 class LdapNotEnabledException(MCVirtException):
     """Ldap has not been enabled on the node"""
+
+    pass
+
+
+class ResyncNotSupportedException(MCVirtException):
+    """Resync is not supported on this storage type"""
+
+    pass
+
+
+class InvalidGraphicsDriverException(MCVirtException):
+    """The provided graphics driver name was not valid"""
+
+    pass
+
+
+class TooManyParametersException(MCVirtException):
+    """Too many parameters have been defined"""
+
+    pass
+
+
+class InvalidModificationFlagException(MCVirtException):
+    """The provided modification flag name was invalid"""
+
+    pass
+
+
+class MCVirtTypeError(MCVirtException):
+    """TypeError raised by MCVirt"""
+
+    pass
+
+
+class UnknownLdapError(MCVirtException):
+    """An unknown LDAP error has occurred"""
 
     pass
 

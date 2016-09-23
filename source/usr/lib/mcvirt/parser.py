@@ -21,7 +21,8 @@ import argparse
 import binascii
 import os
 
-from mcvirt.exceptions import ArgumentParserException, DrbdVolumeNotInSyncException
+from mcvirt.exceptions import (ArgumentParserException, DrbdVolumeNotInSyncException,
+                               AuthenticationError)
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
@@ -39,6 +40,8 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 
 class Parser(object):
     """Provides an argument parser for MCVirt."""
+
+    AUTH_FILE = '.mcvirt-auth'
 
     def __init__(self, verbose=True):
         """Configure the argument parser object."""
@@ -75,18 +78,21 @@ class Parser(object):
         self.start_parser = self.subparsers.add_parser('start', help='Start VM',
                                                        parents=[self.parent_parser])
         self.start_parser.add_argument('--iso', metavar='ISO Name', type=str,
-                                       help='Path of ISO to attach to VM')
-        self.start_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+                                       help='Path of ISO to attach to VM', default=None)
+        self.start_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
+                                       help='Names of VMs')
 
         # Add arguments for stopping a VM
         self.stop_parser = self.subparsers.add_parser('stop', help='Stop VM',
                                                       parents=[self.parent_parser])
-        self.stop_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        self.stop_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
+                                      help='Names of VMs')
 
         # Add arguments for resetting a VM
         self.reset_parser = self.subparsers.add_parser('reset', help='Reset VM',
                                                        parents=[self.parent_parser])
-        self.reset_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        self.reset_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
+                                       help='Names of VM')
 
         # Add arguments for fixing deadlock on a vm
         self.method_lock_parser = self.subparsers.add_parser(
@@ -98,14 +104,35 @@ class Parser(object):
         # Add arguments for ISO functions
         self.iso_parser = self.subparsers.add_parser('iso', help='ISO managment',
                                                      parents=[self.parent_parser])
-        self.iso_parser.add_argument('--list', dest='list', action='store_true',
-                                     help='List available ISOs')
-        self.iso_parser.add_argument('--add-from-path', dest='add_path',
-                                     help='Copy an ISO to ISO directory', metavar='PATH')
-        self.iso_parser.add_argument('--delete', dest='delete_path', help='Delete an ISO',
-                                     metavar='NAME')
-        self.iso_parser.add_argument('--add-from-url', dest='add_url',
-                                     help='Download and add an ISO', metavar='URL')
+
+        self.iso_subparser = self.iso_parser.add_subparsers(dest='iso_action',
+                                                            help='ISO action to perform',
+                                                            metavar='Action')
+
+        self.delete_iso_subparser = self.iso_subparser.add_parser('delete', help='Delete an ISO',
+                                                                  parents=[self.parent_parser])
+        self.delete_iso_subparser.add_argument('delete_path', metavar='NAME', type=str,
+                                               help='ISO to delete')
+
+        self.list_iso_subparser = self.iso_subparser.add_parser('list', help='List available ISOs',
+                                                                parents=[self.parent_parser])
+
+        self.add_iso_subparser = self.iso_subparser.add_parser('add', help='Add an ISO',
+                                                               parents=[self.parent_parser])
+        self.add_iso_subparser.add_argument('iso_name', metavar='ISO', type=str,
+                                            help='Path/URL of ISO to add')
+
+        self.add_iso_methods = self.add_iso_subparser.add_mutually_exclusive_group(required=True)
+        self.add_iso_methods.add_argument('--from-path', dest='add_path', action='store_true',
+                                          help='Copy an ISO to ISO directory')
+        self.add_iso_methods.add_argument('--from-url', dest='add_url', action='store_true',
+                                          help='Download and add an ISO')
+
+        for parser in [self.iso_parser, self.delete_iso_subparser, self.list_iso_subparser,
+                       self.add_iso_subparser]:
+            parser.add_argument('--node', dest='iso_node',
+                                help='Specify the node to perform the action on',
+                                metavar='Node', default=None)
 
         # Add arguments for managing users
         self.user_parser = self.subparsers.add_parser('user', help='User managment',
@@ -158,16 +185,16 @@ class Parser(object):
             action='store_true',
             help='Generate a password for the new user'
         )
-        self.remove_user_subparser = self.user_subparser.add_parser(
-            'remove',
-            help='Remove a user',
+        self.delete_user_subparser = self.user_subparser.add_parser(
+            'delete',
+            help='Delete a user',
             parents=[self.parent_parser]
         )
-        self.remove_user_subparser.add_argument(
-            'remove_username',
+        self.delete_user_subparser.add_argument(
+            'delete_username',
             metavar='User',
             type=str,
-            help='The user to remove'
+            help='The user to delete'
         )
 
         # Add arguments for creating a VM
@@ -200,16 +227,21 @@ class Parser(object):
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
                                         type=str, default=None, choices=['Local', 'Drbd'])
-        self.create_parser.add_argument('--driver', metavar='Hard Drive Driver',
+        self.create_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
                                         default=None)
+        self.create_parser.add_argument('--graphics-driver', dest='graphics_driver',
+                                        metavar='Graphics Driver', type=str,
+                                        help='Driver for graphics', default=None)
+        self.create_parser.add_argument('--modification-flag', help='Add VM modification flag',
+                                        dest='modification_flags', action='append')
 
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
                                                         parents=[self.parent_parser])
-        self.delete_parser.add_argument('--remove-data', dest='remove_data', action='store_true',
-                                        help='Removes the VM data from the host')
+        self.delete_parser.add_argument('--delete-data', dest='delete_data', action='store_true',
+                                        help='Deletes the VM data from the host')
         self.delete_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Get arguments for registering a VM
@@ -255,9 +287,13 @@ class Parser(object):
         self.update_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type', type=str,
                                         default=None)
-        self.update_parser.add_argument('--driver', metavar='Hard Drive Driver',
+        self.update_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
+                                        default=None)
+        self.update_parser.add_argument('--graphics-driver', metavar='Graphics Driver',
+                                        dest='graphics_driver', type=str,
+                                        help='Driver for graphics',
                                         default=None)
         self.update_parser.add_argument('--increase-disk', dest='increase_disk',
                                         metavar='Increase Disk', type=int,
@@ -265,10 +301,28 @@ class Parser(object):
         self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
                                         help='The ID of the disk to be increased by')
         self.update_parser.add_argument('--attach-iso', '--iso', dest='iso', metavar='ISO Name',
-                                        type=str,
+                                        type=str, default=None, nargs='?',
                                         help=('Attach an ISO to a running VM.'
                                               ' Specify without value to detach ISO.'))
+        self.vm_autostart_mutual_group = self.update_parser.add_mutually_exclusive_group(
+            required=False
+        )
+        self.vm_autostart_mutual_group.add_argument('--autostart-on-boot', action='store_true',
+                                                    dest='autostart_boot',
+                                                    help=('Update VM to automatically '
+                                                          'start on boot'))
+        self.vm_autostart_mutual_group.add_argument('--autostart-on-poll', action='store_true',
+                                                    dest='autostart_poll',
+                                                    help=('Update VM to automatically start on '
+                                                          'autostart watchdog poll'))
+        self.vm_autostart_mutual_group.add_argument('--autostart-disable', action='store_true',
+                                                    dest='autostart_disable',
+                                                    help='Disable autostart of VM')
         self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        self.update_parser.add_argument('--add-flag', help='Add VM modification flag',
+                                        dest='add_flags', action='append')
+        self.update_parser.add_argument('--remove-flag', help='Remove VM modification flag',
+                                        dest='remove_flags', action='append')
 
         # Get arguments for making permission changes to a VM
         self.permission_parser = self.subparsers.add_parser(
@@ -509,6 +563,22 @@ class Parser(object):
                                               help=('Sets the local volume group used for Virtual'
                                                     ' machine HDD logical volumes'))
 
+        self.node_watchdog_parser = self.node_parser.add_argument_group(
+            'Watchdog', 'Update configurations for watchdogs'
+        )
+        self.node_watchdog_parser.add_argument('--set-autostart-interval',
+                                               dest='autostart_interval',
+                                               metavar='Autostart Time (Seconds)',
+                                               help=('Set the interval period (seconds) for '
+                                                     'the autostart watchdog. '
+                                                     'Setting to \'0\' will disable the '
+                                                     'watchdog polling.'),
+                                               type=int)
+        self.node_watchdog_parser.add_argument('--get-autostart-interval',
+                                               dest='get_autostart_interval',
+                                               action='store_true',
+                                               help='Return the current autostart interval.')
+
         self.node_cluster_config = self.node_parser.add_argument_group(
             'Cluster', 'Configure the node-specific cluster configurations'
         )
@@ -525,7 +595,7 @@ class Parser(object):
             required=False
         )
         self.ldap_enable_mutual_group.add_argument('--enable-ldap', dest='ldap_enable',
-                                                   action='store_true',
+                                                   action='store_true', default=None,
                                                    help='Enable the LDAP authentication backend')
         self.ldap_enable_mutual_group.add_argument('--disable-ldap', dest='ldap_disable',
                                                    action='store_true',
@@ -535,7 +605,7 @@ class Parser(object):
             required=False
         )
         self.ldap_server_mutual_group.add_argument('--server-uri', dest='ldap_server_uri',
-                                                   metavar='LDAP Server URI',
+                                                   metavar='LDAP Server URI', default=None,
                                                    help=('Specify the LDAP server URI.'
                                                          ' E.g. ldap://10.200.1.1:389'
                                                          ' ldaps://10.200.1.1'))
@@ -547,7 +617,7 @@ class Parser(object):
             required=False
         )
         self.ldap_base_dn_mutual_group.add_argument('--base-dn', dest='ldap_base_dn',
-                                                    metavar='LDAP Base DN',
+                                                    metavar='LDAP Base DN', default=None,
                                                     help=('Base search DN for users. E.g. '
                                                           'ou=People,dc=my,dc=company,dc=com'))
         self.ldap_base_dn_mutual_group.add_argument('--clear-base-dn',
@@ -558,7 +628,7 @@ class Parser(object):
             required=False
         )
         self.ldap_bind_dn_mutual_group.add_argument('--bind-dn', dest='ldap_bind_dn',
-                                                    metavar='LDAP Bind DN',
+                                                    metavar='LDAP Bind DN', default=None,
                                                     help=('DN for user to bind to LDAP. E.g. '
                                                           'cn=Admin,ou=People,dc=my,dc=company,'
                                                           'dc=com'))
@@ -570,7 +640,7 @@ class Parser(object):
             required=False
         )
         self.ldap_base_pw_mutual_group.add_argument('--bind-pass', dest='ldap_bind_pass',
-                                                    metavar='LDAP Bind Password',
+                                                    metavar='LDAP Bind Password', default=None,
                                                     help='Password for bind account')
         self.ldap_base_pw_mutual_group.add_argument('--clear-bind-pass',
                                                     action='store_true',
@@ -580,7 +650,7 @@ class Parser(object):
             required=False
         )
         self.ldap_user_search_mutual_group.add_argument('--user-search', dest='ldap_user_search',
-                                                        metavar='LDAP search',
+                                                        metavar='LDAP search', default=None,
                                                         help=('LDAP query for user objects. E.g.'
                                                               ' (objectClass=posixUser)'))
         self.ldap_user_search_mutual_group.add_argument('--clear-user-search',
@@ -591,6 +661,7 @@ class Parser(object):
             required=False
         )
         self.ldap_username_attribute_mutual_group.add_argument('--username-attribute',
+                                                               default=None,
                                                                dest='ldap_username_attribute',
                                                                metavar='LDAP Username Attribute',
                                                                help=('LDAP username attribute.'
@@ -605,7 +676,7 @@ class Parser(object):
             required=False
         )
         self.ldap_ca_cert_mutual_group.add_argument('--ca-cert-file', dest='ldap_ca_cert',
-                                                    metavar='Path to CA file',
+                                                    metavar='Path to CA file', default=None,
                                                     help=('Path to CA cert file for LDAP over'
                                                           ' TLS.'))
         self.ldap_ca_cert_mutual_group.add_argument('--clear-ca-cert-file',
@@ -627,49 +698,66 @@ class Parser(object):
         self.verify_mutual_exclusive_group.add_argument('vm_name', metavar='VM Name', nargs='?',
                                                         help='Specify a single VM to verify')
 
+        # Create sub-parser for VM verification
+        self.verify_parser = self.subparsers.add_parser(
+            'resync',
+            help='Perform resync of DRBD volumes',
+            parents=[self.parent_parser])
+        self.resync_node_mutual_exclusive_group = self.verify_parser.add_mutually_exclusive_group(
+            required=True
+        )
+        self.resync_node_mutual_exclusive_group.add_argument(
+            '--source-node', dest='resync_node', default=None,
+            help='Specify the SOURCE node for the resync.'
+        )
+        self.resync_node_mutual_exclusive_group.add_argument(
+            '--auto-determine', dest='resync_auto_determine', action='store_true',
+            help='Automatically sync from the node that the VM is currently registered on.'
+        )
+        self.verify_parser.add_argument('vm_name', metavar='VM Name',
+                                        help='Specify a single VM to resync')
+        self.verify_parser.add_argument('--disk-id', metavar='Disk Id', default=1, type=int,
+                                        help='Specify the Disk ID to resync (default: 1)')
+
         # Create sub-parser for Drbd-related commands
         self.drbd_parser = self.subparsers.add_parser('drbd', help='Manage Drbd clustering',
                                                       parents=[self.parent_parser])
-        self.drbd_mutually_exclusive_group = self.drbd_parser.add_mutually_exclusive_group(
-            required=True
-        )
-        self.drbd_mutually_exclusive_group.add_argument(
-            '--enable', dest='enable', action='store_true',
-            help='Enable Drbd support on the cluster'
-        )
-        self.drbd_mutually_exclusive_group.add_argument(
-            '--list', dest='list', action='store_true',
-            help='List Drbd volumes on the system'
-        )
+        self.drbd_subparser = self.drbd_parser.add_subparsers(dest='drbd_action', metavar='Action',
+                                                              help='Drbd action to perform')
+        self.drbd_subparser.add_parser('enable', help='Enable Drbd support on the cluster',
+                                       parents=[self.parent_parser])
+        self.drbd_subparser.add_parser('list', help='List Drbd volumes on the system',
+                                       parents=[self.parent_parser])
 
         # Create sub-parser for backup commands
         self.backup_parser = self.subparsers.add_parser('backup',
                                                         help='Performs backup-related tasks',
                                                         parents=[self.parent_parser])
-        self.backup_mutual_exclusive_group = self.backup_parser.add_mutually_exclusive_group(
-            required=True
+        self.backup_subparser = self.backup_parser.add_subparsers(
+            dest='backup_action',
+            metavar='Action',
+            help='Backup action to perform'
         )
-        self.backup_mutual_exclusive_group.add_argument(
-            '--create-snapshot',
-            dest='create_snapshot',
-            help='Enable Drbd support on the cluster',
-            action='store_true'
+        self.create_snapshot_subparser = self.backup_subparser.add_parser(
+            'create-snapshot',
+            help='Create a snapshot of the specified disk',
+            parents=[self.parent_parser]
         )
-        self.backup_mutual_exclusive_group.add_argument(
-            '--delete-snapshot',
-            dest='delete_snapshot',
-            help='Enable Drbd support on the cluster',
-            action='store_true'
+        self.delete_snapshot_subparser = self.backup_subparser.add_parser(
+            'delete-snapshot',
+            help='Delete the snapshot of the specified disk',
+            parents=[self.parent_parser]
         )
-        self.backup_parser.add_argument(
-            '--disk-id',
-            dest='disk_id',
-            metavar='Disk Id',
-            type=int,
-            required=True,
-            help='The ID of the disk to manage the backup snapshot of'
-        )
-        self.backup_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        for parser in [self.create_snapshot_subparser, self.delete_snapshot_subparser]:
+            parser.add_argument(
+                '--disk-id',
+                dest='disk_id',
+                metavar='Disk Id',
+                type=int,
+                required=True,
+                help='The ID of the disk to manage the backup snapshot of'
+            )
+            parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Create sub-parser for managing VM locks
         self.lock_parser = self.subparsers.add_parser('lock', help='Perform verification of VMs',
@@ -705,6 +793,7 @@ class Parser(object):
         action = args.action
 
         ignore_cluster = False
+
         if args.ignore_failed_nodes:
             # If the user has specified to ignore the cluster,
             # print a warning and confirm the user's answer
@@ -718,24 +807,53 @@ class Parser(object):
                     return
             ignore_cluster = True
 
-        # Obtain connection to Pyro server
+        rpc = None
         if self.SESSION_ID and self.USERNAME:
             rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID,
                              ignore_cluster=ignore_cluster)
         else:
-            # Check if user/password have been passed. Else, ask for them.
-            username = args.username if args.username else System.getUserInput(
-                'Username: '
-            ).rstrip()
-            if args.password:
-                password = args.password
-            else:
-                password = System.getUserInput(
-                    'Password: ', password=True
+             # Obtain connection to Pyro server
+            use_auth_session = False
+            if not (args.password or args.username):
+                # Try logging in with saved session
+                auth_session = None
+                try:
+                    with open(os.getenv('HOME') + '/' + self.AUTH_FILE, 'r') as f:
+                        auth_username = f.readline()
+                        auth_session = f.readline()
+                except IOError:
+                    pass
+
+                if auth_session:
+                    try:
+                        rpc = Connection(username=auth_username, session_id=auth_session,
+                                         ignore_cluster=ignore_cluster)
+                        self.SESSION_ID = rpc.session_id
+                        self.USERNAME = rpc.username
+                    except AuthenticationError:
+                        self.print_status('Authentication error occured when using saved session.')
+                        rpc = None
+
+            if not rpc:
+                # Check if user/password have been passed. Else, ask for them.
+                username = args.username if args.username else System.getUserInput(
+                    'Username: '
                 ).rstrip()
-            rpc = Connection(username=username, password=password, ignore_cluster=ignore_cluster)
-            self.SESSION_ID = rpc.session_id
-            self.USERNAME = username
+                if args.password:
+                    password = args.password
+                else:
+                    password = System.getUserInput(
+                        'Password: ', password=True
+                    ).rstrip()
+                rpc = Connection(username=username, password=password,
+                                 ignore_cluster=ignore_cluster)
+                self.SESSION_ID = rpc.session_id
+                self.USERNAME = rpc.username
+
+        # If successfully authenticated then store session ID and username in auth file
+        with open(os.getenv('HOME') + '/' + self.AUTH_FILE, 'w') as f:
+            f.write(rpc.username)
+            f.write(rpc.session_id)
 
         if args.ignore_drbd:
             rpc.ignore_drbd()
@@ -743,31 +861,39 @@ class Parser(object):
         # Perform functions on the VM based on the action passed to the script
         if action == 'start':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotate_object(vm_object)
-
-            if args.iso:
-                iso_factory = rpc.get_connection('iso_factory')
-                iso_object = iso_factory.get_iso_by_name(args.iso)
-                rpc.annotate_object(iso_object)
-            else:
-                iso_object = None
-            vm_object.start(iso_object=iso_object)
-            self.print_status('Successfully started VM')
+            for vm_name in args.vm_names:
+                try:
+                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
+                    rpc.annotate_object(vm_object)
+                    vm_object.start(iso_name=args.iso)
+                    self.print_status('Successfully started VM %s' % vm_name)
+                except Exception:
+                    self.print_status('Error while starting VM %s' % vm_name)
+                    raise
 
         elif action == 'stop':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotate_object(vm_object)
-            vm_object.stop()
-            self.print_status('Successfully stopped VM')
+            for vm_name in args.vm_names:
+                try:
+                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
+                    rpc.annotate_object(vm_object)
+                    vm_object.stop()
+                    self.print_status('Successfully stopped VM %s' % vm_name)
+                except Exception:
+                    self.print_status('Error while stopping VM %s:' % vm_name)
+                    raise
 
         elif action == 'reset':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            rpc.annotate_object(vm_object)
-            vm_object.reset()
-            self.print_status('Successfully reset VM')
+            for vm_name in args.vm_names:
+                try:
+                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
+                    rpc.annotate_object(vm_object)
+                    vm_object.reset()
+                    self.print_status('Successfully reset VM %s' % vm_name)
+                except Exception:
+                    self.print_status('Error while resetting VM %s' % vm_name)
+                    raise
 
         elif action == 'clear-method-lock':
             node = rpc.get_connection('node')
@@ -783,6 +909,7 @@ class Parser(object):
             memory_allocation = int(args.memory) * 1024
             vm_factory = rpc.get_connection('virtual_machine_factory')
             hard_disks = [args.disk_size] if args.disk_size is not None else []
+            mod_flags = args.modification_flags or []
             vm_object = vm_factory.create(
                 name=args.vm_name,
                 cpu_cores=args.cpu_count,
@@ -791,13 +918,15 @@ class Parser(object):
                 network_interfaces=args.networks,
                 storage_type=storage_type,
                 hard_drive_driver=args.hard_disk_driver,
-                available_nodes=args.nodes)
+                graphics_driver=args.graphics_driver,
+                available_nodes=args.nodes,
+                modification_flags=mod_flags)
 
         elif action == 'delete':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotate_object(vm_object)
-            vm_object.delete(args.remove_data)
+            vm_object.delete(args.delete_data)
 
         elif action == 'register':
             vm_factory = rpc.get_connection('virtual_machine_factory')
@@ -842,7 +971,7 @@ class Parser(object):
                 rpc.annotate_object(network_adapter_object)
                 network_adapter_object.delete()
 
-            if (args.add_network):
+            if args.add_network:
                 network_factory = rpc.get_connection('network_factory')
                 network_adapter_factory = rpc.get_connection('network_adapter_factory')
                 network_object = network_factory.get_network_by_name(args.add_network)
@@ -861,13 +990,25 @@ class Parser(object):
                 rpc.annotate_object(hard_drive_object)
                 hard_drive_object.increaseSize(args.increase_disk)
 
-            if args.iso:
-                iso_factory = rpc.get_connection('iso_factory')
-                iso_object = iso_factory.get_iso_by_name(args.iso)
-                rpc.annotate_object(iso_object)
-                disk_drive = vm_object.get_disk_drive()
-                rpc.annotate_object(disk_drive)
-                disk_drive.attachISO(iso_object, True)
+            if args.iso or args.iso is None:
+                vm_object.update_iso(args.iso)
+
+            if args.graphics_driver:
+                vm_object.update_graphics_driver(args.graphics_driver)
+
+            if args.autostart_boot:
+                vm_object.set_autostart_state('ON_BOOT')
+            elif args.autostart_poll:
+                vm_object.set_autostart_state('ON_POLL')
+            else:
+                vm_object.set_autostart_state('NO_AUTOSTART')
+
+            if args.add_flags or args.remove_flags:
+                add_flags = args.add_flags or []
+                remove_flags = args.remove_flags or []
+                vm_object.update_modification_flags(add_flags=add_flags, remove_flags=remove_flags)
+                flags_str = ", ".join(vm_object.get_modification_flags())
+                self.print_status('Modification flags set to: %s' % (flags_str or 'None'))
 
         elif action == 'permission':
             if (args.add_superuser or args.delete_superuser) and args.vm_name:
@@ -1021,32 +1162,40 @@ class Parser(object):
                 node.set_cluster_ip_address(args.ip_address)
                 self.print_status('Successfully set cluster IP address to %s' % args.ip_address)
 
+            if args.autostart_interval or args.autostart_interval == 0:
+                autostart_watchdog = rpc.get_connection('autostart_watchdog')
+                autostart_watchdog.set_autostart_interval(args.autostart_interval)
+            elif args.get_autostart_interval:
+                autostart_watchdog = rpc.get_connection('autostart_watchdog')
+                self.print_status(autostart_watchdog.get_autostart_interval())
+
             if args.ldap_enable:
                 ldap.set_enable(True)
             elif args.ldap_disable:
                 ldap.set_enable(False)
+
             ldap_args = {}
-            if args.ldap_server_uri:
+            if args.ldap_server_uri is not None:
                 ldap_args['server_uri'] = args.ldap_server_uri
             elif args.ldap_server_uri_clear:
                 ldap_args['server_uri'] = None
-            if args.ldap_base_dn:
+            if args.ldap_base_dn is not None:
                 ldap_args['base_dn'] = args.ldap_base_dn
             elif args.ldap_base_dn_clear:
                 ldap_args['base_dn'] = None
-            if args.ldap_bind_dn:
+            if args.ldap_bind_dn is not None:
                 ldap_args['bind_dn'] = args.ldap_bind_dn
             elif args.ldap_bind_dn_clear:
                 ldap_args['bind_dn'] = None
-            if args.ldap_bind_pass:
+            if args.ldap_bind_pass is not None:
                 ldap_args['bind_pass'] = args.ldap_bind_pass
             elif args.ldap_bind_pass_clear:
                 ldap_args['bind_pass'] = None
-            if args.ldap_user_search:
+            if args.ldap_user_search is not None:
                 ldap_args['user_search'] = args.ldap_user_search
             elif args.ldap_user_search_clear:
                 ldap_args['user_search'] = None
-            if args.ldap_username_attribute:
+            if args.ldap_username_attribute is not None:
                 ldap_args['username_attribute'] = args.ldap_username_attribute
             elif args.ldap_username_attribute_clear:
                 ldap_args['username_attribute'] = None
@@ -1081,10 +1230,9 @@ class Parser(object):
                         try:
                             disk_object.verify()
                             self.print_status(
-                                ('Drbd verification for %s (%s) completed '
+                                ('Drbd verification for %s completed '
                                  'without out-of-sync blocks') %
-                                (disk_object.resource_name,
-                                 vm_object.get_name())
+                                vm_object.get_name()
                             )
                         except DrbdVolumeNotInSyncException, e:
                             # Append the not-in-sync exception message to an array,
@@ -1096,11 +1244,20 @@ class Parser(object):
             if failures:
                 raise DrbdVolumeNotInSyncException("\n".join(failures))
 
+        elif action == 'resync':
+            vm_factory = rpc.get_connection('virtual_machine_factory')
+            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            hard_drive_factory = rpc.get_connection('hard_drive_factory')
+            disk_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+            rpc.annotate_object(disk_object)
+            disk_object.resync(source_node=args.resync_node,
+                               auto_determine=args.resync_auto_determine)
+
         elif action == 'drbd':
             node_drbd = rpc.get_connection('node_drbd')
-            if args.enable:
+            if args.drbd_action == 'enable':
                 node_drbd.enable()
-            if (args.list):
+            if args.drbd_action == 'list':
                 self.print_status(node_drbd.list())
 
         elif action == 'backup':
@@ -1110,9 +1267,9 @@ class Parser(object):
             hard_drive_factory = rpc.get_connection('hard_drive_factory')
             hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
             rpc.annotate_object(hard_drive_object)
-            if args.create_snapshot:
+            if args.backup_action == 'create_snapshot':
                 self.print_status(hard_drive_object.createBackupSnapshot())
-            elif (args.delete_snapshot):
+            elif args.backup_action == 'delete_snapshot':
                 hard_drive_object.deleteBackupSnapshot()
 
         elif action == 'lock':
@@ -1144,13 +1301,15 @@ class Parser(object):
 
         elif action == 'iso':
             iso_factory = rpc.get_connection('iso_factory')
-            if args.list:
-                self.print_status(iso_factory.get_iso_list())
+            if args.iso_action == 'list':
+                self.print_status(iso_factory.get_iso_list(node=args.iso_node))
 
-            if args.add_path:
-                iso_writer = iso_factory.add_iso_from_stream(args.add_path)
+            if args.iso_action == 'add' and args.add_path:
+                if args.iso_node:
+                    raise ArgumentParserException('Cannot add to remote node from local path')
+                iso_writer = iso_factory.add_iso_from_stream(args.iso_name)
                 rpc.annotate_object(iso_writer)
-                with open(args.add_path, 'rb') as iso_fh:
+                with open(args.iso_name, 'rb') as iso_fh:
                     while True:
                         data_chunk = iso_fh.read(1024)
                         if data_chunk:
@@ -1162,12 +1321,13 @@ class Parser(object):
                 rpc.annotate_object(iso_object)
                 self.print_status('Successfully added ISO: %s' % iso_object.get_name())
 
-            if args.add_url:
-                iso_object = iso_factory.add_from_url(args.add_url)
-                rpc.annotate_object(iso_object)
-                self.print_status('Successfully added ISO: %s' % iso_object.get_name())
+            if args.iso_action == 'add' and args.add_url:
+                iso_name = iso_factory.add_from_url(args.iso_name, node=args.iso_node)
+                self.print_status('Successfully added ISO: %s' % iso_name)
 
-            if args.delete_path:
+            if args.iso_action == 'delete':
+                if args.iso_node:
+                    raise ArgumentParserException('Cannot remove ISO from remote node')
                 iso_object = iso_factory.get_iso_by_name(args.delete_path)
                 rpc.annotate_object(iso_object)
                 iso_object.delete()
@@ -1196,8 +1356,8 @@ class Parser(object):
                 if args.generate_password:
                     self.print_status('Password: %s' % new_password)
 
-            elif args.user_action == 'remove':
+            elif args.user_action == 'delete':
                 user_factory = rpc.get_connection('user_factory')
-                user = user_factory.get_user_by_username(args.remove_username)
+                user = user_factory.get_user_by_username(args.delete_username)
                 rpc.annotate_object(user)
                 user.delete()

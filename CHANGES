@@ -1,3 +1,34 @@
+# 7.2.0
+
+* Add VM autostart watchdog, allowing VMs to be started on boot or on poll
+
+# 7.1.0
+
+* Add support for multiple VMs for start, stop and resetting in parser
+* Implement expiration to RPC sessions
+* Implement caching of last used credentials
+
+# 7.0.0
+
+* Add DH key and cipher limitations to SSL
+* Add verification of storage before creating VM/hard drives
+* Improve naming of commands in parser to be more consistent
+* Improve method of generating DRBD secret
+* Fix bug relating to adding of libvirt's 'default' network
+* Add unit tests for LDAP
+
+# 6.0.0
+
+* Fix DRBD hooks to support rpc
+* Add support for Windows 10
+* Implement hooks for DRBD re-sync handler
+* Fix remaining issues with clusters greater than 2 nodes
+* Add DRBD resync comment
+
+# 5.0.0
+
+* Implement LDAP authentication
+
 # 4.0.0
 
 * Implemented an MCVirt daemon that accepts commands through RPC.

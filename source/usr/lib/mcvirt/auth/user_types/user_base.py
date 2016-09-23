@@ -27,8 +27,8 @@ import Pyro4
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import UserDoesNotExistException, InvalidUserTypeException
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.lock import locking_method
 
 
 class UserBase(PyroObject):
@@ -41,6 +41,8 @@ class UserBase(PyroObject):
     DISTRIBUTED = True
     CAN_CREATE = True
     SEARCH_ORDER = 1
+    UNIQUE = False
+    EXPIRE_SESSION = False
 
     @classmethod
     def get_all_usernames(cls):
@@ -72,7 +74,7 @@ class UserBase(PyroObject):
         self.username = username
         self._ensure_exists()
 
-    @Pyro4.expose()
+    @Expose()
     def get_username(self):
         """Return the username of the current user"""
         return self.username
@@ -83,7 +85,7 @@ class UserBase(PyroObject):
             raise UserDoesNotExistException('User %s does not exist' %
                                             self.get_username())
 
-    @Pyro4.expose()
+    @Expose()
     def get_config(self):
         """Return the configuration of the user."""
         self._get_registered_object('auth').assert_permission(
@@ -109,7 +111,7 @@ class UserBase(PyroObject):
         """Return the user's salt"""
         return self._get_config()['salt']
 
-    @Pyro4.expose()
+    @Expose()
     def set_password(self, new_password):
         """Default functionality for password change is to throw an exception"""
         raise InvalidUserTypeException('Cannot change password for this type of user')
@@ -152,8 +154,7 @@ class UserBase(PyroObject):
         random.seed(os.urandom(1024))
         return ''.join(random.choice(characers) for i in range(length))
 
-    @Pyro4.expose()
-    @locking_method()
+    @Expose(locking=True)
     def delete(self):
         """Delete the current user from MCVirt config"""
         auth_object = self._get_registered_object('auth')
