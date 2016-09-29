@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
 import os
 import xml.etree.ElementTree as ET
 from enum import Enum
@@ -28,7 +27,8 @@ from mcvirt.exceptions import (HardDriveDoesNotExistException,
                                BackupSnapshotDoesNotExistException,
                                ExternalStorageCommandErrorException,
                                MCVirtCommandException,
-                               ResyncNotSupportedException)
+                               ResyncNotSupportedException,
+                               LogicalVolumeIsNotActiveException)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
@@ -507,7 +507,7 @@ class Base(PyroObject):
     def _ensureLogicalVolumeActive(self, name):
         """Ensures that a logical volume is active"""
         if not self._checkLogicalVolumeActive(name):
-            raise LogicalVolumeIsNotActive(
+            raise LogicalVolumeIsNotActiveException(
                 'Logical volume %s is not active on %s' %
                 (name, get_hostname()))
 
