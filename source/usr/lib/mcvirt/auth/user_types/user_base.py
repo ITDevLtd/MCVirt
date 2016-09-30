@@ -190,9 +190,9 @@ class UserBase(PyroObject):
             cluster.run_remote_command(remote_command)
 
         # Unregister and remove cached object
-        self.unregister_object()
         if self.get_username() in self._get_registered_object('user_factory').CACHED_OBJECTS:
             del(self._get_registered_object('user_factory').CACHED_OBJECTS[self.get_username()])
+        self.unregister_object()
 
     @staticmethod
     def get_default_config():

@@ -141,6 +141,6 @@ class NetworkAdapter(PyroObject):
             (self.vm_object.get_name(), self.getConnectedNetwork(), self.getMacAddress()))
 
         # Unregister Pyro object and cached object
-        self.unregister_object()
         if cache_key in self._get_registered_object('network_adapter_factory').CACHED_OBJECTS:
             del(self._get_registered_object('network_adapter_factory').CACHED_OBJECTS[cache_key])
+        self.unregister_object()
