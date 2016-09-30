@@ -23,7 +23,6 @@ import urlparse
 import tempfile
 import shutil
 import binascii
-import Pyro4
 
 from mcvirt.iso.iso import Iso
 from mcvirt.rpc.pyro_object import PyroObject
@@ -38,6 +37,7 @@ class Factory(PyroObject):
     """Class for obtaining ISO objects"""
 
     ISO_CLASS = Iso
+    CACHED_OBJECTS = {}
 
     def get_remote_factory(self, node=None):
         if node is None or node == get_hostname():
@@ -63,9 +63,10 @@ class Factory(PyroObject):
     @Expose()
     def get_iso_by_name(self, iso_name, node=None):
         """Create and register Iso object"""
-        iso_object = Iso(iso_name)
-        self._register_object(iso_object)
-        return iso_object
+        if iso_name not in Factory.CACHED_OBJECTS:
+            Factory.CACHED_OBJECTS[iso_name] = Iso(iso_name)
+            self._register_object(Factory.CACHED_OBJECTS[iso_name])
+        return Factory.CACHED_OBJECTS[iso_name]
 
     @Expose()
     def get_iso_list(self, node=None):
@@ -168,6 +169,7 @@ class IsoWriter(PyroObject):
         if self.fh:
             self.fh.close()
             self.fh = None
+        self.unregister_object()
 
     @Expose()
     def write_data(self, data):
@@ -191,4 +193,5 @@ class IsoWriter(PyroObject):
 
         os.remove(self.temp_file)
         os.rmdir(self.temp_directory)
+        self.unregister_object()
         return iso_object

@@ -61,6 +61,7 @@ class VirtualMachine(PyroObject):
     def __init__(self, virtual_machine_factory, name):
         """Set member variables and obtains LibVirt domain object."""
         self.name = name
+        self.disk_drive_object = None
 
         # Check that the domain exists
         if not virtual_machine_factory.check_exists(self.name):
@@ -617,9 +618,10 @@ class VirtualMachine(PyroObject):
     @Expose()
     def get_disk_drive(self):
         """Returns a disk drive object for the VM"""
-        disk_drive_object = DiskDrive(self)
-        self._register_object(disk_drive_object)
-        return disk_drive_object
+        if not self.disk_drive_object:
+            self.disk_drive_object = DiskDrive(self)
+            self._register_object(self.disk_drive_object)
+        return self.disk_drive_object
 
     @Expose()
     def getHardDriveObjects(self):

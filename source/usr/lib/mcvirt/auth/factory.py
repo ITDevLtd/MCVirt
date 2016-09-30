@@ -17,8 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
-
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import (IncorrectCredentials, InvalidUsernameException,
                                UserDoesNotExistException, InvalidUserTypeException,
@@ -37,6 +35,7 @@ class Factory(PyroObject):
     """Class for obtaining user objects"""
 
     USER_CLASS = UserBase
+    CACHED_OBJECTS = {}
 
     def get_user_types(self):
         """Return the available user classes."""
@@ -129,9 +128,10 @@ class Factory(PyroObject):
         """Obtain a user object for the given username."""
         for user_class in self.get_user_types():
             if username in user_class.get_all_usernames():
-                user_object = user_class(username=username)
-                self._register_object(user_object)
-                return user_object
+                if username not in Factory.CACHED_OBJECTS:
+                    Factory.CACHED_OBJECTS[username] = user_class(username=username)
+                    self._register_object(Factory.CACHED_OBJECTS[username])
+                return Factory.CACHED_OBJECTS[username]
 
         raise UserDoesNotExistException('User %s does not exist' %
                                         username)
