@@ -28,6 +28,7 @@ class Factory(PyroObject):
 
     OBJECT_TYPE = 'network adapter'
     NETWORK_ADAPTER_CLASS = NetworkAdapter
+    CACHED_OBJECTS = {}
 
     @Expose(locking=True)
     def create(self, virtual_machine, network_object, mac_address=None):
@@ -39,7 +40,7 @@ class Factory(PyroObject):
         )
 
         # Generate a MAC address, if one has not been supplied
-        if (mac_address is None):
+        if mac_address is None:
             mac_address = NetworkAdapter.generateMacAddress()
 
         # Add network interface to VM configuration
@@ -84,8 +85,9 @@ class Factory(PyroObject):
         virtual_machine = self._convert_remote_object(virtual_machine)
         vm_config = virtual_machine.get_config_object().get_config()
         for mac_address in vm_config['network_interfaces'].keys():
-            interface_object = NetworkAdapter(mac_address, virtual_machine)
-            self._register_object(interface_object)
+            interface_object = self.getNetworkAdapterByMacAdress(
+                virtual_machine, mac_address
+            )
             interfaces.append(interface_object)
         return interfaces
 
@@ -94,6 +96,9 @@ class Factory(PyroObject):
         """Returns the network adapter by a given MAC address"""
         # Ensure that MAC address is a valid network adapter for the VM
         virtual_machine = self._convert_remote_object(virtual_machine)
-        interface_object = NetworkAdapter(mac_address, virtual_machine)
-        self._register_object(interface_object)
-        return interface_object
+        cache_key = (mac_address, virtual_machine.get_name())
+        if cache_key not in Factory.CACHED_OBJECTS:
+            interface_object = NetworkAdapter(mac_address, virtual_machine)
+            self._register_object(interface_object)
+            Factory.CACHED_OBJECTS[cache_key] = interface_object
+        return Factory.CACHED_OBJECTS[cache_key]

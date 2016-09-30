@@ -39,6 +39,7 @@ class Factory(PyroObject):
     """Class for obtaining network objects"""
 
     OBJECT_TYPE = 'network'
+    CACHED_OBJECTS = {}
 
     @Expose()
     def interface_exists(self, interface):
@@ -140,9 +141,10 @@ class Factory(PyroObject):
     def get_network_by_name(self, network_name):
         """Return a network object of the network for a given name."""
         self.ensure_exists(network_name)
-        network_object = Network(network_name)
-        self._register_object(network_object)
-        return network_object
+        if network_name not in Factory.CACHED_OBJECTS:
+            Factory.CACHED_OBJECTS[network_name] = Network(network_name)
+            self._register_object(self.CACHED_OBJECTS[network_name])
+        return Factory.CACHED_OBJECTS[network_name]
 
     @Expose()
     def get_all_network_names(self):
