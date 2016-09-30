@@ -70,7 +70,8 @@ class VirtualMachineConfig(ConfigFile):
                 'lock': LockStates.UNLOCKED.value,
                 'graphics_driver': graphics_driver,
                 'modifications': [],
-                'autostart': AutoStartStates.NO_AUTOSTART.value
+                'autostart': AutoStartStates.NO_AUTOSTART.value,
+                'uuid': None
             }
 
         # Write the configuration to disk
@@ -124,3 +125,6 @@ class VirtualMachineConfig(ConfigFile):
 
         if self._getVersion() < 8:
             config['autostart'] = AutoStartStates.NO_AUTOSTART.value
+
+        if self._getVersion() < 9:
+            config['uuid'] = None
