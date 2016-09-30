@@ -1,3 +1,9 @@
+# 7.3.0
+
+* Improve caching of Pyro objects
+* Add support to increase size of DRBD volumes
+* Fix issue with loss of UUID when VM is unregistered/registered
+
 # 7.2.0
 
 * Add VM autostart watchdog, allowing VMs to be started on boot or on poll
