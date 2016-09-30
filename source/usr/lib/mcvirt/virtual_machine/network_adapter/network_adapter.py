@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
 import xml.etree.ElementTree as ET
 
 from mcvirt.exceptions import NetworkAdapterDoesNotExistException
@@ -117,6 +116,8 @@ class NetworkAdapter(PyroObject):
             self.vm_object
         )
 
+        cache_key = (self.getMacAddress(), self.vm_object.get_name())
+
         def updateXML(domain_xml):
             device_xml = domain_xml.find('./devices')
             interface_xml = device_xml.find(
@@ -138,3 +139,8 @@ class NetworkAdapter(PyroObject):
         self.vm_object.get_config_object().update_config(
             updateVmConfig, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
             (self.vm_object.get_name(), self.getConnectedNetwork(), self.getMacAddress()))
+
+        # Unregister Pyro object and cached object
+        self.unregister_object()
+        if cache_key in self._get_registered_object('network_adapter_factory').CACHED_OBJECTS:
+            del(self._get_registered_object('network_adapter_factory').CACHED_OBJECTS[cache_key])

@@ -175,6 +175,8 @@ class Base(PyroObject):
         """Delete the logical volume for the disk"""
         self._ensure_exists()
 
+        cache_key = (self.vm_object.get_name(), self.disk_id, self.get_type())
+
         if self.vm_object.isRegisteredLocally():
             # Remove from LibVirt, if registered, so that libvirt doesn't
             # hold the device open when the storage is removed
@@ -188,11 +190,8 @@ class Base(PyroObject):
 
         # Unregister object and remove from factory cache
         hdd_factory = self._get_registered_object('hard_drive_factory')
-        if ((self.vm_object.get_name(), self.disk_id, self.get_type()) in
-                hdd_factory.CACHED_OBJECTS):
-            del(hdd_factory.CACHED_OBJECTS[(self.vm_object.get_name(),
-                                            self.disk_id,
-                                            self.get_type())])
+        if cache_key in hdd_factory.CACHED_OBJECTS:
+            del(hdd_factory.CACHED_OBJECTS[cache_key])
         self.unregister_object()
 
     def duplicate(self, destination_vm_object):
