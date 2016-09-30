@@ -481,6 +481,61 @@ class Drbd(Base):
         System.runCommand([NodeDrbd.DrbdADM, 'create-md', self.resource_name])
 
     @Expose(locking=True)
+    def increaseSize(self, increase_size):
+        """Increases the size of a VM hard drive, given the size to increase the drive by"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self.vm_object
+        )
+
+        # Ensure increase_size is a valid positive integer
+
+        # Ensure that the DRBD volume is in a valid, connected state.
+        self._checkDrbdStatus()
+
+        # Disconnect DRBD volume
+        self._drbdDisconnect()
+
+        # Increase size of RAW volume
+        self._resize_logical_volume(
+            self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX),
+            '+%s' % increase_size
+        )
+
+        # Recalculate META volume size
+        meta_logical_volume_size = self._calculateMetaDataSize()
+
+        # Resize META volume
+        self._resize_logical_volume(
+            self._getLogicalVolumeName(self.Drbd_META_SUFFIX),
+            meta_logical_volume_size
+        )
+
+        # Resize DRBD volume
+        self._drbd_resize()
+        cluster = self._get_registered_object('cluster')
+
+        def remoteCommand(node):
+            remote_disk = self.get_remote_object(remote_node=node)
+            remote_disk.drbd_resize()
+        cluster.run_remote_command(callback_method=remoteCommand,
+                                   nodes=self.vm_object._get_remote_nodes())
+
+        # Re-Connect DRBD volume
+        self._drbdConnect()
+
+    @Expose(locking=True)
+    def drbd_resize(self, *args, **kwargs):
+        """Provides an exposed method for _drbd_resize
+           with permission checking"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        return self._drbd_resize(*args, **kwargs)
+
+    def _drbd_resize(self):
+        """Performs a Drbd 'up' on the hard drive Drbd resource"""
+        System.runCommand([NodeDrbd.DrbdADM, 'resize', self.resource_name])
+
+    @Expose(locking=True)
     def drbdUp(self, *args, **kwargs):
         """Provides an exposed method for _drbdUp
            with permission checking"""

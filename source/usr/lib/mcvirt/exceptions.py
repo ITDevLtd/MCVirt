@@ -306,6 +306,12 @@ class LogicalVolumeDoesNotExistException(MCVirtException):
     pass
 
 
+class LogicalVolumeIsNotActiveException(MCVirtException):
+    """Logical volume is not active"""
+
+    pass
+
+
 class BackupSnapshotAlreadyExistsException(MCVirtException):
     """The backup snapshot for the logical volume already exists"""
 
