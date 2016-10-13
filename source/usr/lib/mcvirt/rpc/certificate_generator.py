@@ -282,9 +282,10 @@ class CertificateGenerator(PyroObject):
                            '-sha256'])
 
         # Regenerate libvirtd configuration, allowing access to this certificate
+        libvirt_config = LibvirtConfig()
         if self.is_local:
-            LibvirtConfig.hard_restart = True
-        LibvirtConfig.generate_config()
+            libvirt_config.hard_restart = True
+        libvirt_config.generate_config()
         return self._read_file(self.client_pub_file)
 
     @Expose()
