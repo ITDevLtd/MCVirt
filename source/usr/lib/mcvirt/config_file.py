@@ -166,7 +166,7 @@ class ConfigFile(PyroObject):
         if self._checkGitRepo():
             session_obj = self._get_registered_object('mcvirt_session')
             message += "\nUser: %s\nNode: %s" % (
-                session_obj.get_current_user_object().get_username(), get_hostname())
+                session_obj.get_proxy_user_object().get_username(), get_hostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file],
                                   cwd=DirectoryLocation.BASE_STORAGE_DIR)
@@ -188,7 +188,7 @@ class ConfigFile(PyroObject):
         if self._checkGitRepo():
             session_obj = self._get_registered_object('mcvirt_session')
             message += "\nUser: %s\nNode: %s" % (
-                session_obj.get_current_user_object().get_username(), get_hostname()
+                session_obj.get_proxy_user_object().get_username(), get_hostname()
             )
             try:
                 System.runCommand([self.GIT,
