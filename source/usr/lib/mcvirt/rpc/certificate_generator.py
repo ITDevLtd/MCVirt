@@ -27,7 +27,6 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.syslogger import Syslogger
-from mcvirt.node.libvirt_config import LibvirtConfig
 
 
 class CertificateGenerator(PyroObject):
@@ -282,7 +281,7 @@ class CertificateGenerator(PyroObject):
                            '-sha256'])
 
         # Regenerate libvirtd configuration, allowing access to this certificate
-        libvirt_config = LibvirtConfig()
+        libvirt_config = self._get_registered_object('libvirt_config')
         if self.is_local:
             libvirt_config.hard_restart = True
         libvirt_config.generate_config()

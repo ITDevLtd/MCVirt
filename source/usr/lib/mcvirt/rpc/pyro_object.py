@@ -80,6 +80,9 @@ class PyroObject(object):
         """Return objects registered in the Pyro Daemon"""
         if self._is_pyro_initialised and object_name in self._pyroDaemon.registered_factories:
             return self._pyroDaemon.registered_factories[object_name]
+        elif ('_pyro_server_ref' in dir(self) and
+                object_name in self._pyro_server_ref.registered_factories):
+            return self._pyro_server_ref.registered_factories[object_name]
         else:
             return None
 

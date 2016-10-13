@@ -246,6 +246,7 @@ class RpcNSMixinDaemon(object):
             obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
             if type(obj) is not types.TypeType:  # noqa
                 Syslogger.logger().debug('Initialising object %s' % registered_object)
+                obj._pyro_server_ref = RpcNSMixinDaemon.DAEMON
                 obj.initialise()
 
     def start(self, *args, **kwargs):
