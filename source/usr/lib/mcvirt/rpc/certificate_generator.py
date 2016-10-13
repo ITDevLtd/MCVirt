@@ -27,7 +27,6 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.syslogger import Syslogger
-from mcvirt.node.libvirt_config import LibvirtConfig
 
 
 class CertificateGenerator(PyroObject):
@@ -250,7 +249,10 @@ class CertificateGenerator(PyroObject):
 
         # Ensure that the client certificate exists
         if check_client and not self._ensure_exists(self.client_pub_file, assert_raise=False):
-            local_remote = CertificateGenerator(server='localhost', remote=True)
+            certificate_generator_factory = self._get_registered_object(
+                'certificate_generator_factory')
+            local_remote = certificate_generator_factory.get_cert_generator(
+                server='localhost', remote=True)
             csr = self._generate_csr()
             pub_key = local_remote._sign_csr(csr)
             self._add_public_key(pub_key)
@@ -284,11 +286,8 @@ class CertificateGenerator(PyroObject):
         # Regenerate libvirtd configuration, allowing access to this certificate
         libvirt_config = self._get_registered_object('libvirt_config')
         if self.is_local:
-            LibvirtConfig.HARD_RESTART = True
-        if libvirt_config:
-            libvirt_config.generate_config()
-        else:
-            LibvirtConfig.GENERATE_CONFIG = True
+            libvirt_config.hard_restart = True
+        libvirt_config.generate_config()
         return self._read_file(self.client_pub_file)
 
     @Expose()

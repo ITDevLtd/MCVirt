@@ -68,6 +68,9 @@ class PyroObject(object):
             Syslogger.logger().debug('Registering object (dynamic): %s' % local_object)
             self._pyroDaemon.register(local_object)
 
+        if '_pyro_server_ref' in dir(self):
+            local_object._pyro_server_ref = self._pyro_server_ref
+
     def _convert_remote_object(self, remote_object):
         """Return a local instance of a remote object"""
         # Ensure that object is a remote object

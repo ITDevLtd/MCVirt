@@ -246,7 +246,6 @@ class RpcNSMixinDaemon(object):
             obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
             if type(obj) is not types.TypeType:  # noqa
                 Syslogger.logger().debug('Initialising object %s' % registered_object)
-                obj._pyro_server_ref = RpcNSMixinDaemon.DAEMON
                 obj.initialise()
 
     def start(self, *args, **kwargs):
@@ -273,6 +272,7 @@ class RpcNSMixinDaemon(object):
     def register(self, obj_or_class, objectId, *args, **kwargs):  # Override upstream # noqa
         """Override register to register object with NS."""
         Syslogger.logger().debug('Registering object: %s' % objectId)
+        obj_or_class._pyro_server_ref = RpcNSMixinDaemon.DAEMON
         uri = RpcNSMixinDaemon.DAEMON.register(obj_or_class, *args, **kwargs)
         ns = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
         ns.register(objectId, uri)

@@ -16,11 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
-
 from mcvirt.rpc.certificate_generator import CertificateGenerator
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
+from mcvirt.syslogger import Syslogger
 
 
 class CertificateGeneratorFactory(PyroObject):
@@ -34,6 +33,10 @@ class CertificateGeneratorFactory(PyroObject):
         if server not in CertificateGeneratorFactory.CACHED_OBJECTS:
             cert_generator = CertificateGenerator(server, remote=remote)
             self._register_object(cert_generator)
+            if not self._is_pyro_initialised:
+                Syslogger.logger().info(('Obtained unregistered version of CertificateGenerator'
+                                         ' for %s (Remote: %s)') % (server, remote))
+                return cert_generator
             CertificateGeneratorFactory.CACHED_OBJECTS[server] = cert_generator
 
         return CertificateGeneratorFactory.CACHED_OBJECTS[server]
