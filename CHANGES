@@ -1,3 +1,7 @@
+# 7.3.4
+
+Fix issues with generating LibVirt configuration, caused by changes made to caching CertificateGenerator objects
+
 # 7.3.3
 
 * Fix further issues with certificate generation on intial run
