@@ -167,10 +167,12 @@ class ConfigFile(PyroObject):
         if self._checkGitRepo():
             session_obj = self._get_registered_object('mcvirt_session')
             username = ''
-            try:
-                user = session_obj.get_proxy_user_object()
-            except UserDoesNotExistException:
-                pass
+            user = None
+            if session_obj:
+                try:
+                    user = session_obj.get_proxy_user_object()
+                except UserDoesNotExistException:
+                    pass
             if user:
                 username = session_obj.get_proxy_user_object().get_username()
             message += "\nUser: %s\nNode: %s" % (username, get_hostname())
@@ -194,11 +196,14 @@ class ConfigFile(PyroObject):
         """Remove and commits a configuration file"""
         if self._checkGitRepo():
             session_obj = self._get_registered_object('mcvirt_session')
+            session_obj = self._get_registered_object('mcvirt_session')
             username = ''
-            try:
-                user = session_obj.get_proxy_user_object()
-            except UserDoesNotExistException:
-                pass
+            user = None
+            if session_obj:
+                try:
+                    user = session_obj.get_proxy_user_object()
+                except UserDoesNotExistException:
+                    pass
             if user:
                 username = session_obj.get_proxy_user_object().get_username()
             message += "\nUser: %s\nNode: %s" % (username, get_hostname())
