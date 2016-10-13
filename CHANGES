@@ -1,3 +1,7 @@
+# 7.3.3
+
+* Fix further issues with certificate generation on intial run
+
 # 7.3.2
 
 * Fix Debian control version
