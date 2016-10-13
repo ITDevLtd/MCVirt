@@ -138,7 +138,7 @@ class ConfigFile(PyroObject):
         """Performs an upgrade of the config file"""
         # Check the version of the configuration file
         current_version = self._getVersion()
-        if (current_version < self.CURRENT_VERSION):
+        if current_version < self.CURRENT_VERSION:
             def upgradeConfig(config):
                 # Perform the configuration sub-class specific upgrade
                 # tasks
@@ -163,7 +163,7 @@ class ConfigFile(PyroObject):
 
     def gitAdd(self, message=''):
         """Commit changes to an added or modified configuration file"""
-        if (self._checkGitRepo()):
+        if self._checkGitRepo():
             session_obj = self._get_registered_object('mcvirt_session')
             message += "\nUser: %s\nNode: %s" % (
                 session_obj.get_current_user_object().get_username(), get_hostname())
