@@ -27,6 +27,7 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.syslogger import Syslogger
+from mcvirt.node.libvirt_config import LibvirtConfig
 
 
 class CertificateGenerator(PyroObject):
@@ -273,8 +274,7 @@ class CertificateGenerator(PyroObject):
 
     def _sign_csr(self, csr):
         self.client_csr = csr
-        cert_gen_factory = self._get_registered_object('certificate_generator_factory')
-        local_server = cert_gen_factory.get_cert_generator('localhost')
+        local_server = CertificateGenerator('localhost')
         System.runCommand(['openssl', 'x509', '-req', '-extensions', 'usr_cert',
                            '-in', self.client_csr, '-CA', local_server.ca_pub_file,
                            '-CAkey', local_server.ca_key_file, '-CAcreateserial',
@@ -283,8 +283,8 @@ class CertificateGenerator(PyroObject):
 
         # Regenerate libvirtd configuration, allowing access to this certificate
         if self.is_local:
-            self._get_registered_object('libvirt_config').hard_restart = True
-        self._get_registered_object('libvirt_config').generate_config()
+            LibvirtConfig.hard_restart = True
+        LibvirtConfig.generate_config()
         return self._read_file(self.client_pub_file)
 
     @Expose()
