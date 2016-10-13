@@ -352,7 +352,8 @@ class Cluster(PyroObject):
         remote_user_factory = remote_node.get_connection('user_factory')
         for remote_user in remote_user_factory.get_all_users():
             remote_node.annotate_object(remote_user)
-            remote_user.delete()
+            if remote_user.is_locally_managed():
+                remote_user.delete()
 
         user_factory = self._get_registered_object('user_factory')
         for user in user_factory.get_all_users():

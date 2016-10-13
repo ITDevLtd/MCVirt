@@ -31,6 +31,7 @@ class LdapUser(UserBase):
 
     CAN_CREATE = False
     SEARCH_ORDER = 2
+    LOCALLY_MANAGED = False
 
     @classmethod
     def get_all_usernames(cls):

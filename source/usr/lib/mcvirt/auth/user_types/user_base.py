@@ -43,6 +43,7 @@ class UserBase(PyroObject):
     SEARCH_ORDER = 1
     UNIQUE = False
     EXPIRE_SESSION = False
+    LOCALLY_MANAGED = False
 
     @classmethod
     def get_all_usernames(cls):
@@ -73,6 +74,11 @@ class UserBase(PyroObject):
         """Store member variables and ensures that the user exists."""
         self.username = username
         self._ensure_exists()
+
+    @Expose()
+    def is_locally_managed(self):
+        """Determine if user is locally managed"""
+        return self.LOCALLY_MANAGED
 
     @Expose()
     def get_username(self):
