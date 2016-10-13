@@ -168,9 +168,11 @@ class ConfigFile(PyroObject):
             session_obj = self._get_registered_object('mcvirt_session')
             username = ''
             try:
-                username = session_obj.get_proxy_user_object().get_username()
+                user = session_obj.get_proxy_user_object()
             except UserDoesNotExistException:
                 pass
+            if user:
+                username = session_obj.get_proxy_user_object().get_username()
             message += "\nUser: %s\nNode: %s" % (username, get_hostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file],
@@ -194,9 +196,11 @@ class ConfigFile(PyroObject):
             session_obj = self._get_registered_object('mcvirt_session')
             username = ''
             try:
-                username = session_obj.get_proxy_user_object().get_username()
+                user = session_obj.get_proxy_user_object()
             except UserDoesNotExistException:
                 pass
+            if user:
+                username = session_obj.get_proxy_user_object().get_username()
             message += "\nUser: %s\nNode: %s" % (username, get_hostname())
             try:
                 System.runCommand([self.GIT,
