@@ -1,3 +1,7 @@
+# 7.3.1
+
+* Fix minor issue causing warning in init.d scripts
+
 # 7.3.0
 
 * Improve caching of Pyro objects
