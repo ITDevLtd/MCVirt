@@ -30,6 +30,8 @@ from mcvirt.exceptions import LibvirtNotInstalledException
 class LibvirtConfig(PyroObject):
     """Provides configuration for libvirtd"""
 
+    GENERATE_CONFIG = False
+    HARD_RESTART = False
     CONFIG_FILE = '/etc/libvirt/libvirtd.conf'
     CONFIG_TEMPLATE = '/usr/lib/mcvirt/templates/libvirtd.conf'
     DEFAULT_FILE = '/etc/default/%s'
@@ -46,10 +48,11 @@ libvirtd_opts=" --listen --verbose %s"
 
     def __init__(self):
         """Create variable to determine if a hard restart is required"""
-        self.hard_restart = False
-
         # Determine location of libvirt init script
         self.service_name = self.get_service_name()
+
+        if LibvirtConfig.GENERATE_CONFIG:
+            self.generate_config()
 
     def get_service_name(self):
         """Locate the libvirt service"""
@@ -81,6 +84,8 @@ libvirtd_opts=" --listen --verbose %s"
         # Update Drbd running configuration
         self._reload_libvirt()
 
+        LibvirtConfig.GENERATE_CONFIG = False
+
     def get_config(self):
         """Create the configuration for libvirt"""
         cert_gen_factory = self._get_registered_object('certificate_generator_factory')
@@ -99,6 +104,6 @@ libvirtd_opts=" --listen --verbose %s"
 
     def _reload_libvirt(self):
         """Force libvirt to reload it's configuration"""
-        action = 'restart' if self.hard_restart else 'force-reload'
+        action = 'restart' if LibvirtConfig.HARD_RESTART else 'force-reload'
         System.runCommand(['service', self.service_name, action])
-        self.hard_restart = False
+        LibvirtConfig.HARD_RESTART = False
