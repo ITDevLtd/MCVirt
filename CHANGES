@@ -1,6 +1,7 @@
 # 7.3.1
 
 * Fix minor issue causing warning in init.d scripts
+* Fix issue with certification generator object creation in sign_csr
 
 # 7.3.0
 
