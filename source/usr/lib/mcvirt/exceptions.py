@@ -77,7 +77,7 @@ class MCVirtLockException(MCVirtException):
 
 
 class LibVirtConnectionException(MCVirtException):
-    """An error ocurred whilst connecting to LibVirt"""
+    """An error occurred whilst connecting to LibVirt"""
 
     pass
 
@@ -433,7 +433,7 @@ class VmRunningException(MCVirtException):
 
 
 class VmStoppedException(MCVirtException):
-    """An online migraiton can only be performed on a powered on VM"""
+    """An online migration can only be performed on a powered on VM"""
 
     pass
 
@@ -572,12 +572,6 @@ class BlankPasswordException(MCVirtException):
 
 class NodeVersionMismatch(MCVirtException, Pyro4.errors.SecurityError):
     """A node is running a different version of MCVirt"""
-
-    pass
-
-
-class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
-    """Unable to connect to node in the cluster"""
 
     pass
 
