@@ -28,6 +28,7 @@ from mcvirt.constants import DirectoryLocation
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.exceptions import UserDoesNotExistException
 
 
 class ConfigFile(PyroObject):
@@ -165,8 +166,12 @@ class ConfigFile(PyroObject):
         """Commit changes to an added or modified configuration file"""
         if self._checkGitRepo():
             session_obj = self._get_registered_object('mcvirt_session')
-            message += "\nUser: %s\nNode: %s" % (
-                session_obj.get_proxy_user_object().get_username(), get_hostname())
+            username = ''
+            try:
+                username = session_obj.get_proxy_user_object().get_username()
+            except UserDoesNotExistException:
+                pass
+            message += "\nUser: %s\nNode: %s" % (username, get_hostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file],
                                   cwd=DirectoryLocation.BASE_STORAGE_DIR)
@@ -187,9 +192,12 @@ class ConfigFile(PyroObject):
         """Remove and commits a configuration file"""
         if self._checkGitRepo():
             session_obj = self._get_registered_object('mcvirt_session')
-            message += "\nUser: %s\nNode: %s" % (
-                session_obj.get_proxy_user_object().get_username(), get_hostname()
-            )
+            username = ''
+            try:
+                username = session_obj.get_proxy_user_object().get_username()
+            except UserDoesNotExistException:
+                pass
+            message += "\nUser: %s\nNode: %s" % (username, get_hostname())
             try:
                 System.runCommand([self.GIT,
                                    'rm',
