@@ -21,7 +21,6 @@ import json
 import os
 import stat
 import pwd
-import Pyro4
 
 from mcvirt.utils import get_hostname
 from mcvirt.system import System
@@ -164,10 +163,10 @@ class ConfigFile(PyroObject):
 
     def gitAdd(self, message=''):
         """Commit changes to an added or modified configuration file"""
-        from auth.session import Session
         if (self._checkGitRepo()):
+            session_obj = self._get_registered_object('mcvirt_session')
             message += "\nUser: %s\nNode: %s" % (
-                Session.get_current_user_object().get_username(), get_hostname())
+                session_obj.get_current_user_object().get_username(), get_hostname())
             try:
                 System.runCommand([self.GIT, 'add', self.config_file],
                                   cwd=DirectoryLocation.BASE_STORAGE_DIR)
@@ -186,10 +185,11 @@ class ConfigFile(PyroObject):
 
     def gitRemove(self, message=''):
         """Remove and commits a configuration file"""
-        from auth.session import Session
         if self._checkGitRepo():
-            message += "\nUser: %s\nNode: %s" % (Session.get_current_user_object().get_username(),
-                                                 get_hostname())
+            session_obj = self._get_registered_object('mcvirt_session')
+            message += "\nUser: %s\nNode: %s" % (
+                session_obj.get_current_user_object().get_username(), get_hostname()
+            )
             try:
                 System.runCommand([self.GIT,
                                    'rm',
