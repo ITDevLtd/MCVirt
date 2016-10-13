@@ -249,8 +249,7 @@ class CertificateGenerator(PyroObject):
 
         # Ensure that the client certificate exists
         if check_client and not self._ensure_exists(self.client_pub_file, assert_raise=False):
-            cert_gen_factory = self._get_registered_object('certificate_generator_factory')
-            local_remote = cert_gen_factory.get_cert_generator('localhost', remote=True)
+            local_remote = CertificateGenerator(server='localhost', remote=True)
             csr = self._generate_csr()
             pub_key = local_remote._sign_csr(csr)
             self._add_public_key(pub_key)
