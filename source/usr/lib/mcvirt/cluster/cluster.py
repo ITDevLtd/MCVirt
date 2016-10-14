@@ -357,7 +357,8 @@ class Cluster(PyroObject):
 
         user_factory = self._get_registered_object('user_factory')
         for user in user_factory.get_all_users():
-            remote_user_factory.add_config(user.get_username(), user.get_config())
+            if user.is_locally_managed():
+                remote_user_factory.add_config(user.get_username(), user.get_config())
 
     def sync_networks(self, remote_object):
         """Add the local networks to the remote node"""
