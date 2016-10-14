@@ -1,3 +1,8 @@
+# 7.3.5
+
+Fix issue relating to adding networks with interfaces which do not have IP addresses
+Fix issues with GitAdd and GitRemove
+
 # 7.3.4
 
 Fix issues with generating LibVirt configuration, caused by changes made to caching CertificateGenerator objects
