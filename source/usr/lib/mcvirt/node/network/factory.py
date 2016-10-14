@@ -49,11 +49,7 @@ class Factory(PyroObject):
 
     def _interface_exists(self, interface):
         """Determine if a given network adapter exists on the node"""
-        if interface not in netifaces.interfaces():
-            return False
-
-        addr = netifaces.ifaddresses(interface)
-        return (netifaces.AF_INET in addr)
+        return (interface in netifaces.interfaces())
 
     @Expose()
     def assert_interface_exists(self, interface):
