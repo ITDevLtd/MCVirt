@@ -25,17 +25,30 @@ from mcvirt.exceptions import LibVirtConnectionException
 class LibvirtConnector(PyroObject):
     """Obtains/manages Libvirt connections"""
 
+    CACHED_CONNECTIONS = {}
+
     def get_connection(self, server=None):
         """Obtains a Libvirt connection for a given server"""
         if server is None:
             server = get_hostname()
 
-        ssl_object = self._get_registered_object(
-            'certificate_generator_factory').get_cert_generator(server)
-        libvirt_url = 'qemu://%s/system?pkipath=%s' % (ssl_object.server, ssl_object.ssl_directory)
-        connection = libvirt.open(libvirt_url)
+        connection = None
+        if server in LibvirtConnector.CACHED_CONNECTIONS:
+            connection = LibvirtConnector.CACHED_CONNECTIONS[server]
+            try:
+                if connection is not None and not connection.isAlive():
+                    connection = None
+            except:
+                pass
         if connection is None:
-            raise LibVirtConnectionException(
-                'Failed to open connection to the hypervisor on %s' % ssl_object.server
-            )
+            ssl_object = self._get_registered_object(
+                'certificate_generator_factory').get_cert_generator(server)
+            libvirt_url = 'qemu://%s/system?pkipath=%s' % (ssl_object.server,
+                                                           ssl_object.ssl_directory)
+            connection = libvirt.open(libvirt_url)
+            LibvirtConnector.CACHED_CONNECTIONS[server] = connection
+            if connection is None:
+                raise LibVirtConnectionException(
+                    'Failed to open connection to the hypervisor on %s' % ssl_object.server
+                )
         return connection
