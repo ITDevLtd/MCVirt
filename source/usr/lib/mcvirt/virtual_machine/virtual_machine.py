@@ -96,12 +96,17 @@ class VirtualMachine(PyroObject):
         """Return the name of the VM"""
         return self.name
 
-    def _getLibvirtDomainObject(self):
+    def _getLibvirtDomainObject(self, allow_remote=False):
         """Look up LibVirt domain object, based on VM name,
         and return object
         """
+        if self.isRegisteredRemotely() and allow_remote:
+            libvirt_connection = self._get_registered_object('libvirt_connector').get_connection(
+                server=self.getNode())
+        else:
+            libvirt_connection = self._get_registered_object('libvirt_connector').get_connection()
         # Get the domain object.
-        return self._get_registered_object('libvirt_connector').get_connection().lookupByName(
+        return libvirt_connection.lookupByName(
             self.name
         )
 
@@ -261,19 +266,13 @@ class VirtualMachine(PyroObject):
 
     def _getPowerState(self):
         """Returns the power state of the VM in the form of a PowerStates enum"""
-        if self.isRegisteredLocally():
-            if self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
+        if self.isRegistered():
+            libvirt_object = self._getLibvirtDomainObject(
+                allow_remote=(not self._cluster_disabled))
+            if libvirt_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING:
                 return PowerStates.RUNNING
             else:
                 return PowerStates.STOPPED
-
-        elif self.isRegisteredRemotely() and not self._cluster_disabled:
-            cluster = self._get_registered_object('cluster')
-            remote_object = cluster.get_remote_node(self.getNode(), ignore_cluster_master=True)
-            vm_factory = remote_object.get_connection('virtual_machine_factory')
-            remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-            remote_object.annotate_object(remote_vm)
-            return PowerStates(remote_vm.getPowerState())
         else:
             return PowerStates.UNKNOWN
 
