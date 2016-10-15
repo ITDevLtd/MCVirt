@@ -267,8 +267,8 @@ class VirtualMachine(PyroObject):
     def _getPowerState(self):
         """Returns the power state of the VM in the form of a PowerStates enum"""
         if self.isRegistered():
-            libvirt_object = self._getLibvirtDomainObject(
-                allow_remote=(not self._cluster_disabled))
+            remote_libvirt = (self.isRegisteredRemotely() and not self._cluster_disabled)
+            libvirt_object = self._getLibvirtDomainObject(allow_remote=remote_libvirt)
             if libvirt_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING:
                 return PowerStates.RUNNING
             else:
