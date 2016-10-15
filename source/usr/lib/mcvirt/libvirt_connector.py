@@ -39,7 +39,8 @@ class LibvirtConnector(PyroObject):
                 if connection is not None and not connection.isAlive():
                     connection = None
             except:
-                pass
+                connection = None
+
         if connection is None:
             ssl_object = self._get_registered_object(
                 'certificate_generator_factory').get_cert_generator(server)
