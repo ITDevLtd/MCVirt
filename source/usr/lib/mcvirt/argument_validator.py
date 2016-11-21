@@ -41,7 +41,7 @@ class ArgumentValidator(object):
 
             if hostname.startswith('-') or hostname.endswith('-'):
                 raise MCVirtTypeError(exception_message)
-        except (ValueError, TypeError):pytun
+        except (ValueError, TypeError):
             raise MCVirtTypeError(exception_message)
 
     @staticmethod
