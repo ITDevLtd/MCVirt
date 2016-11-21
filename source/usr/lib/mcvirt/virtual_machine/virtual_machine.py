@@ -302,6 +302,9 @@ class VirtualMachine(PyroObject):
         table.add_row(('Autostart', self._get_autostart_state().name))
         table.add_row(('Node', self.getNode()))
         table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
+        table.add_row(('Lock State', self._getLockState().name))
+        table.add_row(('UUID', self.get_uuid()))
+        table.add_row(('Graphics Driver', self.getGraphicsDriver()))
 
         # Display clone children, if they exist
         clone_children = self.getCloneChildren()
