@@ -74,7 +74,7 @@ class ValidationTests(TestBase):
     def test_create_network(self):
         """Test creating a netork with an invalid name to check that network creation uses
         ArgumentValidator"""
-        network_name = '-not-valid'
+        network_name = 'not-valid-'
         try:
             with self.assertRaises(MCVirtTypeError):
                 self.parser.parse_arguments('network create --interface %s %s' %
