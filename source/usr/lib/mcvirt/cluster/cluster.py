@@ -384,7 +384,7 @@ class Cluster(PyroObject):
         for superuser in auth_instance.get_superusers():
             remote_user_object = remote_user_factory.get_user_by_username(superuser)
             remote_object.annotate_object(remote_user_object)
-            if not remote_user.is_superuser():
+            if not remote_user_object.is_superuser():
                 remote_auth_instance.add_superuser(remote_user_object)
 
         # Iterate over the permission groups, adding all of the members to the group
