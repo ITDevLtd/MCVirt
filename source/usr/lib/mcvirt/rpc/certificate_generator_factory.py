@@ -30,7 +30,7 @@ class CertificateGeneratorFactory(PyroObject):
     @Expose()
     def get_cert_generator(self, server, remote=False):
         """Obtain a certificate generator object for a given server"""
-        if server not in CertificateGeneratorFactory.CACHED_OBJECTS:
+        if (server, remote) not in CertificateGeneratorFactory.CACHED_OBJECTS:
             cert_generator = CertificateGenerator(server, remote=remote)
             self._register_object(cert_generator)
             if not self._is_pyro_initialised:
@@ -42,6 +42,6 @@ class CertificateGeneratorFactory(PyroObject):
                 except:
                     pass
                 return cert_generator
-            CertificateGeneratorFactory.CACHED_OBJECTS[server] = cert_generator
+            CertificateGeneratorFactory.CACHED_OBJECTS[(server, remote)] = cert_generator
 
-        return CertificateGeneratorFactory.CACHED_OBJECTS[server]
+        return CertificateGeneratorFactory.CACHED_OBJECTS[(server, remote)]
