@@ -627,7 +627,8 @@ class Cluster(PyroObject):
                     nodes.remove(node)
         return nodes
 
-    def run_remote_command(self, callback_method, nodes=None, args=[], kwargs={}):
+    def run_remote_command(self, callback_method, nodes=None, args=[], kwargs={},
+                           ignore_cluster_master=False):
         """Run a remote command on all (or a given list of) remote nodes"""
         return_data = {}
 
@@ -635,7 +636,7 @@ class Cluster(PyroObject):
         if nodes is None:
             nodes = self.get_nodes()
         for node in nodes:
-            node_object = self.get_remote_node(node)
+            node_object = self.get_remote_node(node, ignore_cluster_master=ignore_cluster_master)
             if node_object is not None:
                 return_data[node] = callback_method(node_object, *args, **kwargs)
         return return_data
