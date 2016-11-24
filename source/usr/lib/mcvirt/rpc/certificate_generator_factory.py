@@ -34,8 +34,13 @@ class CertificateGeneratorFactory(PyroObject):
             cert_generator = CertificateGenerator(server, remote=remote)
             self._register_object(cert_generator)
             if not self._is_pyro_initialised:
-                Syslogger.logger().info(('Obtained unregistered version of CertificateGenerator'
-                                         ' for %s (Remote: %s)') % (server, remote))
+                try:
+                    Syslogger.logger().info(
+                        ('Obtained unregistered version of CertificateGenerator'
+                         ' for %s (Remote: %s)') % (server, remote)
+                    )
+                except:
+                    pass
                 return cert_generator
             CertificateGeneratorFactory.CACHED_OBJECTS[server] = cert_generator
 

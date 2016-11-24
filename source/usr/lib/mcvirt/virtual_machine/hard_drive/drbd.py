@@ -220,6 +220,9 @@ class Drbd(Base):
     Drbd_CONFIG_TEMPLATE = DirectoryLocation.TEMPLATE_DIR + '/drbd_resource.conf'
     CACHE_MODE = 'none'
 
+    # The maximum number of storage devices for the current type
+    MAXIMUM_DEVICES = 4
+
     def __init__(self, drbd_minor=None, drbd_port=None, *args, **kwargs):
         """Set member variables"""
         # Get Drbde configuration from disk configuration

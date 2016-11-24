@@ -384,7 +384,8 @@ class Cluster(PyroObject):
         for superuser in auth_instance.get_superusers():
             remote_user_object = remote_user_factory.get_user_by_username(superuser)
             remote_object.annotate_object(remote_user_object)
-            remote_auth_instance.add_superuser(remote_user_object)
+            if not remote_user.is_superuser():
+                remote_auth_instance.add_superuser(remote_user_object)
 
         # Iterate over the permission groups, adding all of the members to the group
         # on the remote node
@@ -393,7 +394,9 @@ class Cluster(PyroObject):
             for user in users:
                 user_object = remote_user_factory.get_user_by_username(user)
                 remote_object.annotate_object(user_object)
-                remote_auth_instance.add_user_permission_group(group, user_object)
+                if (user_object.get_username() not in
+                        remote_auth_instance.get_users_in_permission_group(group)):
+                    remote_auth_instance.add_user_permission_group(group, user_object)
 
     def sync_virtual_machines(self, remote_object):
         """Duplicate the VM configurations on the local node onto the remote node"""

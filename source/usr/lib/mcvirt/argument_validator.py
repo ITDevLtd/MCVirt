@@ -47,16 +47,19 @@ class ArgumentValidator(object):
     @staticmethod
     def validate_network_name(name):
         """Validate the name of a network"""
-        exception_message = ('Network name must only use alpha-numeric characters and'
-                             ' not be any longer than 64 characters in length')
+        exception_message = ('Network name must only use alpha-numeric characters and dashes,'
+                             ' be 64 characters or less in length'
+                             ' and start with an alpha-numeric character')
 
         if name == 'default':
             raise MCVirtTypeError('Network name cannot be \'default\'')
         try:
             if len(name) > 64 or not len(name):
                 raise MCVirtTypeError(exception_message)
-            disallowed = re.compile(r"[^A-Z\d]", re.IGNORECASE)
+            disallowed = re.compile(r"[^A-Z\d-]", re.IGNORECASE)
             if disallowed.search(name):
+                raise MCVirtTypeError(exception_message)
+            if name.startswith('-') or name.endswith('-'):
                 raise MCVirtTypeError(exception_message)
         except (ValueError, TypeError):
             raise MCVirtTypeError(exception_message)

@@ -286,7 +286,7 @@ class Parser(object):
                                         type=int, help='Add disk to the VM (size in MB)')
         self.update_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type', type=str,
-                                        default=None)
+                                        default=None, choices=['Local', 'Drbd'])
         self.update_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',

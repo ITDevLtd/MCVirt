@@ -65,7 +65,10 @@ class PyroObject(object):
     def _register_object(self, local_object):
         """Register an object with the pyro daemon"""
         if self._is_pyro_initialised:
-            Syslogger.logger().debug('Registering object (dynamic): %s' % local_object)
+            try:
+                Syslogger.logger().debug('Registering object (dynamic): %s' % local_object)
+            except:
+                pass
             self._pyroDaemon.register(local_object)
 
         if '_pyro_server_ref' in dir(self):
