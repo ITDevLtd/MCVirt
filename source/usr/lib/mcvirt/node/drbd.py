@@ -198,7 +198,7 @@ class Drbd(PyroObject):
         """Return a list of used Drbd minor IDs"""
         return [hdd.drbd_minor for hdd in self.get_all_drbd_hard_drive_object(include_remote=True)]
 
-    @Expose(locking=True)
+    @Expose()
     def list(self):
         """List the Drbd volumes and statuses"""
         # Create table and add headers
