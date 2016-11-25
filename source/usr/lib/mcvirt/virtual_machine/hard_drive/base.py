@@ -547,6 +547,7 @@ class Base(PyroObject):
                 "Error whilst activating logical volume:\n" + str(e)
             )
 
+    @Expose(locking=True)
     def createBackupSnapshot(self):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""
         self._ensure_exists()
@@ -583,6 +584,7 @@ class Base(PyroObject):
             self.vm_object._setLockState(LockStates.UNLOCKED)
             raise
 
+    @Expose(locking=True)
     def deleteBackupSnapshot(self):
         """Deletes the backup snapshot for the disk and unlocks the VM"""
         self._ensure_exists()

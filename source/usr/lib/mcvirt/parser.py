@@ -1267,9 +1267,9 @@ class Parser(object):
             hard_drive_factory = rpc.get_connection('hard_drive_factory')
             hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
             rpc.annotate_object(hard_drive_object)
-            if args.backup_action == 'create_snapshot':
+            if args.backup_action == 'create-snapshot':
                 self.print_status(hard_drive_object.createBackupSnapshot())
-            elif args.backup_action == 'delete_snapshot':
+            elif args.backup_action == 'delete-snapshot':
                 hard_drive_object.deleteBackupSnapshot()
 
         elif action == 'lock':
