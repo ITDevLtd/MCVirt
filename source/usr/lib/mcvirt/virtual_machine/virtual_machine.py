@@ -641,7 +641,8 @@ class VirtualMachine(PyroObject):
         self._get_registered_object('auth').assert_user_type('ClusterUser')
         return self.update_config(*args, **kwargs)
 
-    def update_config(self, attribute_path, value, reason, local_only=False):
+    def update_config(self, attribute_path, value, reason, local_only=False,
+                      ignore_cluster_master=False):
         """Update a VM configuration attribute and
         replicates change across all nodes
         """
@@ -663,7 +664,7 @@ class VirtualMachine(PyroObject):
                 remote_vm.remote_update_config(attribute_path=attribute_path, value=value,
                                                reason=reason, local_only=True)
             cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_command)
+            cluster.run_remote_command(remote_command, ignore_cluster_master=ignore_cluster_master)
 
     @staticmethod
     def _get_vm_dir(name):
@@ -1155,7 +1156,8 @@ class VirtualMachine(PyroObject):
             # Store UUID in MCVirt VM config
             self.update_config(
                 ['uuid'], uuid,
-                'Set UUID for VM from Libvirt'
+                'Set UUID for VM from Libvirt',
+                ignore_cluster_master=True
             )
 
             return uuid
