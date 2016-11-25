@@ -50,7 +50,7 @@ class DrbdTests(TestBase):
         for disk_object in test_vm_object.getHardDriveObjects():
             self.rpc.annotate_object(disk_object)
             wait_timeout = 6
-            while disk_object.drbdGetConnectionState() != DrbdConnectionState.CONNECTED:
+            while disk_object.drbdGetConnectionState()[1] != DrbdConnectionState.CONNECTED.value:
                 # If the Drbd volume has not connected within 1 minute, throw an exception
                 if not wait_timeout:
                     raise DrbdVolumeNotInSyncException('Wait for Drbd connection timed out')

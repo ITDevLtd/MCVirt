@@ -487,8 +487,8 @@ class VirtualMachineTests(TestBase):
             self.rpc.annotate_object(disk_object)
             while (
                 disk_object.drbdGetDiskState() != (
-                    DrbdDiskState.UP_TO_DATE.value,
-                    DrbdDiskState.UP_TO_DATE.value)):
+                    (DrbdDiskState.UP_TO_DATE.name, DrbdDiskState.UP_TO_DATE.value),
+                    (DrbdDiskState.UP_TO_DATE.name, DrbdDiskState.UP_TO_DATE.value))):
                 time.sleep(5)
 
         # Migrate VM to remote node

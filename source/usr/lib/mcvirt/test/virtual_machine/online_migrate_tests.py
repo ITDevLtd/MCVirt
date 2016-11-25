@@ -170,7 +170,7 @@ class OnlineMigrateTests(TestBase):
         time.sleep(5)
         for disk_object in self.local_vm_object.getHardDriveObjects():
             wait_timeout = 6
-            while disk_object.drbdGetConnectionState() != DrbdConnectionState.CONNECTED.value:
+            while disk_object.drbdGetConnectionState()[1] != DrbdConnectionState.CONNECTED.value:
                 # If the Drbd volume has not connected within 1 minute, throw an exception
                 if not wait_timeout:
                     raise DrbdVolumeNotInSyncException('Wait for Drbd connection timed out')

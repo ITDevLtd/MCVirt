@@ -236,6 +236,21 @@ class Drbd(Base):
         """Return the disk object config items"""
         return super(Drbd, self).config_properties + ['drbd_port', 'drbd_minor']
 
+    @Expose()
+    def get_resource_name(self):
+        """Obtain the resource name"""
+        return self.resource_name
+
+    @Expose()
+    def get_drbd_port(self):
+        """Obtain the DRBD port"""
+        return self.drbd_port
+
+    @Expose()
+    def get_drbd_minor(self):
+        """Obtain the DRBD minor ID"""
+        return self.drbd_minor
+
     @staticmethod
     def isAvailable(pyro_object):
         """Determine if Drbd is available on the node"""
@@ -749,7 +764,7 @@ class Drbd(Base):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.vm_object)
         connection_state = self._drbdGetConnectionState()
-        return connection_state.value
+        return connection_state.name, connection_state.value
 
     def _drbdGetConnectionState(self):
         """Returns the connection state of the Drbd resource"""
@@ -764,7 +779,7 @@ class Drbd(Base):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.vm_object)
         local_state, remote_state = self._drbdGetDiskState()
-        return local_state.value, remote_state.value
+        return (local_state.name, local_state.value), (remote_state.name, remote_state.value)
 
     def _drbdGetDiskState(self):
         """Returns the disk state of the Drbd resource"""
@@ -774,8 +789,16 @@ class Drbd(Base):
         (local_state, remote_state) = states.split('/')
         return (DrbdDiskState(local_state), DrbdDiskState(remote_state))
 
+    @Expose()
+    def drbdGetRole(self):
+        """Provide an exposed method for drbdGetRole"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+        local_state, remote_state = self._drbdGetRole()
+        return (local_state.name, local_state.value), (remote_state.name, remote_state.value)
+
     def _drbdGetRole(self):
-        """Returns the role of the Drbd resource"""
+        """Returns the role of the Drbd(resource"""
         _, stdout, _ = System.runCommand([NodeDrbd.DrbdADM, 'role',
                                           self.resource_name])
         states = stdout.strip()
@@ -845,6 +868,13 @@ class Drbd(Base):
                 self.resource_name +
                 'Run MCVirt as a superuser with --ignore-drbd to ignore this issue'
             )
+
+    @Expose()
+    def isInSync(self):
+        """Provides an exposed method for _isInSync"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+        return self._isInSync()
 
     def _isInSync(self):
         """Returns whether the last Drbd verification reported the

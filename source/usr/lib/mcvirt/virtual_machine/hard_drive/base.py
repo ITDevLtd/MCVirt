@@ -110,7 +110,18 @@ class Base(PyroObject):
             self._driver = self.DEFAULT_DRIVER
         return self._driver
 
-    def get_remote_object(self, node_name=None, remote_node=None, registered=True):
+    @Expose()
+    def get_vm_object(self):
+        """Obtain the VM object for the resource"""
+        vm_name = self.vm_object.get_name()
+        return self._get_registered_object(
+            'virtual_machine_factory').getVirtualMachineByName(vm_name)
+
+    def get_remote_object(self,
+                          node_name=None,     # The name of the remote node to connect to
+                          remote_node=None,   # Otherwise, pass a remote node connection
+                          registered=True,  # If the hard drive can be setup
+                          return_node=False):
         """Obtain an instance of the current hard drive object on a remote node"""
         cluster = self._get_registered_object('cluster')
         if remote_node is None:
@@ -131,7 +142,10 @@ class Base(PyroObject):
 
         hard_drive_object = remote_hard_drive_factory.getObject(**kwargs)
         remote_node.annotate_object(hard_drive_object)
-        return hard_drive_object
+        if return_node:
+            return hard_drive_object, remote_node
+        else:
+            return hard_drive_object
 
     def _get_available_id(self):
         """Obtain the next available ID for the VM hard drive, by scanning the IDs
