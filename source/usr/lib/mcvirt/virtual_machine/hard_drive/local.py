@@ -38,9 +38,22 @@ class Local(Base):
     MAXIMUM_DEVICES = 4
     CACHE_MODE = 'directsync'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, logical_volume=None, *args, **kwargs):
         """Sets member variables and obtains libvirt domain object"""
+        self._logical_volume = logical_volume
         super(Local, self).__init__(*args, **kwargs)
+
+    @property
+    def logical_volume(self):
+        if self._logical_volume:
+            return self._logical_volume
+        vm_name = self.vm_object.get_name()
+        return 'mcvirt_vm-%s-disk-%s' % (vm_name, self.disk_id)
+
+    @property
+    def config_properties(self):
+        """Return the disk object config items"""
+        return super(Local, self).config_properties + ['logical_volume']
 
     @staticmethod
     def isAvailable(pyro_object):
@@ -150,8 +163,7 @@ class Local(Base):
 
     def _getDiskName(self):
         """Returns the name of a disk logical volume, for a given VM"""
-        vm_name = self.vm_object.get_name()
-        return 'mcvirt_vm-%s-disk-%s' % (vm_name, self.disk_id)
+        return self.logical_volume
 
     def _getMCVirtConfig(self):
         """Returns the MCVirt hard drive configuration for the Local hard drive"""

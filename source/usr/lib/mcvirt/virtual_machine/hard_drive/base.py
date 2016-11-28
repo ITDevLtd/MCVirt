@@ -63,10 +63,12 @@ class Base(PyroObject):
     SNAPSHOT_SUFFIX = '_snapshot'
     SNAPSHOT_SIZE = '500M'
 
-    def __init__(self, vm_object, disk_id=None, driver=None):
+    def __init__(self, vm_object, volume_group=None, disk_id=None, driver=None):
         """Set member variables"""
         self._disk_id = disk_id
         self._driver = driver
+        self._volume_group = volume_group
+
         self.vm_object = vm_object
 
         # If the disk is configured on a VM, obtain
@@ -77,7 +79,7 @@ class Base(PyroObject):
     @property
     def config_properties(self):
         """Return the disk object config items"""
-        return ['disk_id', 'driver']
+        return ['disk_id', 'driver', 'volume_group']
 
     def __setattr__(self, name, value):
         """Override setattr to ensure that the value of
@@ -87,6 +89,11 @@ class Base(PyroObject):
         if name in self.config_properties:
             name = '_%s' % name
         return super(Base, self).__setattr__(name, value)
+
+    @property
+    def volume_group(self):
+        return self._volume_group if self._volume_group else MCVirtConfig().get_config()[
+            'vm_storage_vg']
 
     @property
     def disk_id(self):
@@ -356,7 +363,7 @@ class Base(PyroObject):
 
     def _createLogicalVolume(self, name, size, perform_on_nodes=False):
         """Creates a logical volume on the node/cluster"""
-        volume_group = self._getVolumeGroup()
+        volume_group = self.volume_group
 
         # Create command list
         command_args = ['/sbin/lvcreate', volume_group, '--name', name, '--size', '%sM' % size]
@@ -671,10 +678,6 @@ class Base(PyroObject):
         """Moves the storage to another node in the cluster"""
         raise NotImplementedError
 
-    def _getVolumeGroup(self):
-        """Returns the node MCVirt volume group"""
-        return MCVirtConfig().get_config()['vm_storage_vg']
-
     def getDiskConfig(self):
         """Returns the disk configuration for the hard drive"""
         vm_config = self.vm_object.get_config_object().get_config()
@@ -685,7 +688,7 @@ class Base(PyroObject):
 
     def _getLogicalVolumePath(self, name):
         """Returns the full path of a given logical volume"""
-        volume_group = self._getVolumeGroup()
+        volume_group = self.volume_group
         return '/dev/' + volume_group + '/' + name
 
     def _generateLibvirtXml(self):
