@@ -19,6 +19,7 @@
 
 from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.rpc.expose_method import Expose
 
 
 class ClusterUser(UserBase):
