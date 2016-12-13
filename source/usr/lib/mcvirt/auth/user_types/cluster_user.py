@@ -29,6 +29,12 @@ class ClusterUser(UserBase):
     CLUSTER_USER = True
     DISTRIBUTED = False
 
+    @Expose()
+    @property
+    def is_superuser(self):
+        """Determine if the user is a superuser of MCVirt."""
+        return True
+
     @property
     def allow_proxy_user(self):
         """Connection users can proxy for another user."""

@@ -55,6 +55,15 @@ class UserBase(PyroObject):
                 users.append(username)
         return users
 
+    @Expose()
+    @property
+    def is_superuser(self):
+        """Determine if the user is a superuser of MCVirt."""
+        username = self.get_username()
+        superusers = self._get_registered_object('auth').get_superusers()
+
+        return ((username in superusers))
+
     @property
     def allow_proxy_user(self):
         """Connection users can proxy for another user."""
