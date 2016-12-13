@@ -56,7 +56,6 @@ class UserBase(PyroObject):
         return users
 
     @Expose()
-    @property
     def is_superuser(self):
         """Determine if the user is a superuser of MCVirt."""
         username = self.get_username()

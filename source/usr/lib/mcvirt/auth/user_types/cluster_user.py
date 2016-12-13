@@ -31,7 +31,6 @@ class ClusterUser(UserBase):
     DISTRIBUTED = False
 
     @Expose()
-    @property
     def is_superuser(self):
         """Determine if the user is a superuser of MCVirt."""
         return True
