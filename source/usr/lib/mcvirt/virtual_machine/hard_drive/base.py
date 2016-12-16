@@ -182,6 +182,10 @@ class Base(PyroObject):
                 'Disk %s for %s does not exist' %
                 (self.disk_id, self.vm_object.get_name()))
 
+    def _get_file_size(self, path):
+        """Get the size of a file"""
+        pass
+
     @Expose(locking=True)
     def resync(self, source_node=None, auto_determine=False):
         """Resync the volume"""

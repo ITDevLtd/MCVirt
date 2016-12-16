@@ -226,7 +226,7 @@ class Parser(object):
         # Determine if machine is configured to use Drbd
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
-                                        type=str, default=None, choices=['Local', 'Drbd'])
+                                        type=str, default=None, choices=['Local', 'Drbd', 'File'])
         self.create_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
@@ -286,7 +286,7 @@ class Parser(object):
                                         type=int, help='Add disk to the VM (size in MB)')
         self.update_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type', type=str,
-                                        default=None, choices=['Local', 'Drbd'])
+                                        default=None, choices=['Local', 'Drbd', 'File'])
         self.update_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',

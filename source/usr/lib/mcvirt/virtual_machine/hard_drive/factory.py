@@ -21,6 +21,7 @@ from mcvirt.exceptions import (UnknownStorageTypeException, HardDriveDoesNotExis
                                InsufficientSpaceException)
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import Drbd
+from mcvirt.virtual_machine.hard_drive.file import File
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
@@ -31,7 +32,7 @@ from mcvirt.rpc.expose_method import Expose
 class Factory(PyroObject):
     """Provides a factory for creating hard drive/hard drive config objects"""
 
-    STORAGE_TYPES = [Local, Drbd]
+    STORAGE_TYPES = [Local, Drbd, File]
     DEFAULT_STORAGE_TYPE = 'Local'
     OBJECT_TYPE = 'hard disk'
     HARD_DRIVE_CLASS = Base
@@ -94,7 +95,7 @@ class Factory(PyroObject):
         return storage_type
 
     @Expose(locking=True)
-    def create(self, vm_object, size, storage_type, driver):
+    def create(self, vm_object, size, storage_type, driver, *args, **kwargs):
         """Performs the creation of a hard drive, using a given storage type"""
         vm_object = self._convert_remote_object(vm_object)
 
@@ -114,7 +115,8 @@ class Factory(PyroObject):
                     'Storage type does not match VMs current storage type'
                 )
 
-        hdd_object = self.getClass(storage_type)(vm_object=vm_object, driver=driver)
+        hdd_object = self.getClass(storage_type)(vm_object=vm_object, driver=driver,
+                                                 *args, **kwargs)
         self._register_object(hdd_object)
         hdd_object.create(size=size)
         return hdd_object
