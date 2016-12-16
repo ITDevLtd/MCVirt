@@ -812,7 +812,7 @@ class Parser(object):
             rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID,
                              ignore_cluster=ignore_cluster)
         else:
-             # Obtain connection to Pyro server
+            # Obtain connection to Pyro server
             use_auth_session = False
             if not (args.password or args.username):
                 # Try logging in with saved session
