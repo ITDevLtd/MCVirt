@@ -54,6 +54,10 @@ class Parser(object):
                                         help='MCVirt username')
         self.parent_parser.add_argument('--password', dest='password',
                                         help='MCVirt password')
+        self.parent_parser.add_argument('--cache-credentials', dest='cache_credentials',
+                                        action='store_true',
+                                        help=('Store the session ID, so it can be used for '
+                                              'multiple MCVirt calls.'))
         self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
                                         help='Ignores nodes that are inaccessible',
                                         action='store_true')
@@ -808,6 +812,7 @@ class Parser(object):
             ignore_cluster = True
 
         rpc = None
+        auth_cache_file = os.getenv('HOME') + '/' + self.AUTH_FILE
         if self.SESSION_ID and self.USERNAME:
             rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID,
                              ignore_cluster=ignore_cluster)
@@ -818,9 +823,9 @@ class Parser(object):
                 # Try logging in with saved session
                 auth_session = None
                 try:
-                    with open(os.getenv('HOME') + '/' + self.AUTH_FILE, 'r') as f:
-                        auth_username = f.readline()
-                        auth_session = f.readline()
+                    with open(auth_cache_file, 'r') as f:
+                        auth_username = f.readline().strip()
+                        auth_session = f.readline().strip()
                 except IOError:
                     pass
 
@@ -832,6 +837,10 @@ class Parser(object):
                         self.USERNAME = rpc.username
                     except AuthenticationError:
                         self.print_status('Authentication error occured when using saved session.')
+                        try:
+                            os.remove(auth_cache_file)
+                        except:
+                            pass
                         rpc = None
 
             if not rpc:
@@ -851,9 +860,12 @@ class Parser(object):
                 self.USERNAME = rpc.username
 
         # If successfully authenticated then store session ID and username in auth file
-        with open(os.getenv('HOME') + '/' + self.AUTH_FILE, 'w') as f:
-            f.write(rpc.username)
-            f.write(rpc.session_id)
+        if args.cache_credentials:
+            try:
+                with open(auth_cache_file, 'w') as f:
+                    f.write("%s\n%s" % (rpc.username, rpc.session_id))
+            except:
+                pass
 
         if args.ignore_drbd:
             rpc.ignore_drbd()
