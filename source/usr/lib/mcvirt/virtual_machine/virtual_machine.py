@@ -163,6 +163,12 @@ class VirtualMachine(PyroObject):
             self
         )
 
+        # Is an iso is being attached, ensure the user has permissions to modify the VM
+        if iso_name:
+            self._get_registered_object('auth').assert_permission(
+                PERMISSIONS.MODIFY_VM, self
+            )
+
         # Ensure VM is unlocked
         self.ensureUnlocked()
 
@@ -215,6 +221,11 @@ class VirtualMachine(PyroObject):
     @Expose(locking=True)
     def update_iso(self, iso_name=None):
         """Update the ISO attached to the VM"""
+        # Ensure user has permissions to modify VM
+        self._get_registered_object('auth').assert_permission(
+                PERMISSIONS.MODIFY_VM, self
+            )
+
         if self.isRegisteredRemotely():
             return self.get_remote_object().update_iso(iso_name)
 
