@@ -590,11 +590,21 @@ class VirtualMachine(PyroObject):
             raise InvalidModificationFlagException('Invalid modification flag \'%s\'' % flag)
 
     @Expose(locking=True)
-    def update_modification_flags(self, add_flags=[], remove_flags=[]):
-        """Updates the modification flags for a VM"""
+    def update_modification_flags(self, *args, **kwargs):
+        """Update the modification flags for a VM"""
 
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+        return self._update_modification_flags(*args, **kwargs)
+
+
+    def _update_modification_flags(self, add_flags=None, remove_flags=None):
+        """Update the modification flags for a VM"""
+
+        if add_flags is None:
+            add_flags = []
+        if remove_flags is None:
+            remove_flags = []
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object()

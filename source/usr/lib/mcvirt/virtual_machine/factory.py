@@ -313,6 +313,6 @@ class Factory(PyroObject):
                     network_adapter_factory.create(vm_object, network_object)
 
             # Add modification flags
-            vm_object.update_modification_flags(add_flags=modification_flags)
+            vm_object._update_modification_flags(add_flags=modification_flags)
 
         return vm_object
