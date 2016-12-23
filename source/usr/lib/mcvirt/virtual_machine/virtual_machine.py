@@ -36,9 +36,11 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                VirtualMachineLockException, InvalidArgumentException,
                                VirtualMachineDoesNotExistException, VmIsCloneException,
                                VncNotEnabledException, AttributeAlreadyChanged,
-                               InvalidModificationFlagException, MCVirtTypeError)
+                               InvalidModificationFlagException, MCVirtTypeError,
+                               UsbDeviceAttachedToVirtualMachine)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
+from mcvirt.virtual_machine.usb_device import UsbDevice
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
@@ -100,9 +102,12 @@ class VirtualMachine(PyroObject):
         """Look up LibVirt domain object, based on VM name,
         and return object
         """
-        if self.isRegisteredRemotely() and allow_remote:
-            libvirt_connection = self._get_registered_object('libvirt_connector').get_connection(
-                server=self.getNode())
+        if self.isRegisteredRemotely():
+            if allow_remote:
+                libvirt_connection = self._get_registered_object(
+                    'libvirt_connector').get_connection(server=self.getNode())
+            else:
+                raise VmRegisteredElsewhereException('Virtual machine is registered elsewhere')
         else:
             libvirt_connection = self._get_registered_object('libvirt_connector').get_connection()
         # Get the domain object.
@@ -634,6 +639,36 @@ class VirtualMachine(PyroObject):
         for disk_id in disks:
             disk_objects.append(hard_drive_factory.getObject(self, disk_id))
         return disk_objects
+
+    def get_attached_usb_devices(self):
+        libvirt_config = self.getLibvirtConfig()
+        device_list = []
+        for device_config in libvirt_config.findall('./devices/hostdev[@type="usb"]'):
+            device_address = device_config.find('./source/address')
+            device_list.append(self._get_usb_device(device_address.get('bus'),
+                                                    device_address.get('device')))
+        return device_list
+
+    @Expose(locking=True)
+    def get_usb_device(self, bus, device):
+        self.ensureRegisteredLocally()
+        # Determine if device attached to another VM
+        for vm_object in self._get_registered_object(
+                'virtual_machine_factory').getAllVirtualMachines(node=self.getNode()):
+            if (int(bus), int(device)) in [(dev.get_bus(), dev.get_device())
+                                           for dev in vm_object.get_attached_usb_devices()]:
+                if vm_object.get_name() != self.get_name():
+                    raise UsbDeviceAttachedToVirtualMachine(
+                        'USB device (%s, %s) is already attached to VM: %s' %
+                        (bus, device, vm_object.get_name())
+                    )
+        return self._get_usb_device(bus, device)
+
+    def _get_usb_device(self, bus, device):
+        # Create USB device object, register with daemon and return
+        usb_device_object = UsbDevice(bus=bus, device=device, virtual_machine=self)
+        self._register_object(usb_device_object)
+        return usb_device_object
 
     @Expose()
     def remote_update_config(self, *args, **kwargs):

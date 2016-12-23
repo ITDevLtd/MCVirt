@@ -1,0 +1,5 @@
+<hostdev mode='subsystem' type='usb' managed='yes'>
+  <source startupPolicy='optional'>
+    <address />
+  </source>
+</hostdev>

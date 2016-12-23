@@ -304,6 +304,14 @@ class Parser(object):
                                         type=str, default=None, nargs='?',
                                         help=('Attach an ISO to a running VM.'
                                               ' Specify without value to detach ISO.'))
+        self.update_parser.add_argument('--attach-usb-device', dest='attach_usb_device',
+                                        metavar='bus,device', help=('Specify bus/device for USB '
+                                                                    'device to connect, e.g. 5,2'),
+                                        type=str, default=None)
+        self.update_parser.add_argument('--detach-usb-device', dest='detach_usb_device',
+                                        metavar='bus,device', help=('Specify bus/device for USB '
+                                                                    'device to detach, e.g. 5,2'),
+                                        type=str, default=None)
         self.vm_autostart_mutual_group = self.update_parser.add_mutually_exclusive_group(
             required=False
         )
@@ -984,7 +992,7 @@ class Parser(object):
                                           storage_type=args.storage_type,
                                           driver=args.hard_disk_driver)
 
-            if (args.increase_disk and args.disk_id):
+            if args.increase_disk and args.disk_id:
                 hard_drive_factory = rpc.get_connection('hard_drive_factory')
                 hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
                 rpc.annotate_object(hard_drive_object)
@@ -1002,6 +1010,15 @@ class Parser(object):
                 vm_object.set_autostart_state('ON_POLL')
             else:
                 vm_object.set_autostart_state('NO_AUTOSTART')
+
+            if args.attach_usb_device:
+                usb_device = vm_object.get_usb_device(*args.attach_usb_device.split(','))
+                rpc.annotate_object(usb_device)
+                usb_device.attach()
+            if args.detach_usb_device:
+                usb_device = vm_object.get_usb_device(*args.detach_usb_device.split(','))
+                rpc.annotate_object(usb_device)
+                usb_device.detach()
 
             if args.add_flags or args.remove_flags:
                 add_flags = args.add_flags or []
