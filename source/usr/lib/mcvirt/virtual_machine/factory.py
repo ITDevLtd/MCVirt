@@ -120,7 +120,7 @@ class Factory(PyroObject):
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.header(('VM Name', 'State', 'Node'))
 
-        for vm_object in self.getAllVirtualMachines():
+        for vm_object in sorted(self.getAllVirtualMachines(), key=lambda vm: vm.name):
             table.add_row((vm_object.get_name(), vm_object._getPowerState().name,
                            vm_object.getNode() or 'Unregistered'))
         table_output = table.draw()
