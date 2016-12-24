@@ -346,7 +346,7 @@ class VirtualMachine(PyroObject):
         disk_objects = self.getHardDriveObjects()
         if len(disk_objects):
             table.add_row(('-- Disk ID --', '-- Disk Size --'))
-            for disk_object in disk_objects:
+            for disk_object in sorted(disk_objects, key=lambda disk: disk.disk_id):
                 table.add_row(
                     (str(disk_object.disk_id),
                      str(int(disk_object.getSize()) / 1000) + 'GB')
@@ -373,7 +373,7 @@ class VirtualMachine(PyroObject):
                 permission_group,
                 self
             )
-            users_string = ','.join(users)
+            users_string = ','.join(sorted(users))
             table.add_row((permission_group, users_string))
         return table.draw() + "\n" + warnings
 
