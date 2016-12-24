@@ -223,8 +223,8 @@ class VirtualMachine(PyroObject):
         """Update the ISO attached to the VM"""
         # Ensure user has permissions to modify VM
         self._get_registered_object('auth').assert_permission(
-                PERMISSIONS.MODIFY_VM, self
-            )
+            PERMISSIONS.MODIFY_VM, self
+        )
 
         if self.isRegisteredRemotely():
             return self.get_remote_object().update_iso(iso_name)
@@ -596,7 +596,6 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
         return self._update_modification_flags(*args, **kwargs)
-
 
     def _update_modification_flags(self, add_flags=None, remove_flags=None):
         """Update the modification flags for a VM"""
