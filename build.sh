@@ -18,7 +18,7 @@ VERSION=$(get_version)
 ARCH=all
 
 # Put version number into version file
-echo "VERSION = '$VERSION'" >> ./source/usr/lib/mcvirt/version.py
+echo "VERSION = '$VERSION'" >> ./source/usr/lib/python2.7/dist-packages/mcvirt/version.py
 
 # Build the man documentation
 python build_man.py $VERSION
@@ -27,4 +27,4 @@ python build_man.py $VERSION
 dpkg --build ./source ./mcvirt_${VERSION}_${ARCH}.deb
 
 # Remove old version number
-git checkout -- ./source/usr/lib/mcvirt/version.py
+git checkout -- ./source/usr/lib/python2.7/dist-packages/mcvirt/version.py
