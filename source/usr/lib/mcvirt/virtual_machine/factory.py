@@ -164,10 +164,15 @@ class Factory(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
-    def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
-                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-                hard_drive_driver=None, graphics_driver=None, modification_flags=[]):
+    def _create(self, name, cpu_cores, memory_allocation, hard_drives=None,
+                network_interfaces=None, node=None, available_nodes=None, storage_type=None,
+                hard_drive_driver=None, graphics_driver=None, modification_flags=None):
         """Create a VM and returns the virtual_machine object for it"""
+        network_interfaces = [] if network_interfaces is None else network_interfaces
+        hard_drives = [] if hard_drives is None else hard_drives
+        available_nodes = [] if available_nodes is None else available_nodes
+        modification_flags = [] if modification_flags is None else modification_flags
+
         self.checkName(name)
         ArgumentValidator.validate_positive_integer(cpu_cores)
         ArgumentValidator.validate_positive_integer(memory_allocation)
