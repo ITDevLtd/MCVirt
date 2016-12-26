@@ -87,9 +87,9 @@ class Factory(PyroObject):
         return Factory.CACHED_OBJECTS[vm_name]
 
     @Expose()
-    def getAllVirtualMachines(self):
+    def getAllVirtualMachines(self, node=None):
         """Return objects for all virtual machines"""
-        return [self.getVirtualMachineByName(vm_name) for vm_name in self.getAllVmNames()]
+        return [self.getVirtualMachineByName(vm_name) for vm_name in self.getAllVmNames(node=node)]
 
     @Expose()
     def getAllVmNames(self, node=None):

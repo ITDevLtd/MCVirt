@@ -624,6 +624,12 @@ class MCVirtTypeError(MCVirtException):
     pass
 
 
+class UsbDeviceAttachedToVirtualMachine(MCVirtException):
+    """The USB device is already attached to a virtual machine"""
+
+    pass
+
+
 class UnknownLdapError(MCVirtException):
     """An unknown LDAP error has occurred"""
 
