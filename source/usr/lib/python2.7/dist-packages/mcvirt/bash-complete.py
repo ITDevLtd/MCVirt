@@ -18,11 +18,9 @@
 
 # Script to allow bash completion, which will not be run using sudo
 
-import sys
 import getpass
 import argcomplete
 
-sys.path.insert(0, '/usr/lib')
 from mcvirt.parser import Parser
 from mcvirt.auth.auth import Auth
 

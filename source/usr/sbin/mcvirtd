@@ -16,9 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import sys
-sys.path.insert(0, '/usr/lib')
-
 from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
 
 # Create RPC Daemo and start
