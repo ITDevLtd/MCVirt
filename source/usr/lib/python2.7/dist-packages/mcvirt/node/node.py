@@ -18,7 +18,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
-import psutil
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
@@ -54,7 +53,9 @@ class Node(PyroObject):
         return self._get_listen_ports(include_remote=False)
 
     def _get_listen_ports(self, include_remote=False):
-        ports = [con.laddr[1] for con in psutil.net_connections()]
+        with open('/proc/net/tcp', 'r') as fh:
+            net_tcp_contents = fh.read()
+        ports = [int(line.split()[1].split(':')[1], 16) for line in net_tcp_contents.strip().split('\n')[1:]]
         if include_remote:
             def remote_command(remote_object):
                 node_object = remote_object.get_connection('node')
