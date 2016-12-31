@@ -128,3 +128,7 @@ class VirtualMachineConfig(ConfigFile):
 
         if self._getVersion() < 9:
             config['uuid'] = None
+
+        if self._getVersion() < 10:
+            if 'volume_group' in config:
+                config['custom_volume_group'] = config['volume_group']

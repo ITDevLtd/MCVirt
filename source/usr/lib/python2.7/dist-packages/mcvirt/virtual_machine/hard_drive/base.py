@@ -63,11 +63,11 @@ class Base(PyroObject):
     SNAPSHOT_SUFFIX = '_snapshot'
     SNAPSHOT_SIZE = '500M'
 
-    def __init__(self, vm_object, volume_group=None, disk_id=None, driver=None):
+    def __init__(self, vm_object, custom_volume_group=None, disk_id=None, driver=None):
         """Set member variables"""
         self._disk_id = disk_id
         self._driver = driver
-        self._volume_group = volume_group
+        self._custom_volume_group = custom_volume_group
 
         self.vm_object = vm_object
 
@@ -79,7 +79,7 @@ class Base(PyroObject):
     @property
     def config_properties(self):
         """Return the disk object config items"""
-        return ['disk_id', 'driver', 'volume_group']
+        return ['disk_id', 'driver', 'custom_volume_group']
 
     def __setattr__(self, name, value):
         """Override setattr to ensure that the value of
@@ -91,8 +91,14 @@ class Base(PyroObject):
         return super(Base, self).__setattr__(name, value)
 
     @property
+    def custom_volume_group(self):
+        """Return the custom volume group, if sepcified"""
+        return self._custom_volume_group
+
+    @property
     def volume_group(self):
-        return self._volume_group if self._volume_group else MCVirtConfig().get_config()[
+        """Return the volume group for the storage, either custom or global"""
+        return self._custom_volume_group if self._custom_volume_group else MCVirtConfig().get_config()[
             'vm_storage_vg']
 
     @property
