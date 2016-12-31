@@ -124,13 +124,23 @@ class Factory(PyroObject):
         if include_cpu:
             headers.append('CPU')
         if include_disk:
-            headers.append('Total disk size')
+            headers.append('Total disk size (MiB)')
 
         table.header(tuple(headers))
 
         for vm_object in sorted(self.getAllVirtualMachines(), key=lambda vm: vm.name):
-            table.add_row((vm_object.get_name(), vm_object._getPowerState().name,
-                           vm_object.getNode() or 'Unregistered'))
+            vm_row = [vm_object.get_name(), vm_object._getPowerState().name,
+                           vm_object.getNode() or 'Unregistered']
+            if include_ram:
+                vm_row.append(str(int(vm_object.getRAM()) / 1024) + 'MB')
+            if include_cpu:
+                vm_row.append(vm_object.getCPU())
+            if include_disk:
+                hard_drive_size = 0
+                for disk_object in vm_object.getHardDriveObjects():
+                    hard_drive_size += disk_object.getSize()
+                vm_row.append(hard_drive_size)
+            table.add_row(vm_row)
         table_output = table.draw()
         return table_output
 
