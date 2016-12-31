@@ -98,8 +98,10 @@ class Base(PyroObject):
     @property
     def volume_group(self):
         """Return the volume group for the storage, either custom or global"""
-        return self._custom_volume_group if self._custom_volume_group else MCVirtConfig().get_config()[
-            'vm_storage_vg']
+        if self._custom_volume_group:
+            return self._custom_volume_group
+        else:
+            return MCVirtConfig().get_config()['vm_storage_vg']
 
     @property
     def disk_id(self):

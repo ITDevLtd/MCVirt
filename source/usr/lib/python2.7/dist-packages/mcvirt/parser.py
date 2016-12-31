@@ -455,6 +455,12 @@ class Parser(object):
         # Get arguments for listing VMs
         self.list_parser = self.subparsers.add_parser('list', help='List VMs present on host',
                                                       parents=[self.parent_parser])
+        self.list_parser.add_argument('--cpu', dest='include_cpu', help='Include CPU column',
+                                      action='store_true')
+        self.list_parser.add_argument('--memory', '--ram', dest='include_ram',
+                                      help='Include RAM column', action='store_true')
+        self.list_parser.add_argument('--disk-size', '--hdd', dest='include_disk',
+                                      help='Include HDD column', action='store_true')
 
         # Get arguments for cloning a VM
         self.clone_parser = self.subparsers.add_parser('clone', help='Clone a VM',
@@ -1326,7 +1332,9 @@ class Parser(object):
 
         elif action == 'list':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            self.print_status(vm_factory.listVms())
+            self.print_status(vm_factory.listVms(include_cpu=args.include_cpu,
+                                                 include_ram=args.include_ram,
+                                                 include_disk=args.include_disk))
 
         elif action == 'iso':
             iso_factory = rpc.get_connection('iso_factory')
