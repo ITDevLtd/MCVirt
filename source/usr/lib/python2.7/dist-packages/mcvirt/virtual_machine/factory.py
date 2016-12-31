@@ -114,11 +114,19 @@ class Factory(PyroObject):
             return cluster.run_remote_command(callback_method=remote_command, nodes=[node])[node]
 
     @Expose()
-    def listVms(self):
+    def listVms(self, include_ram=False, include_cpu=False, include_disk=False):
         """Lists the VMs that are currently on the host"""
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('VM Name', 'State', 'Node'))
+        headers = ['VM Name', 'State', 'Node']
+        if include_ram:
+            headers.append('RAM Allocation')
+        if include_cpu:
+            headers.append('CPU')
+        if include_disk:
+            headers.append('Total disk size')
+
+        table.header(tuple(headers))
 
         for vm_object in sorted(self.getAllVirtualMachines(), key=lambda vm: vm.name):
             table.add_row((vm_object.get_name(), vm_object._getPowerState().name,
@@ -256,8 +264,10 @@ class Factory(PyroObject):
         if self._is_cluster_master:
             hard_drive_factory = self._get_registered_object('hard_drive_factory')
             for hard_drive_size in hard_drives:
-                remote_nodes = [node for node in available_nodes if node != get_hostname()]
-                hard_drive_factory.ensure_hdd_valid(hard_drive_size, storage_type, remote_nodes)
+                hard_drive_factory.ensure_hdd_valid(
+                    hard_drive_size, storage_type,
+                    [node_itx for node_itx in available_nodes if node_itx != get_hostname()]
+                )
 
         # Create directory for VM
         makedirs(VirtualMachine._get_vm_dir(name))
