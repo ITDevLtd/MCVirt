@@ -98,6 +98,12 @@ class Parser(object):
         self.reset_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
                                        help='Names of VM')
 
+        # Add arguments for shutting down a VM
+        self.shutdown_parser = self.subparsers.add_parser('shutdown', help='Shutdown VM',
+                                                          parents=[self.parent_parser])
+        self.shutdown_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
+                                          help='Names of VMs')
+
         # Add arguments for fixing deadlock on a vm
         self.method_lock_parser = self.subparsers.add_parser(
             'clear-method-lock',
@@ -919,6 +925,18 @@ class Parser(object):
                     self.print_status('Successfully reset VM %s' % vm_name)
                 except Exception:
                     self.print_status('Error while resetting VM %s' % vm_name)
+                    raise
+
+        elif action == 'shutdown':
+            vm_factory = rpc.get_connection('virtual_machine_factory')
+            for vm_name in args.vm_names:
+                try:
+                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
+                    rpc.annotate_object(vm_object)
+                    vm_object.shutdown()
+                    self.print_status('Successfully shutting down VM %s' % vm_name)
+                except Exception:
+                    self.print_status('Error while initiating shutdown of VM %s:' % vm_name)
                     raise
 
         elif action == 'clear-method-lock':

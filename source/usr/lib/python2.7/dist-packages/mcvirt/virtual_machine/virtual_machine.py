@@ -160,6 +160,34 @@ class VirtualMachine(PyroObject):
             )
 
     @Expose(locking=True)
+    def shutdown(self):
+        """Shuts down the VM the VM"""
+        # Check the user has permission to start/stop VMs
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.CHANGE_VM_POWER_STATE,
+            self
+        )
+
+        # Determine if VM is registered on the local machine
+        if self.isRegisteredLocally():
+            # Determine if VM is running
+            if self._getPowerState() is PowerStates.RUNNING:
+                try:
+                    # Shutdown the VM
+                    self._getLibvirtDomainObject().shutdown()
+                except Exception, e:
+                    raise LibvirtException('Failed to stop VM: %s' % e)
+            else:
+                raise VmAlreadyStoppedException('The VM is already shutdown')
+        elif not self._cluster_disabled and self.isRegisteredRemotely():
+            remote_vm = self.get_remote_object()
+            remote_vm.shutdown()
+        else:
+            raise VmRegisteredElsewhereException(
+                'VM registered elsewhere and cluster is not initialised'
+            )
+
+    @Expose(locking=True)
     def start(self, iso_name=None):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
