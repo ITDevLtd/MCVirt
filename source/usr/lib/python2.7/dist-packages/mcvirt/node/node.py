@@ -18,6 +18,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import Pyro4
+import psutil
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
@@ -47,6 +48,20 @@ class Node(PyroObject):
         mcvirt_config.update_config(update_config,
                                     'Set virtual machine storage volume group to %s' %
                                     volume_group)
+
+    @Expose()
+    def get_listen_ports(self):
+        return self._get_listen_ports(include_remote=False)
+
+    def _get_listen_ports(self, include_remote=False):
+        ports = [con.laddr[1] for con in psutil.net_connections()]
+        if include_remote:
+            def remote_command(remote_object):
+                node_object = remote_object.get_connection('node')
+                ports.extend(node_object.get_listen_ports())
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(remote_command)
+        return ports
 
     @Expose(locking=True)
     def set_cluster_ip_address(self, ip_address):

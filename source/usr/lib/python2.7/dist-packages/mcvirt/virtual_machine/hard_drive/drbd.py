@@ -227,8 +227,8 @@ class Drbd(Base):
         """Set member variables"""
         # Get Drbde configuration from disk configuration
         self._sync_state = True
-        self._drbd_port = None
-        self._drbd_minor = None
+        self._drbd_port = drbd_port
+        self._drbd_minor = drbd_minor
         super(Drbd, self).__init__(*args, **kwargs)
 
     @property
@@ -303,6 +303,9 @@ class Drbd(Base):
             raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
 
         remote_nodes = self.vm_object._get_remote_nodes()
+
+        # Ensure DRBD port is determined before obtaining a remote object
+        self.drbd_port
 
         # Keep track of progress, so the storage stack can be torn down if something goes wrong
         progress = Drbd.CREATE_PROGRESS.START
@@ -1091,12 +1094,14 @@ class Drbd(Base):
         node_drbd = self._get_registered_object('node_drbd')
         used_ports = node_drbd.get_used_drbd_ports()
         available_port = None
+        node_object = self._get_registered_object('node')
+        listening_ports = node_object._get_listen_ports(include_remote=True)
 
         # Determine a free port
         test_port = self.INITIAL_PORT
 
         while (available_port is None):
-            if test_port in used_ports:
+            if test_port in used_ports or test_port in listening_ports:
                 test_port += 1
             else:
                 available_port = test_port
