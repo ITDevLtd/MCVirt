@@ -49,6 +49,8 @@ Reset VM
 * Only a super user can reset a VM. Normal users can stop and start the VM.
 
 
+For information about attaching ISOs, see `Modifying VMs <ModifyingVMs.rst>`_
+
 
 Get VM information
 ------------------
