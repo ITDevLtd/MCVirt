@@ -55,7 +55,8 @@ class Node(PyroObject):
     def _get_listen_ports(self, include_remote=False):
         with open('/proc/net/tcp', 'r') as fh:
             net_tcp_contents = fh.read()
-        ports = [int(line.split()[1].split(':')[1], 16) for line in net_tcp_contents.strip().split('\n')[1:]]
+        ports = [int(line.split()[1].split(':')[1], 16)
+                 for line in net_tcp_contents.strip().split('\n')[1:]]
         if include_remote:
             def remote_command(remote_object):
                 node_object = remote_object.get_connection('node')

@@ -130,7 +130,7 @@ class Factory(PyroObject):
 
         for vm_object in sorted(self.getAllVirtualMachines(), key=lambda vm: vm.name):
             vm_row = [vm_object.get_name(), vm_object._getPowerState().name,
-                           vm_object.getNode() or 'Unregistered']
+                      vm_object.getNode() or 'Unregistered']
             if include_ram:
                 vm_row.append(str(int(vm_object.getRAM()) / 1024) + 'MB')
             if include_cpu:
