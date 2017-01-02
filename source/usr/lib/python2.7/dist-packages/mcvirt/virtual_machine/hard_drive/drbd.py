@@ -1101,6 +1101,7 @@ class Drbd(Base):
         test_port = self.INITIAL_PORT
 
         while (available_port is None):
+
             if test_port in used_ports or test_port in listening_ports:
                 test_port += 1
             else:
