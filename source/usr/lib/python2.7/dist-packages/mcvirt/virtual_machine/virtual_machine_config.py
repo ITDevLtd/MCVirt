@@ -132,3 +132,4 @@ class VirtualMachineConfig(ConfigFile):
         if self._getVersion() < 10:
             if 'volume_group' in config:
                 config['custom_volume_group'] = config['volume_group']
+                del(config['volume_group'])
