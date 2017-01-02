@@ -17,8 +17,6 @@
 
 import sys
 
-sys.path.insert(0, '/usr/lib')
-
 from mcvirt.test.unit_test_bootstrap import UnitTestBootstrap
 
 if __name__ == '__main__':

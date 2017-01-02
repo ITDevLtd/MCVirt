@@ -20,8 +20,6 @@ import sys
 import os
 import json
 
-sys.path.insert(0, '/usr/lib')
-
 from mcvirt.client.rpc import Connection  # noqa
 from mcvirt.constants import DirectoryLocation  # noqa
 

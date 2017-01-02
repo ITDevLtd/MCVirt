@@ -2,7 +2,29 @@
 Modifying VMs
 =============
 
+Attaching ISO
+`````````````````````````
 
+* ISO images can be attached to the cdrom drive of a VM whilst booting the VM
+* Use the MCVirt utility to start the VM, using the '--iso' parameter to define the ISO image to be attached to the VM::
+
+    mcvirt start <VM Name> --iso <Name of ISO file>
+
+
+ISO Management
+``````````````
+
+ISOs are stored on a per-node basis.
+
+The ISOs present on the local node can be determined by::
+
+    mcvirt iso list
+
+
+ISOs can be added using either of the following::
+
+    mcvirt iso add --from-url http://example.com/example.iso
+    mcvirt iso add --from-path ./local.iso
 
 
 Increase Disk Size
@@ -77,17 +99,6 @@ Add/Remove Network Adapter
 
 * The device will altered the next time the VM is booted. If the VM is running, it will need to be powered off and started again.
 
-
-
-Attaching ISO
-`````````````````````````
-
-* ISO images can be attached to the cdrom drive of a VM whilst booting the VM
-* Use the MCVirt utility to start the VM, using the '--iso' parameter to define the ISO image to be attached to the VM::
-
-    mcvirt start <VM Name> --iso <Name of ISO file>
-
-* The ISO file must be stored within /var/lib/mcvirt/<hostname>/iso.
 
 
 VM Locking

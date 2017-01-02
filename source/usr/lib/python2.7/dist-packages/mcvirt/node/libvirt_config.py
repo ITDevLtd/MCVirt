@@ -31,7 +31,7 @@ class LibvirtConfig(PyroObject):
     """Provides configuration for libvirtd"""
 
     CONFIG_FILE = '/etc/libvirt/libvirtd.conf'
-    CONFIG_TEMPLATE = '/usr/lib/mcvirt/templates/libvirtd.conf'
+    CONFIG_TEMPLATE = '/usr/lib/python2.7/dist-packages/mcvirt/templates/libvirtd.conf'
     DEFAULT_FILE = '/etc/default/%s'
     DEFAULT_CONFIG = """
 # Defaults for libvirtd initscript (/etc/init.d/libvirtd)

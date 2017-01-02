@@ -54,6 +54,10 @@ class Parser(object):
                                         help='MCVirt username')
         self.parent_parser.add_argument('--password', dest='password',
                                         help='MCVirt password')
+        self.parent_parser.add_argument('--cache-credentials', dest='cache_credentials',
+                                        action='store_true',
+                                        help=('Store the session ID, so it can be used for '
+                                              'multiple MCVirt calls.'))
         self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
                                         help='Ignores nodes that are inaccessible',
                                         action='store_true')
@@ -93,6 +97,12 @@ class Parser(object):
                                                        parents=[self.parent_parser])
         self.reset_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
                                        help='Names of VM')
+
+        # Add arguments for shutting down a VM
+        self.shutdown_parser = self.subparsers.add_parser('shutdown', help='Shutdown VM',
+                                                          parents=[self.parent_parser])
+        self.shutdown_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
+                                          help='Names of VMs')
 
         # Add arguments for fixing deadlock on a vm
         self.method_lock_parser = self.subparsers.add_parser(
@@ -451,6 +461,12 @@ class Parser(object):
         # Get arguments for listing VMs
         self.list_parser = self.subparsers.add_parser('list', help='List VMs present on host',
                                                       parents=[self.parent_parser])
+        self.list_parser.add_argument('--cpu', dest='include_cpu', help='Include CPU column',
+                                      action='store_true')
+        self.list_parser.add_argument('--memory', '--ram', dest='include_ram',
+                                      help='Include RAM column', action='store_true')
+        self.list_parser.add_argument('--disk-size', '--hdd', dest='include_disk',
+                                      help='Include HDD column', action='store_true')
 
         # Get arguments for cloning a VM
         self.clone_parser = self.subparsers.add_parser('clone', help='Clone a VM',
@@ -816,6 +832,7 @@ class Parser(object):
             ignore_cluster = True
 
         rpc = None
+        auth_cache_file = os.getenv('HOME') + '/' + self.AUTH_FILE
         if self.SESSION_ID and self.USERNAME:
             rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID,
                              ignore_cluster=ignore_cluster)
@@ -826,9 +843,9 @@ class Parser(object):
                 # Try logging in with saved session
                 auth_session = None
                 try:
-                    with open(os.getenv('HOME') + '/' + self.AUTH_FILE, 'r') as f:
-                        auth_username = f.readline()
-                        auth_session = f.readline()
+                    with open(auth_cache_file, 'r') as f:
+                        auth_username = f.readline().strip()
+                        auth_session = f.readline().strip()
                 except IOError:
                     pass
 
@@ -840,6 +857,10 @@ class Parser(object):
                         self.USERNAME = rpc.username
                     except AuthenticationError:
                         self.print_status('Authentication error occured when using saved session.')
+                        try:
+                            os.remove(auth_cache_file)
+                        except:
+                            pass
                         rpc = None
 
             if not rpc:
@@ -859,9 +880,12 @@ class Parser(object):
                 self.USERNAME = rpc.username
 
         # If successfully authenticated then store session ID and username in auth file
-        with open(os.getenv('HOME') + '/' + self.AUTH_FILE, 'w') as f:
-            f.write(rpc.username)
-            f.write(rpc.session_id)
+        if args.cache_credentials:
+            try:
+                with open(auth_cache_file, 'w') as f:
+                    f.write("%s\n%s" % (rpc.username, rpc.session_id))
+            except:
+                pass
 
         if args.ignore_drbd:
             rpc.ignore_drbd()
@@ -901,6 +925,18 @@ class Parser(object):
                     self.print_status('Successfully reset VM %s' % vm_name)
                 except Exception:
                     self.print_status('Error while resetting VM %s' % vm_name)
+                    raise
+
+        elif action == 'shutdown':
+            vm_factory = rpc.get_connection('virtual_machine_factory')
+            for vm_name in args.vm_names:
+                try:
+                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
+                    rpc.annotate_object(vm_object)
+                    vm_object.shutdown()
+                    self.print_status('Successfully shutting down VM %s' % vm_name)
+                except Exception:
+                    self.print_status('Error while initiating shutdown of VM %s:' % vm_name)
                     raise
 
         elif action == 'clear-method-lock':
@@ -1314,7 +1350,9 @@ class Parser(object):
 
         elif action == 'list':
             vm_factory = rpc.get_connection('virtual_machine_factory')
-            self.print_status(vm_factory.listVms())
+            self.print_status(vm_factory.listVms(include_cpu=args.include_cpu,
+                                                 include_ram=args.include_ram,
+                                                 include_disk=args.include_disk))
 
         elif action == 'iso':
             iso_factory = rpc.get_connection('iso_factory')

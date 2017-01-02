@@ -4,4 +4,4 @@
 pep8
 
 # Run pylint checks
-pylint --rcfile=setup.cfg source/usr/lib/mcvirt
+pylint --rcfile=setup.cfg source/usr/lib/python2.7/dist-packages/mcvirt

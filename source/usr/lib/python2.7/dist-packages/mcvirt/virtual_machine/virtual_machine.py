@@ -160,6 +160,34 @@ class VirtualMachine(PyroObject):
             )
 
     @Expose(locking=True)
+    def shutdown(self):
+        """Shuts down the VM the VM"""
+        # Check the user has permission to start/stop VMs
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.CHANGE_VM_POWER_STATE,
+            self
+        )
+
+        # Determine if VM is registered on the local machine
+        if self.isRegisteredLocally():
+            # Determine if VM is running
+            if self._getPowerState() is PowerStates.RUNNING:
+                try:
+                    # Shutdown the VM
+                    self._getLibvirtDomainObject().shutdown()
+                except Exception, e:
+                    raise LibvirtException('Failed to stop VM: %s' % e)
+            else:
+                raise VmAlreadyStoppedException('The VM is already shutdown')
+        elif not self._cluster_disabled and self.isRegisteredRemotely():
+            remote_vm = self.get_remote_object()
+            remote_vm.shutdown()
+        else:
+            raise VmRegisteredElsewhereException(
+                'VM registered elsewhere and cluster is not initialised'
+            )
+
+    @Expose(locking=True)
     def start(self, iso_name=None):
         """Starts the VM"""
         # Check the user has permission to start/stop VMs
@@ -167,6 +195,12 @@ class VirtualMachine(PyroObject):
             PERMISSIONS.CHANGE_VM_POWER_STATE,
             self
         )
+
+        # Is an iso is being attached, ensure the user has permissions to modify the VM
+        if iso_name:
+            self._get_registered_object('auth').assert_permission(
+                PERMISSIONS.MODIFY_VM, self
+            )
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -220,6 +254,11 @@ class VirtualMachine(PyroObject):
     @Expose(locking=True)
     def update_iso(self, iso_name=None):
         """Update the ISO attached to the VM"""
+        # Ensure user has permissions to modify VM
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self
+        )
+
         if self.isRegisteredRemotely():
             return self.get_remote_object().update_iso(iso_name)
 
@@ -340,7 +379,7 @@ class VirtualMachine(PyroObject):
         disk_objects = self.getHardDriveObjects()
         if len(disk_objects):
             table.add_row(('-- Disk ID --', '-- Disk Size --'))
-            for disk_object in disk_objects:
+            for disk_object in sorted(disk_objects, key=lambda disk: disk.disk_id):
                 table.add_row(
                     (str(disk_object.disk_id),
                      str(int(disk_object.getSize()) / 1000) + 'GB')
@@ -367,7 +406,7 @@ class VirtualMachine(PyroObject):
                 permission_group,
                 self
             )
-            users_string = ','.join(users)
+            users_string = ','.join(sorted(users))
             table.add_row((permission_group, users_string))
         return table.draw() + "\n" + warnings
 
@@ -584,11 +623,20 @@ class VirtualMachine(PyroObject):
             raise InvalidModificationFlagException('Invalid modification flag \'%s\'' % flag)
 
     @Expose(locking=True)
-    def update_modification_flags(self, add_flags=[], remove_flags=[]):
-        """Updates the modification flags for a VM"""
+    def update_modification_flags(self, *args, **kwargs):
+        """Update the modification flags for a VM"""
 
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+        return self._update_modification_flags(*args, **kwargs)
+
+    def _update_modification_flags(self, add_flags=None, remove_flags=None):
+        """Update the modification flags for a VM"""
+
+        if add_flags is None:
+            add_flags = []
+        if remove_flags is None:
+            remove_flags = []
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object()

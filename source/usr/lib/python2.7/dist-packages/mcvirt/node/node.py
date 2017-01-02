@@ -48,6 +48,23 @@ class Node(PyroObject):
                                     'Set virtual machine storage volume group to %s' %
                                     volume_group)
 
+    @Expose()
+    def get_listen_ports(self):
+        return self._get_listen_ports(include_remote=False)
+
+    def _get_listen_ports(self, include_remote=False):
+        with open('/proc/net/tcp', 'r') as fh:
+            net_tcp_contents = fh.read()
+        ports = [int(line.split()[1].split(':')[1], 16)
+                 for line in net_tcp_contents.strip().split('\n')[1:]]
+        if include_remote:
+            def remote_command(remote_object):
+                node_object = remote_object.get_connection('node')
+                ports.extend(node_object.get_listen_ports())
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(remote_command)
+        return ports
+
     @Expose(locking=True)
     def set_cluster_ip_address(self, ip_address):
         """Update the cluster IP address for the node."""

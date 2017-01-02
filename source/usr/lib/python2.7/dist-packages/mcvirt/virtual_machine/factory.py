@@ -114,15 +114,33 @@ class Factory(PyroObject):
             return cluster.run_remote_command(callback_method=remote_command, nodes=[node])[node]
 
     @Expose()
-    def listVms(self):
+    def listVms(self, include_ram=False, include_cpu=False, include_disk=False):
         """Lists the VMs that are currently on the host"""
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('VM Name', 'State', 'Node'))
+        headers = ['VM Name', 'State', 'Node']
+        if include_ram:
+            headers.append('RAM Allocation')
+        if include_cpu:
+            headers.append('CPU')
+        if include_disk:
+            headers.append('Total disk size (MiB)')
 
-        for vm_object in self.getAllVirtualMachines():
-            table.add_row((vm_object.get_name(), vm_object._getPowerState().name,
-                           vm_object.getNode() or 'Unregistered'))
+        table.header(tuple(headers))
+
+        for vm_object in sorted(self.getAllVirtualMachines(), key=lambda vm: vm.name):
+            vm_row = [vm_object.get_name(), vm_object._getPowerState().name,
+                      vm_object.getNode() or 'Unregistered']
+            if include_ram:
+                vm_row.append(str(int(vm_object.getRAM()) / 1024) + 'MB')
+            if include_cpu:
+                vm_row.append(vm_object.getCPU())
+            if include_disk:
+                hard_drive_size = 0
+                for disk_object in vm_object.getHardDriveObjects():
+                    hard_drive_size += disk_object.getSize()
+                vm_row.append(hard_drive_size)
+            table.add_row(vm_row)
         table_output = table.draw()
         return table_output
 
@@ -164,10 +182,15 @@ class Factory(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
-    def _create(self, name, cpu_cores, memory_allocation, hard_drives=[],
-                network_interfaces=[], node=None, available_nodes=[], storage_type=None,
-                hard_drive_driver=None, graphics_driver=None, modification_flags=[]):
+    def _create(self, name, cpu_cores, memory_allocation, hard_drives=None,
+                network_interfaces=None, node=None, available_nodes=None, storage_type=None,
+                hard_drive_driver=None, graphics_driver=None, modification_flags=None):
         """Create a VM and returns the virtual_machine object for it"""
+        network_interfaces = [] if network_interfaces is None else network_interfaces
+        hard_drives = [] if hard_drives is None else hard_drives
+        available_nodes = [] if available_nodes is None else available_nodes
+        modification_flags = [] if modification_flags is None else modification_flags
+
         self.checkName(name)
         ArgumentValidator.validate_positive_integer(cpu_cores)
         ArgumentValidator.validate_positive_integer(memory_allocation)
@@ -251,8 +274,10 @@ class Factory(PyroObject):
         if self._is_cluster_master:
             hard_drive_factory = self._get_registered_object('hard_drive_factory')
             for hard_drive_size in hard_drives:
-                remote_nodes = [node for node in available_nodes if node != get_hostname()]
-                hard_drive_factory.ensure_hdd_valid(hard_drive_size, storage_type, remote_nodes)
+                hard_drive_factory.ensure_hdd_valid(
+                    hard_drive_size, storage_type,
+                    [node_itx for node_itx in available_nodes if node_itx != get_hostname()]
+                )
 
         # Create directory for VM
         makedirs(VirtualMachine._get_vm_dir(name))
@@ -313,6 +338,6 @@ class Factory(PyroObject):
                     network_adapter_factory.create(vm_object, network_object)
 
             # Add modification flags
-            vm_object.update_modification_flags(add_flags=modification_flags)
+            vm_object._update_modification_flags(add_flags=modification_flags)
 
         return vm_object

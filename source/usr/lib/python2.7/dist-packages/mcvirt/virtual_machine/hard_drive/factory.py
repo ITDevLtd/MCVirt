@@ -52,10 +52,16 @@ class Factory(PyroObject):
             del(config['storage_type'])
         storage_type_key = storage_type or ''
         cache_key = (vm_object.get_name(), disk_id, storage_type_key)
+        disable_cache = (len(config))
+        if disable_cache:
+            if cache_key in Factory.CACHED_OBJECTS:
+                del(Factory.CACHED_OBJECTS[cache_key])
         if cache_key not in Factory.CACHED_OBJECTS:
             hard_drive_object = self.getClass(storage_type)(
                 vm_object=vm_object, disk_id=disk_id, **config)
             self._register_object(hard_drive_object)
+            if disable_cache:
+                return hard_drive_object
             Factory.CACHED_OBJECTS[cache_key] = hard_drive_object
 
         return Factory.CACHED_OBJECTS[cache_key]
