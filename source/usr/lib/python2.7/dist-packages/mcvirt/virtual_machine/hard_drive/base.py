@@ -213,7 +213,7 @@ class Base(PyroObject):
 
         cache_key = (self.vm_object.get_name(), self.disk_id, self.get_type())
 
-        self.ensureUnlocked()
+        self.vm_object.ensureUnlocked()
         self.vm_object.ensure_stopped()
 
         if self.vm_object.isRegisteredLocally():
