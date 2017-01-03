@@ -239,9 +239,10 @@ class Auth(PyroObject):
         assert permission_group in PERMISSION_GROUPS.keys()
         assert isinstance(self._convert_remote_object(user_object),
                           self._get_registered_object('user_factory').USER_CLASS)
-        assert isinstance(self._convert_remote_object(vm_object),
-                          self._get_registered_object(
-                              'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
+        if vm_object:
+            assert isinstance(self._convert_remote_object(vm_object),
+                              self._get_registered_object(
+                                  'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
         ArgumentValidator.validate_boolean(ignore_duplicate)
 
         # Check if user running script is able to add users to permission group
