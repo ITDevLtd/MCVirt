@@ -294,6 +294,8 @@ class Parser(object):
         )
         self.update_parser.add_argument('--add-disk', dest='add_disk', metavar='Add Disk',
                                         type=int, help='Add disk to the VM (size in MB)')
+        self.update_parser.add_argument('--delete-disk', dest='delete_disk', metavar='Disk ID',
+                                        type=int, help='Remove a hard drive from a VM')
         self.update_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type', type=str,
                                         default=None, choices=['Local', 'Drbd'])
@@ -1027,6 +1029,11 @@ class Parser(object):
                 hard_drive_factory.create(vm_object, size=args.add_disk,
                                           storage_type=args.storage_type,
                                           driver=args.hard_disk_driver)
+            if args.delete_disk:
+                hard_drive_factory = rpc.get_connection('hard_drive_factory')
+                hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+                rpc.annotate_object(hard_drive_object)
+                hard_drive_object.increaseSize(args.delete())
 
             if args.increase_disk and args.disk_id:
                 hard_drive_factory = rpc.get_connection('hard_drive_factory')

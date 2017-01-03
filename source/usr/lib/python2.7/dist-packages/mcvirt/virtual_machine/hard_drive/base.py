@@ -200,11 +200,21 @@ class Base(PyroObject):
         """Return the type of storage for the hard drive"""
         return self.__class__.__name__
 
+    @Expose(locking=True)
     def delete(self):
         """Delete the logical volume for the disk"""
         self._ensure_exists()
 
+        # Ensure that the user has permissions to add create storage
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM,
+            self.vm_object
+        )
+
         cache_key = (self.vm_object.get_name(), self.disk_id, self.get_type())
+
+        self.ensureUnlocked()
+        self.vm_object.ensure_stopped()
 
         if self.vm_object.isRegisteredLocally():
             # Remove from LibVirt, if registered, so that libvirt doesn't
