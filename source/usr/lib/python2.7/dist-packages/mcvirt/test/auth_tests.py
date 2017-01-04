@@ -128,7 +128,7 @@ class AuthTests(TestBase):
         # Ensure VM exists
         self.assertTrue(
             self.test_user.get_username() in self.auth.get_users_in_permission_group(
-                'user', test_vm_object if global_permission else None)
+                'user', test_vm_object if (not global_permission) else None)
         )
 
         # Ensure that user can now start the VM
@@ -153,7 +153,7 @@ class AuthTests(TestBase):
         # Assert that user is no longer part of the group
         self.assertFalse(
             self.test_user.get_username() in self.auth.get_users_in_permission_group(
-                'user', test_vm_object if global_permission else None)
+                'user', test_vm_object if (not global_permission) else None)
         )
 
         # Assert that the test user cannot stop the test VM
