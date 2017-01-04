@@ -925,6 +925,11 @@ class Drbd(Base):
             PERMISSIONS.MANAGE_DRBD, self.vm_object
         )
 
+        if get_hostname() not in self.vm_object.getAvailableNodes():
+            remote_object = self.get_remote_object(
+                node_name=(self.vm_object.getNode() or self.vm_object.getAvailableNodes()[0]))
+            return remote_object.verify()
+
         # Check Drbd state of disk
         if self._drbdGetConnectionState() != DrbdConnectionState.CONNECTED:
             raise DrbdStateException(
@@ -968,6 +973,11 @@ class Drbd(Base):
         # Ensure user has privileges to create a Drbd volume
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.vm_object)
+
+        if get_hostname() not in self.vm_object.getAvailableNodes():
+            remote_object = self.get_remote_object(
+                node_name=(self.vm_object.getNode() or self.vm_object.getAvailableNodes()[0]))
+            return remote_object.resync(source_node=source_node, auto_determine=auto_determine)
 
         if source_node:
             if source_node not in self.vm_object.getAvailableNodes():
