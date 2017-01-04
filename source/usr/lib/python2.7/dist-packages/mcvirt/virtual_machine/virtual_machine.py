@@ -187,6 +187,11 @@ class VirtualMachine(PyroObject):
                 'VM registered elsewhere and cluster is not initialised'
             )
 
+    def ensure_stopped(self):
+        """Ensure VM is stopped"""
+        if self._getPowerState() is not PowerStates.STOPPED:
+            raise VmAlreadyStartedException('VM is not stopped')
+
     @Expose(locking=True)
     def start(self, iso_name=None):
         """Starts the VM"""

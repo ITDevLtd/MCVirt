@@ -84,7 +84,8 @@ class AuthTests(TestBase):
     def suite():
         """Returns a test suite of the Auth tests"""
         suite = unittest.TestSuite()
-        suite.addTest(AuthTests('test_add_remove_user_permission'))
+        suite.addTest(AuthTests('test_add_remove_user_vm_permission'))
+        suite.addTest(AuthTests('test_add_remove_user_global_permission'))
         suite.addTest(AuthTests('test_add_delete_superuser'))
         suite.addTest(AuthTests('test_attempt_add_superuser_to_vm'))
         suite.addTest(AuthTests('test_add_duplicate_superuser'))
@@ -94,10 +95,20 @@ class AuthTests(TestBase):
         suite.addTest(AuthTests('test_remove_user_account'))
         return suite
 
-    def test_add_remove_user_permission(self):
+    def test_add_remove_user_vm_permission(self):
+        """Permission permission tests using VM role"""
+        self.test_add_remove_user_permission(global_permission=False)
+
+    def test_add_remove_user_global_permission(self):
+        """Permission permission tests using global role"""
+        self.test_add_remove_user_permission(global_permission=True)
+
+    def test_add_remove_user_permission(self, global_permission):
         """Add a user to a virtual machine, using the argument parser"""
         # Ensure VM does not exist
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        permission_string = '--global' if global_permission else test_vm_object.get_name()
 
         # Ensure user is not in 'user' group
         self.assertFalse(
@@ -112,12 +123,12 @@ class AuthTests(TestBase):
 
         # Add user to 'user' group using parser
         self.parser.parse_arguments('permission --add-user %s %s' % (self.test_user.get_username(),
-                                                                     test_vm_object.get_name()))
+                                                                     permission_string))
 
         # Ensure VM exists
         self.assertTrue(
             self.test_user.get_username() in self.auth.get_users_in_permission_group(
-                'user', test_vm_object)
+                'user', test_vm_object if (not global_permission) else None)
         )
 
         # Ensure that user can now start the VM
@@ -132,17 +143,17 @@ class AuthTests(TestBase):
             # Add user to 'user' group using parser
             self.parser.parse_arguments('permission --add-user %s %s' %
                                         (self.test_user.get_username(),
-                                         test_vm_object.get_name()))
+                                         permission_string))
 
         # Remove user to 'user' group using parser
         self.parser.parse_arguments('permission --delete-user %s %s' %
                                     (self.test_user.get_username(),
-                                     test_vm_object.get_name()))
+                                     permission_string))
 
         # Assert that user is no longer part of the group
         self.assertFalse(
             self.test_user.get_username() in self.auth.get_users_in_permission_group(
-                'user', test_vm_object)
+                'user', test_vm_object if (not global_permission) else None)
         )
 
         # Assert that the test user cannot stop the test VM
