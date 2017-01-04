@@ -303,9 +303,10 @@ class Auth(PyroObject):
         assert permission_group in PERMISSION_GROUPS.keys()
         assert isinstance(self._convert_remote_object(user_object),
                           self._get_registered_object('user_factory').USER_CLASS)
-        assert isinstance(self._convert_remote_object(vm_object),
-                          self._get_registered_object(
-                              'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
+        if vm_object:
+            assert isinstance(self._convert_remote_object(vm_object),
+                              self._get_registered_object(
+                                  'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
         # Check if user running script is able to remove users to permission group
         if not (self.is_superuser() or
                 (self.assert_permission(PERMISSIONS.MANAGE_VM_USERS, vm_object) and
