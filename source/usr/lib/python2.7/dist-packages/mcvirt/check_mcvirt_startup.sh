@@ -71,7 +71,7 @@ do
             exit 0
         else
             # Check to ensure nameserver is listening on port
-            /usr/bin/lsof -Pan -p $PID -i | grep 127.0.1.1:9090 >/dev/null 2>&1
+            /usr/bin/lsof -Pan -p $PID -i | grep :9090 >/dev/null 2>&1
             if [ "$?" == "0" ]
             then
                 exit 0
