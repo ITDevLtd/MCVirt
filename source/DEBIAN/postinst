@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Update rc so that the daemons start on startup
+update-rc.d mcvirt-ns defaults >/dev/null || exit $?
+update-rc.d mcvirtd defaults >/dev/null || exit $?
