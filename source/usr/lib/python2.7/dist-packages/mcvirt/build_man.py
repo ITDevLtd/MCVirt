@@ -13,6 +13,7 @@ import datetime
 import argparse
 
 from mcvirt.parser import Parser
+from mcvirt.version import VERSION
 
 AUTO_BUILD = True
 
@@ -198,10 +199,9 @@ if __name__ == '__main__':
     _parser = parser_obj.parser
     _today = datetime.date.today()
 
-    sections = {'authors': ("pwman3 was originally written by Ivan Kelly "
-                            "<ivan@ivankelly.net>.\n pwman3 is now maintained "
-                            "by Oz Nahum <nahumoz@gmail.com>."),
-                'distribution': ("The latest version of {} m")
+    sections = {'authors': ("MCVirt was built by and is currently maintained by "
+                            "Matt Comben <matthew@dockstudios.co.uk>."),
+                'distribution': ("The latest version of %s m" % VERSION)
                 }
     mpf = ManPageFormatter('mcvirt',
                            desc='MCVirt is a utility for managing virtual machines.',
