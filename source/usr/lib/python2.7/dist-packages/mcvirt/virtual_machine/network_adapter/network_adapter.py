@@ -92,6 +92,11 @@ class NetworkAdapter(PyroObject):
         interface_config = self.get_config()
         return interface_config['network']
 
+    def get_network_object(self):
+        """Return the network object for the connected network"""
+        return self._get_registered_object('network_factory').get_network_by_name(
+            self.getConnectedNetwork())
+
     @staticmethod
     def generateMacAddress():
         """Generates a random MAC address for new VM network interfaces"""

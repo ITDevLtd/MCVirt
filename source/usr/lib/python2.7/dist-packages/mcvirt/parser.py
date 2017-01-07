@@ -476,6 +476,9 @@ class Parser(object):
         self.clone_parser.add_argument('--template', dest='template', type=str,
                                        required=True, metavar='Parent VM',
                                        help='The name of the VM to clone from')
+        self.clone_parser.add_argument('--retain-mac-address',
+                                       help='Retain MAC address from clones',
+                                       dest='retain_mac', action='store_true')
         self.clone_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Get arguments for cloning a VM
@@ -485,6 +488,9 @@ class Parser(object):
         self.duplicate_parser.add_argument('--template', dest='template', metavar='Parent VM',
                                            type=str, required=True,
                                            help='The name of the VM to duplicate')
+        self.duplicate_parser.add_argument('--retain-mac-address',
+                                           help='Retain MAC address from clones',
+                                           dest='retain_mac', action='store_true')
         self.duplicate_parser.add_argument('vm_name', metavar='VM Name', type=str,
                                            help='Name of duplicate VM')
 
@@ -1347,13 +1353,13 @@ class Parser(object):
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.template)
             rpc.annotate_object(vm_object)
-            vm_object.clone(args.vm_name)
+            vm_object.clone(args.vm_name, retain_mac=args.retain_mac)
 
         elif action == 'duplicate':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.template)
             rpc.annotate_object(vm_object)
-            vm_object.duplicate(args.vm_name)
+            vm_object.duplicate(args.vm_name, retain_mac=args.retain_mac)
 
         elif action == 'list':
             vm_factory = rpc.get_connection('virtual_machine_factory')

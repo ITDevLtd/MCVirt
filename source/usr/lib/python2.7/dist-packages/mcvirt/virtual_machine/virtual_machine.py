@@ -1036,7 +1036,7 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['storage_type']
 
     @Expose(locking=True)
-    def clone(self, clone_vm_name):
+    def clone(self, clone_vm_name, retain_mac=False):
         """Clones a VM, creating an identical machine, using
         LVM snapshotting to duplicate the Hard disk. Drbd is not
         currently supported
@@ -1071,16 +1071,17 @@ class VirtualMachine(PyroObject):
             raise VmIsCloneException('Cannot clone from a clone VM')
 
         # Create new VM for clone, without hard disks
-        network_adapter_factory = self._get_registered_object('network_adapter_factory')
-        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
-        networks = []
-        for network_adapter in network_adapters:
-            networks.append(network_adapter.getConnectedNetwork())
         vm_factory = self._get_registered_object('virtual_machine_factory')
         new_vm_object = vm_factory._create(clone_vm_name, self.getCPU(),
-                                           self.getRAM(), [], networks,
+                                           self.getRAM(), [], [],
                                            available_nodes=self.getAvailableNodes(),
                                            node=self.getNode())
+
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
+        for network_adapter in network_adapters:
+            network_adapter_factory.create(new_vm_object, network_adapter.get_network_object(),
+                                           network_adapter.getMacAddress() if retain_mac else None)
 
         # Mark VM as being a clone and mark parent as being a clone
         def setCloneParent(vm_config):
@@ -1110,7 +1111,7 @@ class VirtualMachine(PyroObject):
         return new_vm_object
 
     @Expose(locking=True)
-    def duplicate(self, duplicate_vm_name):
+    def duplicate(self, duplicate_vm_name, retain_mac=False):
         """Duplicates a VM, creating an identical machine, making a
            copy of the storage"""
         ArgumentValidator.validate_hostname(duplicate_vm_name)
@@ -1130,16 +1131,17 @@ class VirtualMachine(PyroObject):
             raise VmAlreadyExistsException('VM already exists with name %s' % duplicate_vm_name)
 
         # Create new VM for clone, without hard disks
-        network_adapter_factory = self._get_registered_object('network_adapter_factory')
-        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
-        networks = []
-        for network_adapter in network_adapters:
-            networks.append(network_adapter.getConnectedNetwork())
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
         new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.getCPU(),
-                                                        self.getRAM(), [], networks,
+                                                        self.getRAM(), [], [],
                                                         available_nodes=self.getAvailableNodes(),
                                                         node=self.getNode())
+
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
+        for network_adapter in network_adapters:
+            network_adapter_factory.create(new_vm_object, network_adapter.get_network_object(),
+                                           network_adapter.getMacAddress() if retain_mac else None)
 
         # Set current user as an owner of the new VM, so that they have permission
         # to perform functions on the VM
