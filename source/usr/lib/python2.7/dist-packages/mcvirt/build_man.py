@@ -201,7 +201,7 @@ if __name__ == '__main__':
 
     sections = {'authors': ("MCVirt was built by and is currently maintained by "
                             "Matt Comben <matthew@dockstudios.co.uk>."),
-                'distribution': ("The latest version of %s m" % VERSION)
+                'distribution': ("The current version of MCVirt is %s" % VERSION)
                 }
     mpf = ManPageFormatter('mcvirt',
                            desc='MCVirt is a utility for managing virtual machines.',
