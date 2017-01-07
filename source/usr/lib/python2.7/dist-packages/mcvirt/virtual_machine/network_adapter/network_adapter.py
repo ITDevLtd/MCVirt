@@ -114,6 +114,37 @@ class NetworkAdapter(PyroObject):
         return self.mac_address
 
     @Expose(locking=True)
+    def change_network(self, network):
+        """Change network attached to network adapter"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM,
+            self.vm_object
+        )
+
+        # Update the VM configuration
+        def updateVmConfig(config):
+            config['network_interfaces'][self.getMacAddress()] = network.get_name()
+        self.vm_object.get_config_object().update_config(
+            updateVmConfig, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
+            (self.vm_object.get_name(), self.getConnectedNetwork(), self.getMacAddress()))
+
+        def updateXML(domain_xml):
+            device_xml = domain_xml.find('./devices')
+            interface_xml = device_xml.find(
+                './interface[@type="network"]/mac[@address="%s"]/..' %
+                self.getMacAddress())
+
+            if (interface_xml is None):
+                raise NetworkAdapterDoesNotExistException(
+                    'No interface with MAC address \'%s\' attached to VM' %
+                    self.getMacAddress())
+
+            device_xml.remove(interface_xml)
+            device_xml.append(self._generateLibvirtXml())
+
+        self.vm_object._editConfig(updateXML)
+
+    @Expose(locking=True)
     def delete(self):
         """Remove the given interface from the VM, based on the given MAC address"""
         self._get_registered_object('auth').assert_permission(

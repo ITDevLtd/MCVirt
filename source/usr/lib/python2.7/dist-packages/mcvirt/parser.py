@@ -292,6 +292,22 @@ class Parser(object):
             type=str,
             help='Removes a NIC from VM with the given MAC-address (e.g. \'00:00:00:00:00:00)\''
         )
+        self.update_parser.add_argument(
+            '--change-network',
+            dest='change_network',
+            metavar='MAC address of network interface',
+            type=str,
+            help=("Change the network for a NIC given the MAC-address (e.g. 00:00:00:00:00:00)\n" +
+                  "To be used with --new-network")
+        )
+        self.update_parser.add_argument(
+            '--new-network',
+            dest='new_network',
+            metavar='New Network',
+            type=str,
+            help=("Specify the network for the NIC\n" +
+                  "To be used with --change-network")
+        )
         self.update_parser.add_argument('--add-disk', dest='add_disk', metavar='Add Disk',
                                         type=int, help='Add disk to the VM (size in MB)')
         self.update_parser.add_argument('--delete-disk', dest='delete_disk', metavar='Disk ID',
@@ -993,6 +1009,8 @@ class Parser(object):
             vm_object.unregister()
 
         elif action == 'update':
+            if bool(args.change_network) != bool(args.new_network):
+                raise ArgumentParserException('--new-network must be used with --change-network')
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotate_object(vm_object)
@@ -1029,6 +1047,17 @@ class Parser(object):
                 network_object = network_factory.get_network_by_name(args.add_network)
                 rpc.annotate_object(network_object)
                 network_adapter_factory.create(vm_object, network_object)
+
+            if args.change_network:
+                network_adapter_factory = rpc.get_connection('network_adapter_factory')
+                network_adapter_object = network_adapter_factory.getNetworkAdapterByMacAdress(
+                    vm_object, args.change_network
+                )
+                rpc.annotate_object(network_adapter_object)
+                network_factory = rpc.get_connection('network_factory')
+                network_object = network_factory.get_network_by_name(args.new_network)
+                rpc.annotate_object(network_object)
+                network_adapter_object.change_network(network_object)
 
             if args.add_disk:
                 hard_drive_factory = rpc.get_connection('hard_drive_factory')
