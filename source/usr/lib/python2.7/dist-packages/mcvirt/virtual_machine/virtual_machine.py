@@ -71,7 +71,7 @@ class VirtualMachine(PyroObject):
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
 
-    def get_remote_object(self, include_node=False):
+    def get_remote_object(self, include_node=False, set_cluster_master=False):
         """Return a instance of the virtual machine object
         on the machine that the VM is registered
         """
@@ -79,7 +79,8 @@ class VirtualMachine(PyroObject):
             return self
         elif self.isRegisteredRemotely():
             cluster = self._get_registered_object('cluster')
-            remote_node = cluster.get_remote_node(self.getNode())
+            remote_node = cluster.get_remote_node(self.getNode(),
+                                                  set_cluster_master=set_cluster_master)
             remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
             remote_node.annotate_object(remote_vm)
@@ -515,7 +516,7 @@ class VirtualMachine(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
         if self.isRegisteredRemotely():
-            vm_object = self.get_remote_object()
+            vm_object = self.get_remote_object(set_cluster_master=True)
             return vm_object.updateRAM(memory_allocation, old_value)
 
         self.ensureRegisteredLocally()
@@ -563,6 +564,10 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
+        if self.isRegisteredRemotely():
+            vm_object = self.get_remote_object(set_cluster_master=True)
+            return vm_object.updateCPU(cpu_count, old_value)
+
         # Ensure cpu count is an interger, greater than 0
         try:
             int(cpu_count)
@@ -582,10 +587,11 @@ class VirtualMachine(PyroObject):
         # Determine if VM is registered on the local machine
         self.ensureRegisteredLocally()
 
-        def updateXML(domain_xml):
-            # Update RAM allocation and unit measurement
-            domain_xml.find('./vcpu').text = str(cpu_count)
-        self._editConfig(updateXML)
+        if self.isRegistered():
+            def updateXML(domain_xml):
+                # Update RAM allocation and unit measurement
+                domain_xml.find('./vcpu').text = str(cpu_count)
+            self._editConfig(updateXML)
 
         # Update the MCVirt configuration
         self.update_config(['cpu_cores'], str(cpu_count), 'CPU count has been changed to %s' %
@@ -644,7 +650,7 @@ class VirtualMachine(PyroObject):
             remove_flags = []
 
         if self.isRegisteredRemotely():
-            vm_object = self.get_remote_object()
+            vm_object = self.get_remote_object(set_cluster_master=True)
             return vm_object.update_modification_flags(add_flags=add_flags,
                                                        remove_flags=remove_flags)
 
@@ -1036,7 +1042,7 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['storage_type']
 
     @Expose(locking=True)
-    def clone(self, clone_vm_name):
+    def clone(self, clone_vm_name, retain_mac=False):
         """Clones a VM, creating an identical machine, using
         LVM snapshotting to duplicate the Hard disk. Drbd is not
         currently supported
@@ -1046,6 +1052,7 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to create VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CLONE_VM, self)
 
+        # Ensure VM is registered locally
         self.ensureRegisteredLocally()
 
         # Ensure the storage type for the VM is not Drbd, as Drbd-based VMs cannot be cloned
@@ -1071,16 +1078,17 @@ class VirtualMachine(PyroObject):
             raise VmIsCloneException('Cannot clone from a clone VM')
 
         # Create new VM for clone, without hard disks
-        network_adapter_factory = self._get_registered_object('network_adapter_factory')
-        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
-        networks = []
-        for network_adapter in network_adapters:
-            networks.append(network_adapter.getConnectedNetwork())
         vm_factory = self._get_registered_object('virtual_machine_factory')
         new_vm_object = vm_factory._create(clone_vm_name, self.getCPU(),
-                                           self.getRAM(), [], networks,
+                                           self.getRAM(), [], [],
                                            available_nodes=self.getAvailableNodes(),
                                            node=self.getNode())
+
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
+        for network_adapter in network_adapters:
+            network_adapter_factory.create(new_vm_object, network_adapter.get_network_object(),
+                                           network_adapter.getMacAddress() if retain_mac else None)
 
         # Mark VM as being a clone and mark parent as being a clone
         def setCloneParent(vm_config):
@@ -1110,13 +1118,16 @@ class VirtualMachine(PyroObject):
         return new_vm_object
 
     @Expose(locking=True)
-    def duplicate(self, duplicate_vm_name):
+    def duplicate(self, duplicate_vm_name, retain_mac=False):
         """Duplicates a VM, creating an identical machine, making a
            copy of the storage"""
         ArgumentValidator.validate_hostname(duplicate_vm_name)
 
         # Check the user has permission to create VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.DUPLICATE_VM, self)
+
+        # Ensure VM is registered locally
+        self.ensureRegisteredLocally()
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -1130,16 +1141,17 @@ class VirtualMachine(PyroObject):
             raise VmAlreadyExistsException('VM already exists with name %s' % duplicate_vm_name)
 
         # Create new VM for clone, without hard disks
-        network_adapter_factory = self._get_registered_object('network_adapter_factory')
-        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
-        networks = []
-        for network_adapter in network_adapters:
-            networks.append(network_adapter.getConnectedNetwork())
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
         new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.getCPU(),
-                                                        self.getRAM(), [], networks,
+                                                        self.getRAM(), [], [],
                                                         available_nodes=self.getAvailableNodes(),
                                                         node=self.getNode())
+
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
+        for network_adapter in network_adapters:
+            network_adapter_factory.create(new_vm_object, network_adapter.get_network_object(),
+                                           network_adapter.getMacAddress() if retain_mac else None)
 
         # Set current user as an owner of the new VM, so that they have permission
         # to perform functions on the VM

@@ -20,9 +20,6 @@ ARCH=all
 # Put version number into version file
 echo "VERSION = '$VERSION'" >> ./source/usr/lib/python2.7/dist-packages/mcvirt/version.py
 
-# Build the man documentation
-python build_man.py $VERSION
-
 # Build the package
 dpkg --build ./source ./mcvirt_${VERSION}_${ARCH}.deb
 

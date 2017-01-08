@@ -25,6 +25,8 @@ from mcvirt.exceptions import AuthenticationError
 from mcvirt.utils import get_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.rpc.constants import Annotations
+from mcvirt.syslogger import Syslogger
+import traceback
 
 
 class Connection(object):
@@ -34,7 +36,7 @@ class Connection(object):
     SESSION_OBJECT = 'mcvirt_session'
 
     def __init__(self, username=None, password=None, session_id=None,
-                 host=None, ignore_cluster=False):
+                 host=None, ignore_cluster=False, cluster_master=None):
         """Store member variables for connecting"""
         # If the host is not provided, default to the local host
         self.__host = host if host is not None else get_hostname()
@@ -49,6 +51,9 @@ class Connection(object):
             self.__proxy_username = Pyro4.current_context.proxy_user
         else:
             self.__proxy_username = None
+
+        # Initially, leave the server to determine the cluster master status
+        self.__cluster_master = cluster_master
 
         # Store the passed session_id so that it may be used for the initial connection
         self.__session_id = session_id
@@ -90,6 +95,10 @@ class Connection(object):
             auth_dict[Annotations.SESSION_ID] = self.__session_id
         if self.__proxy_username:
             auth_dict[Annotations.PROXY_USER] = self.__proxy_username
+
+        if self.__cluster_master is not None:
+            Syslogger.logger().warning('Setting cluster master to %s' % self.__cluster_master)
+            auth_dict[Annotations.CLUSTER_MASTER] = self.__cluster_master
 
         if 'has_lock' in dir(Pyro4.current_context):
             auth_dict[Annotations.HAS_LOCK] = Pyro4.current_context.has_lock

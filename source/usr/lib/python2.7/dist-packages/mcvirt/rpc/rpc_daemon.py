@@ -106,7 +106,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     # unless specified otherwise
                     auth = self.registered_factories['auth']
                     if user_object.CLUSTER_USER:
-                        if user_object.CLUSTER_USER and Annotations.CLUSTER_MASTER in data:
+                        if Annotations.CLUSTER_MASTER in data:
                             Pyro4.current_context.cluster_master = data[Annotations.CLUSTER_MASTER]
                         else:
                             Pyro4.current_context.cluster_master = False
@@ -154,7 +154,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
                     # unless specified otherwise
                     auth = self.registered_factories['auth']
                     if user_object.CLUSTER_USER:
-                        if user_object.CLUSTER_USER and Annotations.CLUSTER_MASTER in data:
+                        if Annotations.CLUSTER_MASTER in data:
                             Pyro4.current_context.cluster_master = data[Annotations.CLUSTER_MASTER]
                         else:
                             Pyro4.current_context.cluster_master = False
