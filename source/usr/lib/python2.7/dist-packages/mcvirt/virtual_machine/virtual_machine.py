@@ -71,7 +71,7 @@ class VirtualMachine(PyroObject):
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
 
-    def get_remote_object(self, include_node=False):
+    def get_remote_object(self, include_node=False, set_cluster_master=False):
         """Return a instance of the virtual machine object
         on the machine that the VM is registered
         """
@@ -79,7 +79,8 @@ class VirtualMachine(PyroObject):
             return self
         elif self.isRegisteredRemotely():
             cluster = self._get_registered_object('cluster')
-            remote_node = cluster.get_remote_node(self.getNode())
+            remote_node = cluster.get_remote_node(self.getNode(),
+                                                  set_cluster_master=set_cluster_master)
             remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
             remote_node.annotate_object(remote_vm)
@@ -515,7 +516,7 @@ class VirtualMachine(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
         if self.isRegisteredRemotely():
-            vm_object = self.get_remote_object()
+            vm_object = self.get_remote_object(set_cluster_master=True)
             return vm_object.updateRAM(memory_allocation, old_value)
 
         self.ensureRegisteredLocally()
@@ -563,6 +564,10 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
+        if self.isRegisteredRemotely():
+            vm_object = self.get_remote_object(set_cluster_master=True)
+            return vm_object.updateCPU(cpu_count, old_value)
+
         # Ensure cpu count is an interger, greater than 0
         try:
             int(cpu_count)
@@ -582,10 +587,11 @@ class VirtualMachine(PyroObject):
         # Determine if VM is registered on the local machine
         self.ensureRegisteredLocally()
 
-        def updateXML(domain_xml):
-            # Update RAM allocation and unit measurement
-            domain_xml.find('./vcpu').text = str(cpu_count)
-        self._editConfig(updateXML)
+        if self.isRegistered():
+            def updateXML(domain_xml):
+                # Update RAM allocation and unit measurement
+                domain_xml.find('./vcpu').text = str(cpu_count)
+            self._editConfig(updateXML)
 
         # Update the MCVirt configuration
         self.update_config(['cpu_cores'], str(cpu_count), 'CPU count has been changed to %s' %
@@ -644,7 +650,7 @@ class VirtualMachine(PyroObject):
             remove_flags = []
 
         if self.isRegisteredRemotely():
-            vm_object = self.get_remote_object()
+            vm_object = self.get_remote_object(set_cluster_master=True)
             return vm_object.update_modification_flags(add_flags=add_flags,
                                                        remove_flags=remove_flags)
 
@@ -1046,6 +1052,7 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to create VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CLONE_VM, self)
 
+        # Ensure VM is registered locally
         self.ensureRegisteredLocally()
 
         # Ensure the storage type for the VM is not Drbd, as Drbd-based VMs cannot be cloned
@@ -1118,6 +1125,9 @@ class VirtualMachine(PyroObject):
 
         # Check the user has permission to create VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.DUPLICATE_VM, self)
+
+        # Ensure VM is registered locally
+        self.ensureRegisteredLocally()
 
         # Ensure VM is unlocked
         self.ensureUnlocked()

@@ -24,10 +24,11 @@ from mcvirt.client.rpc import Connection
 class Node(Connection):
     """A class to perform remote commands on MCVirt nodes"""
 
-    def __init__(self, name, node_config):
+    def __init__(self, name, node_config, **kwargs):
         """Set member variables"""
         self.name = name
         self.ip_address = node_config['ip_address'] if 'ip_address' in node_config else None
         super(Node, self).__init__(username=node_config['username'],
                                    password=node_config['password'],
-                                   host=self.name)
+                                   host=self.name,
+                                   **kwargs)
