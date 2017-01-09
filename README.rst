@@ -24,7 +24,7 @@ Installation
 MCVirt must currently be built from source into a deb package, using the build script. The package and dependencies can then be installed::
 
   $ ./build.sh
-  $ sudo dpkg -i mcvirt_0.10_all.deb
+  $ sudo dpkg -i mcvirt_*_all.deb
   $ sudo apt-get -f install
 
 See the `installation guide <Documentation/Installation.rst>`_ for other dependencies and system configuration.
