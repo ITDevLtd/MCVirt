@@ -74,7 +74,6 @@ class MCVirtConfig(ConfigFile):
                     'user': [],
                     'owner': [],
                 },
-                'vm_storage_vg': '',
                 'cluster':
                 {
                     'cluster_ip': '',
@@ -114,7 +113,8 @@ class MCVirtConfig(ConfigFile):
                     'username_attribute': None
                 },
                 'session_timeout': 30,
-                'autostart_interval': 300
+                'autostart_interval': 300,
+                'storage_backends': {}
             }
 
         # Write the configuration to disk
@@ -139,3 +139,20 @@ class MCVirtConfig(ConfigFile):
 
         if config['version'] < 8:
             config['autostart_interval'] = 300
+
+        if config['version'] < 11:
+            config['storage_backends'] = {}
+            if config['vm_storage_vg']:
+                config['storage_backends']['default'] = {
+                    'type': 'Lvm',
+                    'volume_group_name': config['vm_storage_vg']
+                }
+                del config['vm_storage_vg']
+
+                if config['drbd']['enabled']:
+                    config['storage_backends']['drbd'] = {
+                        'type': 'Drbd',
+                        'backing_storage': 'default'
+                    }
+                    del config['drbd']['enabled']
+
