@@ -13,7 +13,7 @@ MCVirt is a utility for managing virtual machines, supporting the following tech
 * `KVM virtualisation <http://www.linux-kvm.org/page/Main_Page>`_.
 * Clustering with optional `DRBD <http://drbd.linbit.com/>`_ support.
 
-MCVirt is implemented in Python, using the the `libvirt virtualisation library <http://libvirt.org>`_.
+MCVirt is implemented in Python, using the `libvirt virtualisation library <http://libvirt.org>`_.
 
 Getting started
 ===============
