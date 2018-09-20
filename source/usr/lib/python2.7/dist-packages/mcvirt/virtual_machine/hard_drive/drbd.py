@@ -160,15 +160,15 @@ class Drbd(Base):
                            ['START',
                             'CREATE_RAW_LV',
                             'CREATE_META_LV',
-                            'CREATE_Drbd_CONFIG',
-                            'CREATE_Drbd_CONFIG_R',
-                            'Drbd_UP',
-                            'Drbd_UP_R',
+                            'CREATE_DRBD_CONFIG',
+                            'CREATE_DRBD_CONFIG_R',
+                            'DRBD_UP',
+                            'DRBD_UP_R',
                             'ADD_TO_VM',
-                            'Drbd_CONNECT',
-                            'Drbd_CONNECT_R'])
+                            'DRBD_CONNECT',
+                            'DRBD_CONNECT_R'])
 
-    Drbd_STATES = {
+    DRBD_STATES = {
         'CONNECTION': {
             'OK': [
                 DrbdConnectionState.CONNECTED,
@@ -215,9 +215,9 @@ class Drbd(Base):
 
     INITIAL_PORT = 7789
     INITIAL_MINOR = 1
-    Drbd_RAW_SUFFIX = 'raw'
-    Drbd_META_SUFFIX = 'meta'
-    Drbd_CONFIG_TEMPLATE = DirectoryLocation.TEMPLATE_DIR + '/drbd_resource.conf'
+    DRBD_RAW_SUFFIX = 'raw'
+    DRBD_META_SUFFIX = 'meta'
+    DRBD_CONFIG_TEMPLATE = DirectoryLocation.TEMPLATE_DIR + '/drbd_resource.conf'
     CACHE_MODE = 'none'
 
     # The maximum number of storage devices for the current type
@@ -260,8 +260,8 @@ class Drbd(Base):
 
     def _check_exists(self):
         """Ensure the required storage elements exist on the system"""
-        raw_lv = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
-        meta_lv = self._getLogicalVolumeName(self.Drbd_META_SUFFIX)
+        raw_lv = self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX)
+        meta_lv = self._getLogicalVolumeName(self.DRBD_META_SUFFIX)
         self._ensureLogicalVolumeExists(raw_lv)
         self._ensureLogicalVolumeExists(meta_lv)
         return True
@@ -269,8 +269,8 @@ class Drbd(Base):
     def activateDisk(self):
         """Ensure that the disk is ready to be used by a VM on the local node"""
         self._ensure_exists()
-        raw_lv = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
-        meta_lv = self._getLogicalVolumeName(self.Drbd_META_SUFFIX)
+        raw_lv = self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX)
+        meta_lv = self._getLogicalVolumeName(self.DRBD_META_SUFFIX)
         self._ensureLogicalVolumeActive(raw_lv)
         self._ensureLogicalVolumeActive(meta_lv)
         self._checkDrbdStatus()
@@ -289,7 +289,7 @@ class Drbd(Base):
     def getSize(self):
         """Gets the size of the disk (in MB)"""
         self._ensure_exists()
-        return self._get_logical_volume_size(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX))
+        return self._get_logical_volume_size(self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX))
 
     def create(self, size):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
@@ -311,7 +311,7 @@ class Drbd(Base):
         progress = Drbd.CREATE_PROGRESS.START
         try:
             # Create Drbd raw logical volume
-            raw_logical_volume_name = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
+            raw_logical_volume_name = self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX)
             self._createLogicalVolume(raw_logical_volume_name,
                                       size, perform_on_nodes=True)
             progress = Drbd.CREATE_PROGRESS.CREATE_RAW_LV
@@ -324,7 +324,7 @@ class Drbd(Base):
 
             # Create Drbd meta logical volume
             meta_logical_volume_name = self._getLogicalVolumeName(
-                self.Drbd_META_SUFFIX
+                self.DRBD_META_SUFFIX
             )
             meta_logical_volume_size = self._calculateMetaDataSize()
             self._createLogicalVolume(meta_logical_volume_name,
@@ -340,7 +340,7 @@ class Drbd(Base):
 
             # Generate Drbd resource configuration
             self._generateDrbdConfig()
-            progress = Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG
+            progress = Drbd.CREATE_PROGRESS.CREATE_DRBD_CONFIG
 
             cluster = self._get_registered_object('cluster')
 
@@ -349,7 +349,7 @@ class Drbd(Base):
                 remote_disk.generateDrbdConfig()
             cluster.run_remote_command(callback_method=remoteCommand,
                                        nodes=remote_nodes)
-            progress = Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG_R
+            progress = Drbd.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R
 
             # Setup meta data on Drbd volume
             self._initialiseMetaData()
@@ -362,14 +362,14 @@ class Drbd(Base):
 
             # Bring up Drbd resource
             self._drbdUp()
-            progress = Drbd.CREATE_PROGRESS.Drbd_UP
+            progress = Drbd.CREATE_PROGRESS.DRBD_UP
 
             def remoteCommand(node):
                 remote_disk = self.get_remote_object(remote_node=node, registered=False)
                 remote_disk.drbdUp()
             cluster.run_remote_command(callback_method=remoteCommand,
                                        nodes=remote_nodes)
-            progress = Drbd.CREATE_PROGRESS.Drbd_UP_R
+            progress = Drbd.CREATE_PROGRESS.DRBD_UP_R
 
             # Wait for 5 seconds to let Drbd initialise
             # TODO: Monitor Drbd status instead.
@@ -385,14 +385,14 @@ class Drbd(Base):
 
             # Ensure the Drbd resource is connected
             self._drbdConnect()
-            progress = Drbd.CREATE_PROGRESS.Drbd_CONNECT
+            progress = Drbd.CREATE_PROGRESS.DRBD_CONNECT
 
             def remoteCommand(node):
                 remote_disk = self.get_remote_object(remote_node=node, registered=False)
                 remote_disk.drbdConnect()
             cluster.run_remote_command(callback_method=remoteCommand,
                                        nodes=remote_nodes)
-            progress = Drbd.CREATE_PROGRESS.Drbd_CONNECT_R
+            progress = Drbd.CREATE_PROGRESS.DRBD_CONNECT_R
 
             # Mark volume as primary on local node
             self._drbdSetPrimary()
@@ -406,37 +406,37 @@ class Drbd(Base):
         except Exception:
             cluster = self._get_registered_object('cluster')
             # If the creation fails, tear down based on the progress of the creation
-            if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_CONNECT_R.value):
+            if (progress.value >= Drbd.CREATE_PROGRESS.DRBD_CONNECT_R.value):
                 def remoteCommand(node):
                     remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.drbdDisconnect()
                 cluster.run_remote_command(callback_method=remoteCommand,
                                            nodes=remote_nodes)
 
-            if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_CONNECT.value):
+            if (progress.value >= Drbd.CREATE_PROGRESS.DRBD_CONNECT.value):
                 self._drbdDisconnect()
 
             if (progress.value >= Drbd.CREATE_PROGRESS.ADD_TO_VM.value):
                 self.removeFromVirtualMachine()
 
-            if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_UP_R.value):
+            if (progress.value >= Drbd.CREATE_PROGRESS.DRBD_UP_R.value):
                 def remoteCommand(node):
                     remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.drbdDown()
                 cluster.run_remote_command(callback_method=remoteCommand,
                                            nodes=remote_nodes)
 
-            if (progress.value >= Drbd.CREATE_PROGRESS.Drbd_UP.value):
+            if (progress.value >= Drbd.CREATE_PROGRESS.DRBD_UP.value):
                 self._drbdDown()
 
-            if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG_R.value):
+            if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R.value):
                 def remoteCommand(node):
                     remote_disk = self.get_remote_object(remote_node=node, registered=False)
                     remote_disk.removeDrbdConfig()
                 cluster.run_remote_command(callback_method=remoteCommand,
                                            nodes=remote_nodes)
 
-            if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_Drbd_CONFIG.value):
+            if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_DRBD_CONFIG.value):
                 self._removeDrbdConfig()
 
             if (progress.value >= Drbd.CREATE_PROGRESS.CREATE_META_LV.value):
@@ -484,9 +484,9 @@ class Drbd(Base):
         self._removeDrbdConfig()
 
         # Remove the meta and raw logical volume from all nodes
-        self._removeLogicalVolume(self._getLogicalVolumeName(self.Drbd_META_SUFFIX),
+        self._removeLogicalVolume(self._getLogicalVolumeName(self.DRBD_META_SUFFIX),
                                   perform_on_nodes=(not local_only))
-        self._removeLogicalVolume(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX),
+        self._removeLogicalVolume(self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX),
                                   perform_on_nodes=(not local_only))
 
     @Expose(locking=True)
@@ -518,7 +518,7 @@ class Drbd(Base):
 
         # Increase size of RAW volume
         self._resize_logical_volume(
-            self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX),
+            self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX),
             '+%s' % increase_size
         )
 
@@ -527,7 +527,7 @@ class Drbd(Base):
 
         # Resize META volume
         self._resize_logical_volume(
-            self._getLogicalVolumeName(self.Drbd_META_SUFFIX),
+            self._getLogicalVolumeName(self.DRBD_META_SUFFIX),
             meta_logical_volume_size
         )
 
@@ -595,7 +595,7 @@ class Drbd(Base):
 
     def _drbdConnect(self):
         """Performs a Drbd 'connect' on the hard drive Drbd resource"""
-        if self._drbdGetConnectionState() not in Drbd.Drbd_STATES['CONNECTION']['CONNECTED']:
+        if self._drbdGetConnectionState() not in Drbd.DRBD_STATES['CONNECTION']['CONNECTED']:
             System.runCommand([NodeDrbd.DrbdADM, 'connect', self.resource_name])
 
     @Expose(locking=True)
@@ -744,10 +744,10 @@ class Drbd(Base):
         """Determines if the given type of state is OK or not. An exception
            is thrown in the event of a bad state"""
         # Determine if connection state is not OK
-        if state not in Drbd.Drbd_STATES[state_name]['OK']:
+        if state not in Drbd.DRBD_STATES[state_name]['OK']:
             # Ignore the state if it is in warning and the user has specified to ignore
             # the Drbd state
-            if state in Drbd.Drbd_STATES[state_name]['WARNING']:
+            if state in Drbd.DRBD_STATES[state_name]['WARNING']:
                 if not self._ignore_drbd:
                     raise DrbdStateException(
                         ('Drbd connection state for the Drbd resource '
@@ -1045,7 +1045,7 @@ class Drbd(Base):
 
         # Create the storage on the destination node
         raw_logical_volume_name = self._getLogicalVolumeName(
-            self.Drbd_RAW_SUFFIX)
+            self.DRBD_RAW_SUFFIX)
         dest_hdd_object.createLogicalVolume(raw_logical_volume_name, disk_size,
                                             perform_on_nodes=False)
 
@@ -1055,7 +1055,7 @@ class Drbd(Base):
         dest_hdd_object.zeroLogicalVolume(raw_logical_volume_name,
                                           perform_on_nodes=False)
 
-        meta_logical_volume_name = self._getLogicalVolumeName(self.Drbd_META_SUFFIX)
+        meta_logical_volume_name = self._getLogicalVolumeName(self.DRBD_META_SUFFIX)
         meta_volume_size = self._calculateMetaDataSize()
         dest_hdd_object.createLogicalVolume(meta_logical_volume_name,
                                             meta_volume_size,
@@ -1181,10 +1181,10 @@ class Drbd(Base):
     def _generateDrbdConfig(self):
         """Generates the Drbd resource configuration"""
         # Create configuration for use with the template
-        raw_lv_path = self._getLogicalVolumePath(self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX))
+        raw_lv_path = self._getLogicalVolumePath(self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX))
         meta_lv_path = self._getLogicalVolumePath(
             self._getLogicalVolumeName(
-                self.Drbd_META_SUFFIX))
+                self.DRBD_META_SUFFIX))
         drbd_config = \
             {
                 'resource_name': self.resource_name,
@@ -1215,7 +1215,7 @@ class Drbd(Base):
             drbd_config['nodes'].append(node_template_conf)
 
         # Replace the variables in the template with the local Drbd configuration
-        config_content = Template(file=self.Drbd_CONFIG_TEMPLATE, searchList=[drbd_config])
+        config_content = Template(file=self.DRBD_CONFIG_TEMPLATE, searchList=[drbd_config])
 
         # Write the Drbd configuration
         fh = open(self._getDrbdConfigFile(), 'w')
@@ -1240,7 +1240,7 @@ class Drbd(Base):
 
     def _calculateMetaDataSize(self):
         """Determines the size of the Drbd meta volume"""
-        raw_logical_volume_name = self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
+        raw_logical_volume_name = self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX)
         logical_volume_path = self._getLogicalVolumePath(raw_logical_volume_name)
 
         # Obtain size of raw volume
@@ -1273,8 +1273,8 @@ class Drbd(Base):
 
     def _getBackupLogicalVolume(self):
         """Returns the storage device for the backup"""
-        return self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX)
+        return self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX)
 
     def _getBackupSnapshotLogicalVolume(self):
         """Returns the logical volume name for the backup snapshot"""
-        return self._getLogicalVolumeName(self.Drbd_RAW_SUFFIX) + self.SNAPSHOT_SUFFIX
+        return self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX) + self.SNAPSHOT_SUFFIX
