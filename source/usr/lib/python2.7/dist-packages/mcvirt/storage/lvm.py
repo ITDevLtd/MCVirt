@@ -16,10 +16,16 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 
-from mcvirt.storage.base import Base
+from mcvirt.storage.base import Base, BaseConfig
 
 
 class Lvm(Base):
     """Storage backend for LVM based storage"""
 
-    pass
+    @staticmethod
+    def validate_config(factory, config):
+        """Validate config"""
+        super(self, Base).validate_config(factory, config)
+        # Ensure that all nodes specified are valid
+        cluster_object = factory._get_registered_object('cluster')
+        for node in cluster_object

@@ -410,7 +410,7 @@ class Base(PyroObject):
 
     @Expose(locking=True)
     def resize_logical_volume(self, *args, **kwargs):
-        """Provides an exposed method for _createLogicalVolume
+        """Provides an exposed method for _resize_logical_volume
            with permission checking"""
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
@@ -498,14 +498,14 @@ class Base(PyroObject):
         return int(lv_size)
 
     @Expose(locking=True)
-    def zeroLogicalVolume(self, *args, **kwargs):
+    def zeroVolume(self, *args, **kwargs):
         """Provides an exposed method for _zeroLogicalVolume
            with permission checking"""
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._zeroLogicalVolume(*args, **kwargs)
 
-    def _zeroLogicalVolume(self, name, size, perform_on_nodes=False):
+    def _zeroVolume(self, name, size, perform_on_nodes=False):
         """Blanks a logical volume by filling it with null data"""
         # Obtain the path of the logical volume
         lv_path = self._getLogicalVolumePath(name)
@@ -520,7 +520,7 @@ class Base(PyroObject):
             if perform_on_nodes and self._is_cluster_master:
                 def remoteCommand(node):
                     remote_disk = self.get_remote_object(remote_node=node, registered=False)
-                    remote_disk.zeroLogicalVolume(name=name, size=size)
+                    remote_disk.zeroVolume(name=name, size=size)
 
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(callback_method=remoteCommand,

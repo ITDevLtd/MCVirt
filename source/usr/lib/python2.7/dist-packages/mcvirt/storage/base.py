@@ -17,10 +17,11 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from mcvirt.mcvirt_config import MCVirtConfig
-from mcvirt.system import System
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.exceptions import InvalidNodesException
+from mcvirt.utils import get_hostname
 
 
 class Base(PyroObject):
@@ -63,26 +64,10 @@ class Base(PyroObject):
         if self.name in storage_factory.CACHED_OBJECTS:
             del(storage_factory.CACHED_OBJECTS[self.name])
 
-    def activate(self):
-        """Place-holder function to activate storage backend"""
-        raise NotImplementedError
-
-    def createDisk(self, name, size):
-        """Place-holder function to create disk"""
-        raise NotImplementedError
-
-    def activateDisk(self, disk_object):
-        """Place-holder function to activate disk object"""
-        raise NotImplementedError
-
-    def deactivateDisk(self, disk_object):
-        """Place-holder function to de-activate disk object"""
-        raise NotImplementedError
-
-    def deleteDisk(self, disk_object):
-        """Place-holder functionn to delete disk"""
-        raise NotImplementedError
-
-    def wipe(self):
-        """Remove the contents of a disk"""
-        pass
+    @staticmethod
+    def validate_config(factory, config):
+        """Validate config"""
+        # Ensure that all nodes specified are valid
+        cluster_object = factory._get_registered_object('cluster')
+        for node in config['nodes']:
+            cluster_object.ensure_node_exists(node)

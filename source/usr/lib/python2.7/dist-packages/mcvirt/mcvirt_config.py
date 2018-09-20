@@ -19,6 +19,7 @@ import os
 
 from mcvirt.config_file import ConfigFile
 from mcvirt.constants import DirectoryLocation
+from mcvirt.utils import get_hostname
 
 
 class MCVirtConfig(ConfigFile):
@@ -148,11 +149,4 @@ class MCVirtConfig(ConfigFile):
                     'volume_group_name': config['vm_storage_vg']
                 }
                 del config['vm_storage_vg']
-
-                if config['drbd']['enabled']:
-                    config['storage_backends']['drbd'] = {
-                        'type': 'Drbd',
-                        'backing_storage': 'default'
-                    }
-                    del config['drbd']['enabled']
-
+            config['cluster']['node_name'] = get_hostname()

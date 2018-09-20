@@ -619,8 +619,12 @@ class Cluster(PyroObject):
         self.ensure_node_exists(node)
         return self.get_cluster_config()['nodes'][node]
 
+    def get_local_hostname(self):
+        """Return the hostname of the local node"""
+        return self.get_cluster_config()['node_name']
+
     @Expose()
-    def get_nodes(self, return_all=False):
+    def get_nodes(self, return_all=False, include_local=False):
         """Return an array of node configurations"""
         cluster_config = self.get_cluster_config()
         nodes = cluster_config['nodes'].keys()
@@ -628,6 +632,7 @@ class Cluster(PyroObject):
             for node in nodes:
                 if not node:
                     nodes.remove(node)
+        nodes.append(self.get_local_hostname())
         return nodes
 
     def run_remote_command(self, callback_method, nodes=None, args=[], kwargs={},
@@ -637,6 +642,8 @@ class Cluster(PyroObject):
 
         # If the user has not specified a list of nodes, obtain all remote nodes
         if nodes is None:
+            # Obtain all nodes, without specifying 'return_all', meaning that if the cluster
+            # is offline, no nodes will be returned.
             nodes = self.get_nodes()
         for node in nodes:
             node_object = self.get_remote_node(node, ignore_cluster_master=ignore_cluster_master)
