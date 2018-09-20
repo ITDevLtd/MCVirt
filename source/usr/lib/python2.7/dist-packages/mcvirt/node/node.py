@@ -79,22 +79,17 @@ class Node(PyroObject):
         mcvirt_config.update_config(update_config, 'Set node cluster IP address to %s' %
                                                    ip_address)
 
-    def get_free_vg_space(self):
+    def get_free_vg_space(self, volume_group):
         """Returns the free space in megabytes."""
-        _, out, err = System.runCommand(['vgs', MCVirtConfig().get_config()['vm_storage_vg'],
+        _, out, err = System.runCommand(['vgs', volume_group,
                                          '-o', 'free', '--noheadings', '--nosuffix', '--units',
                                          'm'], False,
                                         DirectoryLocation.BASE_STORAGE_DIR)
         return float(out)
 
-    def is_volume_group_set(self):
-        """Determine if the volume group has been configured on the node"""
-        return bool(MCVirtConfig().get_config()['vm_storage_vg'])
-
-    def volume_group_exists(self):
+    def volume_group_exists(self, volume_group):
         """Determine if the volume group actually exists on the node."""
-        _, out, err = System.runCommand(['vgs', '|', 'grep',
-                                         MCVirtConfig().get_config()['vm_storage_vg']],
+        _, out, err = System.runCommand(['vgs', '|', 'grep', volume_group],
                                         False, DirectoryLocation.BASE_STORAGE_DIR)
         return bool(out)
 
