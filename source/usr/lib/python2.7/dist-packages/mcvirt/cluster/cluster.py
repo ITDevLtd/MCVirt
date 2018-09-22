@@ -471,6 +471,15 @@ class Cluster(PyroObject):
         if len(remote_cluster.get_nodes(return_all=True)):
             raise RemoteObjectConflict('Remote node already has nodes attached')
 
+        # Ensure that all all storage backends (that have default locations and
+        # will be replicated to new node) exist on the remote node
+        storage_factory = self._get_registered_object('storage_factory')
+        remote_storage_factory = remote_connection.get_connection('storage_factory')
+        for storage_backend in storage_factory.get_all_storage_backends():
+            if storage_backend.get_global_location():
+                # Check that volume group/directory exists on remote machine
+                pass
+
         # Determine if any of the local networks/VMs exist on the remote node
         remote_network_factory = remote_connection.get_connection('network_factory')
 
@@ -632,7 +641,8 @@ class Cluster(PyroObject):
             for node in nodes:
                 if not node:
                     nodes.remove(node)
-        nodes.append(self.get_local_hostname())
+        if include_local:
+            nodes.append(self.get_local_hostname())
         return nodes
 
     def run_remote_command(self, callback_method, nodes=None, args=[], kwargs={},

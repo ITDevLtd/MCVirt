@@ -27,6 +27,7 @@ from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
 from mcvirt.auth.user_types.user_base import UserBase
+from mcvirt.storage.factory import Factory as StorageFactory
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -597,6 +598,60 @@ class Parser(object):
             required=True,
             help='Hostname of the remote node to remove from the cluster')
 
+        self.storage_parser = self.subparsers.add_parser(
+            'storage',
+            help='Create, modify and delete storage backends',
+            parents=[self.parent_parser]
+        )
+        self.storage_subparsers = self.storage_parser.add_subparsers(
+            dest='storage_action', metavar='Storage Action',
+            help='Action to perform'
+        )
+        self.storage_create_parser = self.storage_subparsers.add_parser(
+            'create',
+            help='Create storage backend',
+            parents=[self.parent_parser])
+        self.storage_create_parser.add_argument('Name',
+                                                help='Name of new storage backend')
+        self.storage_create_parser.add_argument('--type',
+                                                dest='storage_type',
+                                                help='Type of backend storage',
+                                                required=True,
+                                                choices=[t.__name__ for t in StorageFactory().getStorageTypes()])
+        self.storage_create_parser.add_argument('--volume-group-name',
+                                                dest='volume_group_name',
+                                                required=False,
+                                                help=("Name of default volume group for backend storage for nodes \n"
+                                                      '(Required for LVM storage, unless all nodes contain volume group overides)'))
+        self.storage_create_parser.add_argument('--path',
+                                                dest='path',
+                                                required=False,
+                                                help=("Name of default path for backend storage for nodes \n"
+                                                      '(Required for File storage, unless all nodes contain path overides)'))
+        self.storage_create_parser.add_argument('--shared',
+                                                dest='shared',
+                                                required=False,
+                                                action='store_true',
+                                                default=False,
+                                                help=('Marks the storage as being shared '
+                                                      'across nodes in the cluster.'))
+        self.storage_create_parser.add_argument('--node',
+                                                dest='nodes',
+                                                required=False,
+                                                nargs='+',
+                                                action='append',
+                                                default=[],
+                                                help=('Specifies the nodes that this will '
+                                                      "be available to.\n"
+                                                      'Specify once for each node, e.g. '
+                                                      "--node node1 --node node2.\n"
+                                                      'Specify an additional parameter '
+                                                      'to override the path or volume '
+                                                      'group for the node, e.g. '
+                                                      '--node <Node name> '
+                                                      '<Overriden Volume Group/Path> '
+                                                      '--node <Node Name>...'))
+
         # Create subparser for commands relating to the local node configuration
         self.node_parser = self.subparsers.add_parser(
             'node',
@@ -862,7 +917,6 @@ class Parser(object):
                              ignore_cluster=ignore_cluster)
         else:
             # Obtain connection to Pyro server
-            use_auth_session = False
             if not (args.password or args.username):
                 # Try logging in with saved session
                 auth_session = None
@@ -880,6 +934,9 @@ class Parser(object):
                         self.SESSION_ID = rpc.session_id
                         self.USERNAME = rpc.username
                     except AuthenticationError:
+                        # If authentication fails with cached session,
+                        # print error, attempt to remove sessionn file and
+                        # remove rpc connection
                         self.print_status('Authentication error occured when using saved session.')
                         try:
                             os.remove(auth_cache_file)
@@ -1305,10 +1362,43 @@ class Parser(object):
             if len(ldap_args):
                 ldap.set_config(**ldap_args)
 
+        elif action == 'storage':
+            storage_factory = rpc.get_connection('storage_factory')
+            if args.storage_action == 'create':
+                location = None
+                if args.storage_type == 'Lvm' and args.volume_group_name:
+                    location = args.volume_group_name
+                elif args.storage_type == 'File' and args.path:
+                    location = args.path
+
+                # Check lenght of each node config, to ensure it's not too long
+                invalid_nodes = [True if len(n) > 2 else None for n in args.nodes]
+                if True in invalid_nodes:
+                    raise ArgumentParserException(('--node must only be provided with '
+                                                   'node name and optional storage config '
+                                                   'override'))
+
+                # Split nodes argument into nodes and storage location overrides
+                nodes = [node_config[0] for node_config in args.nodes]
+                node_storage_overrides = {
+                    node[0]: {'location': node[1] if len(node) == 2 else None}
+                    for node in args.nodes
+                }
+                storage_factory.create(name=args.Name,
+                                       storage_type=args.storage_type,
+                                       nodes=nodes,
+                                       shared=args.shared,
+                                       node_config=node_storage_overrides,
+                                       location=location)
+            elif args.storage_action == 'delete':
+                storage_backend = storage_factory.getObject(args.storage_name)
+                storage_backend.delete()
+
         elif action == 'verify':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             if args.vm_name:
                 vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+                # TODO remove this line
                 rpc.annotate_object(vm_object)
                 vm_objects = [vm_object]
             elif args.all:

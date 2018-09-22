@@ -65,9 +65,12 @@ class Base(PyroObject):
             del(storage_factory.CACHED_OBJECTS[self.name])
 
     @staticmethod
-    def validate_config(factory, config):
+    def validate_config(cluster, config):
         """Validate config"""
         # Ensure that all nodes specified are valid
-        cluster_object = factory._get_registered_object('cluster')
         for node in config['nodes']:
-            cluster_object.ensure_node_exists(node)
+            cluster.ensure_node_exists(node)
+
+
+    def get_config(self):
+        return MCVirtConfig().get_config()['storage_backends'][self.name]

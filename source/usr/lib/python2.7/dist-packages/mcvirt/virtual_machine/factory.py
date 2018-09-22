@@ -184,7 +184,8 @@ class Factory(PyroObject):
 
     def _create(self, name, cpu_cores, memory_allocation, hard_drives=None,
                 network_interfaces=None, node=None, available_nodes=None, storage_type=None,
-                hard_drive_driver=None, graphics_driver=None, modification_flags=None):
+                hard_drive_driver=None, graphics_driver=None, modification_flags=None,
+                storage_backend=None):
         """Create a VM and returns the virtual_machine object for it"""
         network_interfaces = [] if network_interfaces is None else network_interfaces
         hard_drives = [] if hard_drives is None else hard_drives

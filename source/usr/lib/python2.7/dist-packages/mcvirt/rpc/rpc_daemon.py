@@ -36,6 +36,7 @@ from mcvirt.virtual_machine.network_adapter.factory import Factory as NetworkAda
 from mcvirt.logger import Logger
 from mcvirt.node.drbd import Drbd as NodeDrbd
 from mcvirt.node.node import Node
+from mcvirt.storage.factory import Factory as StorageFactory
 from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.rpc.certificate_generator_factory import CertificateGeneratorFactory
 from mcvirt.node.libvirt_config import LibvirtConfig
@@ -321,6 +322,10 @@ class RpcNSMixinDaemon(object):
         # Create node instance and register with daemon
         node = Node()
         self.register(node, objectId='node', force=True)
+
+        # Create storage factory instance and register with daemon
+        storage_factory = StorageFactory()
+        self.register(storage_factory, objectId='storage_factory', force=True)
 
         # Create logger object and register with daemon
         logger = Logger.get_logger()

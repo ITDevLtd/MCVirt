@@ -87,6 +87,7 @@ class Node(PyroObject):
                                         DirectoryLocation.BASE_STORAGE_DIR)
         return float(out)
 
+    @Expose()
     def volume_group_exists(self, volume_group):
         """Determine if the volume group actually exists on the node."""
         _, out, err = System.runCommand(['vgs', '|', 'grep', volume_group],
