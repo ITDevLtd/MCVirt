@@ -83,7 +83,6 @@ class Factory(PyroObject):
         # Define default_vg_name
         default_vg_name = None
 
-
         # Attempt to obtain local instance of default storage. Ignore if there is no 'default'
         # storage backend because 'vm_storage_vg' was never set.
         try:
@@ -92,7 +91,9 @@ class Factory(PyroObject):
             # Get the configuration for each of the nodes
             local_storage_config = local_storage_object.get_config()
             current_node_configs = {
-                cluster.get_local_hostname(): local_storage_config['nodes'][cluster.get_local_hostname()]
+                cluster.get_local_hostname(): local_storage_config['nodes'][
+                    cluster.get_local_hostname()
+                ]
             }
         except StorageBackendDoesNotExist:
             # Storage backend does not exist, continue anyway, as other nodes
@@ -120,14 +121,16 @@ class Factory(PyroObject):
             return
 
         # Get volume groups and convert to list to get unique values
-        unique_volume_groups = set([current_node_configs[node]['location'] for node in current_node_configs])
+        unique_volume_groups = set([current_node_configs[node]['location']
+                                    for node in current_node_configs])
 
         # If there is just one volume group acros the cluster, set the default volume group to this
         if len(unique_volume_groups) == 1:
             default_vg_name = list(unique_volume_groups)[0]
             nodes = {node: {'location': None} for node in current_node_configs}
         else:
-            nodes = {node: {'location': current_node_configs[node]['location']} for node in current_node_configs}
+            nodes = {node: {'location': current_node_configs[node]['location']}
+                     for node in current_node_configs}
 
         storage_config = {
             'nodes': nodes,
@@ -136,7 +139,6 @@ class Factory(PyroObject):
             'type': Lvm.__name__
         }
         self.set_default_v9_release_config(storage_config)
-
 
     @Expose(locking=True)
     def set_default_v9_release_config(self, config):

@@ -23,4 +23,3 @@ class File(Base):
     """Storage backend for file based storage"""
 
     pass
-

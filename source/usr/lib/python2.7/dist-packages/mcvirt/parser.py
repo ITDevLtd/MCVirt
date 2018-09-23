@@ -613,44 +613,54 @@ class Parser(object):
             parents=[self.parent_parser])
         self.storage_create_parser.add_argument('Name',
                                                 help='Name of new storage backend')
-        self.storage_create_parser.add_argument('--type',
-                                                dest='storage_type',
-                                                help='Type of backend storage',
-                                                required=True,
-                                                choices=[t.__name__ for t in StorageFactory().get_storage_types()])
-        self.storage_create_parser.add_argument('--volume-group-name',
-                                                dest='volume_group_name',
-                                                required=False,
-                                                help=("Name of default volume group for backend storage for nodes \n"
-                                                      '(Required for LVM storage, unless all nodes contain volume group overides)'))
-        self.storage_create_parser.add_argument('--path',
-                                                dest='path',
-                                                required=False,
-                                                help=("Name of default path for backend storage for nodes \n"
-                                                      '(Required for File storage, unless all nodes contain path overides)'))
-        self.storage_create_parser.add_argument('--shared',
-                                                dest='shared',
-                                                required=False,
-                                                action='store_true',
-                                                default=False,
-                                                help=('Marks the storage as being shared '
-                                                      'across nodes in the cluster.'))
-        self.storage_create_parser.add_argument('--node',
-                                                dest='nodes',
-                                                required=False,
-                                                nargs='+',
-                                                action='append',
-                                                default=[],
-                                                help=('Specifies the nodes that this will '
-                                                      "be available to.\n"
-                                                      'Specify once for each node, e.g. '
-                                                      "--node node1 --node node2.\n"
-                                                      'Specify an additional parameter '
-                                                      'to override the path or volume '
-                                                      'group for the node, e.g. '
-                                                      '--node <Node name> '
-                                                      '<Overriden Volume Group/Path> '
-                                                      '--node <Node Name>...'))
+        self.storage_create_parser.add_argument(
+            '--type',
+            dest='storage_type',
+            help='Type of backend storage',
+            required=True,
+            choices=[t.__name__ for t in StorageFactory().get_storage_types()]
+        )
+        self.storage_create_parser.add_argument(
+            '--volume-group-name',
+            dest='volume_group_name',
+            required=False,
+            help=("Name of default volume group for backend storage for nodes \n"
+                  '(Required for LVM storage, unless all nodes contain volume group overides)')
+        )
+        self.storage_create_parser.add_argument(
+            '--path',
+            dest='path',
+            required=False,
+            help=("Name of default path for backend storage for nodes \n"
+                  '(Required for File storage, unless all nodes contain path overides)')
+        )
+        self.storage_create_parser.add_argument(
+            '--shared',
+            dest='shared',
+            required=False,
+            action='store_true',
+            default=False,
+            help=('Marks the storage as being shared '
+                  'across nodes in the cluster.')
+        )
+        self.storage_create_parser.add_argument(
+            '--node',
+            dest='nodes',
+            required=False,
+            nargs='+',
+            action='append',
+            default=[],
+            help=('Specifies the nodes that this will '
+                  "be available to.\n"
+                  'Specify once for each node, e.g. '
+                  "--node node1 --node node2.\n"
+                  'Specify an additional parameter '
+                  'to override the path or volume '
+                  'group for the node, e.g. '
+                  '--node <Node name> '
+                  '<Overriden Volume Group/Path> '
+                  '--node <Node Name>...')
+        )
 
         # Create subparser for commands relating to the local node configuration
         self.node_parser = self.subparsers.add_parser(

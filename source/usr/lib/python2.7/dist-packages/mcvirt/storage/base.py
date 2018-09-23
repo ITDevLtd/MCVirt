@@ -100,5 +100,3 @@ class Base(PyroObject):
         """Return boolean depending on whether storage backend is suitable to be
            used for backing DRBD"""
         return not self.shared
-
-
