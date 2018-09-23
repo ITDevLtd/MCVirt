@@ -24,7 +24,8 @@ from mcvirt.constants import DEFAULT_STORAGE_NAME
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNotExist,
-                               InvalidStorageConfiguration)
+                               InvalidStorageConfiguration, CouldNotConnectToNodeException,
+                               NodeVersionMismatch)
 from mcvirt.argument_validator import ArgumentValidator
 
 
@@ -35,8 +36,15 @@ class Factory(PyroObject):
     OBJECT_TYPE = 'storage backend'
     CACHED_OBJECTS = {}
 
+    def initialise(self):
+        """Perform any post-startup tasks"""
+        # Perform v9.0.0 configuration upgrade
+        self.v9_release_upgrade()
+        # Perform any parent tasks
+        super(Factory, self).initialise()
+
     def v9_release_upgrade(self):
-        """As part of the version 9 release. The configuration
+        """As part of the version 9.0.0 release. The configuration
            update cannot be performed whilst the cluster is down
            (i.e. during startup).
            During start up, an initial configuration change to implement
@@ -60,7 +68,7 @@ class Factory(PyroObject):
         # If default storage backend has already been reconfigured, or there is no 'default'
         # storage backend because 'vm_storage_vg' was never set, return
         try:
-            default_storage = self.get_object('default')
+            local_storage_object = self.get_object('default')
         except StorageBackendDoesNotExist:
             # Storage backend does not exist, mark default storage as being configured
             # and return
@@ -68,27 +76,33 @@ class Factory(PyroObject):
                 mark_storage_configured,
                 'Default storage configuration complete'
             )
-
-        # Setup variables for configuration
-        nodes = []
-        # With the old method of storage, without DRBD, storage was never
-        # usable in a shared fashion, so assume that it is not.
-        shared = False
-        # Use a constant for the name of the storage
-        name = DEFAULT_STORAGE_NAME
-        # Define default_vg_name
-        default_vg_name = None
+            return
 
         # Get cluster object
         cluster = self._get_registered_object('cluster')
 
         # If there is one node in the cluster, we can continue configuring the node
-        if (not cluster.get_nodes(return_all=True)):
-            # Single node cluster
-            default_vg_name = 
+        if not cluster.get_nodes(return_all=True):
+            # The default configuration, as set by the MCVirtConfig.upgrade function
+            # is correct for a single-node instance
+            MCVirtConfig().update_config(
+                mark_storage_configured,
+                'Default storage configuration complete'
+            )
+            return
 
         else:
-            # Otherwise, perform a version check on the cluster, which will determine if
+            # Running in a multi-node cluster
+
+            # Setup variables for configuration
+            nodes = {}
+            # With the old method of storage, without DRBD, storage was never
+            # usable in a shared fashion, so assume that it is not.
+            shared = False
+            # Define default_vg_name
+            default_vg_name = None
+
+            # Perform a version check on the cluster, which will determine if
             # either all nodes in the cluster are running and that all nodes
             # are running the new version
             try:
@@ -96,6 +110,53 @@ class Factory(PyroObject):
             except (CouldNotConnectToNodeException, NodeVersionMismatch):
                 # If nodes are unavailable or running different versions of code, return
                 return
+
+            # Get the configuration for each of the nodes
+            local_storage_config = local_storage_object.get_config()
+            current_node_configs = {
+                cluster.get_local_hostname(): local_storage_config
+            }
+            def get_remote_config(connection):
+                storage_factory = connection.get_connection('storage_factory')
+                # Get the remote node's storage object
+                try:
+                    default_object = storage_factory.get_object(DEFAULT_STORAGE_NAME)
+                except StorageBackendDoesNotExist:
+                    return
+                connection.annotate_object(default_object)
+                node_config = default_object.get_config()
+
+                # Get the node's node configuration from the node's config for the
+                # storage backend
+                current_node_configs[connection.name] = node_config['nodes'][connection.name]
+            cluster.run_remote_command(get_remote_config)
+
+            # Get volume groups and convert to list to get unique values
+            unique_volume_groups = set([current_node_configs[node]['location'] for node in current_node_configs])
+
+            # If there is just one volume group acros the cluster, set the default volume group to this
+            if len(unique_volume_groups) == 1:
+                default_vg_name = list(unique_volume_groups)[0]
+                nodes = {node: {'location': None} for node in current_node_configs}
+            else:
+                nodes = {node: {'location': node['location']} for node in current_node_configs}
+
+            storage_config = {
+                'nodes': nodes,
+                'shared': shared,
+                'location': default_vg_name,
+                'type': Lvm.__name__
+            }
+            self.update_storage_config(
+                DEFAULT_STORAGE_NAME, storage_config,
+                'Update default storage for v9.0.0 upgrade'
+            )
+
+            MCVirtConfig().update_config(
+                mark_storage_configured,
+                'Default storage configuration complete'
+            )
+
 
     @Expose(locking=True)
     def create(self, name, storage_type, location, shared=False,
@@ -125,7 +186,7 @@ class Factory(PyroObject):
                 }
 
         # Create config
-        config = {'storage_type': storage_type,
+        config = {'type': storage_type,
                   'shared': shared,
                   'nodes': nodes,
                   'location': location}

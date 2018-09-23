@@ -115,7 +115,8 @@ class MCVirtConfig(ConfigFile):
                 },
                 'session_timeout': 30,
                 'autostart_interval': 300,
-                'storage_backends': {}
+                'storage_backends': {},
+                'default_storage_configured': True
             }
 
         # Write the configuration to disk
@@ -156,7 +157,8 @@ class MCVirtConfig(ConfigFile):
                     }
                 }
                 del config['vm_storage_vg']
-            # Mark the 
+            # Mark the default storage as not being configured.
+            config['default_storage_configured'] = False
 
             # Define the hostname of the local machine in the config file
             config['cluster']['node_name'] = get_hostname()
