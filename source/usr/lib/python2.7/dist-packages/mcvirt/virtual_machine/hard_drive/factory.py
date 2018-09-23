@@ -67,7 +67,7 @@ class Factory(PyroObject):
         return Factory.CACHED_OBJECTS[cache_key]
 
     @Expose()
-    def ensure_hdd_valid(self, size, storage_type, remote_nodes):
+    def ensure_hdd_valid(self, size, storage_type, remote_nodes, storage_backend):
         """Ensures the HDD can be created on all nodes, and returns the storage type to be used."""
         available_storage_types = self._getAvailableStorageTypes()
         if storage_type:
@@ -91,8 +91,14 @@ class Factory(PyroObject):
 
         if self._is_cluster_master:
             def remote_command(remote_connection):
+                remote_storage_factory = remote_connection.get_connection('storage_factory')
+                remote_storage_backend = remote_storage_factory.get_object(
+                    name=storage_backend.name
+                )
                 hard_drive_factory = remote_connection.get_connection('hard_drive_factory')
-                hard_drive_factory.ensure_hdd_valid(size, storage_type, remote_nodes)
+                hard_drive_factory.ensure_hdd_valid(size=size, storage_type=storage_type,
+                                                    remote_nodes=remote_nodes,
+                                                    storage_backend=remote_storage_backend)
 
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(callback_method=remote_command, nodes=remote_nodes)
@@ -100,7 +106,7 @@ class Factory(PyroObject):
         return storage_type
 
     @Expose(locking=True)
-    def create(self, vm_object, size, storage_type, driver):
+    def create(self, vm_object, size, storage_type, driver, storage_backend=None):
         """Performs the creation of a hard drive, using a given storage type"""
         vm_object = self._convert_remote_object(vm_object)
 
@@ -120,7 +126,8 @@ class Factory(PyroObject):
                     'Storage type does not match VMs current storage type'
                 )
 
-        hdd_object = self.getClass(storage_type)(vm_object=vm_object, driver=driver)
+        hdd_object = self.getClass(storage_type)(vm_object=vm_object, driver=driver,
+                                                 storage_backend=storage_backend)
         self._register_object(hdd_object)
         hdd_object.create(size=size)
         return hdd_object
