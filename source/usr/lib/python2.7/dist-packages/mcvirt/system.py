@@ -67,3 +67,9 @@ class System(object):
             raise PasswordsDoNotMatchException('The two passwords do not match')
 
         return new_password
+
+    @staticmethod
+    def is_running_systemd():
+        """Determine if machine is running systemd"""
+        exit_code, _, _ = System.runCommand(['pidof', 'systemd'], raise_exception_on_failure=False)
+        return exit_code == 0
