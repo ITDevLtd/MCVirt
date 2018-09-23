@@ -35,6 +35,7 @@ class Factory(PyroObject):
     STORAGE_TYPES = [Lvm, File]
     OBJECT_TYPE = 'storage backend'
     CACHED_OBJECTS = {}
+    STORAGE_CONFIG_KEY = 'storage_backends'
 
     def initialise(self):
         """Perform any post-startup tasks"""
@@ -62,101 +63,104 @@ class Factory(PyroObject):
         if MCVirtConfig().get_config()['default_storage_configured']:
             return
 
-        def mark_storage_configured(config):
-            config['default_storage_configured'] = True
-
-        # If default storage backend has already been reconfigured, or there is no 'default'
-        # storage backend because 'vm_storage_vg' was never set, return
-        try:
-            local_storage_object = self.get_object('default')
-        except StorageBackendDoesNotExist:
-            # Storage backend does not exist, mark default storage as being configured
-            # and return
-            MCVirtConfig().update_config(
-                mark_storage_configured,
-                'Default storage configuration complete'
-            )
-            return
-
         # Get cluster object
         cluster = self._get_registered_object('cluster')
 
-        # If there is one node in the cluster, we can continue configuring the node
-        if not cluster.get_nodes(return_all=True):
-            # The default configuration, as set by the MCVirtConfig.upgrade function
-            # is correct for a single-node instance
-            MCVirtConfig().update_config(
-                mark_storage_configured,
-                'Default storage configuration complete'
-            )
+        # Perform a version check on the cluster, which will determine if
+        # either all nodes in the cluster are running and that all nodes
+        # are running the new version
+        try:
+            cluster.check_node_versions()
+        except (CouldNotConnectToNodeException, NodeVersionMismatch):
+            # If nodes are unavailable or running different versions of code, return
             return
 
-        else:
-            # Running in a multi-node cluster
+        # Setup variables for configuration
+        nodes = {}
+        # With the old method of storage, without DRBD, storage was never
+        # usable in a shared fashion, so assume that it is not.
+        shared = False
+        # Define default_vg_name
+        default_vg_name = None
 
-            # Setup variables for configuration
-            nodes = {}
-            # With the old method of storage, without DRBD, storage was never
-            # usable in a shared fashion, so assume that it is not.
-            shared = False
-            # Define default_vg_name
-            default_vg_name = None
 
-            # Perform a version check on the cluster, which will determine if
-            # either all nodes in the cluster are running and that all nodes
-            # are running the new version
-            try:
-                cluster.check_node_versions()
-            except (CouldNotConnectToNodeException, NodeVersionMismatch):
-                # If nodes are unavailable or running different versions of code, return
-                return
+        # Attempt to obtain local instance of default storage. Ignore if there is no 'default'
+        # storage backend because 'vm_storage_vg' was never set.
+        try:
+            local_storage_object = self.get_object('default')
 
             # Get the configuration for each of the nodes
             local_storage_config = local_storage_object.get_config()
             current_node_configs = {
-                cluster.get_local_hostname(): local_storage_config
+                cluster.get_local_hostname(): local_storage_config['nodes'][cluster.get_local_hostname()]
             }
-            def get_remote_config(connection):
-                storage_factory = connection.get_connection('storage_factory')
-                # Get the remote node's storage object
-                try:
-                    default_object = storage_factory.get_object(DEFAULT_STORAGE_NAME)
-                except StorageBackendDoesNotExist:
-                    return
-                connection.annotate_object(default_object)
-                node_config = default_object.get_config()
+        except StorageBackendDoesNotExist:
+            # Storage backend does not exist, continue anyway, as other nodes
+            # may need configuring
+            pass
 
-                # Get the node's node configuration from the node's config for the
-                # storage backend
-                current_node_configs[connection.name] = node_config['nodes'][connection.name]
-            cluster.run_remote_command(get_remote_config)
+        def get_remote_config(connection):
+            storage_factory = connection.get_connection('storage_factory')
+            # Get the remote node's storage object
+            try:
+                default_object = storage_factory.get_object(DEFAULT_STORAGE_NAME)
+            except StorageBackendDoesNotExist:
+                return
+            connection.annotate_object(default_object)
+            node_config = default_object.get_config()
 
-            # Get volume groups and convert to list to get unique values
-            unique_volume_groups = set([current_node_configs[node]['location'] for node in current_node_configs])
+            # Get the node's node configuration from the node's config for the
+            # storage backend
+            current_node_configs[connection.name] = node_config['nodes'][connection.name]
+        cluster.run_remote_command(get_remote_config)
 
-            # If there is just one volume group acros the cluster, set the default volume group to this
-            if len(unique_volume_groups) == 1:
-                default_vg_name = list(unique_volume_groups)[0]
-                nodes = {node: {'location': None} for node in current_node_configs}
-            else:
-                nodes = {node: {'location': node['location']} for node in current_node_configs}
+        # If no nodes have storage configured, mark storage as having been configured and return
+        if not len(current_node_configs):
+            self.set_default_v9_release_config({})
+            return
 
-            storage_config = {
-                'nodes': nodes,
-                'shared': shared,
-                'location': default_vg_name,
-                'type': Lvm.__name__
-            }
-            self.update_storage_config(
-                DEFAULT_STORAGE_NAME, storage_config,
-                'Update default storage for v9.0.0 upgrade'
-            )
+        # Get volume groups and convert to list to get unique values
+        unique_volume_groups = set([current_node_configs[node]['location'] for node in current_node_configs])
 
-            MCVirtConfig().update_config(
-                mark_storage_configured,
-                'Default storage configuration complete'
-            )
+        # If there is just one volume group acros the cluster, set the default volume group to this
+        if len(unique_volume_groups) == 1:
+            default_vg_name = list(unique_volume_groups)[0]
+            nodes = {node: {'location': None} for node in current_node_configs}
+        else:
+            nodes = {node: {'location': node['location']} for node in current_node_configs}
 
+        storage_config = {
+            'nodes': nodes,
+            'shared': shared,
+            'location': default_vg_name,
+            'type': Lvm.__name__
+        }
+        self.set_default_v9_release_config(storage_config)
+
+
+    @Expose(locking=True)
+    def set_default_v9_release_config(self, config):
+        """Update default storage config across cluster"""
+        def update_config(mcvirt_config):
+            """Update config for default storage"""
+            if config:
+                # Update config for default storage
+                mcvirt_config[Factory.STORAGE_CONFIG_KEY][DEFAULT_STORAGE_NAME] = config
+
+            # Mark default config as having been configured
+            mcvirt_config['default_storage_configured'] = True
+
+        self._get_registered_object('mcvirt_config').update_config(
+            update_config,
+            'Update default storage for v9.0.0 upgrade'
+        )
+        if self._is_cluster_master:
+            # If cluster master, update the remote nodes
+            def update_remote_config(remote_connection):
+                storage_factory = remote_connection.get_connection('storage_factory')
+                storage_factory.set_default_v9_release_config(config)
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(update_remote_config)
 
     @Expose(locking=True)
     def create(self, name, storage_type, location, shared=False,
@@ -217,7 +221,7 @@ class Factory(PyroObject):
 
     def get_config(self):
         """Return the configs for storage backends"""
-        return MCVirtConfig().get_config()['storage_backends']
+        return MCVirtConfig().get_config()[Factory.STORAGE_CONFIG_KEY]
 
     def check_exists(self, name):
         """Determine if a storage backend exists"""
@@ -227,7 +231,7 @@ class Factory(PyroObject):
     def get_object(self, name):
         """Returns the storage object for a given disk"""
         # Get config for storage backend
-        storage_backends_config = MCVirtConfig().get_config()['storage_backends']
+        storage_backends_config = MCVirtConfig().get_config()[Factory.STORAGE_CONFIG_KEY]
         if (name not in storage_backends_config.keys() or
                 'type' not in storage_backends_config[name]):
             raise StorageBackendDoesNotExist('Storage backend does not exist or is mis-configured')
