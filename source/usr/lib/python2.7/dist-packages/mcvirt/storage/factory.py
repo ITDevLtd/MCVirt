@@ -50,7 +50,7 @@ class Factory(PyroObject):
             raise InvalidStorageConfiguration(('A default location has not been set and '
                                                'some nodes do not have an override set'))
 
-        storage_class = self.getClass(storage_type)
+        storage_class = self.get_class(storage_type)
 
         if self._is_cluster_master:
             # If no nodes have been specified, get all nodes in cluster
@@ -100,7 +100,7 @@ class Factory(PyroObject):
         return (name in self.get_config().keys())
 
     @Expose()
-    def getObject(self, name):
+    def get_object(self, name):
         """Returns the storage object for a given disk"""
         # Get config for storage backend
         storage_backends_config = MCVirtConfig().get_config()['storage_backends']
@@ -111,19 +111,19 @@ class Factory(PyroObject):
 
         # Create required storage object, based on type
         if name not in Factory.CACHED_OBJECTS:
-            storage_object = self.getClass(storage_type)(name)
+            storage_object = self.get_class(storage_type)(name)
             self._register_object(storage_object)
             Factory.CACHED_OBJECTS[name] = storage_object
 
         return Factory.CACHED_OBJECTS[name]
 
-    def getStorageTypes(self):
+    def get_storage_types(self):
         """Returns the available storage types that MCVirt provides"""
         return self.STORAGE_TYPES
 
-    def getClass(self, storage_type):
+    def get_class(self, storage_type):
         """Obtains the storage class for a given storage type"""
-        for storage_class in self.getStorageTypes():
+        for storage_class in self.get_storage_types():
             if (storage_type == storage_class.__name__):
                 return storage_class
         raise UnknownStorageTypeException(

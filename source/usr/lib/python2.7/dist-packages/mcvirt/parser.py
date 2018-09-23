@@ -617,7 +617,7 @@ class Parser(object):
                                                 dest='storage_type',
                                                 help='Type of backend storage',
                                                 required=True,
-                                                choices=[t.__name__ for t in StorageFactory().getStorageTypes()])
+                                                choices=[t.__name__ for t in StorageFactory().get_storage_types()])
         self.storage_create_parser.add_argument('--volume-group-name',
                                                 dest='volume_group_name',
                                                 required=False,
