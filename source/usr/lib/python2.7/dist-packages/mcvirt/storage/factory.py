@@ -24,7 +24,7 @@ from mcvirt.constants import DEFAULT_STORAGE_NAME
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNotExist,
-                               InvalidStorageConfiguration, CouldNotConnectToNodeException,
+                               InvalidStorageConfiguration, InaccessibleNodeException,
                                NodeVersionMismatch)
 from mcvirt.argument_validator import ArgumentValidator
 
@@ -71,7 +71,7 @@ class Factory(PyroObject):
         # are running the new version
         try:
             cluster.check_node_versions()
-        except (CouldNotConnectToNodeException, NodeVersionMismatch):
+        except (InaccessibleNodeException, NodeVersionMismatch):
             # If nodes are unavailable or running different versions of code, return
             return
 
@@ -127,7 +127,7 @@ class Factory(PyroObject):
             default_vg_name = list(unique_volume_groups)[0]
             nodes = {node: {'location': None} for node in current_node_configs}
         else:
-            nodes = {node: {'location': node['location']} for node in current_node_configs}
+            nodes = {node: {'location': current_node_configs[node]['location']} for node in current_node_configs}
 
         storage_config = {
             'nodes': nodes,
@@ -141,6 +141,9 @@ class Factory(PyroObject):
     @Expose(locking=True)
     def set_default_v9_release_config(self, config):
         """Update default storage config across cluster"""
+        # Check permissions
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
         def update_config(mcvirt_config):
             """Update config for default storage"""
             if config:
@@ -150,7 +153,7 @@ class Factory(PyroObject):
             # Mark default config as having been configured
             mcvirt_config['default_storage_configured'] = True
 
-        self._get_registered_object('mcvirt_config').update_config(
+        self._get_registered_object('mcvirt_config')().update_config(
             update_config,
             'Update default storage for v9.0.0 upgrade'
         )

@@ -71,8 +71,12 @@ class Base(PyroObject):
         for node in config['nodes']:
             cluster.ensure_node_exists(node)
 
+    @Expose()
     def get_config(self):
         """Get config for storage backend"""
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+
         return MCVirtConfig().get_config()['storage_backends'][self.name]
 
     def set_default_location(self, new_location):
