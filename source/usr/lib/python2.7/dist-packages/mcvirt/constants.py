@@ -56,3 +56,7 @@ class AutoStartStates(Enum):
     NO_AUTOSTART = 0
     ON_BOOT = 1
     ON_POLL = 2
+
+# Name of the default storage backend, used during upgrade
+# from pre-v9.0.0 installations
+DEFAULT_STORAGE_NAME = 'default'

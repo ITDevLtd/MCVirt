@@ -20,6 +20,7 @@ from mcvirt.storage.lvm import Lvm
 from mcvirt.storage.file import File
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.constants import DEFAULT_STORAGE_NAME
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNotExist,
@@ -33,6 +34,68 @@ class Factory(PyroObject):
     STORAGE_TYPES = [Lvm, File]
     OBJECT_TYPE = 'storage backend'
     CACHED_OBJECTS = {}
+
+    def v9_release_upgrade(self):
+        """As part of the version 9 release. The configuration
+           update cannot be performed whilst the cluster is down
+           (i.e. during startup).
+           During start up, an initial configuration change to implement
+           the default storage backend (as an upgrade from the 'vm_storage_vg'
+           configuration) is created with just the local node specified.
+           Once the node is started, this function is called, which determines
+           if the rest of the cluster is active (so will make any changes on the
+           final node to be started with >=v9.0.0 running). It will then
+           look at the rest of the cluster to determine if the same volume group
+           is used on a majority of the cluster (to determine if a default VG is
+           appropriate for the storage) and then re-configure the 'default' storage
+           backend on all nodes in the cluster."""
+
+        # Determine if storage has already been configured
+        if MCVirtConfig().get_config()['default_storage_configured']:
+            return
+
+        def mark_storage_configured(config):
+            config['default_storage_configured'] = True
+
+        # If default storage backend has already been reconfigured, or there is no 'default'
+        # storage backend because 'vm_storage_vg' was never set, return
+        try:
+            default_storage = self.get_object('default')
+        except StorageBackendDoesNotExist:
+            # Storage backend does not exist, mark default storage as being configured
+            # and return
+            MCVirtConfig().update_config(
+                mark_storage_configured,
+                'Default storage configuration complete'
+            )
+
+        # Setup variables for configuration
+        nodes = []
+        # With the old method of storage, without DRBD, storage was never
+        # usable in a shared fashion, so assume that it is not.
+        shared = False
+        # Use a constant for the name of the storage
+        name = DEFAULT_STORAGE_NAME
+        # Define default_vg_name
+        default_vg_name = None
+
+        # Get cluster object
+        cluster = self._get_registered_object('cluster')
+
+        # If there is one node in the cluster, we can continue configuring the node
+        if (not cluster.get_nodes(return_all=True)):
+            # Single node cluster
+            default_vg_name = 
+
+        else:
+            # Otherwise, perform a version check on the cluster, which will determine if
+            # either all nodes in the cluster are running and that all nodes
+            # are running the new version
+            try:
+                cluster.check_node_versions()
+            except (CouldNotConnectToNodeException, NodeVersionMismatch):
+                # If nodes are unavailable or running different versions of code, return
+                return
 
     @Expose(locking=True)
     def create(self, name, storage_type, location, shared=False,

@@ -71,6 +71,19 @@ class Base(PyroObject):
         for node in config['nodes']:
             cluster.ensure_node_exists(node)
 
-
     def get_config(self):
+        """Get config for storage backend"""
         return MCVirtConfig().get_config()['storage_backends'][self.name]
+
+    def set_default_location(self, new_location):
+        """Set a new default location for storage backend.
+           None will mean no default location"""
+        pass
+
+    def add_node(self, node_name, custom_location=None):
+        """Add a new node to the storage backend"""
+        pass
+
+    def remove_node(self, node_name):
+        """Remove a node from the storage backend"""
+        pass

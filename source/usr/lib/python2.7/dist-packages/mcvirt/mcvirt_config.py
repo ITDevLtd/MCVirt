@@ -18,7 +18,7 @@
 import os
 
 from mcvirt.config_file import ConfigFile
-from mcvirt.constants import DirectoryLocation
+from mcvirt.constants import DirectoryLocation, DEFAULT_STORAGE_NAME
 from mcvirt.utils import get_hostname
 
 
@@ -143,10 +143,20 @@ class MCVirtConfig(ConfigFile):
 
         if config['version'] < 11:
             config['storage_backends'] = {}
+            # If the vm_storage_vg was configured, create a base
+            # configuration for the deafult storage backend
             if config['vm_storage_vg']:
-                config['storage_backends']['default'] = {
+                config['storage_backends'][DEFAULT_STORAGE_NAME] = {
                     'type': 'Lvm',
-                    'volume_group_name': config['vm_storage_vg']
+                    'location': None,
+                    'nodes': {
+                        get_hostname(): {
+                            'location': config['vm_storage_vg']
+                        }
+                    }
                 }
                 del config['vm_storage_vg']
+            # Mark the 
+
+            # Define the hostname of the local machine in the config file
             config['cluster']['node_name'] = get_hostname()
