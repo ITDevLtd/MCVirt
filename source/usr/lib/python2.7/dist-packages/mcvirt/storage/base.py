@@ -20,8 +20,6 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.exceptions import InvalidNodesException
-from mcvirt.utils import get_hostname
 
 
 class Base(PyroObject):
@@ -29,7 +27,13 @@ class Base(PyroObject):
 
     @property
     def name(self):
+        """Return name of storage backend"""
         return self._name
+
+    @property
+    def shared(self):
+        """Return shared config parameter"""
+        return self.get_config()['shared']
 
     def __init__(self, name):
         """Setup member variables"""
@@ -91,3 +95,10 @@ class Base(PyroObject):
     def remove_node(self, node_name):
         """Remove a node from the storage backend"""
         pass
+
+    def is_drbd_suitable(self):
+        """Return boolean depending on whether storage backend is suitable to be
+           used for backing DRBD"""
+        return not self.shared
+
+

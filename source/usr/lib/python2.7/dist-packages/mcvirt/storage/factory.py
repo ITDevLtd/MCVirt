@@ -157,6 +157,7 @@ class Factory(PyroObject):
             update_config,
             'Update default storage for v9.0.0 upgrade'
         )
+
         if self._is_cluster_master:
             # If cluster master, update the remote nodes
             def update_remote_config(remote_connection):
@@ -164,6 +165,50 @@ class Factory(PyroObject):
                 storage_factory.set_default_v9_release_config(config)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(update_remote_config)
+
+    @Expose()
+    def get_all(self, available_on_local_node=None, nodes=[], drbd=None,
+                storage_type=None, shared=None):
+        """Return all storage backends, with optional filtering"""
+        storage_objects = []
+        cluster = self._get_registered_object('cluster')
+        for storage_name in self._get_registered_object('mcvirt_config')().get_config()[
+                Factory.STORAGE_CONFIG_KEY]:
+
+            # Obtain storage object
+            storage_object = self.get_object(storage_name)
+
+            # Check storage is available on local node
+            if (available_on_local_node and
+                    cluster.get_local_hostname() not in storage_object.nodes):
+                continue
+
+            # If nodes are specified, ensure all nodes are available to storage object
+            if nodes:
+                def check_nodes_in_nodes(nodes, storage_object):
+                    for node in nodes:
+                        if node not in storage_object.nodes:
+                            return False
+                    return True
+                if not check_nodes_in_nodes(nodes, storage_object):
+                    continue
+
+            # If drbd is specified, ensure storage object is suitable to run DRBD
+            if drbd and not storage_object.is_drbd_suitable():
+                continue
+
+            # If storage_type is specified, ensure hat storage matches the object
+            if storage_type and not self.get_class(storage_type) != storage_object.__class__:
+                continue
+
+            # If a shared type is defined, determine if it matches the object, otherwise skip
+            if shared is not None and shared != storage_object.shared:
+                continue
+
+            # If all checks have passed, append to list of objects to return
+            storage_objects.append(storage_object)
+
+        return storage_objects
 
     @Expose(locking=True)
     def create(self, name, storage_type, location, shared=False,
