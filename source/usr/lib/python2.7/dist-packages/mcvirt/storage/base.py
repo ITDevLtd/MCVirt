@@ -198,3 +198,7 @@ class Base(PyroObject):
     def resize_volume(self, name, size):
         """Reszie volume"""
         raise NotImplementedError
+
+    def volume_exists(self, name):
+        """Determine whether volume exists"""
+        raise NotImplementedError

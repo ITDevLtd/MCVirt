@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import os
 
 from mcvirt.storage.base import Base
 from mcvirt.exceptions import (InvalidStorageConfiguration, InvalidNodesException,
@@ -66,17 +67,40 @@ class Lvm(Base):
                 "Error whilst creating disk logical volume:\n" + str(e)
             )
 
-    def delete_volume(self, name):
+    def delete_volume(self, name, ignore_non_existent):
         """Delete volume"""
-        raise NotImplementedError
+        # Create command arguments
+        command_args = ['lvremove', '-f', self.get_volume_path(name)]
+        try:
+            # Determine if logical volume exists before attempting to remove it
+            if (not (ignore_non_existent and
+                     not self.volume_exists(name))):
+                System.runCommand(command_args)
+
+        except MCVirtCommandException, e:
+            raise ExternalStorageCommandErrorException(
+                "Error whilst removing logical volume:\n" + str(e)
+            )
 
     def activate_volume(self, name):
         """Activate volume"""
-        raise NotImplementedError
+        # Obtain logical volume path
+        lv_path = self.get_volume_path(name)
+
+        # Create command arguments
+        command_args = ['lvchange', '-a', 'y', '--yes', lv_path]
+        try:
+            # Run on the local node
+            System.runCommand(command_args)
+
+        except MCVirtCommandException, e:
+            raise ExternalStorageCommandErrorException(
+                "Error whilst activating logical volume:\n" + str(e)
+            )
 
     def is_volume_activated(self, name):
         """Return whether volume is activated"""
-        raise NotImplementedError
+        return os.path.exists(self.get_volume_path(name))
 
     def snapshot_volume(self, name, destination, size):
         """Snapshot volume"""
@@ -90,4 +114,15 @@ class Lvm(Base):
         """Reszie volume"""
         command_args = ['/sbin/lvresize', '--size', '%sM' % size,
                         self.get_volume_path(name)]
+        try:
+            # Create on local node
+            System.runCommand(command_args)
 
+        except MCVirtCommandException, e:
+            raise ExternalStorageCommandErrorException(
+                "Error whilst resizing disk logical volume:\n" + str(e)
+            )
+
+    def volume_exists(self, name):
+        """Determine whether logical volume exists"""
+        return os.path.lexists(self.get_volume_path(name))
