@@ -17,58 +17,23 @@
 
 
 from mcvirt.storage.base import Base
-from mcvirt.exceptions import InvalidStorageConfiguration, InvalidNodesException
+from mcvirt.exceptions import (InvalidStorageConfiguration, InvalidNodesException,
+                               ExternalStorageCommandErrorException,
+                               MCVirtCommandException)
+from mcvirt.system import System
 
 
 class Lvm(Base):
     """Storage backend for LVM based storage"""
 
     @staticmethod
-    def validate_config(node, cluster, config):
-        """Validate config"""
-        Base.validate_config(cluster, config)
-
-        # Ensure that all nodes specified are valid
-
-        # Check local node, if it has been defined
-        if cluster.get_local_hostname() in config['nodes']:
-            # Get overriden location, if defined
-            if config['nodes'][cluster.get_local_hostname()]['location']:
-                vg_name = config['nodes'][cluster.get_local_hostname()]['location']
-
-            # Else, if defined, use the default location
-            elif config['location']:
-                vg_name = config['location']
-
-            # Otherwise, if node if defined and no locaftion is defined,
-            # raise an error
-            else:
-                raise InvalidStorageConfiguration(
-                    'No node-specific volume group specified for node: %s' %
-                    cluster.get_local_hostname()
-                )
-            if not node.volume_group_exists(vg_name):
-                raise InvalidStorageConfiguration(
-                    'Volume group %s does not exist on node: %s' %
-                    (vg_name, cluster.get_local_hostname())
-                )
-
-        def remote_command(remote_object):
-            node = remote_object.get_connection('node')
-            if (remote_object.name in config['nodes'] and
-                    config['nodes'][remote_object.name]['location']):
-                vg_name = config['nodes'][remote_object.name]['location']
-            elif config['location']:
-                vg_name = config['location']
-            else:
-                raise InvalidStorageConfiguration(
-                    'No node-specific volume group specified for node: %s' % remote_object.name
-                )
-            if not node.volume_group_exists(vg_name):
-                raise InvalidStorageConfiguration(
-                    'Volume group %s does not exist on node: %s' % (vg_name, remote_object.name)
-                )
-        cluster.run_remote_command(remote_command, nodes=config['nodes'])
+    def node_pre_check(node, cluster, location):
+        """Ensure volume group exists on node"""
+        if not node.volume_group_exists(location):
+            raise InvalidStorageConfiguration(
+                'Volume group %s does not exist on node: %s' %
+                (location, cluster.get_local_hostname())
+            )
 
     def get_location(self, node=None):
         """Return volume group name for the local host"""
@@ -81,3 +46,48 @@ class Lvm(Base):
             return storage_config['location']
         else:
             raise InvalidNodesException('Storage %s not defined on %s' % (self.name, node))
+
+    def get_volume_path(self, name, node=None):
+        """Return the full path of a given logical volume"""
+        return '/dev/' + self.get_location(node=node) + '/' + name
+
+    def create_volume(self, name, size):
+        """Create volume in storage backend"""
+        volume_group = self.get_location()
+
+        # Create command list
+        command_args = ['/sbin/lvcreate', volume_group, '--name', name, '--size', '%sM' % size]
+        try:
+            # Create on local node
+            System.runCommand(command_args)
+
+        except MCVirtCommandException, e:
+            raise ExternalStorageCommandErrorException(
+                "Error whilst creating disk logical volume:\n" + str(e)
+            )
+
+    def delete_volume(self, name):
+        """Delete volume"""
+        raise NotImplementedError
+
+    def activate_volume(self, name):
+        """Activate volume"""
+        raise NotImplementedError
+
+    def is_volume_activated(self, name):
+        """Return whether volume is activated"""
+        raise NotImplementedError
+
+    def snapshot_volume(self, name, destination, size):
+        """Snapshot volume"""
+        raise NotImplementedError
+
+    def deactivate_volume(self, name):
+        """Deactivate volume"""
+        raise NotImplementedError
+
+    def resize_volume(self, name, size):
+        """Reszie volume"""
+        command_args = ['/sbin/lvresize', '--size', '%sM' % size,
+                        self.get_volume_path(name)]
+

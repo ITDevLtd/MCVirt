@@ -223,8 +223,9 @@ class Factory(PyroObject):
         # a default location is defined
         # all nodes provide an override location
         if (not location and
-                None in [nodes[node]['location'] if 'location' in nodes[node] else None
-                         for node in nodes]):
+                (None in [nodes[node]['location'] if 'location' in nodes[node] else None
+                          for node in nodes] or
+                 not nodes)):
             raise InvalidStorageConfiguration(('A default location has not been set and '
                                                'some nodes do not have an override set'))
 
@@ -233,10 +234,10 @@ class Factory(PyroObject):
         if self._is_cluster_master:
             # If no nodes have been specified, get all nodes in cluster
             if not nodes:
-                cluster_object = self._get_registered_object('cluster')
+                cluster = self._get_registered_object('cluster')
                 nodes = {
                     node: {'location': None}
-                    for node in cluster_object.get_nodes(return_all=True, include_local=True)
+                    for node in cluster.get_nodes(return_all=True, include_local=True)
                 }
 
         # Create config
@@ -250,24 +251,51 @@ class Factory(PyroObject):
             # are as expected for the type of storage backend
             # Only required on cluster master, as this checks all nodes in the cluster
             storage_class.validate_config(
-                self._get_registered_object('node'),
-                self._get_registered_object('cluster'),
-                config
+                cluster=self._get_registered_object('cluster'),
+                config=config
             )
+
+            cluster = self._get_registered_object('cluster')
+
+            # Ensure pre-requisites for storage backend pass on each node
+            for node in nodes:
+                node_location = (nodes[node]['location']
+                                 if 'location' in nodes[node] and
+                                 nodes[node]['location'] is not None else location)
+
+                if node == cluster.get_local_hostname():
+                    self.node_pre_check(location=node_location, storage_type=storage_type)
+                else:
+                    # If node is a remote node, run the command remotely
+                    def remote_command(connection):
+                        """Perform remote node_pre_check command"""
+                        storage_factory = connection.get_connection('storage_factory')
+                        storage_factory.node_pre_check(location=node_location,
+                                                       storage_type=storage_type)
+                    cluster.run_remote_command(remote_command, nodes=[node])
 
         # Add new storage backend to MCVirt config
         def update_config(mcvirt_config):
+            """Update MCVirt config"""
             mcvirt_config['storage_backends'][name] = config
         MCVirtConfig().update_config(update_config, 'Add storage backend %s' % name)
 
         if self._is_cluster_master:
-            def remote_command(remote_connection):
+            def remote_create(remote_connection):
+                """Perform remote creation command"""
                 storage_factory = remote_connection.get_connection('storage_factory')
                 storage_factory.create(name=name, storage_type=storage_type,
                                        location=location, shared=shared,
                                        nodes=nodes)
             cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_command)
+            cluster.run_remote_command(remote_create)
+
+    @Expose()
+    def node_pre_check(self, location, storage_type):
+        """Ensure node is suitable for storage backend"""
+        node = self._get_registered_object('node')
+        cluster = self._get_registered_object('cluster')
+        self.get_class(storage_type).node_pre_check(node, cluster, location)
 
     def get_config(self):
         """Return the configs for storage backends"""
@@ -275,11 +303,11 @@ class Factory(PyroObject):
 
     def check_exists(self, name):
         """Determine if a storage backend exists"""
-        return (name in self.get_config().keys())
+        return name in self.get_config().keys()
 
     @Expose()
     def get_object(self, name):
-        """Returns the storage object for a given disk"""
+        """Return the storage object for a given disk"""
         # Get config for storage backend
         storage_backends_config = MCVirtConfig().get_config()[Factory.STORAGE_CONFIG_KEY]
         if (name not in storage_backends_config.keys() or
@@ -296,13 +324,13 @@ class Factory(PyroObject):
         return Factory.CACHED_OBJECTS[name]
 
     def get_storage_types(self):
-        """Returns the available storage types that MCVirt provides"""
+        """Return the available storage types that MCVirt provides"""
         return self.STORAGE_TYPES
 
     def get_class(self, storage_type):
-        """Obtains the storage class for a given storage type"""
+        """Obtain the storage class for a given storage type"""
         for storage_class in self.get_storage_types():
-            if (storage_type == storage_class.__name__):
+            if storage_type == storage_class.__name__:
                 return storage_class
         raise UnknownStorageTypeException(
             'Attempted to initialise an unknown storage type: %s' %

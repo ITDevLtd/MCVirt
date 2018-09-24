@@ -20,7 +20,9 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.exceptions import UnsuitableNodeException
+from mcvirt.exceptions import (UnsuitableNodeException,
+                               NodeAlreadyConfiguredInStorageBackend,
+                               StorageBackendInUse)
 
 
 class Base(PyroObject):
@@ -41,9 +43,18 @@ class Base(PyroObject):
         """Return nodes that the storage is available to"""
         return self.get_config()['nodes'].keys()
 
+    @property
+    def storage_type(self):
+        """Return storage type for storage backend"""
+        return self.__class__.__name__
+
     def __init__(self, name):
         """Setup member variables"""
         self._name = name
+
+    def in_use(self):
+        """Whether the storage backend is used for any disks objects"""
+        pass
 
     @Expose(locking=True)
     def delete(self):
@@ -101,18 +112,35 @@ class Base(PyroObject):
         If node is set to None, the default location will be set
         """
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
-
+        pass
 
     @Expose()
     def add_node(self, node_name, custom_location=None):
         """Add a new node to the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
 
+        location = custom_location if custom_location else self.get_location()
+
         # Ensure node is not already attached to storage backend
         if node_name in self.nodes:
             raise NodeAlreadyConfiguredInStorageBackend(
                 'Node already configured in storage backend: %s %s' % node_name, self.name
             )
+
+        cluster = self._get_registered_object('cluster')
+
+        # If adding local node to cluster
+        if node_name == cluster.get_local_hostname():
+
+            # Ensure that the requested volume exists
+            storage_factory = self._get_registered_object('storage_factory')
+            storage_factory.node_pre_check(storage_type=self.storage_type,
+                                           location=location)
+        else:
+            def remote_command(connection):
+                remote_storage_factory = connection.get_connection('storage_factory')
+                remote_storage_factory.node_pre_check(storage_type=self.storage_type,
+                                                      location=location)
 
     @Expose()
     def remove_node(self, node_name):
@@ -132,8 +160,41 @@ class Base(PyroObject):
         return (config['nodes'][node]['location'] if config['nodes'][node]['location']
                 else config['nodes']['location'])
 
+    @staticmethod
+    def node_pre_check(node, cluster, location):
+        """Ensure the node is suitable for running to storage backend"""
+        raise NotImplementedError
+
     def is_drbd_suitable(self):
         """Return boolean depending on whether storage backend is suitable to be
         used for backing DRBD
         """
         return not self.shared
+
+    def create_volume(self, name, size):
+        """Create volume in storage backend"""
+        raise NotImplementedError
+
+    def delete_volume(self, name):
+        """Delete volume"""
+        raise NotImplementedError
+
+    def activate_volume(self, name):
+        """Activate volume"""
+        raise NotImplementedError
+
+    def is_volume_activated(self, name):
+        """Return whether volume is activated"""
+        raise NotImplementedError
+
+    def snapshot_volume(self, name, destination, size):
+        """Snapshot volume"""
+        raise NotImplementedError
+
+    def deactivate_volume(self, name):
+        """Deactivate volume"""
+        raise NotImplementedError
+
+    def resize_volume(self, name, size):
+        """Reszie volume"""
+        raise NotImplementedError
