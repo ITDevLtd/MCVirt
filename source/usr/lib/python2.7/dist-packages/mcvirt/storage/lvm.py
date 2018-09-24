@@ -104,7 +104,9 @@ class Lvm(Base):
 
     def snapshot_volume(self, name, destination, size):
         """Snapshot volume"""
-        raise NotImplementedError
+        System.runCommand(['lvcreate', '--snapshot', self.get_volume_path(name),
+                           '--name', destination,
+                           '--size', size])
 
     def deactivate_volume(self, name):
         """Deactivate volume"""
