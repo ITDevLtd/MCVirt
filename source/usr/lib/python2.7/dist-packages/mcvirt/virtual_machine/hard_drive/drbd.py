@@ -252,11 +252,10 @@ class Drbd(Base):
         return self.drbd_minor
 
     @staticmethod
-    def isAvailable(pyro_object):
+    def isAvailable(storage_factory, node_drdb):
         """Determine if Drbd is available on the node"""
-        return (pyro_object._get_registered_object('node').is_volume_group_set() and
-                pyro_object._get_registered_object('node').volume_group_exists() and
-                pyro_object._get_registered_object('node_drbd').is_enabled())
+        return (storage_factory.get_all(drbd=True, local_node=True) and
+                node_drdb.is_enabled())
 
     def _check_exists(self):
         """Ensure the required storage elements exist on the system"""

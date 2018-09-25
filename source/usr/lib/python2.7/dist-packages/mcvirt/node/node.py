@@ -33,21 +33,6 @@ from mcvirt.constants import DirectoryLocation
 class Node(PyroObject):
     """Provides methods to configure the local node."""
 
-    @Expose(locking=True)
-    def set_storage_volume_group(self, volume_group):
-        """Update the MCVirt configuration to set the volume group for VM storage."""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
-
-        ArgumentValidator.validate_vg_name(volume_group)
-
-        # Update global MCVirt configuration
-        def update_config(config):
-            config['vm_storage_vg'] = volume_group
-        mcvirt_config = MCVirtConfig()
-        mcvirt_config.update_config(update_config,
-                                    'Set virtual machine storage volume group to %s' %
-                                    volume_group)
-
     @Expose()
     def get_listen_ports(self):
         return self._get_listen_ports(include_remote=False)
@@ -77,22 +62,7 @@ class Node(PyroObject):
             config['cluster']['cluster_ip'] = ip_address
         mcvirt_config = MCVirtConfig()
         mcvirt_config.update_config(update_config, 'Set node cluster IP address to %s' %
-                                                   ip_address)
-
-    def get_free_vg_space(self, volume_group):
-        """Returns the free space in megabytes."""
-        _, out, err = System.runCommand(['vgs', volume_group,
-                                         '-o', 'free', '--noheadings', '--nosuffix', '--units',
-                                         'm'], False,
-                                        DirectoryLocation.BASE_STORAGE_DIR)
-        return float(out)
-
-    @Expose()
-    def volume_group_exists(self, volume_group):
-        """Determine if the volume group actually exists on the node."""
-        _, out, err = System.runCommand(['vgs', '|', 'grep', volume_group],
-                                        False, DirectoryLocation.BASE_STORAGE_DIR)
-        return bool(out)
+                                    ip_address)
 
     @Expose()
     def get_version(self):

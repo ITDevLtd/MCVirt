@@ -293,9 +293,8 @@ class Factory(PyroObject):
     @Expose()
     def node_pre_check(self, location, storage_type):
         """Ensure node is suitable for storage backend"""
-        node = self._get_registered_object('node')
         cluster = self._get_registered_object('cluster')
-        self.get_class(storage_type).node_pre_check(node, cluster, location)
+        self.get_class(storage_type).node_pre_check(cluster, location)
 
     def get_config(self):
         """Return the configs for storage backends"""

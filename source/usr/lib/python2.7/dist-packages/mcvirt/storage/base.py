@@ -23,7 +23,8 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (UnsuitableNodeException,
                                NodeAlreadyConfiguredInStorageBackend,
                                StorageBackendInUse,
-                               StorageBackendNotAvailableOnNode)
+                               StorageBackendNotAvailableOnNode,
+                               InvalidStorageConfiguration)
 
 
 class Base(PyroObject):
@@ -205,16 +206,39 @@ class Base(PyroObject):
             node = cluster.get_local_hostname()
         return node in self.nodes
 
-    @staticmethod
-    def node_pre_check(node, cluster, location):
-        """Ensure the node is suitable for running to storage backend"""
-        raise NotImplementedError
+    @classmethod
+    def node_pre_check(cls, cluster, location):
+        """Ensure volume group exists on node"""
+        try:
+            cls.ensure_exists(location)
+        except InvalidStorageConfiguration, exc:
+            raise InvalidStorageConfiguration(
+                '%s on node %s' % (str(exc), cluster.get_local_hostname())
+            )
 
     def is_drbd_suitable(self):
         """Return boolean depending on whether storage backend is suitable to be
         used for backing DRBD
         """
         return not self.shared
+
+    @classmethod
+    def ensure_exists(cls, location):
+        """Ensure that the underlying storage exists"""
+        raise NotImplementedError
+
+    def check_exists(self):
+        """Check volume groups exists on the local node"""
+        return self.__class__._check_exists_local(self.get_location())
+
+    @classmethod
+    def _check_exists_local(cls, location):
+        """Determine if underlying storage actually exists on the node."""
+        raise NotImplementedError
+
+    def get_free_space(self):
+        """Return the amount of free spacae in the storage backend"""
+        raise NotImplementedError
 
     def create_volume(self, name, size):
         """Create volume in storage backend"""

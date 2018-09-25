@@ -176,8 +176,10 @@ class Factory(PyroObject):
     def _getAvailableStorageTypes(self):
         """Returns a list of storage types that are available on the node"""
         available_storage_types = []
+        storage_factory = self._get_registered_object('storage_factory')
+        node_drbd = self._get_registered_object('node_drbd')
         for storage_type in self.STORAGE_TYPES:
-            if storage_type.isAvailable(self):
+            if storage_type.isAvailable(storage_factory, node_drbd):
                 available_storage_types.append(storage_type)
         return available_storage_types
 

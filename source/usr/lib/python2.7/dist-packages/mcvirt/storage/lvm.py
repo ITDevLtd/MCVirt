@@ -22,19 +22,34 @@ from mcvirt.exceptions import (InvalidStorageConfiguration, InvalidNodesExceptio
                                ExternalStorageCommandErrorException,
                                MCVirtCommandException)
 from mcvirt.system import System
+from mcvirt.constants import DirectoryLocation
 
 
 class Lvm(Base):
     """Storage backend for LVM based storage"""
 
-    @staticmethod
-    def node_pre_check(node, cluster, location):
-        """Ensure volume group exists on node"""
-        if not node.volume_group_exists(location):
+    @classmethod
+    def ensure_exists(cls, location):
+        if not cls.check_exists(location):
             raise InvalidStorageConfiguration(
-                'Volume group %s does not exist on node: %s' %
-                (location, cluster.get_local_hostname())
+                'Volume group %s does not exist' % location
             )
+
+    @staticmethod
+    def _check_exists_local(volume_group):
+        """Determine if the volume group actually exists on the node."""
+        _, out, err = System.runCommand(['vgs', '|', 'grep', volume_group],
+                                        False, DirectoryLocation.BASE_STORAGE_DIR)
+        return bool(out)
+
+    def get_free_space(self):
+        """Returns the free space in megabytes."""
+        _, out, _ = System.runCommand(['vgs', self.get_location(),
+                                       '-o', 'free', '--noheadings', '--nosuffix', '--units',
+                                       'm'], False,
+                                      DirectoryLocation.BASE_STORAGE_DIR)
+        return float(out)
+
 
     def get_location(self, node=None):
         """Return volume group name for the local host"""

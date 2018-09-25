@@ -15,9 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
-
-import libvirt
 import os
 
 from mcvirt.system import System
@@ -27,7 +24,6 @@ from mcvirt.exceptions import (VmAlreadyStartedException, VmIsCloneException,
                                CannotMigrateLocalDiskException,
                                MCVirtCommandException)
 from mcvirt.virtual_machine.hard_drive.base import Base
-from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.expose_method import Expose
 
@@ -38,28 +34,27 @@ class Local(Base):
     MAXIMUM_DEVICES = 4
     CACHE_MODE = 'directsync'
 
-    def __init__(self, logical_volume=None, *args, **kwargs):
+    def __init__(self, custom_disk_name=None, *args, **kwargs):
         """Sets member variables and obtains libvirt domain object"""
-        self._logical_volume = logical_volume
+        self._custom_disk_name = custom_disk_name
         super(Local, self).__init__(*args, **kwargs)
 
     @property
-    def logical_volume(self):
-        if self._logical_volume:
-            return self._logical_volume
+    def disk_name(self):
+        if self._custom_disk_name:
+            return self._custom_disk_name
         vm_name = self.vm_object.get_name()
         return 'mcvirt_vm-%s-disk-%s' % (vm_name, self.disk_id)
 
     @property
     def config_properties(self):
         """Return the disk object config items"""
-        return super(Local, self).config_properties + ['logical_volume']
+        return super(Local, self).config_properties + ['_custom_disk_name']
 
     @staticmethod
-    def isAvailable(pyro_object):
+    def isAvailable(storage_factory, node_drdb):
         """Determine if local storage is available on the node"""
-        return (pyro_object._get_registered_object('node').is_volume_group_set() and
-                pyro_object._get_registered_object('node').volume_group_exists())
+        return bool(storage_factory.get_all(local_node=True))
 
     @Expose(locking=True)
     def increaseSize(self, increase_size):
@@ -73,11 +68,11 @@ class Local(Base):
 
         # Ensure VM is stopped
         from mcvirt.virtual_machine.virtual_machine import PowerStates
-        if (self.vm_object._getPowerState() is not PowerStates.STOPPED):
+        if self.vm_object._getPowerState() is not PowerStates.STOPPED:
             raise VmAlreadyStartedException('VM must be stopped before increasing disk size')
 
         # Ensure that VM has not been cloned and is not a clone
-        if (self.vm_object.getCloneParent() or self.vm_object.getCloneChildren()):
+        if self.vm_object.getCloneParent() or self.vm_object.getCloneChildren():
             raise VmIsCloneException('Cannot increase the disk of a cloned VM or a clone.')
 
         command_args = ('lvextend', '-L', '+%sM' % increase_size,
@@ -155,6 +150,8 @@ class Local(Base):
 
     def preMigrationChecks(self):
         """Perform pre-migration checks"""
+        # @TODO Allow migration for shared disks - worth ensuring that the disks is actually
+        # available on both nodes
         raise CannotMigrateLocalDiskException('VMs using local disks cannot be migrated')
 
     def _getDiskPath(self):

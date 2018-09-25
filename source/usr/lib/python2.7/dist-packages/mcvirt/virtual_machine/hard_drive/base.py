@@ -63,6 +63,9 @@ class Base(PyroObject):
     SNAPSHOT_SUFFIX = '_snapshot'
     SNAPSHOT_SIZE = '500M'
 
+    # Cache mode - must be overidden
+    CACHE_MODE = None
+
     def __init__(self, vm_object, storage_backend=None, disk_id=None, driver=None):
         """Set member variables"""
         self._disk_id = disk_id
@@ -301,7 +304,7 @@ class Base(PyroObject):
                 raise
 
     @staticmethod
-    def isAvailable(pyro_object):
+    def isAvailable(node, node_drbd):
         """Returns whether the storage type is available on the node"""
         raise NotImplementedError
 
@@ -709,11 +712,6 @@ class Base(PyroObject):
         else:
             return {}
 
-    def _getLogicalVolumePath(self, name):
-        """Returns the full path of a given logical volume"""
-        volume_group = self.volume_group
-        return '/dev/' + volume_group + '/' + name
-
     def _generateLibvirtXml(self):
         """Creates a basic libvirt XML configuration for the connection to the disk"""
         # Create the base disk XML element
@@ -771,5 +769,7 @@ class Base(PyroObject):
 
     def get_storage_backend(self):
         """Return the storage backend object for the hard drive object"""
-        storage_backend_name = self.getDiskConfig()['storage_backend']
-        return self._get_registered_object('storage_factory').get_object(storage_backend_name)
+        if not self._storage_backend:
+            storage_backend_name = self.getDiskConfig()['storage_backend']
+            return self._get_registered_object('storage_factory').get_object(storage_backend_name)
+        return self._storage_backend
