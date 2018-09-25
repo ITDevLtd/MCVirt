@@ -661,13 +661,13 @@ class Cluster(PyroObject):
                 return_data[node] = callback_method(node_object, *args, **kwargs)
         return return_data
 
-    def check_node_exists(self, node_name):
+    def check_node_exists(self, node_name, include_local=False):
         """Determine if a node is already present in the cluster"""
-        return (node_name in self.get_nodes(return_all=True))
+        return (node_name in self.get_nodes(return_all=True, include_local=include_local))
 
-    def ensure_node_exists(self, node):
+    def ensure_node_exists(self, node, include_local=False):
         """Check if node exists and throws exception if it does not"""
-        if not self.check_node_exists(node):
+        if not self.check_node_exists(node_name=node, include_local=include_local):
             raise NodeDoesNotExistException('Node %s does not exist' % node)
 
     def remove_node_configuration(self, node_name):

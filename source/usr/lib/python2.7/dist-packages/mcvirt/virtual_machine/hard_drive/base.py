@@ -63,11 +63,11 @@ class Base(PyroObject):
     SNAPSHOT_SUFFIX = '_snapshot'
     SNAPSHOT_SIZE = '500M'
 
-    def __init__(self, vm_object, custom_volume_group=None, disk_id=None, driver=None):
+    def __init__(self, vm_object, storage_backend=None, disk_id=None, driver=None):
         """Set member variables"""
         self._disk_id = disk_id
         self._driver = driver
-        self._custom_volume_group = custom_volume_group
+        self._storage_backend = storage_backend
 
         self.vm_object = vm_object
 
@@ -89,19 +89,6 @@ class Base(PyroObject):
         if name in self.config_properties:
             name = '_%s' % name
         return super(Base, self).__setattr__(name, value)
-
-    @property
-    def custom_volume_group(self):
-        """Return the custom volume group, if sepcified"""
-        return self._custom_volume_group
-
-    @property
-    def volume_group(self):
-        """Return the volume group for the storage, either custom or global"""
-        if self._custom_volume_group:
-            return self._custom_volume_group
-        else:
-            return MCVirtConfig().get_config()['vm_storage_vg']
 
     @property
     def disk_id(self):
@@ -144,6 +131,12 @@ class Base(PyroObject):
 
         remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
         remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
+
+        remote_storage_factory = remote_node.get_connection('storage_factory')
+        remote_storage_backend = remote_storage_factory.get_object(
+            self.get_storage_backend().name
+        )
+
         remote_hard_drive_factory = remote_node.get_connection('hard_drive_factory')
 
         kwargs = {
@@ -152,6 +145,7 @@ class Base(PyroObject):
         }
         if not registered:
             kwargs['storage_type'] = self.get_type()
+            kwargs['storage_backend'] = remote_storage_backend
             for config in self.config_properties:
                 kwargs[config] = getattr(self, config)
 
@@ -170,7 +164,9 @@ class Base(PyroObject):
         disk_id = 0
         vm_config = self.vm_object.get_config_object().get_config()
         disks = vm_config['hard_disks']
-        while (not found_available_id):
+
+        # Increment disk ID until a free ID is found
+        while not found_available_id:
             disk_id += 1
             if not str(disk_id) in disks:
                 found_available_id = True
@@ -230,19 +226,24 @@ class Base(PyroObject):
         # Unregister object and remove from factory cache
         hdd_factory = self._get_registered_object('hard_drive_factory')
         if cache_key in hdd_factory.CACHED_OBJECTS:
-            del(hdd_factory.CACHED_OBJECTS[cache_key])
+            del hdd_factory.CACHED_OBJECTS[cache_key]
         self.unregister_object()
 
-    def duplicate(self, destination_vm_object):
+    def duplicate(self, destination_vm_object, destination_storage_backend=None):
         """Clone the hard drive and attach it to the new VM object"""
         self._ensure_exists()
 
         # Create new disk object, using the same type, size and disk_id
         new_disk_object = self.__class__(vm_object=destination_vm_object, disk_id=self.disk_id,
-                                         driver=self.driver)
+                                         driver=self.driver,
+                                         storage_backend=destination_storage_backend)
+        # Register new disk object with pyro
         self._register_object(new_disk_object)
+
+        # Create new disk
         new_disk_object.create(self.getSize())
 
+        # Get path of source and new disks
         source_drbd_block_device = self._getDiskPath()
         destination_drbd_block_device = new_disk_object._getDiskPath()
 
@@ -659,7 +660,7 @@ class Base(PyroObject):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
         raise NotImplementedError
 
-    def create(self):
+    def create(self, size):
         """Creates a new disk image, attaches the disk to the VM and records the disk
         in the VM configuration"""
         raise NotImplementedError
@@ -694,6 +695,10 @@ class Base(PyroObject):
 
     def move(self, destination_node, source_node):
         """Moves the storage to another node in the cluster"""
+        raise NotImplementedError
+
+    def _removeStorage(self):
+        """Delete te underlying storage for the disk"""
         raise NotImplementedError
 
     def getDiskConfig(self):
@@ -763,3 +768,8 @@ class Base(PyroObject):
     def _getBackupSnapshotLogicalVolume(self):
         """Returns the logical volume name for the backup snapshot"""
         raise NotImplementedError
+
+    def get_storage_backend(self):
+        """Return the storage backend object for the hard drive object"""
+        storage_backend_name = self.getDiskConfig()['storage_backend']
+        return self._get_registered_object('storage_factory').get_object(storage_backend_name)

@@ -1389,8 +1389,7 @@ class Parser(object):
                                                    'override'))
 
                 # Split nodes argument into nodes and storage location overrides
-                nodes = [node_config[0] for node_config in args.nodes]
-                node_storage_overrides = {
+                nodes = {
                     node[0]: {'location': node[1] if len(node) == 2 else None}
                     for node in args.nodes
                 }
@@ -1398,7 +1397,6 @@ class Parser(object):
                                        storage_type=args.storage_type,
                                        nodes=nodes,
                                        shared=args.shared,
-                                       node_config=node_storage_overrides,
                                        location=location)
             elif args.storage_action == 'delete':
                 storage_backend = storage_factory.getObject(args.storage_name)

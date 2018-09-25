@@ -22,7 +22,8 @@ from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (UnsuitableNodeException,
                                NodeAlreadyConfiguredInStorageBackend,
-                               StorageBackendInUse)
+                               StorageBackendInUse,
+                               StorageBackendNotAvailableOnNode)
 
 
 class Base(PyroObject):
@@ -48,13 +49,36 @@ class Base(PyroObject):
         """Return storage type for storage backend"""
         return self.__class__.__name__
 
+    def __eq__(self, comp):
+        """Allow for comparison of storage objects baesd on name"""
+        # Ensure class and name of object match
+        if ('__class__' in comp and
+                comp.__class__ == self.__class__ and
+                'name' in comp and comp.name == self.name):
+            return True
+
+        # Otherwise return false
+        return False
+
     def __init__(self, name):
         """Setup member variables"""
         self._name = name
 
     def in_use(self):
         """Whether the storage backend is used for any disks objects"""
-        pass
+        # Get VM factory
+        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+
+        # Iterate over all virtual machine and hard drive objects
+        for vm in virtual_machine_factory.getAllVirtualMachines():
+            for hard_drive in vm.getHardDriveObjects():
+
+                # If the hard drive object uses the current storage backend,
+                # return True
+                if hard_drive.get_storage_backend() == self:
+                    return True
+        # If no matches have been found, return False
+        return False
 
     @Expose(locking=True)
     def delete(self):
@@ -95,7 +119,7 @@ class Base(PyroObject):
         """Validate config"""
         # Ensure that all nodes specified are valid
         for node in config['nodes']:
-            cluster.ensure_node_exists(node)
+            cluster.ensure_node_exists(node, include_local=True)
 
     @Expose()
     def get_config(self):
@@ -159,6 +183,27 @@ class Base(PyroObject):
         config = self.get_config()
         return (config['nodes'][node]['location'] if config['nodes'][node]['location']
                 else config['nodes']['location'])
+
+    def ensure_available_on_node(self, node=None):
+        """Check if the storage backend is not available on the given node and
+        raise an exception
+        """
+        if node is None:
+            cluster = self._get_registered_object('cluster')
+            node = cluster.get_local_hostname()
+        if not self.available_on_node(node=node):
+            raise StorageBackendNotAvailableOnNode(
+                'Storage not available on node: %s, %s' % (self.name, node)
+            )
+
+    def available_on_node(self, node=None):
+        """Determine if the storage volume is available on
+        a given node
+        """
+        if node is None:
+            cluster = self._get_registered_object('cluster')
+            node = cluster.get_local_hostname()
+        return node in self.nodes
 
     @staticmethod
     def node_pre_check(node, cluster, location):

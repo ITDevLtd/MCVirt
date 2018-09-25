@@ -18,7 +18,8 @@
 import Pyro4
 
 from mcvirt.exceptions import (UnknownStorageTypeException, HardDriveDoesNotExistException,
-                               InsufficientSpaceException)
+                               InsufficientSpaceException, StorageBackendNotAvailableOnNode,
+                               UnknownStorageBackendException)
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import Drbd
 from mcvirt.virtual_machine.hard_drive.base import Base
@@ -41,21 +42,34 @@ class Factory(PyroObject):
     def getObject(self, vm_object, disk_id, **config):
         """Returns the storage object for a given disk"""
         vm_object = self._convert_remote_object(vm_object)
+
+        # Obtain VM config and initialise storage type value
         vm_config = vm_object.get_config_object().get_config()
         storage_type = None
+
+        # Default to storage type in vm config, if defined
         if vm_config['storage_type']:
             storage_type = vm_config['storage_type']
 
+        # If the storage type as been overriden in the VM config,
+        # use this and remove from overrides
         if 'storage_type' in config:
             if storage_type is None:
                 storage_type = config['storage_type']
-            del(config['storage_type'])
+            del config['storage_type']
+
+        # Create cache key, based on name of VM, disk ID and storage type
         storage_type_key = storage_type or ''
         cache_key = (vm_object.get_name(), disk_id, storage_type_key)
+
+        # If configuring overrides have been used, do not cache the object.
         disable_cache = (len(config))
+
+        # If cache is disabled, remove object from cache and return the object directly.
+        # Otherwise, if object is not in object cache, create it.
         if disable_cache:
             if cache_key in Factory.CACHED_OBJECTS:
-                del(Factory.CACHED_OBJECTS[cache_key])
+                del Factory.CACHED_OBJECTS[cache_key]
         if cache_key not in Factory.CACHED_OBJECTS:
             hard_drive_object = self.getClass(storage_type)(
                 vm_object=vm_object, disk_id=disk_id, **config)
@@ -64,11 +78,17 @@ class Factory(PyroObject):
                 return hard_drive_object
             Factory.CACHED_OBJECTS[cache_key] = hard_drive_object
 
+        # If cache is not disabled, return the cached object
         return Factory.CACHED_OBJECTS[cache_key]
 
     @Expose()
-    def ensure_hdd_valid(self, size, storage_type, remote_nodes, storage_backend):
+    def ensure_hdd_valid(self, size, storage_type, nodes, storage_backend):
         """Ensures the HDD can be created on all nodes, and returns the storage type to be used."""
+
+        # Ensure that, if storage type is specified, that it's in the list of available storage
+        # backends for this node
+        # @TODO IF a storage type has been specified, which does not support DBRD, then
+        # we can assume that Local storage is used.
         available_storage_types = self._getAvailableStorageTypes()
         if storage_type:
             if (storage_type not in
@@ -76,6 +96,8 @@ class Factory(PyroObject):
                 raise UnknownStorageTypeException('%s is not supported by node %s' %
                                                   (storage_type, get_hostname()))
         else:
+            # Otherwise, if no storage type has been defined, ensure that there is only
+            # 1 avilable storage type.
             if len(available_storage_types) > 1:
                 raise UnknownStorageTypeException('Storage type must be specified')
             elif len(available_storage_types) == 1:
@@ -83,7 +105,25 @@ class Factory(PyroObject):
             else:
                 raise UnknownStorageTypeException('There are no storage types available')
 
-        free = self._get_registered_object('node').get_free_vg_space()
+        # If storage backend has been defined, ensure it is available on the current node
+        if storage_backend:
+            storage_backend.ensure_available_on_node()
+
+        # Otherwise, if storage backend has not been defined, ensure that
+        # there is only one available for the given storage type and nodes selected
+        else:
+            storage_factory = self._get_registered_object('storage_factory')
+            available_storage_backends = storage_factory.get_all(
+                nodes=nodes, drbd=(storage_type == Drbd.__name__)
+            )
+            if len(available_storage_backends) > 1:
+                raise UnknownStorageBackendException('Storage backend must be specified')
+            elif len(available_storage_backends) == 1:
+                storage_backend = available_storage_backends[0]
+            else:
+                raise UnknownStorageBackendException('There are no available storage backends')
+
+        free = storage_backend.get_free_space()
         if free < size:
             raise InsufficientSpaceException('Attempted to create a disk with %i MiB, but there '
                                              'is only %i MiB of free space available on node %s.' %
@@ -97,10 +137,11 @@ class Factory(PyroObject):
                 )
                 hard_drive_factory = remote_connection.get_connection('hard_drive_factory')
                 hard_drive_factory.ensure_hdd_valid(size=size, storage_type=storage_type,
-                                                    remote_nodes=remote_nodes,
+                                                    nodes=nodes,
                                                     storage_backend=remote_storage_backend)
 
             cluster = self._get_registered_object('cluster')
+            remote_nodes = [node for node in nodes if node != cluster.get_local_hostname()]
             cluster.run_remote_command(callback_method=remote_command, nodes=remote_nodes)
 
         return storage_type
@@ -116,8 +157,8 @@ class Factory(PyroObject):
             vm_object
         )
 
-        remote_nodes = [node for node in vm_object.getAvailableNodes() if node != get_hostname()]
-        storage_type = self.ensure_hdd_valid(size, storage_type, remote_nodes)
+        nodes = vm_object.getAvailableNodes()
+        storage_type = self.ensure_hdd_valid(size, storage_type, nodes, storage_backend)
 
         # Ensure the VM storage type matches the storage type passed in
         if vm_object.getStorageType():
