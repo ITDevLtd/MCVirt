@@ -294,3 +294,7 @@ class BaseVolume(object):
     def volume_exists(self):
         """Determine whether volume exists"""
         raise NotImplementedError
+
+    def get_size(self):
+        """Obtain the size of the volume"""
+        raise NotImplementedError

@@ -145,3 +145,25 @@ class LvmVolume(BaseVolume):
     def check_exists(self):
         """Determine whether logical volume exists"""
         return os.path.lexists(self.get_path())
+
+    def get_size(self):
+        """Obtain the size of a logical volume"""
+        # Use 'lvs' to obtain the size of the disk
+        command_args = (
+            'lvs',
+            '--nosuffix',
+            '--noheadings',
+            '--units',
+            'm',
+            '--options',
+            'lv_size',
+            self.get_path())
+        try:
+            _, command_output, _ = System.runCommand(command_args)
+        except MCVirtCommandException, exc:
+            raise ExternalStorageCommandErrorException(
+                "Error whilst obtaining the size of the logical volume:\n" +
+                str(exc))
+
+        lv_size = command_output.strip().split('.')[0]
+        return int(lv_size)
