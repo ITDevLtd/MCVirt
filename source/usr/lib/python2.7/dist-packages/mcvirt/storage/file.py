@@ -16,10 +16,16 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 
-from mcvirt.storage.base import Base
+from mcvirt.storage.base import Base, BaseVolume
 
 
 class File(Base):
     """Storage backend for file based storage"""
+
+    pass
+
+
+class FileVolume(BaseVolume):
+    """Object for handling file volume functions"""
 
     pass

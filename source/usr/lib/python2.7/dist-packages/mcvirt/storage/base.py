@@ -240,34 +240,57 @@ class Base(PyroObject):
         """Return the amount of free spacae in the storage backend"""
         raise NotImplementedError
 
-    def create_volume(self, name, size):
+
+class BaseVolume(object):
+    """Base class for handling volume actions.
+    These classes do NOT care about a virtual machine,
+    only about performing necessary commands to manipulate a
+    disk on the system
+    """
+
+    @property
+    def name(self):
+        """Return the name of the volume"""
+        return self._name
+
+    @property
+    def storage_backend(self):
+        """Return the storage backend"""
+        return self._storage_backend
+
+    def __init__(self, name, storage_backend):
+        """Setup vairables"""
+        self._name = name
+        self._storage_backend = storage_backend
+
+    def create_volume(self, size):
         """Create volume in storage backend"""
         raise NotImplementedError
 
-    def delete_volume(self, name):
+    def delete_volume(self, ignore_non_existent):
         """Delete volume"""
         raise NotImplementedError
 
-    def activate_volume(self, name):
+    def activate_volume(self):
         """Activate volume"""
         raise NotImplementedError
 
-    def is_volume_activated(self, name):
+    def is_volume_activated(self):
         """Return whether volume is activated"""
         raise NotImplementedError
 
-    def snapshot_volume(self, name, destination, size):
+    def snapshot_volume(self, destination, size):
         """Snapshot volume"""
         raise NotImplementedError
 
-    def deactivate_volume(self, name):
+    def deactivate_volume(self):
         """Deactivate volume"""
         raise NotImplementedError
 
-    def resize_volume(self, name, size):
+    def resize_volume(self, size):
         """Reszie volume"""
         raise NotImplementedError
 
-    def volume_exists(self, name):
+    def volume_exists(self):
         """Determine whether volume exists"""
         raise NotImplementedError

@@ -17,7 +17,7 @@
 
 import os
 
-from mcvirt.storage.base import Base
+from mcvirt.storage.base import Base, BaseVolume
 from mcvirt.exceptions import (InvalidStorageConfiguration, InvalidNodesException,
                                ExternalStorageCommandErrorException,
                                MCVirtCommandException)
@@ -30,6 +30,7 @@ class Lvm(Base):
 
     @classmethod
     def ensure_exists(cls, location):
+        """Ensure that the volume group exists"""
         if not cls.check_exists(location):
             raise InvalidStorageConfiguration(
                 'Volume group %s does not exist' % location
@@ -38,18 +39,17 @@ class Lvm(Base):
     @staticmethod
     def _check_exists_local(volume_group):
         """Determine if the volume group actually exists on the node."""
-        _, out, err = System.runCommand(['vgs', '|', 'grep', volume_group],
-                                        False, DirectoryLocation.BASE_STORAGE_DIR)
+        _, out, _ = System.runCommand(['vgs', '|', 'grep', volume_group],
+                                      False, DirectoryLocation.BASE_STORAGE_DIR)
         return bool(out)
 
     def get_free_space(self):
-        """Returns the free space in megabytes."""
+        """Return the free space in megabytes."""
         _, out, _ = System.runCommand(['vgs', self.get_location(),
                                        '-o', 'free', '--noheadings', '--nosuffix', '--units',
                                        'm'], False,
                                       DirectoryLocation.BASE_STORAGE_DIR)
         return float(out)
-
 
     def get_location(self, node=None):
         """Return volume group name for the local host"""
@@ -63,83 +63,85 @@ class Lvm(Base):
         else:
             raise InvalidNodesException('Storage %s not defined on %s' % (self.name, node))
 
-    def get_volume_path(self, name, node=None):
+
+class LvmVolume(BaseVolume):
+    """Overriden volume object from base"""
+
+    def get_path(self, node=None):
         """Return the full path of a given logical volume"""
-        return '/dev/' + self.get_location(node=node) + '/' + name
+        return '/dev/' + self.storage_backend.get_location(node=node) + '/' + self.name
 
-    def create_volume(self, name, size):
+    def create_volume(self, size):
         """Create volume in storage backend"""
-        volume_group = self.get_location()
-
         # Create command list
-        command_args = ['/sbin/lvcreate', volume_group, '--name', name, '--size', '%sM' % size]
+        command_args = ['/sbin/lvcreate',
+                        self.storage_backend.get_location(),  # Specify volume group
+                        '--name', self.name,
+                        '--size', '%sM' % size]
         try:
             # Create on local node
             System.runCommand(command_args)
 
-        except MCVirtCommandException, e:
+        except MCVirtCommandException, exc:
             raise ExternalStorageCommandErrorException(
-                "Error whilst creating disk logical volume:\n" + str(e)
+                "Error whilst creating disk logical volume:\n" + str(exc)
             )
 
-    def delete_volume(self, name, ignore_non_existent):
+    def delete_volume(self, ignore_non_existent):
         """Delete volume"""
         # Create command arguments
-        command_args = ['lvremove', '-f', self.get_volume_path(name)]
+        command_args = ['lvremove', '-f', self.get_path()]
         try:
             # Determine if logical volume exists before attempting to remove it
             if (not (ignore_non_existent and
-                     not self.volume_exists(name))):
+                     not self.check_exists())):
                 System.runCommand(command_args)
 
-        except MCVirtCommandException, e:
+        except MCVirtCommandException, exc:
             raise ExternalStorageCommandErrorException(
-                "Error whilst removing logical volume:\n" + str(e)
+                "Error whilst removing logical volume:\n" + str(exc)
             )
 
-    def activate_volume(self, name):
+    def activate_volume(self):
         """Activate volume"""
-        # Obtain logical volume path
-        lv_path = self.get_volume_path(name)
-
         # Create command arguments
-        command_args = ['lvchange', '-a', 'y', '--yes', lv_path]
+        command_args = ['lvchange', '-a', 'y', '--yes', self.get_path()]
         try:
             # Run on the local node
             System.runCommand(command_args)
 
-        except MCVirtCommandException, e:
+        except MCVirtCommandException, exc:
             raise ExternalStorageCommandErrorException(
-                "Error whilst activating logical volume:\n" + str(e)
+                "Error whilst activating logical volume:\n" + str(exc)
             )
 
-    def is_volume_activated(self, name):
+    def is_volume_activated(self):
         """Return whether volume is activated"""
-        return os.path.exists(self.get_volume_path(name))
+        return os.path.exists(self.get_path())
 
-    def snapshot_volume(self, name, destination, size):
+    def snapshot_volume(self, destination, size):
         """Snapshot volume"""
-        System.runCommand(['lvcreate', '--snapshot', self.get_volume_path(name),
+        System.runCommand(['lvcreate', '--snapshot', self.get_path(),
                            '--name', destination,
                            '--size', size])
 
-    def deactivate_volume(self, name):
+    def deactivate_volume(self):
         """Deactivate volume"""
         raise NotImplementedError
 
-    def resize_volume(self, name, size):
+    def resize_volume(self, size):
         """Reszie volume"""
         command_args = ['/sbin/lvresize', '--size', '%sM' % size,
-                        self.get_volume_path(name)]
+                        self.get_path()]
         try:
             # Create on local node
             System.runCommand(command_args)
 
-        except MCVirtCommandException, e:
+        except MCVirtCommandException, exc:
             raise ExternalStorageCommandErrorException(
-                "Error whilst resizing disk logical volume:\n" + str(e)
+                "Error whilst resizing disk logical volume:\n" + str(exc)
             )
 
-    def volume_exists(self, name):
+    def check_exists(self):
         """Determine whether logical volume exists"""
-        return os.path.lexists(self.get_volume_path(name))
+        return os.path.lexists(self.get_path())
