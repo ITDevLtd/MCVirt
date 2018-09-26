@@ -66,7 +66,7 @@ class ArgumentValidator(object):
 
     @staticmethod
     def validate_storage_name(name):
-        """Validate the name of a network"""
+        """Validate the name of a storage backend"""
         exception_message = ('Storage name must only use alpha-numeric characters and dashes,'
                              ' be 64 characters or less in length'
                              ' and start with an alpha-numeric character')
