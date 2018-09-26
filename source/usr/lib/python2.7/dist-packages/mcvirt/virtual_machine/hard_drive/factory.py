@@ -15,6 +15,81 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+"""
+#########################################################################################
+##################################   STORAGE  LAYOUT   ##################################
+#########################################################################################
+#
+#        ------------
+#       | Hard drive | Provides an interface for libvirt
+#    ---|    Base    | configuration, high level 'creation', 'deletion'
+#    |   ------------  function. Handling pre/post migration tasks and
+#    |        |        determining capabilities of hard drive.
+#    |        |        This class does not interact with the OS to modify
+#    |        |        actual storage (with the exception of DRBD commands).
+#    |        |        This class performs all non-OS-level-storage checking
+#    |        |        before actions are performed, e.g. ensure VM is powered
+#    |        |        off and checking user permissions.
+#    |        |        The object can be created before volume exists on disk.
+#    |        |
+#    |        |--- Local
+#    |        |      - Local hard drive object provides
+#    |        |        an interface for a single-volume backed storage.
+#    |        |        This could be used for either be a single-node VM or
+#    |        |        on shared storage
+#    |        |
+#    |        |
+#    |        |
+#    |         --- Drbd
+#    |               - DRBD object provides additional overlay for managing
+#    |                 the multiple backend volumes, that's required by DRBD,
+#    |                 an alternative front-end block devide (drbd volume),
+#    |                 as well as montioring of the DRBD volume. This must
+#    |                 use local storage, as the volume is replicatated
+#    |                 to other nodes via DRBD. All DRBD commands are executed
+#    |                 from this class
+#    |
+#    |      --------
+#     ---> | Volume |  Given the storage backend (as supplied by the disk object
+#       -> |  Base  |  when creating the volume object), this class provides
+#      |    --------   and interface to interact with the OS to create/modify
+#      |       |       the underlying storage volumes. All 'create', 'delete' etc.,
+#      |       |       commands in the hard drive objects call to the respective
+#      |       |       volume objects to make the system modification. This object
+#      |       |       has no concept of a virtual machine, it performs disks commands,
+#      |       |       given the disk name and storage backend.
+#      |       |       The object can be created before the volume exists on disk.
+#.     |       |
+#      |       |--- LVM
+#      |       |       This performs OS commands to manage a given logival-volume-based
+#      |       |       disk, where the underlying storage backend is LVM-based.
+#      |       |
+#      |        --- File
+#      |               This performs OS commands to manage a given file-based disk,
+#      |               where the underlying storage backend is Directory-based.
+#      |
+#      |     -----------
+#       ----|  Storage  | Provides an interface for managing/differentiating different
+#           | (Backend) | sets/types of physical storage. When this object is created,
+#           |    Base   | the backing storage must be present on the requested nodes.
+#            -----------  This object is used to determine which nodes the storage is
+#               |         available to and contribute to which nodes a VM will be
+#               |         compatible with.
+#               |
+#               |------- LVM
+#               |      Allows for addition of LVM volume-group based storage.
+#               |      When a disk object is created, using this as a storage backend,
+#               |      an LVM-based volume is returned for OS-calls.
+#               |
+#                ------- File
+#                      Allows for addition of directory based storage.
+#                      When a disk object is created, using this as a storage backend,
+#                      an File volume is returned for OS-calls.
+#
+#########################################################################################
+#########################################################################################
+"""
+
 import Pyro4
 
 from mcvirt.exceptions import (UnknownStorageTypeException, HardDriveDoesNotExistException,
