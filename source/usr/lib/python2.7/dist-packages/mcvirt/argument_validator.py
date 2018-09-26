@@ -71,8 +71,6 @@ class ArgumentValidator(object):
                              ' be 64 characters or less in length'
                              ' and start with an alpha-numeric character')
 
-        if name == 'default':
-            raise MCVirtTypeError('Network name cannot be \'default\'')
         try:
             if len(name) > 64 or not len(name):
                 raise MCVirtTypeError(exception_message)
