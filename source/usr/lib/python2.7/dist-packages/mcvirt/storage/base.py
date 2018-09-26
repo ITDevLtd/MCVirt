@@ -1,4 +1,5 @@
-"""Provide base operations to manage all hard drives, used by VMs"""
+"""Provide base operations to manage storage backends"""
+
 # Copyright (c) 2018 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
