@@ -18,6 +18,8 @@
 
 import re
 from mcvirt.exceptions import MCVirtTypeError
+from mcvirt.constants import (DEFAULT_LIBVIRT_NETWORK_NAME,
+                              DEFAULT_STORAGE_NAME)
 
 
 class ArgumentValidator(object):
@@ -51,8 +53,8 @@ class ArgumentValidator(object):
                              ' be 64 characters or less in length'
                              ' and start with an alpha-numeric character')
 
-        if name == 'default':
-            raise MCVirtTypeError('Network name cannot be \'default\'')
+        if name == DEFAULT_LIBVIRT_NETWORK_NAME:
+            raise MCVirtTypeError('Network name cannot be \'%s\'' % DEFAULT_LIBVIRT_NETWORK_NAME)
         try:
             if len(name) > 64 or not len(name):
                 raise MCVirtTypeError(exception_message)
@@ -71,6 +73,8 @@ class ArgumentValidator(object):
                              ' be 64 characters or less in length'
                              ' and start with an alpha-numeric character')
 
+        if name == DEFAULT_STORAGE_NAME:
+            raise MCVirtTypeError('Storage name cannot be \'%s\'' % DEFAULT_STORAGE_NAME)
         try:
             if len(name) > 64 or not len(name):
                 raise MCVirtTypeError(exception_message)

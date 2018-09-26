@@ -61,3 +61,6 @@ class AutoStartStates(Enum):
 # Name of the default storage backend, used during upgrade
 # from pre-v9.0.0 installations
 DEFAULT_STORAGE_NAME = 'default'
+
+# Name of the default network, which is created by libvirt
+DEFAULT_LIBVIRT_NETWORK_NAME = 'default'
