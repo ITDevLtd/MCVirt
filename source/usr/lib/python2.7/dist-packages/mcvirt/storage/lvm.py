@@ -18,9 +18,10 @@
 import os
 
 from mcvirt.storage.base import Base, BaseVolume
-from mcvirt.exceptions import (InvalidStorageConfiguration, InvalidNodesException,
+from mcvirt.exceptions import (InvalidStorageConfiguration,
                                ExternalStorageCommandErrorException,
-                               MCVirtCommandException)
+                               MCVirtCommandException, VolumeDoesNotExistError,
+                               VolumeAlreadyExistsError)
 from mcvirt.system import System
 from mcvirt.constants import DirectoryLocation
 
@@ -66,6 +67,8 @@ class LvmVolume(BaseVolume):
 
     def create(self, size):
         """Create volume in storage backend"""
+        if self.check_exists():
+            raise VolumeAlreadyExistsError('Volume (%s) already exists' % self.name)
         # Create command list
         command_args = ['/sbin/lvcreate',
                         self.storage_backend.get_location(),  # Specify volume group
@@ -84,11 +87,15 @@ class LvmVolume(BaseVolume):
         """Delete volume"""
         # Create command arguments
         command_args = ['lvremove', '-f', self.get_path()]
+
+        # Determine if logical volume exists before attempting to remove it
+        if not self.check_exists() and not ignore_non_existent:
+            raise VolumeDoesNotExistError(
+                'Volume (%s) does not exist' % self.name
+            )
+
         try:
-            # Determine if logical volume exists before attempting to remove it
-            if (not (ignore_non_existent and
-                     not self.check_exists())):
-                System.runCommand(command_args)
+            System.runCommand(command_args)
 
         except MCVirtCommandException, exc:
             raise ExternalStorageCommandErrorException(
@@ -97,6 +104,8 @@ class LvmVolume(BaseVolume):
 
     def activate(self):
         """Activate volume"""
+        # Ensure volume exists
+        self.ensure_exists()
         # Create command arguments
         command_args = ['lvchange', '-a', 'y', '--yes', self.get_path()]
         try:
@@ -110,10 +119,14 @@ class LvmVolume(BaseVolume):
 
     def is_active(self):
         """Return whether volume is activated"""
+        # Ensure volume exists
+        self.ensure_exists()
         return os.path.exists(self.get_path())
 
     def snapshot(self, destination_volume, size):
         """Snapshot volume"""
+        # Ensure volume exists
+        self.ensure_exists()
         System.runCommand(['lvcreate', '--snapshot', self.get_path(),
                            '--name', destination_volume.name,
                            '--size', size])
@@ -124,6 +137,10 @@ class LvmVolume(BaseVolume):
 
     def resize(self, size):
         """Reszie volume"""
+        # Ensure volume exists
+        self.ensure_exists()
+
+        # Compile arguments for resize
         command_args = ['/sbin/lvresize', '--size', '%sM' % size,
                         self.get_path()]
         try:
@@ -132,7 +149,7 @@ class LvmVolume(BaseVolume):
 
         except MCVirtCommandException, exc:
             raise ExternalStorageCommandErrorException(
-                "Error whilst resizing disk logical volume:\n" + str(exc)
+                "Error whilst resizing disk:\n" + str(exc)
             )
 
     def check_exists(self):
@@ -141,6 +158,7 @@ class LvmVolume(BaseVolume):
 
     def get_size(self):
         """Obtain the size of a logical volume"""
+        self.ensure_exists()
         # Use 'lvs' to obtain the size of the disk
         command_args = (
             'lvs',

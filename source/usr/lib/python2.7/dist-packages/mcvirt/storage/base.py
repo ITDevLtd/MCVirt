@@ -24,7 +24,8 @@ from mcvirt.exceptions import (UnsuitableNodeException,
                                NodeAlreadyConfiguredInStorageBackend,
                                StorageBackendInUse,
                                StorageBackendNotAvailableOnNode,
-                               InvalidStorageConfiguration)
+                               InvalidStorageConfiguration,
+                               VolumeDoesNotExistError)
 
 
 class Base(PyroObject):
@@ -305,6 +306,11 @@ class BaseVolume(object):
     def check_exists(self):
         """Determine whether volume exists"""
         raise NotImplementedError
+
+    def ensure_exists(self):
+        """Ensure that the volume exists"""
+        if not self.check_exists():
+            raise VolumeDoesNotExistError('Volume (%s) does not exist' % self.name)
 
     def get_size(self):
         """Obtain the size of the volume"""

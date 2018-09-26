@@ -761,6 +761,6 @@ class Base(PyroObject):
             ).get_object(storage_backend_name)
         return self._storage_backend
 
-    def get_volume(self, disk_name):
+    def _get_volume(self, disk_name):
         """Return a storage object within the storage backend"""
         return self.get_storage_backend().get_volume(disk_name)
