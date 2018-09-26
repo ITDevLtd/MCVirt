@@ -30,6 +30,58 @@ from mcvirt.exceptions import (UnsuitableNodeException,
 class Base(PyroObject):
     """Provides base functionality for storage backends"""
 
+    @staticmethod
+    def validate_config(cluster, config):
+        """Validate config"""
+        # Ensure that all nodes specified are valid
+        for node in config['nodes']:
+            cluster.ensure_node_exists(node, include_local=True)
+
+    @staticmethod
+    def ensure_valid_location(location):
+        """Validate location for staorage backend"""
+        pass
+
+    @classmethod
+    def node_pre_check(cls, cluster, location):
+        """Ensure volume group exists on node"""
+        try:
+            cls.ensure_exists(location)
+        except InvalidStorageConfiguration, exc:
+            raise InvalidStorageConfiguration(
+                '%s on node %s' % (str(exc), cluster.get_local_hostname())
+            )
+
+    @classmethod
+    def ensure_exists(cls, location):
+        """Ensure that the underlying storage exists"""
+        raise NotImplementedError
+
+    @classmethod
+    def check_exists_local(cls, location):
+        """Determine if underlying storage actually exists on the node."""
+        raise NotImplementedError
+
+    def __init__(self, name):
+        """Setup member variables"""
+        self._name = name
+
+    def __eq__(self, comp):
+        """Allow for comparison of storage objects baesd on name"""
+        # Ensure class and name of object match
+        if ('__class__' in comp and
+                comp.__class__ == self.__class__ and
+                'name' in comp and comp.name == self.name):
+            return True
+
+        # Otherwise return false
+        return False
+
+    @property
+    def _volume_class(self):
+        """Return the volume class for the storage backend"""
+        return BaseVolume
+
     @property
     def name(self):
         """Return name of storage backend"""
@@ -49,37 +101,6 @@ class Base(PyroObject):
     def storage_type(self):
         """Return storage type for storage backend"""
         return self.__class__.__name__
-
-    def __eq__(self, comp):
-        """Allow for comparison of storage objects baesd on name"""
-        # Ensure class and name of object match
-        if ('__class__' in comp and
-                comp.__class__ == self.__class__ and
-                'name' in comp and comp.name == self.name):
-            return True
-
-        # Otherwise return false
-        return False
-
-    def __init__(self, name):
-        """Setup member variables"""
-        self._name = name
-
-    def in_use(self):
-        """Whether the storage backend is used for any disks objects"""
-        # Get VM factory
-        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
-
-        # Iterate over all virtual machine and hard drive objects
-        for vm in virtual_machine_factory.getAllVirtualMachines():
-            for hard_drive in vm.getHardDriveObjects():
-
-                # If the hard drive object uses the current storage backend,
-                # return True
-                if hard_drive.get_storage_backend() == self:
-                    return True
-        # If no matches have been found, return False
-        return False
 
     @Expose(locking=True)
     def delete(self):
@@ -114,13 +135,6 @@ class Base(PyroObject):
         storage_factory = self._get_registered_object('storage_factory')
         if self.name in storage_factory.CACHED_OBJECTS:
             del storage_factory.CACHED_OBJECTS[self.name]
-
-    @staticmethod
-    def validate_config(cluster, config):
-        """Validate config"""
-        # Ensure that all nodes specified are valid
-        for node in config['nodes']:
-            cluster.ensure_node_exists(node, include_local=True)
 
     @Expose()
     def get_config(self):
@@ -172,6 +186,23 @@ class Base(PyroObject):
         """Remove a node from the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
 
+    def in_use(self):
+        """Whether the storage backend is used for any disks objects"""
+        # Get VM factory
+        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+
+        # Iterate over all virtual machine and hard drive objects
+        for virtual_machine in virtual_machine_factory.getAllVirtualMachines():
+            for hard_drive in virtual_machine.getHardDriveObjects():
+
+                # If the hard drive object uses the current storage backend,
+                # return True
+                if hard_drive.get_storage_backend() == self:
+                    return True
+
+        # If no matches have been found, return False
+        return False
+
     def get_location(self, node=None):
         """Return the location for a given node, default to local node"""
         if node is None:
@@ -182,39 +213,29 @@ class Base(PyroObject):
                 'Node does not support storage backend: %s, %s' % (node, self.name)
             )
         config = self.get_config()
-        return (config['nodes'][node]['location'] if config['nodes'][node]['location']
+        return (config['nodes'][node]['location']
+                if 'location' in config['nodes'][node] and
+                config['nodes'][node]['location']
                 else config['nodes']['location'])
 
-    def ensure_available_on_node(self, node=None):
-        """Check if the storage backend is not available on the given node and
-        raise an exception
-        """
-        if node is None:
-            cluster = self._get_registered_object('cluster')
-            node = cluster.get_local_hostname()
-        if not self.available_on_node(node=node):
-            raise StorageBackendNotAvailableOnNode(
-                'Storage not available on node: %s, %s' % (self.name, node)
-            )
-
-    def available_on_node(self, node=None):
+    def available_on_node(self, node=None, raise_on_err=True):
         """Determine if the storage volume is available on
         a given node
         """
         if node is None:
             cluster = self._get_registered_object('cluster')
             node = cluster.get_local_hostname()
-        return node in self.nodes
 
-    @classmethod
-    def node_pre_check(cls, cluster, location):
-        """Ensure volume group exists on node"""
-        try:
-            cls.ensure_exists(location)
-        except InvalidStorageConfiguration, exc:
-            raise InvalidStorageConfiguration(
-                '%s on node %s' % (str(exc), cluster.get_local_hostname())
+        available = (node in self.nodes)
+        if not available and raise_on_err:
+            raise StorageBackendNotAvailableOnNode(
+                'Storage not available on node: %s, %s' % (self.name, node)
             )
+        return available
+
+    def get_volume(self, name):
+        """Return a volume for the current storage volume"""
+        return self._volume_class(name=name, storage_backend=self)
 
     def is_drbd_suitable(self):
         """Return boolean depending on whether storage backend is suitable to be
@@ -222,19 +243,9 @@ class Base(PyroObject):
         """
         return not self.shared
 
-    @classmethod
-    def ensure_exists(cls, location):
-        """Ensure that the underlying storage exists"""
-        raise NotImplementedError
-
     def check_exists(self):
         """Check volume groups exists on the local node"""
-        return self.__class__._check_exists_local(self.get_location())
-
-    @classmethod
-    def _check_exists_local(cls, location):
-        """Determine if underlying storage actually exists on the node."""
-        raise NotImplementedError
+        return self.__class__.check_exists_local(self.get_location())
 
     def get_free_space(self):
         """Return the amount of free spacae in the storage backend"""
@@ -248,6 +259,11 @@ class BaseVolume(object):
     disk on the system
     """
 
+    def __init__(self, name, storage_backend):
+        """Setup vairables"""
+        self._name = name
+        self._storage_backend = storage_backend
+
     @property
     def name(self):
         """Return the name of the volume"""
@@ -258,40 +274,35 @@ class BaseVolume(object):
         """Return the storage backend"""
         return self._storage_backend
 
-    def __init__(self, name, storage_backend):
-        """Setup vairables"""
-        self._name = name
-        self._storage_backend = storage_backend
-
-    def create_volume(self, size):
+    def create(self, size):
         """Create volume in storage backend"""
         raise NotImplementedError
 
-    def delete_volume(self, ignore_non_existent):
+    def delete(self, ignore_non_existent):
         """Delete volume"""
         raise NotImplementedError
 
-    def activate_volume(self):
+    def activate(self):
         """Activate volume"""
         raise NotImplementedError
 
-    def is_volume_activated(self):
+    def is_activate(self):
         """Return whether volume is activated"""
         raise NotImplementedError
 
-    def snapshot_volume(self, destination, size):
+    def snapshot(self, destination_volume, size):
         """Snapshot volume"""
         raise NotImplementedError
 
-    def deactivate_volume(self):
+    def deactivate(self):
         """Deactivate volume"""
         raise NotImplementedError
 
-    def resize_volume(self, size):
+    def resize(self, size):
         """Reszie volume"""
         raise NotImplementedError
 
-    def volume_exists(self):
+    def check_exists(self):
         """Determine whether volume exists"""
         raise NotImplementedError
 

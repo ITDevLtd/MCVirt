@@ -231,6 +231,10 @@ class Factory(PyroObject):
 
         storage_class = self.get_class(storage_type)
 
+        # Ensure name is valid
+        ArgumentValidator.validate_storage_name(name)
+        storage_class.ensure_valid_location(location)
+
         if self._is_cluster_master:
             # If no nodes have been specified, get all nodes in cluster
             if not nodes:

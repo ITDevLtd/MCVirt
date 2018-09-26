@@ -22,7 +22,10 @@ from mcvirt.storage.base import Base, BaseVolume
 class File(Base):
     """Storage backend for file based storage"""
 
-    pass
+    @property
+    def _volume_class(self):
+        """Return the volume class for the storage backend"""
+        return FileVolume
 
 
 class FileVolume(BaseVolume):

@@ -28,6 +28,13 @@ from mcvirt.constants import DirectoryLocation
 class Lvm(Base):
     """Storage backend for LVM based storage"""
 
+    @staticmethod
+    def check_exists_local(volume_group):
+        """Determine if the volume group actually exists on the node."""
+        _, out, _ = System.runCommand(['vgs', '|', 'grep', volume_group],
+                                      False, DirectoryLocation.BASE_STORAGE_DIR)
+        return bool(out)
+
     @classmethod
     def ensure_exists(cls, location):
         """Ensure that the volume group exists"""
@@ -36,12 +43,10 @@ class Lvm(Base):
                 'Volume group %s does not exist' % location
             )
 
-    @staticmethod
-    def _check_exists_local(volume_group):
-        """Determine if the volume group actually exists on the node."""
-        _, out, _ = System.runCommand(['vgs', '|', 'grep', volume_group],
-                                      False, DirectoryLocation.BASE_STORAGE_DIR)
-        return bool(out)
+    @property
+    def _volume_class(self):
+        """Return the volume class for the storage backend"""
+        return LvmVolume
 
     def get_free_space(self):
         """Return the free space in megabytes."""
@@ -51,18 +56,6 @@ class Lvm(Base):
                                       DirectoryLocation.BASE_STORAGE_DIR)
         return float(out)
 
-    def get_location(self, node=None):
-        """Return volume group name for the local host"""
-        if node is None:
-            node = self._get_registered_object('cluster').get_local_hostname()
-        storage_config = self.get_config()
-        if node in storage_config['nodes'] and 'location' in storage_config['nodes'][node]:
-            return storage_config['nodes']['location']
-        elif storage_config['location']:
-            return storage_config['location']
-        else:
-            raise InvalidNodesException('Storage %s not defined on %s' % (self.name, node))
-
 
 class LvmVolume(BaseVolume):
     """Overriden volume object from base"""
@@ -71,7 +64,7 @@ class LvmVolume(BaseVolume):
         """Return the full path of a given logical volume"""
         return '/dev/' + self.storage_backend.get_location(node=node) + '/' + self.name
 
-    def create_volume(self, size):
+    def create(self, size):
         """Create volume in storage backend"""
         # Create command list
         command_args = ['/sbin/lvcreate',
@@ -87,7 +80,7 @@ class LvmVolume(BaseVolume):
                 "Error whilst creating disk logical volume:\n" + str(exc)
             )
 
-    def delete_volume(self, ignore_non_existent):
+    def delete(self, ignore_non_existent=False):
         """Delete volume"""
         # Create command arguments
         command_args = ['lvremove', '-f', self.get_path()]
@@ -102,7 +95,7 @@ class LvmVolume(BaseVolume):
                 "Error whilst removing logical volume:\n" + str(exc)
             )
 
-    def activate_volume(self):
+    def activate(self):
         """Activate volume"""
         # Create command arguments
         command_args = ['lvchange', '-a', 'y', '--yes', self.get_path()]
@@ -115,21 +108,21 @@ class LvmVolume(BaseVolume):
                 "Error whilst activating logical volume:\n" + str(exc)
             )
 
-    def is_volume_activated(self):
+    def is_active(self):
         """Return whether volume is activated"""
         return os.path.exists(self.get_path())
 
-    def snapshot_volume(self, destination, size):
+    def snapshot(self, destination_volume, size):
         """Snapshot volume"""
         System.runCommand(['lvcreate', '--snapshot', self.get_path(),
-                           '--name', destination,
+                           '--name', destination_volume.name,
                            '--size', size])
 
-    def deactivate_volume(self):
+    def deactivate(self):
         """Deactivate volume"""
         raise NotImplementedError
 
-    def resize_volume(self, size):
+    def resize(self, size):
         """Reszie volume"""
         command_args = ['/sbin/lvresize', '--size', '%sM' % size,
                         self.get_path()]

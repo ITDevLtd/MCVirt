@@ -107,7 +107,7 @@ class Factory(PyroObject):
 
         # If storage backend has been defined, ensure it is available on the current node
         if storage_backend:
-            storage_backend.ensure_available_on_node()
+            storage_backend.available_on_node(raise_on_err=True)
 
         # Otherwise, if storage backend has not been defined, ensure that
         # there is only one available for the given storage type and nodes selected
