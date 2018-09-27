@@ -41,6 +41,11 @@ class File(Base):
                 'Directory %s does not exist' % location
             )
 
+    @classmethod
+    def validate_location_name(cls, location):
+        """Ensure volume group name is valid"""
+        raise NotImplementedError
+
     @property
     def _volume_class(self):
         """Return the volume class for the storage backend"""
@@ -64,6 +69,10 @@ class File(Base):
 
 class FileVolume(BaseVolume):
     """Object for handling file volume functions"""
+
+    def _validate_name(self):
+        """Ensurue name of object is valid"""
+        raise NotImplementedError
 
     def get_path(self, node=None):
         """Return the full path of a given volume"""
@@ -112,15 +121,15 @@ class FileVolume(BaseVolume):
 
     def is_active(self):
         """Return whether volume is activated"""
+        # File has no state of 'active', just ensure it
+        # exists
         return self.check_exists()
 
     def snapshot(self, destination_volume, size):
         """Snapshot volume"""
         # Ensure volume exists
         self.ensure_exists()
-        System.runCommand(['lvcreate', '--snapshot', self.get_path(),
-                           '--name', destination_volume.name,
-                           '--size', size])
+        raise NotImplementedError
 
     def deactivate(self):
         """Deactivate volume"""
@@ -148,4 +157,3 @@ class FileVolume(BaseVolume):
         size_mb = float(size_b) / (1024 ** 2)
 
         return size_mb
-

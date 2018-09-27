@@ -44,6 +44,11 @@ class Lvm(Base):
                 'Volume group %s does not exist' % location
             )
 
+    @classmethod
+    def validate_location_name(cls, location):
+        """Ensure directory is a valid name"""
+        raise NotImplementedError
+
     @property
     def _volume_class(self):
         """Return the volume class for the storage backend"""
@@ -65,6 +70,10 @@ class Lvm(Base):
 
 class LvmVolume(BaseVolume):
     """Overriden volume object from base"""
+
+    def _validate_name(self):
+        """Ensurue name of object is valid"""
+        raise NotImplementedError
 
     def get_path(self, node=None):
         """Return the full path of a given logical volume"""

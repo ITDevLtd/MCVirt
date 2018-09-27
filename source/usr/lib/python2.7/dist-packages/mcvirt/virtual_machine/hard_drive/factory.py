@@ -200,9 +200,10 @@ class Factory(PyroObject):
 
         free = storage_backend.get_free_space()
         if free < size:
-            raise InsufficientSpaceException('Attempted to create a disk with %i MiB, but there '
-                                             'is only %i MiB of free space available on node %s.' %
-                                             (size, free, get_hostname()))
+            raise InsufficientSpaceException('Attempted to create a disk with %i MB, but there '
+                                             'is only %i MB of free space available in storage '
+                                             'backend \'%s\' on node %s.' %
+                                             (size, free, storage_backend.name, get_hostname()))
 
         if self._is_cluster_master:
             def remote_command(remote_connection):
@@ -219,12 +220,14 @@ class Factory(PyroObject):
             remote_nodes = [node for node in nodes if node != cluster.get_local_hostname()]
             cluster.run_remote_command(callback_method=remote_command, nodes=remote_nodes)
 
-        return storage_type
+        return storage_type, storage_backend
 
     @Expose(locking=True)
     def create(self, vm_object, size, storage_type, driver, storage_backend=None):
         """Performs the creation of a hard drive, using a given storage type"""
         vm_object = self._convert_remote_object(vm_object)
+        if storage_backend is not None:
+            storage_backend = self._convert_remote_object(storage_backend)
 
         # Ensure that the user has permissions to add create storage
         self._get_registered_object('auth').assert_permission(
@@ -233,13 +236,16 @@ class Factory(PyroObject):
         )
 
         nodes = vm_object.getAvailableNodes()
-        storage_type = self.ensure_hdd_valid(size, storage_type, nodes, storage_backend)
+        storage_type, storage_backend = self.ensure_hdd_valid(size, storage_type, nodes,
+                                                              storage_backend)
 
         # Ensure the VM storage type matches the storage type passed in
-        if vm_object.getStorageType():
-            if storage_type and storage_type != vm_object.getStorageType():
+        vm_storage_type = vm_object.getStorageType()
+        if vm_storage_type:
+            if storage_type and storage_type != vm_storage_type:
                 raise UnknownStorageTypeException(
-                    'Storage type does not match VMs current storage type'
+                    ('Spcifeid storage type \'%s\' does not match '
+                     'VM\'s current storage type: %s') % (storage_type, vm_storage_type)
                 )
 
         hdd_object = self.getClass(storage_type)(vm_object=vm_object, driver=driver,

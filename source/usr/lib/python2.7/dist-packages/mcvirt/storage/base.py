@@ -40,11 +40,6 @@ class Base(PyroObject):
         for node in config['nodes']:
             cluster.ensure_node_exists(node, include_local=True)
 
-    @staticmethod
-    def ensure_valid_location(location):
-        """Validate location for staorage backend"""
-        pass
-
     @classmethod
     def node_pre_check(cls, cluster, location):
         """Ensure volume group exists on node"""
@@ -56,13 +51,20 @@ class Base(PyroObject):
             )
 
     @classmethod
+    def validate_location_name(cls, location):
+        """Validate location for staorage backend"""
+        raise NotImplementedError
+
+    @classmethod
     def ensure_exists(cls, location):
         """Ensure that the underlying storage exists"""
         raise NotImplementedError
 
     @classmethod
     def check_exists_local(cls, location):
-        """Determine if underlying storage actually exists on the node."""
+        """Determine if underlying storage actually exists on the node.
+        A static method, called by member method check_exists
+        """
         raise NotImplementedError
 
     def __init__(self, name):
@@ -290,6 +292,7 @@ class BaseVolume(PyroObject):
     def __init__(self, name, storage_backend):
         """Setup vairables"""
         self._name = name
+        self._validate_name()
         self._storage_backend = storage_backend
 
     @property
@@ -336,6 +339,10 @@ class BaseVolume(PyroObject):
         System.perform_dd(source=System.WIPE,
                           destination=self.get_path(),
                           size=self.get_size())
+
+    def _validate_name(self):
+        """Ensurue name of object is valid"""
+        raise NotImplementedError
 
     def get_path(self, node=None):
         """Get the path of the volume"""

@@ -96,14 +96,21 @@ class Factory(PyroObject):
         """Returns a list of all VMs within the cluster or those registered on a specific node"""
         if node is not None:
             ArgumentValidator.validate_hostname(node)
+
         # If no node was defined, check the local configuration for all VMs
-        if (node is None):
+        if node is None:
             return MCVirtConfig().get_config()['virtual_machines']
+
         elif node == get_hostname():
+            # TODO - Why is this using libvirt?! Should use
+            #        VM objects (i.e. config file to determine)
+            #        and use a seperate function to get libvirt
+            #        registered VMs
             # Obtain array of all domains from libvirt
             all_domains = self._get_registered_object(
                 'libvirt_connector').get_connection().listAllDomains()
             return [vm.name() for vm in all_domains]
+
         else:
             # Return list of VMs registered on remote node
             cluster = self._get_registered_object('cluster')
@@ -187,11 +194,13 @@ class Factory(PyroObject):
                 hard_drive_driver=None, graphics_driver=None, modification_flags=None,
                 storage_backend=None):
         """Create a VM and returns the virtual_machine object for it"""
+        # Set iterative items to empty array if not specified.
         network_interfaces = [] if network_interfaces is None else network_interfaces
         hard_drives = [] if hard_drives is None else hard_drives
         available_nodes = [] if available_nodes is None else available_nodes
         modification_flags = [] if modification_flags is None else modification_flags
 
+        # Ensure name is valid, as well as other attributes
         self.checkName(name)
         ArgumentValidator.validate_positive_integer(cpu_cores)
         ArgumentValidator.validate_positive_integer(memory_allocation)
@@ -204,10 +213,14 @@ class Factory(PyroObject):
             ArgumentValidator.validate_hostname(node)
         for available_node in available_nodes:
             ArgumentValidator.validate_hostname(available_node)
+
+        # Ensure storage_type is a valid type, if specified
         assert storage_type in [None] + [
             storage_type_itx.__name__ for storage_type_itx in self._get_registered_object(
-                'hard_drive_factory').STORAGE_TYPES
+                'hard_drive_factory').getStorageTypes()
         ]
+
+        # Obtain the hard drive driver enum from the name
         if hard_drive_driver is not None:
             HardDriveDriver[hard_drive_driver]
 

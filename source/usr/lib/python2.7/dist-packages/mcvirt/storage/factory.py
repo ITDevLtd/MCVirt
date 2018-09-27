@@ -233,7 +233,7 @@ class Factory(PyroObject):
 
         # Ensure name is valid
         ArgumentValidator.validate_storage_name(name)
-        storage_class.ensure_valid_location(location)
+        storage_class.validate_location_name(location)
 
         if self._is_cluster_master:
             # If no nodes have been specified, get all nodes in cluster
