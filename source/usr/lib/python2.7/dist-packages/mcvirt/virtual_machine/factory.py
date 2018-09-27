@@ -209,7 +209,6 @@ class Factory(PyroObject):
             nodes = cluster.get_nodes(return_all=True, include_local=True)
 
         # If defined, ensure that all networks exist
-        network_nodes = list(nodes)
         if networks:
             for network in networks:
                 network_factory = self._get_registered_object('network_factory')
@@ -229,18 +228,19 @@ class Factory(PyroObject):
                     # Otherwise, if the network is not available on the
                     # node, remove the node from list of available nodes.
                     elif not network.check_available_on_node(node):
-                        if node in network_nodes:
-                            network_nodes.remove(node)
+                        if node in nodes:
+                            nodes.remove(node)
 
-        storage_nodes = None
         if required_storage_size:
             # Use the hard drive factory to determine whether the given
             # storage requirements are possible, given the available nodes.
             hard_drive_factory = self._get_registered_object('hard_drive_factory')
-            storage_nodes, storage_type, storage_backend = hard_drive_factory.ensure_hdd_valid(
+            nodes, storage_type, storage_backend = hard_drive_factory.ensure_hdd_valid(
                 size=required_storage_size, storage_type=storage_type, nodes=nodes,
                 storage_backend=storage_backend, nodes_predefined=nodes_predefined
             )
+
+        return nodes, storage_backend, storage_type
 
     @Expose(locking=True, instance_method=True)
     def create(self, *args, **kwargs):
@@ -300,9 +300,22 @@ class Factory(PyroObject):
         if node and available_nodes and node not in available_nodes:
             raise InvalidNodesException('Node must be in available nodes')
 
+        total_storage_size = sum(hard_drives) if hard_drives else None
+        available_nodes, storage_backend, storage_type = self._pre_create_checks(
+            required_storage_size=total_storage_size,
+            networks=network_interfaces,
+            storage_type=storage_type,
+            nodes=available_nodes,
+            storage_backend=storage_backend
+        )
+
         # If a node has not been specified, assume the local node
         if node is None:
             node = local_hostname
+
+        # Ensure that the local node is included in the list of available nodes
+        if local_hostname not in available_nodes:
+            raise InvalidNodesException('Local node must included in available nodes')
 
         all_nodes = cluster_object.get_nodes(return_all=True, include_local=True)
         for check_node in available_nodes:
