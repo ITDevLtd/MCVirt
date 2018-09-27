@@ -201,14 +201,23 @@ class Factory(PyroObject):
                 raise InvalidNodesException('Exactly %i nodes must be specified for DRBD'
                                             % node_drbd.CLUSTER_SIZE)
 
+            # Now that it's been determined that DRBD is being used and the correct number
+            # of nodes is available, then nodes_predefined will be set to True to
+            # stop the nodes being changed whilst storage backend is determined
+            nodes_predefined = True
+
+        # Since DRBD was not determined, if storage type has not been determined,
+        # force Local storage
+        elif storage_type is None:
+            storage_type = Local.__name__
+
         # If storage backend has been defined, ensure it is available on the current node
-        storage_backend_nodes = list(nodes)
         if storage_backend:
             for node in nodes:
                 if nodes_predefined:
                     storage_backend.available_on_node(node=node, raise_on_err=True)
                 elif storage_backend.available_on_node(node=node, raise_on_err=False):
-                    storage_backend_nodes.remove(node)
+                    nodes.remove(node)
 
         # Otherwise, if storage backend has not been defined, ensure that
         # there is only one available for the given storage type and nodes selected
@@ -222,7 +231,7 @@ class Factory(PyroObject):
                 raise UnknownStorageBackendException('Storage backend must be specified')
             elif len(available_storage_backends) == 1:
                 storage_backend = available_storage_backends[0]
-                storage_backend_nodes = storage_backend.nodes
+                nodes = storage_backend.nodes
 
                 # Remove any nodes from the list of nodes that aren't
                 # available to the node
@@ -255,8 +264,8 @@ class Factory(PyroObject):
         )
 
         nodes = vm_object.getAvailableNodes()
-        storage_type, storage_backend = self.ensure_hdd_valid(size, storage_type, nodes,
-                                                              storage_backend)
+        nodes.storage_type, storage_backend = self.ensure_hdd_valid(size, storage_type, nodes,
+                                                                    storage_backend)
 
         # Ensure the VM storage type matches the storage type passed in
         vm_storage_type = vm_object.getStorageType()
