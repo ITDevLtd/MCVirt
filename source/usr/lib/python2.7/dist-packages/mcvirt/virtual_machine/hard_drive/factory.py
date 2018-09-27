@@ -94,7 +94,7 @@ import Pyro4
 
 from mcvirt.exceptions import (UnknownStorageTypeException, HardDriveDoesNotExistException,
                                InsufficientSpaceException, StorageBackendNotAvailableOnNode,
-                               UnknownStorageBackendException)
+                               UnknownStorageBackendException, InvalidNodesException)
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import Drbd
 from mcvirt.virtual_machine.hard_drive.base import Base
@@ -157,14 +157,18 @@ class Factory(PyroObject):
         return Factory.CACHED_OBJECTS[cache_key]
 
     @Expose()
-    def ensure_hdd_valid(self, size, storage_type, nodes, storage_backend):
+    def ensure_hdd_valid(self, size, storage_type, nodes, storage_backend, nodes_predefined=False):
         """Ensures the HDD can be created on all nodes, and returns the storage type to be used."""
 
+        storage_type_predefined = sotrage_type is not None
+        storage_backend_predefined = storage_backend is not None
+
         # Ensure that, if storage type is specified, that it's in the list of available storage
-        # backends for this node
+        # backends for this node.
         # @TODO IF a storage type has been specified, which does not support DBRD, then
         # we can assume that Local storage is used.
-        available_storage_types = self._getAvailableStorageTypes()
+        hard_drive_factory = self._get_registered_object('hard_drive_factory')
+        available_storage_types = hard_drive_factory._get_available_storage_types()
         if storage_type:
             if (storage_type not in
                     [available_storage.__name__ for available_storage in available_storage_types]):
@@ -180,21 +184,51 @@ class Factory(PyroObject):
             else:
                 raise UnknownStorageTypeException('There are no storage types available')
 
+        # Before any further calculations are performed, if DRBD has been selected
+        # and there are more or fewer than 2 available nodes with DRBD enabled,
+        # the user MUST determine which two nodes will be used.
+        if storage_type == Drbd.__name__:
+            node_drbd = self._get_registered_object('node_drbd')
+            for node in nodes:
+                # If DRBD is not enabled on the node, remove it from the list
+                # of nodes
+                if not node_drbd.is_enabled(node=node):
+                    nodes.delete(node)
+
+            # If number of nodes is less than or greater than 2, raise exceptions, as
+            # DRBD requires exactly 2 nodes
+            if len(nodes) != node_drbd.CLUSTER_SIZE:
+                raise InvalidNodesException('Exactly %i nodes must be specified for DRBD'
+                                            % node_drbd.CLUSTER_SIZE)
+
         # If storage backend has been defined, ensure it is available on the current node
+        storage_backend_nodes = list(nodes)
         if storage_backend:
-            storage_backend.available_on_node(raise_on_err=True)
+            for node in nodes:
+                if nodes_predefined:
+                    storage_backend.available_on_node(node=node, raise_on_err=True)
+                elif storage_backend.available_on_node(node=node, raise_on_err=False):
+                    storage_backend_nodes.remove(node)
 
         # Otherwise, if storage backend has not been defined, ensure that
         # there is only one available for the given storage type and nodes selected
         else:
             storage_factory = self._get_registered_object('storage_factory')
             available_storage_backends = storage_factory.get_all(
-                nodes=nodes, drbd=(storage_type == Drbd.__name__)
+                nodes=nodes, drbd=(storage_type == Drbd.__name__),
+                nodes_predefined=nodes_predefined
             )
             if len(available_storage_backends) > 1:
                 raise UnknownStorageBackendException('Storage backend must be specified')
             elif len(available_storage_backends) == 1:
                 storage_backend = available_storage_backends[0]
+                storage_backend_nodes = storage_backend.nodes
+
+                # Remove any nodes from the list of nodes that aren't
+                # available to the node
+                for node in storage_backend.nodes:
+                    if node not in nodes:
+                        nodes.remove(node)
             else:
                 raise UnknownStorageBackendException('There are no available storage backends')
 
@@ -205,22 +239,7 @@ class Factory(PyroObject):
                                              'backend \'%s\' on node %s.' %
                                              (size, free, storage_backend.name, get_hostname()))
 
-        if self._is_cluster_master:
-            def remote_command(remote_connection):
-                remote_storage_factory = remote_connection.get_connection('storage_factory')
-                remote_storage_backend = remote_storage_factory.get_object(
-                    name=storage_backend.name
-                )
-                hard_drive_factory = remote_connection.get_connection('hard_drive_factory')
-                hard_drive_factory.ensure_hdd_valid(size=size, storage_type=storage_type,
-                                                    nodes=nodes,
-                                                    storage_backend=remote_storage_backend)
-
-            cluster = self._get_registered_object('cluster')
-            remote_nodes = [node for node in nodes if node != cluster.get_local_hostname()]
-            cluster.run_remote_command(callback_method=remote_command, nodes=remote_nodes)
-
-        return storage_type, storage_backend
+        return nodes, storage_type, storage_backend
 
     @Expose(locking=True)
     def create(self, vm_object, size, storage_type, driver, storage_backend=None):

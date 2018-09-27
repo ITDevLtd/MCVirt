@@ -228,23 +228,27 @@ class Parser(object):
             help='Name of networks to connect VM to (each network has a separate NIC)'
         )
         self.create_parser.add_argument('--nodes', dest='nodes', action='append',
-                                        help='Specify the nodes that the VM will be' +
-                                             ' hosted on, if a Drbd storage-type' +
-                                             ' is specified',
+                                        help=('Specify the nodes that the VM will be'
+                                              ' hosted on, if a Drbd storage-type'
+                                              ' is specified'),
                                         default=[])
 
         self.create_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
-        # Determine if machine is configured to use Drbd
+        # Determine if machine is configured to use DRBD
+        # @TODO: Update to use List of storage options from Hard drive factory
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
                                         type=str, default=None, choices=['Local', 'Drbd'])
+        # @TODO: Add choices for hard drive driver
         self.create_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
                                         help='Driver for hard disk',
                                         default=None)
+        # @TODO: Add choices for graphics driver
         self.create_parser.add_argument('--graphics-driver', dest='graphics_driver',
                                         metavar='Graphics Driver', type=str,
                                         help='Driver for graphics', default=None)
+        # @TODO: Add choices for modifciation flags
         self.create_parser.add_argument('--modification-flag', help='Add VM modification flag',
                                         dest='modification_flags', action='append')
 
@@ -256,16 +260,17 @@ class Parser(object):
         self.delete_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Get arguments for registering a VM
-        self.register_parser = self.subparsers.add_parser('register', help='Registers a VM on' +
-                                                                           ' the local node',
+        self.register_parser = self.subparsers.add_parser('register',
+                                                          help=('Registers a VM on'
+                                                                ' the local node'),
                                                           parents=[self.parent_parser])
         self.register_parser.add_argument('vm_name', metavar='VM Name', type=str,
                                           help='Name of VM')
 
         # Get arguments for unregistering a VM
         self.unregister_parser = self.subparsers.add_parser('unregister',
-                                                            help='Unregisters a VM from' +
-                                                                 ' the local node',
+                                                            help=('Unregisters a VM from'
+                                                                  ' the local node'),
                                                             parents=[self.parent_parser])
         self.unregister_parser.add_argument('vm_name', metavar='VM Name', type=str,
                                             help='Name of VM')

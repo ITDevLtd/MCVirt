@@ -170,7 +170,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_all(self, available_on_local_node=None, nodes=[], drbd=None,
-                storage_type=None, shared=None):
+                storage_type=None, shared=None, nodes_predefined=False):
         """Return all storage backends, with optional filtering"""
         storage_objects = []
         cluster = self._get_registered_object('cluster')
@@ -185,14 +185,22 @@ class Factory(PyroObject):
                     cluster.get_local_hostname() not in storage_object.nodes):
                 continue
 
-            # If nodes are specified, ensure all nodes are available to storage object
+            # If nodes are specified...
             if nodes:
-                def check_nodes_in_nodes(nodes, storage_object):
-                    for node in nodes:
-                        if node not in storage_object.nodes:
-                            return False
-                    return True
-                if not check_nodes_in_nodes(nodes, storage_object):
+                # Determine which nodes from the list are available
+                available_nodes = []
+                for node in nodes:
+                    if node not in storage_object.nodes:
+                        available_nodes.append(node)
+
+                # If the list of nodes is required (predefined) and not all are
+                # present, skip storage backend
+                if nodes_predefined and len(nodes) != len(available_nodes):
+                    continue
+
+                # Otherwise, (if the nodes are not required), ensure at least one
+                # is available, otherwise, skip
+                elif (not nodes_predefined) and not len(available_nodes):
                     continue
 
             # If drbd is specified, ensure storage object is suitable to run DRBD
@@ -218,6 +226,12 @@ class Factory(PyroObject):
         """Create storage backend"""
         # Check permissions
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+
+        # Ensure that nodes are valid
+        cluster = self._get_registered_object('cluster')
+
+        for node in nodes:
+            cluster.ensure_node_exists(nodes, include_local=True)
 
         # Ensure that either:
         # a default location is defined
@@ -258,8 +272,6 @@ class Factory(PyroObject):
                 cluster=self._get_registered_object('cluster'),
                 config=config
             )
-
-            cluster = self._get_registered_object('cluster')
 
             # Ensure pre-requisites for storage backend pass on each node
             for node in nodes:

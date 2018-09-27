@@ -477,7 +477,7 @@ class VirtualMachine(PyroObject):
         if remove_data:
             # Remove VM configuration file
             self.get_config_object().gitRemove('VM \'%s\' has been removed' % self.name)
-            shutil.rmtree(VirtualMachine._get_vm_dir(self.name))
+            shutil.rmtree(VirtualMachine.get_vm_dir(self.name))
 
         # Remove VM from MCVirt configuration
         def updateMCVirtConfig(config):
@@ -761,7 +761,7 @@ class VirtualMachine(PyroObject):
             cluster.run_remote_command(remote_command, ignore_cluster_master=ignore_cluster_master)
 
     @staticmethod
-    def _get_vm_dir(name):
+    def get_vm_dir(name):
         """Return the storage directory for a given VM"""
         return DirectoryLocation.BASE_VM_STORAGE_DIR + '/' + name
 
@@ -1558,7 +1558,7 @@ class VirtualMachine(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
         # Check the provided driver name is valid
-        self._get_registered_object('virtual_machine_factory').check_graphics_driver(driver)
+        self._get_registered_object('virtual_machine_factory').ensure_graphics_driver_valid(driver)
 
         if self._is_cluster_master:
             # Update the MCVirt configuration
