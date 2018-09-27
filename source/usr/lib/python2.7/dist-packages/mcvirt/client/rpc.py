@@ -106,9 +106,9 @@ class Connection(object):
         auth_dict[Annotations.IGNORE_CLUSTER] = self.__ignore_cluster
         if 'ignore_cluster' in dir(Pyro4.current_context):
             auth_dict[Annotations.IGNORE_CLUSTER] |= Pyro4.current_context.ignore_cluster
-        auth_dict[Annotations.IGNORE_Drbd] = self.__ignore_drbd
+        auth_dict[Annotations.IGNORE_DRBD] = self.__ignore_drbd
         if 'ignore_drbd' in dir(Pyro4.current_context):
-            auth_dict[Annotations.IGNORE_Drbd] |= Pyro4.current_context.ignore_drbd
+            auth_dict[Annotations.IGNORE_DRBD] |= Pyro4.current_context.ignore_drbd
         return auth_dict
 
     def get_connection(self, object_name, password=None):

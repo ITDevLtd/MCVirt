@@ -128,8 +128,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
                     if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
                                               user_object=user_object) and
-                            Annotations.IGNORE_Drbd in data):
-                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
+                            Annotations.IGNORE_DRBD in data):
+                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
                     else:
                         Pyro4.current_context.ignore_drbd = False
                     if Pyro4.current_context.cluster_master:
@@ -176,8 +176,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
                     if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
                                               user_object=user_object) and
-                            Annotations.IGNORE_Drbd in data):
-                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
+                            Annotations.IGNORE_DRBD in data):
+                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
                     else:
                         Pyro4.current_context.ignore_drbd = False
 
@@ -224,6 +224,7 @@ class RpcNSMixinDaemon(object):
         # Wait for nameserver
         Syslogger.logger().debug('Wait for connection to nameserver')
         self.obtain_connection()
+        Syslogger.logger().debug('Obtained nameserver connection')
 
         RpcNSMixinDaemon.DAEMON = BaseRpcDaemon(host=self.hostname)
         self.register_factories()
@@ -243,6 +244,7 @@ class RpcNSMixinDaemon(object):
                     signal.SIGSEGV, signal.SIGTERM):
             signal.signal(sig, self.shutdown)
 
+        Syslogger.logger().debug('Initialising objects')
         for registered_object in RpcNSMixinDaemon.DAEMON.registered_factories:
             obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
             if type(obj) is not types.TypeType:  # noqa
@@ -253,8 +255,10 @@ class RpcNSMixinDaemon(object):
         """Start the Pyro daemon"""
         Pyro4.current_context.STARTUP_PERIOD = False
         Syslogger.logger().debug('Authentication enabled')
-        Syslogger.logger().debug('Starting daemon request loop')
+        Syslogger.logger().debug('Obtaining lock')
         with DaemonLock.LOCK:
+            Syslogger.logger().debug('Obtained lock')
+            Syslogger.logger().debug('Starting daemon request loop')
             RpcNSMixinDaemon.DAEMON.requestLoop(*args, **kwargs)
         Syslogger.logger().debug('Daemon request loop finished')
 
@@ -371,3 +375,4 @@ class RpcNSMixinDaemon(object):
                 Syslogger.logger().warn('Connecting to name server: %s' % str(e))
                 # Wait for 1 second for name server to come up
                 time.sleep(1)
+            Syslogger.logger().debug('Connection to name server complete')
