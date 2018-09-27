@@ -165,7 +165,7 @@ class Factory(PyroObject):
         # @TODO IF a storage type has been specified, which does not support DBRD, then
         # we can assume that Local storage is used.
         hard_drive_factory = self._get_registered_object('hard_drive_factory')
-        available_storage_types = hard_drive_factory._get_available_storage_types()
+        available_storage_types = self._get_available_storage_types()
         cluster = self._get_registered_object('cluster')
         if storage_type:
             if (storage_type not in
@@ -293,7 +293,7 @@ class Factory(PyroObject):
         hdd_object.create(size=size)
         return hdd_object
 
-    def _getAvailableStorageTypes(self):
+    def _get_available_storage_types(self):
         """Returns a list of storage types that are available on the node"""
         available_storage_types = []
         storage_factory = self._get_registered_object('storage_factory')
