@@ -239,9 +239,14 @@ class Base(PyroObject):
             )
         return available
 
+    @Expose()
     def get_volume(self, name):
         """Return a volume for the current storage volume"""
-        return self._volume_class(name=name, storage_backend=self)
+        # Create volume object
+        volume = self._volume_class(name=name, storage_backend=self)
+        # Register with daemon
+        self._register_object(volume)
+        return volume
 
     def is_drbd_suitable(self):
         """Return boolean depending on whether storage backend is suitable to be
@@ -253,12 +258,29 @@ class Base(PyroObject):
         """Check volume groups exists on the local node"""
         return self.__class__.check_exists_local(self.get_location())
 
+    def get_remote_object(self,
+                          node_name=None,     # The name of the remote node to connect to
+                          remote_node=None,   # Otherwise, pass a remote node connection
+                          return_node=False):
+        """Obtain an instance of the current storage backend object on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if remote_node is None:
+            remote_node = cluster.get_remote_node(node_name)
+
+        remote_storage_factory = remote_node.get_connection('storage_factory')
+        remote_storage = remote_storage_factory.get_object(self.name)
+        remote_node.annotate_object(remote_storage)
+        if return_node:
+            return remote_storage, remote_node
+        else:
+            return remote_storage
+
     def get_free_space(self):
         """Return the amount of free spacae in the storage backend"""
         raise NotImplementedError
 
 
-class BaseVolume(object):
+class BaseVolume(PyroObject):
     """Base class for handling volume actions.
     These classes do NOT care about a virtual machine,
     only about performing necessary commands to manipulate a
@@ -279,6 +301,30 @@ class BaseVolume(object):
     def storage_backend(self):
         """Return the storage backend"""
         return self._storage_backend
+
+    def get_remote_object(self,
+                          node_name=None,     # The name of the remote node to connect to
+                          remote_node=None,   # Otherwise, pass a remote node connection
+                          return_node=False):
+        """Obtain an instance of the current volume object on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if remote_node is None:
+            remote_node = cluster.get_remote_node(node_name)
+
+        # Obtian remote storage backend
+        remote_storage = self.storage_backend.get_remote_object(
+            remote_node=remote_node, return_node=False
+        )
+
+        # Obtian remote volume and annotate
+        remote_volume = remote_storage.get_volume(self.name)
+        remote_node.annotate_object(remote_volume)
+
+        # Return remote_volume (and node)
+        if return_node:
+            return remote_volume, remote_node
+        else:
+            return remote_volume
 
     def ensure_exists(self):
         """Ensure that the volume exists"""

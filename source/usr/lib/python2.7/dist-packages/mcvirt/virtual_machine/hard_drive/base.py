@@ -413,19 +413,16 @@ class Base(PyroObject):
             )
 
     @Expose(locking=True)
-    def resize_logical_volume(self, *args, **kwargs):
-        """Provides an exposed method for _resize_logical_volume
+    def resize_volume(self, *args, **kwargs):
+        """Provides an exposed method for _resize_volume
            with permission checking"""
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
-        return self._resize_logical_volume(*args, **kwargs)
+        return self._resize_volume(*args, **kwargs)
 
-    def _resize_logical_volume(self, name, size, perform_on_nodes=False):
+    def _resize_volume(self, volume, size, perform_on_nodes=False):
         """Creates a logical volume on the node/cluster"""
 
-        # Create command list
-        command_args = ['/sbin/lvresize', '--size', '%sM' % size,
-                        self._getLogicalVolumePath(name)]
         try:
             # Create on local node
             System.runCommand(command_args)
