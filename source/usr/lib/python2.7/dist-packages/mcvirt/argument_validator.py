@@ -139,3 +139,10 @@ class ArgumentValidator(object):
         pattern = re.compile("^[A-Z0-9a-z_-]+$")
         if not pattern.match(vg_name):
             raise MCVirtTypeError('%s is not a valid volume group name' % vg_name)
+
+    @staticmethod
+    def validate_logical_volume_name(lv_name):
+        """Validate a volume group name"""
+        pattern = re.compile("^[A-Z0-9a-z_-]+$")
+        if not pattern.match(lv_name):
+            raise MCVirtTypeError('%s is not a valid logical volume name' % lv_name)

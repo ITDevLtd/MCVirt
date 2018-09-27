@@ -703,6 +703,18 @@ class DDCommandError(MCVirtException):
     pass
 
 
+class NetworkNotAvailableOnNodeError(MCVirtException):
+    """Network is not available on given node"""
+
+    pass
+
+
+class InvalidStorageBackendError(MCVirtException):
+    """Selected storage backend does not support DRBD"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)

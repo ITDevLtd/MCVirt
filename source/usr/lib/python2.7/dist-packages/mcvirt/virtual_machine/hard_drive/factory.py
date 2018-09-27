@@ -94,7 +94,8 @@ import Pyro4
 
 from mcvirt.exceptions import (UnknownStorageTypeException, HardDriveDoesNotExistException,
                                InsufficientSpaceException, StorageBackendNotAvailableOnNode,
-                               UnknownStorageBackendException, InvalidNodesException)
+                               UnknownStorageBackendException, InvalidNodesException,
+                               InvalidStorageBackendError)
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import Drbd
 from mcvirt.virtual_machine.hard_drive.base import Base
@@ -164,7 +165,6 @@ class Factory(PyroObject):
         # backends for this node.
         # @TODO IF a storage type has been specified, which does not support DBRD, then
         # we can assume that Local storage is used.
-        hard_drive_factory = self._get_registered_object('hard_drive_factory')
         available_storage_types = self._get_available_storage_types()
         cluster = self._get_registered_object('cluster')
         if storage_type:
@@ -211,6 +211,10 @@ class Factory(PyroObject):
 
         # If storage backend has been defined, ensure it is available on the current node
         if storage_backend:
+            # Ensure that the storage backend is suitable for the storage type
+            if storage_type == Drbd.__name__ and not storage_backend.is_drbd_suitable():
+                raise InvalidStorageBackendError('Storage backend does not support DRBD')
+
             for node in nodes:
                 if nodes_predefined:
                     storage_backend.available_on_node(node=node, raise_on_err=True)

@@ -198,7 +198,7 @@ class Factory(PyroObject):
         # Ensure all nodes are valid, if defined
         if nodes:
             for node in nodes:
-                cluster.ensure_node_exists(nodes, include_local=True)
+                cluster.ensure_node_exists(node, include_local=True)
 
         # Determine if the list of nodes is a pre-defined list by the user, or
         # list of all nodes
@@ -350,26 +350,12 @@ class Factory(PyroObject):
         if self.check_exists(name):
             raise VmAlreadyExistsException('Error: VM already exists')
 
-        # If Drbd has been chosen as a storage type, ensure it is enabled on the node
-        node_drbd = self._get_registered_object('node_drbd')
-        if storage_type == 'Drbd' and not node_drbd.is_enabled():
-            raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
-
         # Create directory for VM on the local and remote nodes
         if os_path_exists(VirtualMachine.get_vm_dir(name)):
             raise VmDirectoryAlreadyExistsException('Error: VM directory already exists')
 
         if local_hostname not in available_nodes and self._is_cluster_master:
             raise InvalidNodesException('One of the nodes must be the local node')
-
-        # Check whether the hard drives can be created.
-        if self._is_cluster_master:
-            hard_drive_factory = self._get_registered_object('hard_drive_factory')
-            for hard_drive_size in hard_drives:
-                hard_drive_factory.ensure_hdd_valid(
-                    hard_drive_size, storage_type,
-                    [node_itx for node_itx in available_nodes if node_itx != local_hostname]
-                )
 
         # Create directory for VM
         makedirs(VirtualMachine.get_vm_dir(name))

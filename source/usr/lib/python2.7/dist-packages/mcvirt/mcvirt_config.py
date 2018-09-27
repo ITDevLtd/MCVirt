@@ -162,3 +162,7 @@ class MCVirtConfig(ConfigFile):
 
             # Define the hostname of the local machine in the config file
             config['cluster']['node_name'] = get_hostname()
+
+            # @TODO: Go through each VM and add the storage backend
+            # @TODO: Go through each VM and create storage backend for any
+            #        overriden volume groups

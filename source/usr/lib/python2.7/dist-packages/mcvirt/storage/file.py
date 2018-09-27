@@ -22,6 +22,7 @@ from mcvirt.exceptions import (InvalidStorageConfiguration,
                                VolumeAlreadyExistsError,
                                DDCommandError, VolumeDoesNotExistError,
                                ExternalStorageCommandErrorException)
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.system import System
 
 
@@ -51,6 +52,7 @@ class File(Base):
         """Return the volume class for the storage backend"""
         return FileVolume
 
+    @Expose()
     def get_free_space(self):
         """Return the free space in megabytes."""
         # Obtain statvfs object

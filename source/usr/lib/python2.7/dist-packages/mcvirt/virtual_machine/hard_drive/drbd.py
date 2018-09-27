@@ -254,7 +254,8 @@ class Drbd(Base):
     @staticmethod
     def isAvailable(storage_factory, node_drdb):
         """Determine if Drbd is available on the node"""
-        return (storage_factory.get_all(drbd=True, local_node=True) and
+        return (storage_factory.get_all(drbd=True,
+                                        available_on_local_node=True) and
                 node_drdb.is_enabled())
 
     def _check_exists(self):

@@ -261,13 +261,13 @@ class Base(PyroObject):
         return self.__class__.check_exists_local(self.get_location())
 
     def get_remote_object(self,
-                          node_name=None,     # The name of the remote node to connect to
+                          node=None,     # The name of the remote node to connect to
                           remote_node=None,   # Otherwise, pass a remote node connection
                           return_node=False):
         """Obtain an instance of the current storage backend object on a remote node"""
         cluster = self._get_registered_object('cluster')
         if remote_node is None:
-            remote_node = cluster.get_remote_node(node_name)
+            remote_node = cluster.get_remote_node(node)
 
         remote_storage_factory = remote_node.get_connection('storage_factory')
         remote_storage = remote_storage_factory.get_object(self.name)
@@ -277,6 +277,7 @@ class Base(PyroObject):
         else:
             return remote_storage
 
+    @Expose()
     def get_free_space(self):
         """Return the amount of free spacae in the storage backend"""
         raise NotImplementedError

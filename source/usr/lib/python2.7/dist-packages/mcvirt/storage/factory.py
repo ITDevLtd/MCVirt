@@ -174,6 +174,7 @@ class Factory(PyroObject):
         """Return all storage backends, with optional filtering"""
         storage_objects = []
         cluster = self._get_registered_object('cluster')
+
         for storage_name in self._get_registered_object('mcvirt_config')().get_config()[
                 Factory.STORAGE_CONFIG_KEY]:
 
@@ -190,7 +191,7 @@ class Factory(PyroObject):
                 # Determine which nodes from the list are available
                 available_nodes = []
                 for node in nodes:
-                    if node not in storage_object.nodes:
+                    if node in storage_object.nodes:
                         available_nodes.append(node)
 
                 # If the list of nodes is required (predefined) and not all are

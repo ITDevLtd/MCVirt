@@ -22,8 +22,10 @@ from mcvirt.exceptions import (InvalidStorageConfiguration,
                                ExternalStorageCommandErrorException,
                                MCVirtCommandException, VolumeDoesNotExistError,
                                VolumeAlreadyExistsError)
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.system import System
 from mcvirt.constants import DirectoryLocation
+from mcvirt.argument_validator import ArgumentValidator
 
 
 class Lvm(Base):
@@ -47,13 +49,14 @@ class Lvm(Base):
     @classmethod
     def validate_location_name(cls, location):
         """Ensure directory is a valid name"""
-        raise NotImplementedError
+        ArgumentValidator.validate_vg_name(location)
 
     @property
     def _volume_class(self):
         """Return the volume class for the storage backend"""
         return LvmVolume
 
+    @Expose()
     def get_free_space(self):
         """Return the free space in megabytes."""
         _, out, _ = System.runCommand(['vgs', self.get_location(),
@@ -73,7 +76,7 @@ class LvmVolume(BaseVolume):
 
     def _validate_name(self):
         """Ensurue name of object is valid"""
-        raise NotImplementedError
+        ArgumentValidator.validate_logical_volume_name(self.name)
 
     def get_path(self, node=None):
         """Return the full path of a given logical volume"""

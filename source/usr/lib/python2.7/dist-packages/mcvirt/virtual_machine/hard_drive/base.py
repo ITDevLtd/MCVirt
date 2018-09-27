@@ -84,6 +84,11 @@ class Base(PyroObject):
         """Return the disk object config items"""
         return ['disk_id', 'driver', 'storage_backend']
 
+    @property
+    def storage_backend(self):
+        """Return storage backend"""
+        return self._storage_backend
+
     def __setattr__(self, name, value):
         """Override setattr to ensure that the value of
         a disk config item is written to, rather than the
