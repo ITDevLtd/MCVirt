@@ -169,6 +169,7 @@ class Factory(PyroObject):
         # we can assume that Local storage is used.
         hard_drive_factory = self._get_registered_object('hard_drive_factory')
         available_storage_types = hard_drive_factory._get_available_storage_types()
+        cluster = self._get_registered_object('cluster')
         if storage_type:
             if (storage_type not in
                     [available_storage.__name__ for available_storage in available_storage_types]):
@@ -241,12 +242,21 @@ class Factory(PyroObject):
             else:
                 raise UnknownStorageBackendException('There are no available storage backends')
 
-        free = storage_backend.get_free_space()
-        if free < size:
-            raise InsufficientSpaceException('Attempted to create a disk with %i MB, but there '
-                                             'is only %i MB of free space available in storage '
-                                             'backend \'%s\' on node %s.' %
-                                             (size, free, storage_backend.name, get_hostname()))
+        # Ensure that there is free space on all nodes
+        for node in nodes:
+            if node == cluster.get_local_hostname():
+                check_storage_backend = storage_backend
+            else:
+                check_storage_backend = storage_backend.get_remote_object(node=node)
+
+            free = check_storage_backend.get_free_space()
+            if free < size:
+                raise InsufficientSpaceException('Attempted to create a disk with %i MB, '
+                                                 'but there is only %i MB of free space '
+                                                 'available in storage backend \'%s\' '
+                                                 'on node %s.' %
+                                                 (size, free, storage_backend.name,
+                                                  cluster.get_local_hostname()))
 
         return nodes, storage_type, storage_backend
 
@@ -263,9 +273,13 @@ class Factory(PyroObject):
             vm_object
         )
 
+        # Determine nodes that the VM is already available to
         nodes = vm_object.getAvailableNodes()
-        nodes.storage_type, storage_backend = self.ensure_hdd_valid(size, storage_type, nodes,
-                                                                    storage_backend)
+        # Specify nodes_predefined to stop available nodes from being changed when
+        # determining storage specifications
+        nodes, storage_type, storage_backend = self.ensure_hdd_valid(size, storage_type, nodes,
+                                                                     storage_backend,
+                                                                     nodes_predefined=True)
 
         # Ensure the VM storage type matches the storage type passed in
         vm_storage_type = vm_object.getStorageType()
