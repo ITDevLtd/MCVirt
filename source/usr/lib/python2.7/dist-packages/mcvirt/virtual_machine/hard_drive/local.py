@@ -95,7 +95,7 @@ class Local(Base):
 
     def _removeStorage(self):
         """Removes the backing logical volume"""
-        self._get_data_volume().remove()
+        self._get_data_volume().delete()
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""

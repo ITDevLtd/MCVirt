@@ -134,6 +134,10 @@ class Factory(PyroObject):
                 storage_type = config['storage_type']
             del config['storage_type']
 
+        # If storage backend is in config, convert to local object
+        if 'storage_backend' in config:
+            config['storage_backend'] = self._convert_remote_object(config['storage_backend'])
+
         # Create cache key, based on name of VM, disk ID and storage type
         storage_type_key = storage_type or ''
         cache_key = (vm_object.get_name(), disk_id, storage_type_key)

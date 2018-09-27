@@ -140,11 +140,6 @@ class Base(PyroObject):
         remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
         remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
 
-        remote_storage_factory = remote_node.get_connection('storage_factory')
-        remote_storage_backend = remote_storage_factory.get_object(
-            self.get_storage_backend().name
-        )
-
         remote_hard_drive_factory = remote_node.get_connection('hard_drive_factory')
 
         kwargs = {
@@ -153,9 +148,15 @@ class Base(PyroObject):
         }
         if not registered:
             kwargs['storage_type'] = self.get_type()
-            kwargs['storage_backend'] = remote_storage_backend
+
             for config in self.config_properties:
                 kwargs[config] = getattr(self, config)
+
+            remote_storage_factory = remote_node.get_connection('storage_factory')
+            remote_storage_backend = remote_storage_factory.get_object(
+                self.get_storage_backend().name
+            )
+            kwargs['storage_backend'] = remote_storage_backend
 
         hard_drive_object = remote_hard_drive_factory.getObject(**kwargs)
         remote_node.annotate_object(hard_drive_object)
@@ -754,7 +755,9 @@ class Base(PyroObject):
 
     def get_storage_backend(self):
         """Return the storage backend object for the hard drive object"""
-        if not self._storage_backend or isinstance(self._storage_backend, str):
+        if (not self._storage_backend or
+                isinstance(self._storage_backend, str) or
+                isinstance(self._storage_backend, unicode)):
             storage_backend_name = (self._storage_backend
                                     if isinstance(self._storage_backend, str) else
                                     self.getDiskConfig()['storage_backend'])
