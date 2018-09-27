@@ -27,6 +27,7 @@ from mcvirt.exceptions import (UnsuitableNodeException,
                                StorageBackendNotAvailableOnNode,
                                InvalidStorageConfiguration,
                                VolumeDoesNotExistError)
+from mcvirt.system import System
 
 
 class Base(PyroObject):
@@ -183,10 +184,13 @@ class Base(PyroObject):
                 remote_storage_factory.node_pre_check(storage_type=self.storage_type,
                                                       location=location)
 
+        pass
+
     @Expose()
     def remove_node(self, node_name):
         """Remove a node from the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+        pass
 
     def in_use(self):
         """Whether the storage backend is used for any disks objects"""
@@ -276,6 +280,21 @@ class BaseVolume(object):
         """Return the storage backend"""
         return self._storage_backend
 
+    def ensure_exists(self):
+        """Ensure that the volume exists"""
+        if not self.check_exists():
+            raise VolumeDoesNotExistError('Volume (%s) does not exist' % self.name)
+
+    def wipe(self):
+        """Wipe the volume"""
+        System.perform_dd(source=System.WIPE,
+                          destination=self.get_path(),
+                          size=self.get_size())
+
+    def get_path(self, node=None):
+        """Get the path of the volume"""
+        raise NotImplementedError
+
     def create(self, size):
         """Create volume in storage backend"""
         raise NotImplementedError
@@ -300,18 +319,13 @@ class BaseVolume(object):
         """Deactivate volume"""
         raise NotImplementedError
 
-    def resize(self, size):
+    def resize(self, size, increase):
         """Reszie volume"""
         raise NotImplementedError
 
     def check_exists(self):
         """Determine whether volume exists"""
         raise NotImplementedError
-
-    def ensure_exists(self):
-        """Ensure that the volume exists"""
-        if not self.check_exists():
-            raise VolumeDoesNotExistError('Volume (%s) does not exist' % self.name)
 
     def get_size(self):
         """Obtain the size of the volume"""

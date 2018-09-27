@@ -1402,6 +1402,12 @@ class Parser(object):
                 storage_backend = storage_factory.getObject(args.storage_name)
                 storage_backend.delete()
 
+            elif args.storage_action == 'list':
+                self.print_status(storage_factory.list())
+
+            elif args.storage_action == '':
+                pass
+
         elif action == 'verify':
             vm_factory = rpc.get_connection('virtual_machine_factory')
             if args.vm_name:

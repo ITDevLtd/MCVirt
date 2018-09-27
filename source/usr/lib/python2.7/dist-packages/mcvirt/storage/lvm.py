@@ -52,8 +52,13 @@ class Lvm(Base):
     def get_free_space(self):
         """Return the free space in megabytes."""
         _, out, _ = System.runCommand(['vgs', self.get_location(),
-                                       '-o', 'free', '--noheadings', '--nosuffix', '--units',
-                                       'm'], False,
+                                       # Specify free space without headings or suffix
+                                       '-o', 'free', '--noheadings', '--nosuffix',
+                                       # Specify unit size in megabytes. Note from the man:
+                                       # "Capitalise to use multiples of 1000 (S.I.)
+                                       # instead of 1024."
+                                       '--units', 'm'],
+                                      False,
                                       DirectoryLocation.BASE_STORAGE_DIR)
         return float(out)
 
@@ -67,8 +72,10 @@ class LvmVolume(BaseVolume):
 
     def create(self, size):
         """Create volume in storage backend"""
+        # Ensure volume does not already exist
         if self.check_exists():
             raise VolumeAlreadyExistsError('Volume (%s) already exists' % self.name)
+
         # Create command list
         command_args = ['/sbin/lvcreate',
                         self.storage_backend.get_location(),  # Specify volume group
@@ -135,10 +142,14 @@ class LvmVolume(BaseVolume):
         """Deactivate volume"""
         raise NotImplementedError
 
-    def resize(self, size):
+    def resize(self, size, increase=True):
         """Reszie volume"""
         # Ensure volume exists
         self.ensure_exists()
+
+        # If increasing disk size, prepend with plus (+)
+        if increase:
+            size = '+%s' % size
 
         # Compile arguments for resize
         command_args = ['/sbin/lvresize', '--size', '%sM' % size,
