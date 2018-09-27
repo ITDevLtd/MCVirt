@@ -160,9 +160,6 @@ class Factory(PyroObject):
     def ensure_hdd_valid(self, size, storage_type, nodes, storage_backend, nodes_predefined=False):
         """Ensures the HDD can be created on all nodes, and returns the storage type to be used."""
 
-        storage_type_predefined = sotrage_type is not None
-        storage_backend_predefined = storage_backend is not None
-
         # Ensure that, if storage type is specified, that it's in the list of available storage
         # backends for this node.
         # @TODO IF a storage type has been specified, which does not support DBRD, then
