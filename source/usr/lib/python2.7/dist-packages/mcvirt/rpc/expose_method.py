@@ -21,16 +21,20 @@ from mcvirt.rpc.lock import lock_log_and_call
 
 
 class Expose(object):
+    """Decorator for exposing method via Pyro and optional log and locking"""
 
     SESSION_OBJECT = None
 
     def __init__(self, locking=False, object_type=None, instance_method=None):
+        """Setup variables passed in via decorator as member variables"""
         self.locking = locking
         self.object_type = object_type
         self.instance_method = instance_method
 
     def __call__(self, callback):
+        """Run when object is created. The returned value is the method that is executed"""
         def inner(*args, **kwargs):
+            """Run when the wrapping method is called"""
             # Determine if session ID is present in current context and the session object has
             # been set
             if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
@@ -53,3 +57,49 @@ class Expose(object):
             return return_value
         # Expose the function
         return Pyro4.expose(inner)
+
+
+class RunRemoteNodes(object):
+    """Experimental decorator to allow running a set of commands on a remote node without
+       adding boiler plate code to execute the function on the remote nodes"""
+
+    def __call__(self, callback):
+        """Overriding method, which executes on remote command"""
+        def inner(self, *args, **kwargs):
+            """Run when the actual wrapping method is called"""
+            # Obtain the list of nodes from kwargs, if defined
+            if 'nodes' in kwargs:
+                nodes = list(kwargs['nodes'])
+                # Remove from arguments
+                del kwargs['nodes']
+
+                # Setup empty return value, incase localhost is not in the list
+                # of nodes
+                return_val = None
+
+                # Determine if local node is present in list of nodes.
+                cluster = self._get_registered_object('cluster')
+                local_hostname = cluster.get_local_hostname()
+                if local_hostname in nodes:
+                    # If so, remove node from list, run the local callback first
+                    # and capture the output
+                    nodes.remove(local_hostname)
+                    return_val = callback(self, *args, **kwargs)
+
+                # Iterate over remote nodes, obtain the remote object
+                # and executing the function
+                for node in nodes:
+                    remote_object = self.get_remote_object(node=node)
+
+                    # Run the method by obtaining the member attribute, based on the name of
+                    # the callback function from of the remote object
+                    getattr(remote_object, callback.__name__)(*args, **kwargs)
+
+                # Return the returned value from the local callback
+                return return_val
+
+            # Otherwise, if ndoes not defined, call method as normal
+            else:
+                return callback(self, *args, **kwargs)
+
+        return inner
