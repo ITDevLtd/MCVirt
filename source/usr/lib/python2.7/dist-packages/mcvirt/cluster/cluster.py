@@ -478,6 +478,7 @@ class Cluster(PyroObject):
         for storage_backend in storage_factory.get_all_storage_backends():
             if storage_backend.get_global_location():
                 # Check that volume group/directory exists on remote machine
+                # @TODO complete
                 pass
 
         # Determine if any of the local networks/VMs exist on the remote node
@@ -655,6 +656,10 @@ class Cluster(PyroObject):
             # Obtain all nodes, without specifying 'return_all', meaning that if the cluster
             # is offline, no nodes will be returned.
             nodes = self.get_nodes()
+
+        # If nodes is empty, set to empty array
+        elif nodes is None:
+            nodes = []
 
         # If a single node has been defined, ensure it's not already defined
         # in nodes list and append

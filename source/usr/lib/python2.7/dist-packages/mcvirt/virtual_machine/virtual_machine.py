@@ -1441,7 +1441,22 @@ class VirtualMachine(PyroObject):
 
     def getAvailableNodes(self):
         """Returns the nodes that the VM can be run on"""
-        return self.get_config_object().get_config()['available_nodes']
+        # If nodes has been hard-defined in the config file, return that
+        config_nodes = self.get_config_object().get_config()['available_nodes']
+        if config_nodes is not None:
+            return config_nodes
+
+        # Otherwise, calculate which nodes the VM can be run on...
+        cluster = self._get_registered_object('cluster')
+
+        # Obtain list of required network and storage backends
+        storage_backends = [hdd.get_storage_backend() for hdd in self.getHardDriveObjects()]
+        network_adapter_factory = self._get_registered_object('network_adapter_factory')
+        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
+        networks = [network_adapter.get_network() for network_adapter in network_adapters]
+
+        # Obtain list of available nodes from cluster
+        return cluster.get_compatible_nodes(storage_backends=storage_backends, networks=networks)
 
     def ensureRegisteredLocally(self):
         """Ensures that the VM is registered locally, otherwise an exception is thrown"""

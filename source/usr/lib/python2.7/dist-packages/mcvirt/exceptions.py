@@ -314,7 +314,15 @@ class LogicalVolumeDoesNotExistException(MCVirtException):
 
 
 class LogicalVolumeIsNotActiveException(MCVirtException):
-    """Logical volume is not active"""
+    """Logical volume is not active.
+    @TODO Remove in factour of VolumeIsNotActiveException
+    """
+
+    pass
+
+
+class VolumeIsNotActiveException(MCVirtException):
+    """Volume is not active"""
 
     pass
 

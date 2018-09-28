@@ -19,14 +19,15 @@
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (UnsuitableNodeException,
                                NodeAlreadyConfiguredInStorageBackend,
                                StorageBackendInUse,
                                StorageBackendNotAvailableOnNode,
                                InvalidStorageConfiguration,
-                               VolumeDoesNotExistError)
+                               VolumeDoesNotExistError,
+                               VolumeIsNotActiveException)
 from mcvirt.system import System
 
 
@@ -118,12 +119,14 @@ class Base(PyroObject):
             raise StorageBackendInUse('Storage backend cannot be removed as it is used by VMs')
 
         # Remove VM from MCVirt configuration
-        def updateMCVirtConfig(config):
+        def update_mcvirt_config(config):
+            """Remove object from mcvirt config"""
             config['storage_backends'].remove(self.name)
         MCVirtConfig().update_config(
-            updateMCVirtConfig,
+            update_mcvirt_config,
             'Removed storage backend \'%s\' from global MCVirt config' %
-            self.name)
+            self.name
+        )
 
         # Remove from remote machines in cluster
         if self._is_cluster_master:
@@ -156,7 +159,7 @@ class Base(PyroObject):
         If node is set to None, the default location will be set
         """
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
-        pass
+        # @TODO Complete
 
     @Expose()
     def add_node(self, node_name, custom_location=None):
@@ -186,12 +189,14 @@ class Base(PyroObject):
                 remote_storage_factory.node_pre_check(storage_type=self.storage_type,
                                                       location=location)
 
+        # @TODO Complete
         pass
 
     @Expose()
     def remove_node(self, node_name):
         """Remove a node from the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+        # @TODO Complete
         pass
 
     def in_use(self):
@@ -262,18 +267,18 @@ class Base(PyroObject):
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
-                          remote_node=None,   # Otherwise, pass a remote node connection
+                          node_object=None,   # Otherwise, pass a remote node connection
                           return_node=False):
         """Obtain an instance of the current storage backend object on a remote node"""
         cluster = self._get_registered_object('cluster')
-        if remote_node is None:
-            remote_node = cluster.get_remote_node(node)
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
 
-        remote_storage_factory = remote_node.get_connection('storage_factory')
+        remote_storage_factory = node_object.get_connection('storage_factory')
         remote_storage = remote_storage_factory.get_object(self.name)
-        remote_node.annotate_object(remote_storage)
+        node_object.annotate_object(remote_storage)
         if return_node:
-            return remote_storage, remote_node
+            return remote_storage, node_object
         else:
             return remote_storage
 
@@ -307,26 +312,26 @@ class BaseVolume(PyroObject):
         return self._storage_backend
 
     def get_remote_object(self,
-                          node_name=None,     # The name of the remote node to connect to
-                          remote_node=None,   # Otherwise, pass a remote node connection
+                          node=None,     # The name of the remote node to connect to
+                          node_object=None,   # Otherwise, pass a remote node connection
                           return_node=False):
         """Obtain an instance of the current volume object on a remote node"""
         cluster = self._get_registered_object('cluster')
-        if remote_node is None:
-            remote_node = cluster.get_remote_node(node_name)
+        if node_object is None and node is not None:
+            node_object = cluster.get_remote_node(node)
 
         # Obtian remote storage backend
         remote_storage = self.storage_backend.get_remote_object(
-            remote_node=remote_node, return_node=False
+            node_object=node_object, return_node=False
         )
 
         # Obtian remote volume and annotate
         remote_volume = remote_storage.get_volume(self.name)
-        remote_node.annotate_object(remote_volume)
+        node_object.annotate_object(remote_volume)
 
         # Return remote_volume (and node)
         if return_node:
-            return remote_volume, remote_node
+            return remote_volume, node_object
         else:
             return remote_volume
 
@@ -335,11 +340,25 @@ class BaseVolume(PyroObject):
         if not self.check_exists():
             raise VolumeDoesNotExistError('Volume (%s) does not exist' % self.name)
 
+    @Expose()
+    @RunRemoteNodes()
     def wipe(self):
         """Wipe the volume"""
         System.perform_dd(source=System.WIPE,
                           destination=self.get_path(),
                           size=self.get_size())
+
+    def get_sectors(self):
+        """Get number of sectors allocated to the volume"""
+        # Obtain size of raw volume
+        _, raw_size_sectors, _ = System.runCommand(['blockdev', '--getsz', self.get_path()])
+        return int(raw_size_sectors.strip())
+
+    def get_sector_size(self):
+        """Get sector size for volume"""
+        # Obtain size of sectors
+        _, sector_size, _ = System.runCommand(['blockdev', '--getss', self.get_path()])
+        return int(sector_size.strip())
 
     def _validate_name(self):
         """Ensurue name of object is valid"""
@@ -365,9 +384,18 @@ class BaseVolume(PyroObject):
         """Activate volume"""
         raise NotImplementedError
 
-    def is_activate(self):
+    def is_active(self):
         """Return whether volume is activated"""
         raise NotImplementedError
+
+    def ensure_active(self):
+        """Ensure that voljuem is active, otherwise, raise exception"""
+        if not self.is_active():
+            cluster = self._get_registered_object('cluster')
+            raise VolumeIsNotActiveException(
+                'Volume %s is not active on %s' %
+                (self.name, cluster.get_local_hostname())
+            )
 
     def snapshot(self, destination_volume, size):
         """Snapshot volume"""

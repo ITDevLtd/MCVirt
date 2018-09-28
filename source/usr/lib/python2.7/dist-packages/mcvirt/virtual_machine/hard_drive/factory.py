@@ -228,24 +228,27 @@ class Factory(PyroObject):
         # Otherwise, if storage backend has not been defined, ensure that
         # there is only one available for the given storage type and nodes selected
         else:
+            # Obtain all storage backends available, given the nodes (and whether they
+            # must all be required - based on nodes_predefined) and whether DRBD is required
             storage_factory = self._get_registered_object('storage_factory')
             available_storage_backends = storage_factory.get_all(
                 nodes=nodes, drbd=(storage_type == Drbd.__name__),
                 nodes_predefined=nodes_predefined
             )
+            # Ensure that only one storage backend was found, otherwise throw an error.
             if len(available_storage_backends) > 1:
                 raise UnknownStorageBackendException('Storage backend must be specified')
             elif len(available_storage_backends) == 1:
                 storage_backend = available_storage_backends[0]
                 nodes = storage_backend.nodes
-
-                # Remove any nodes from the list of nodes that aren't
-                # available to the node
-                for node in storage_backend.nodes:
-                    if node not in nodes:
-                        nodes.remove(node)
             else:
                 raise UnknownStorageBackendException('There are no available storage backends')
+
+        # Remove any nodes from the list of nodes that aren't
+        # available to the node
+        for node in storage_backend.nodes:
+            if node not in nodes:
+                nodes.remove(node)
 
         # Ensure that there is free space on all nodes
         for node in nodes:

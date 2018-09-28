@@ -28,7 +28,9 @@ from mcvirt.exceptions import (HardDriveDoesNotExistException,
                                ExternalStorageCommandErrorException,
                                MCVirtCommandException,
                                ResyncNotSupportedException,
-                               LogicalVolumeIsNotActiveException)
+                               LogicalVolumeIsNotActiveException,
+                               VolumeDoesNotExistError,
+                               VolumeAlreadyExistsError)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
@@ -549,13 +551,6 @@ class Base(PyroObject):
         """Determines if a logical volume exists, returning 1 if present and 0 if not"""
         return os.path.lexists(self._getLogicalVolumePath(name))
 
-    def _ensureLogicalVolumeActive(self, name):
-        """Ensures that a logical volume is active"""
-        if not self._checkLogicalVolumeActive(name):
-            raise LogicalVolumeIsNotActiveException(
-                'Logical volume %s is not active on %s' %
-                (name, get_hostname()))
-
     def _checkLogicalVolumeActive(self, name):
         """Checks that a logical volume is active"""
         return os.path.exists(self._getLogicalVolumePath(name))
@@ -576,7 +571,7 @@ class Base(PyroObject):
         if perform_on_nodes and self._is_cluster_master:
             def remoteCommand(node):
                 remote_disk = self.get_remote_object(remote_node=node, registered=False)
-                remote_disk.activate_volume(name=name)
+                remote_disk.activate_volume(volume=volume)
 
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(callback_method=remoteCommand,
@@ -602,14 +597,15 @@ class Base(PyroObject):
 
         try:
             source_volume.snapshot_volume(backup_volume, self.SNAPSHOT_SIZE)
+        except VolumeAlreadyExistsError:
             self.vm_object._setLockState(LockStates.UNLOCKED)
-            return backup_volume.get_path()
-        except VolumeAlreadyExistsException, e:
-            self.vm_object._setLockState(LockStates.UNLOCKED)
-            raise BackupSnapshotAlreadyExistsException
+            raise BackupSnapshotAlreadyExistsException('Backup snapshot already exists')
         except:
             self.vm_object._setLockState(LockStates.UNLCoKED)
             raise
+
+        self.vm_object._setLockState(LockStates.UNLOCKED)
+        return backup_volume.get_path()
 
     @Expose(locking=True)
     def deleteBackupSnapshot(self):
@@ -622,8 +618,8 @@ class Base(PyroObject):
 
         try:
             self.get_backup_snapshot_volume().delete_volume()
+        except VolumeDoesNotExistError:
             self.vm_object._setLockState(LockStates.UNLOCKED)
-        except VolumeDoesNotExistException, e:
             raise BackupSnapshotDoesNotExistException(
                 'The backup snapshot does not exist'
             )
