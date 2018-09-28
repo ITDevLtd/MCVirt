@@ -22,7 +22,7 @@ from mcvirt.exceptions import (InvalidStorageConfiguration,
                                ExternalStorageCommandErrorException,
                                MCVirtCommandException, VolumeDoesNotExistError,
                                VolumeAlreadyExistsError)
-from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
 from mcvirt.system import System
 from mcvirt.constants import DirectoryLocation
 from mcvirt.argument_validator import ArgumentValidator
@@ -82,6 +82,8 @@ class LvmVolume(BaseVolume):
         """Return the full path of a given logical volume"""
         return '/dev/' + self.storage_backend.get_location(node=node) + '/' + self.name
 
+    @Expose()
+    @RunRemoteNodes()
     def create(self, size):
         """Create volume in storage backend"""
         # Ensure volume does not already exist
@@ -102,6 +104,8 @@ class LvmVolume(BaseVolume):
                 "Error whilst creating disk logical volume:\n" + str(exc)
             )
 
+    @Expose()
+    @RunRemoteNodes()
     def delete(self, ignore_non_existent=False):
         """Delete volume"""
         # Create command arguments
@@ -121,6 +125,8 @@ class LvmVolume(BaseVolume):
                 "Error whilst removing logical volume:\n" + str(exc)
             )
 
+    @Expose()
+    @RunRemoteNodes()
     def activate(self):
         """Activate volume"""
         # Ensure volume exists
