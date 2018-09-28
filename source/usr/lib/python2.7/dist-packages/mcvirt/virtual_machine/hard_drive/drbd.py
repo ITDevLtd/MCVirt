@@ -459,6 +459,9 @@ class Drbd(Base):
         self._ensure_exists()
         cluster = self._get_registered_object('cluster')
         remote_nodes = [] if local_only else self.vm_object._get_remote_nodes()
+        all_nodes = ([cluster.get_local_hostname()]
+                     if local_only else
+                     self.vm_object.getAvailableNodes())
 
         # Disconnect and perform a 'down' on the Drbd volume on all nodes
         def remoteCommand(node):
@@ -484,10 +487,8 @@ class Drbd(Base):
         self._removeDrbdConfig()
 
         # Remove the meta and raw logical volume from all nodes
-        self._removeLogicalVolume(self._getLogicalVolumeName(self.DRBD_META_SUFFIX),
-                                  perform_on_nodes=(not local_only))
-        self._removeLogicalVolume(self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX),
-                                  perform_on_nodes=(not local_only))
+        self._get_meta_volume().delete(nodes=all_nodes)
+        self._get_raw_volume().delete(nodes=all_nodes)
 
     @Expose(locking=True)
     def initialiseMetaData(self, *args, **kwargs):
