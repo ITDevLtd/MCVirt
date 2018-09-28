@@ -69,10 +69,10 @@ libvirtd_opts=" --listen --verbose %s"
         with open(self.CONFIG_FILE, 'w') as fh:
             fh.write(config_content.respond())
 
-        if self.service_name == 'libvirt-bin':
-            default_config = self.DEFAULT_CONFIG % '-d '
-        else:
+        if System.is_running_systemd():
             default_config = self.DEFAULT_CONFIG % ''
+        else:
+            default_config = self.DEFAULT_CONFIG % '-d '
 
         with open(self.DEFAULT_FILE % self.service_name, 'w') as default_fh:
             default_fh.write(default_config)
