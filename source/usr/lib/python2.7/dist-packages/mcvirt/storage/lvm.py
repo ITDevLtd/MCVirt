@@ -146,9 +146,23 @@ class LvmVolume(BaseVolume):
         """Snapshot volume"""
         # Ensure volume exists
         self.ensure_exists()
-        System.runCommand(['lvcreate', '--snapshot', self.get_path(),
-                           '--name', destination_volume.name,
-                           '--size', size])
+        try:
+            System.runCommand(['lvcreate', '--snapshot', self.get_path(),
+                               '--name', destination_volume.name,
+                               '--size', size])
+        except MCVirtCommandException, exc:
+            raise ExternalStorageCommandErrorException(
+                "Error whilst snapshotting disk:\n" + str(exc)
+            )
+
+    def clone(self, destination_volume):
+        """Clone a volume to a new volume"""
+        try:
+            self.snapshot(destination_volume, size=self.get_size())
+        except ExternalStorageCommandErrorException, esc:
+            raise ExternalStorageCommandErrorException(
+                "Error whilst cloning disk:\n" + str(esc)
+            )
 
     def deactivate(self):
         """Deactivate volume"""

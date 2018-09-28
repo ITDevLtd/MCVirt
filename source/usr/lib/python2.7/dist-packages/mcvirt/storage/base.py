@@ -349,6 +349,10 @@ class BaseVolume(PyroObject):
         """Get the path of the volume"""
         raise NotImplementedError
 
+    def clone(self, destination_volume):
+        """Clone a volume to a new volume"""
+        raise NotImplementedError
+
     def create(self, size):
         """Create volume in storage backend"""
         raise NotImplementedError

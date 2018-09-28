@@ -86,7 +86,7 @@ class Local(Base):
 
         # Obtain volume for the disk and resize
         volume = self._get_data_volume()
-        volume.resize('+%s' % increase_size)
+        volume.resize(increase_size, increase=True)
 
     def _check_exists(self):
         """Checks if a disk exists, which is required before any operations
@@ -107,18 +107,9 @@ class Local(Base):
         new_disk = Local(vm_object=destination_vm_object, driver=self.driver,
                          disk_id=self.disk_id)
         self._register_object(new_disk)
-        new_logical_volume_name = new_disk._getDiskName()
-        disk_size = self.getSize()
 
-        # Perform a logical volume snapshot
-        command_args = ('lvcreate', '-L', '%sM' % disk_size, '-s',
-                        '-n', new_logical_volume_name, self._getDiskPath())
-        try:
-            System.runCommand(command_args)
-        except MCVirtCommandException, e:
-            raise ExternalStorageCommandErrorException(
-                "Error whilst cloning disk logical volume:\n" + str(e)
-            )
+        # Clone original volume to new volume
+        self._get_data_volume().clone(new_disk._get_data_volume())
 
         new_disk.addToVirtualMachine()
         return new_disk
