@@ -646,19 +646,34 @@ class Cluster(PyroObject):
         return nodes
 
     def run_remote_command(self, callback_method, nodes=None, args=[], kwargs={},
-                           ignore_cluster_master=False):
+                           ignore_cluster_master=False, node=None):
         """Run a remote command on all (or a given list of) remote nodes"""
         return_data = {}
 
         # If the user has not specified a list of nodes, obtain all remote nodes
-        if nodes is None:
+        if nodes is None and node is None:
             # Obtain all nodes, without specifying 'return_all', meaning that if the cluster
             # is offline, no nodes will be returned.
             nodes = self.get_nodes()
+
+        # If a single node has been defined, ensure it's not already defined
+        # in nodes list and append
+        if node is not None and node not in nodes:
+            nodes.append(node)
+
+        # Iterate through each node
         for node in nodes:
+            # Obtain connection to node
             node_object = self.get_remote_node(node, ignore_cluster_master=ignore_cluster_master)
+
+            # If node object wasn't returned as None (which happends when the node is
+            # unavailable and cluster has been ignored)
             if node_object is not None:
+                # Run the callback method, providing the custom args and kwargs, capturing
+                # the output in return_data dict
                 return_data[node] = callback_method(node_object, *args, **kwargs)
+
+        # Return dict of returned values
         return return_data
 
     def check_node_exists(self, node_name, include_local=False):
