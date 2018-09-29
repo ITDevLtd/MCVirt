@@ -27,13 +27,14 @@ class Expose(object):
 
     SESSION_OBJECT = None
 
-    def __init__(self, locking=False, object_type=None, instance_method=None):
+    def __init__(self, locking=False, object_type=None, instance_method=None, only_cluster=False):
         """Setup variables passed in via decorator as member variables"""
         self.locking = locking
         self.object_type = object_type
         self.instance_method = instance_method
+        self.only_cluster = only_cluster
 
-    def __call__(self, callback):
+    def __call__(expose_self, callback):
         """Run when object is created. The returned value is the method that is executed"""
         def inner(*args, **kwargs):
             """Run when the wrapping method is called"""
@@ -44,9 +45,10 @@ class Expose(object):
                 Expose.SESSION_OBJECT.USER_SESSIONS[
                     Expose.SESSION_OBJECT._get_session_id()
                 ].disable()
-            if self.locking:
-                return_value = lock_log_and_call(callback, args, kwargs, self.instance_method,
-                                                 self.object_type)
+            if expose_self.locking:
+                return_value = lock_log_and_call(callback, args, kwargs,
+                                                 expose_self.instance_method,
+                                                 expose_self.object_type)
             else:
                 return_value = callback(*args, **kwargs)
 
@@ -57,6 +59,18 @@ class Expose(object):
                 Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT._get_session_id()].renew()
 
             return return_value
+
+        def exposed_method(self, *args, **kwargs):
+            """Performs functionality/checks that are
+            only performed whilst being called through Pyro
+            """
+            # If configured to only run if the user is a cluster user, then
+            # assert this.
+            if expose_self.only_cluster:
+                self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+            return inner(self, *args, **kwargs)
+
         # Expose the function
         return Pyro4.expose(inner)
 
