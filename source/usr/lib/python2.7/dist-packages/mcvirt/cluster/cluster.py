@@ -665,8 +665,10 @@ class Cluster(PyroObject):
                 node, node_config,
                 cluster_master=(set_cluster_master if set_cluster_master else None)
             )
-        except:
+        except Exception, exc:
             if not self._cluster_disabled:
+                Syslogger.logger().error('Could not connect to node \'%s\':\n%s' %
+                                         (node, str(exc)))
                 raise InaccessibleNodeException('Cannot connect to node \'%s\'' % node)
             else:
                 Syslogger.logger().error('Cannot connect to node: %s (Ignored)' % node)

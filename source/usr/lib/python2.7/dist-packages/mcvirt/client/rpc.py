@@ -79,7 +79,9 @@ class Connection(object):
             raise mcvirt.exceptions.InaccessibleNodeException(
                 'MCVirt nameserver/daemon is not running on node %s' % self.__host
             )
-        except:
+        except Exception, exc:
+            Syslogger.logger().error('An unknown error occurred whilst connecting to daemon: %s' %
+                                     str(exc))
             raise mcvirt.exceptions.InaccessibleNodeException(
                 'An unknown error occurred whilst connecting to daemon'
             )
