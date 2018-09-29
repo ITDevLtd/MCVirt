@@ -231,7 +231,7 @@ class Parser(object):
                                         help=('Specify the nodes that the VM will be'
                                               ' hosted on, if a Drbd storage-type'
                                               ' is specified'),
-                                        default=[])
+                                        default=None)
 
         self.create_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
         # Determine if machine is configured to use DRBD
@@ -239,6 +239,9 @@ class Parser(object):
         self.create_parser.add_argument('--storage-type', dest='storage_type',
                                         metavar='Storage backing type',
                                         type=str, default=None, choices=['Local', 'Drbd'])
+        self.create_parser.add_argument('--storage-backend', dest='storage_backend',
+                                        metavar='STorage Backend',
+                                        type=str, default=None)
         # @TODO: Add choices for hard drive driver
         self.create_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
                                         dest='hard_disk_driver', type=str,
@@ -686,12 +689,12 @@ class Parser(object):
         self.storage_add_node_parser.add_argument(
             '--node',
             dest='nodes',
-            required=False,
+            required=True,
             nargs='+',
             action='append',
             default=[],
             help=('Specifies the node(s) that this will '
-                  "be available to.\n"
+                  "be added to the storage backend.\n"
                   'Specify once for each node, e.g. '
                   "--node node1 --node node2.\n"
                   'Specify an additional parameter '
@@ -700,6 +703,21 @@ class Parser(object):
                   '--node <Node name> '
                   '<Overriden Volume Group/Path> '
                   '--node <Node Name>...')
+        )
+
+        self.storage_remove_node_parser = self.storage_subparsers.add_parser(
+            'remove-node',
+            help='Add node to storage backend',
+            parents=[self.parent_parser])
+        self.storage_remove_node_parser.add_argument('Name',
+                                                     help='Name of storage backend')
+        self.storage_remove_node_parser.add_argument(
+            '--node',
+            dest='nodes',
+            required=True,
+            action='append',
+            default=[],
+            help='Specifies the node(s) that will be removed from the storage backend'
         )
 
         # Create subparser for commands relating to the local node configuration
@@ -1078,6 +1096,12 @@ class Parser(object):
                 self.print_status('method lock already cleared')
 
         elif action == 'create':
+            if args.storage_backend:
+                storage_factory = rpc.get_connection('storage_factory')
+                storage_backend = storage_factory.get_object(args.storage_backend)
+                rpc.annotate_object(storage_backend)
+            else:
+                storage_backend = None
             storage_type = args.storage_type or None
 
             # Convert memory allocation from MiB to KiB
@@ -1095,7 +1119,8 @@ class Parser(object):
                 hard_drive_driver=args.hard_disk_driver,
                 graphics_driver=args.graphics_driver,
                 available_nodes=args.nodes,
-                modification_flags=mod_flags)
+                modification_flags=mod_flags,
+                storage_backend=storage_backend)
 
         elif action == 'delete':
             vm_factory = rpc.get_connection('virtual_machine_factory')
@@ -1461,6 +1486,13 @@ class Parser(object):
                     storage_backend.add_node(
                         node_name=node[0],
                         custom_location=(node[1] if len(node) == 2 else None))
+
+            elif args.storage_action == 'remove-node':
+                storage_backend = storage_factory.get_object(args.Name)
+                rpc.annotate_object(storage_backend)
+
+                for node in args.nodes:
+                    storage_backend.remove_node(node_name=node)
 
         elif action == 'verify':
             vm_factory = rpc.get_connection('virtual_machine_factory')

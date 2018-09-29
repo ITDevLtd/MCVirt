@@ -735,6 +735,40 @@ class StorageBackendAlreadyExistsError(MCVirtException):
     pass
 
 
+class NoConfigurationChangeError(MCVirtException):
+    """A change was requested that resulted in no change
+    Tag: Common
+    """
+
+    pass
+
+
+class CannotUnshareInUseStorageBackendError(MCVirtException):
+    """A shared storage backend that is used by VMs
+    cannot be unshared
+    """
+
+    pass
+
+
+class NodeUsedByStaticVirtualMachine(MCVirtException):
+    """Node is in use by static virtual machines"""
+
+    pass
+
+
+class NodeNotConfiguredInStorageBackend(MCVirtException):
+    """Node is not configured for the storage backend"""
+
+    pass
+
+
+class CannotRemoveNodeFromGlobalStorageBackend(MCVirtException):
+    """A node cannot be removed from a global storage backend"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)

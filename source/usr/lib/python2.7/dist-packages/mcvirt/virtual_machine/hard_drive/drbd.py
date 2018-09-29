@@ -276,6 +276,14 @@ class Drbd(Base):
         return bool(self.get_raw_volume().check_exists() and
                     self.get_meta_volume().check_exists())
 
+    def is_static(self):
+        """Determine if storage is static and VM cannot be
+        migrated to any node in the cluster
+        """
+        # All DRBD storage is static, as DRBD is confined to
+        # two nodes
+        return True
+
     def activateDisk(self):
         """Ensure that the disk is ready to be used by a VM on the local node"""
         self._ensure_exists()

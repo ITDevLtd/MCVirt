@@ -197,6 +197,16 @@ class Base(PyroObject):
                 'Disk %s for %s does not exist' %
                 (self.disk_id, self.vm_object.get_name()))
 
+    def is_static(self):
+        """Determine if storage is static and VM cannot be
+        migrated to any node in the cluster
+        """
+        # By default, this is just determined whether the storage is
+        # shared or not. Shared storage will allow mean storage is available
+        # to any node that supports it. Otherwise, the data is only on the node
+        # that the storage was created on.
+        return self.get_storage_backend().is_static()
+
     @Expose(locking=True)
     def resync(self, source_node=None, auto_determine=False):
         """Resync the volume"""

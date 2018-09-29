@@ -277,8 +277,12 @@ class Factory(PyroObject):
         # it will alter the default array (since it will be a reference)!
         network_interfaces = [] if network_interfaces is None else network_interfaces
         hard_drives = [] if hard_drives is None else hard_drives
+        nodes_predefined = available_nodes is not None
         available_nodes = [] if available_nodes is None else available_nodes
         modification_flags = [] if modification_flags is None else modification_flags
+
+        if storage_backend:
+            storage_backend = self._convert_remote_object(storage_backend)
 
         # Ensure name is valid, as well as other attributes
         self.checkName(name)
@@ -313,8 +317,14 @@ class Factory(PyroObject):
         if node is None:
             node = local_hostname
 
+        # If storage type is static, set available nodes to local node
+        if storage_backend.is_static() and len(available_nodes) > 1:
+            if nodes_predefined:
+                raise InvalidNodesException('Storage backend and storage type only allow one node')
+            available_nodes = [node]
+
         # Ensure that the local node is included in the list of available nodes
-        if local_hostname not in available_nodes:
+        if self._is_cluster_master and local_hostname not in available_nodes:
             raise InvalidNodesException('Local node must included in available nodes')
 
         all_nodes = cluster_object.get_nodes(return_all=True, include_local=True)
@@ -376,13 +386,16 @@ class Factory(PyroObject):
         if self._is_cluster_master:
             def remote_command(remote_connection):
                 """Create VM on remote node"""
+                remote_storage_backend = storage_backend.get_remote_object(
+                    node_object=remote_connection)
                 virtual_machine_factory = remote_connection.get_connection(
                     'virtual_machine_factory'
                 )
                 virtual_machine_factory.create(
                     name=name, memory_allocation=memory_allocation, cpu_cores=cpu_cores,
                     node=node, available_nodes=available_nodes,
-                    modification_flags=modification_flags
+                    modification_flags=modification_flags,
+                    storage_backend=remote_storage_backend
                 )
             cluster_object.run_remote_command(callback_method=remote_command)
 
@@ -405,7 +418,8 @@ class Factory(PyroObject):
             hard_drive_factory = self._get_registered_object('hard_drive_factory')
             for hard_drive_size in hard_drives:
                 hard_drive_factory.create(vm_object=vm_object, size=hard_drive_size,
-                                          storage_type=storage_type, driver=hard_drive_driver)
+                                          storage_type=storage_type, driver=hard_drive_driver,
+                                          storage_backend=storage_backend)
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML

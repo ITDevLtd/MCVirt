@@ -570,6 +570,12 @@ class Cluster(PyroObject):
                 raise RemoteObjectConflict('The remote node is available to VM: %s' %
                                            vm_object.get_name())
 
+        # Ensure that node can be removed from any storage backends that it is
+        # part of
+        for storage_backend in self._get_registered_object('storage_factory').get_all(
+                nodes=[node_name_to_remove]):
+            storage_backend.ensure_can_remove_node(node_name_to_remove)
+
         # Get a list of remote cluster nodes that will remain in the cluster.
         all_nodes = self.get_nodes(return_all=True)
         all_nodes.remove(node_name_to_remove)
@@ -589,6 +595,11 @@ class Cluster(PyroObject):
                                         kwargs={'vm_name': vm_object.get_name()})
             else:
                 remove_vm(node_to_remove_con, vm_object.get_name())
+
+        # Remove node from any storage backends that it's part of
+        for storage_backend in self._get_registered_object('storage_factory').get_all(
+                nodes=[node_name_to_remove]):
+            storage_backend.remove_node(node_name_to_remove)
 
         # Remove the SSL certificates from the other nodes
         self._remove_node_ssl_certificates(node_name_to_remove)
@@ -739,3 +750,17 @@ class Cluster(PyroObject):
         def remove_node_config(mcvirt_config):
             del(mcvirt_config['cluster']['nodes'][node_name])
         MCVirtConfig().update_config(remove_node_config)
+
+    def get_compatible_nodes(self, storage_backends, networks):
+        """Determine a list of available networks, based on required storage
+           backends and networks"""
+        node_lists = [storage_backend.nodes for storage_backend in storage_backends] + \
+                     [network.nodes for network in networks]
+
+        available_nodes = self.get_nodes(include_local=True, return_all=True)
+        for node in available_nodes:
+            for node_list in node_lists:
+                if node not in node_list:
+                    available_nodes.remove(node)
+
+        return available_nodes

@@ -215,6 +215,7 @@ class Factory(PyroObject):
 
         # If storage backend has been defined, ensure it is available on the current node
         if storage_backend:
+            storage_backend = self._convert_remote_object(storage_backend)
             # Ensure that the storage backend is suitable for the storage type
             if storage_type == Drbd.__name__ and not storage_backend.is_drbd_suitable():
                 raise InvalidStorageBackendError('Storage backend does not support DRBD')
@@ -286,7 +287,11 @@ class Factory(PyroObject):
                                                                      storage_backend,
                                                                      nodes_predefined=True)
 
-        # Ensure the VM storage type matches the storage type passed in
+        # Ensure that the type of storage (storage type, storage backend shared etc.) matches
+        # disks already attached to the VM.
+        # All disks attached to a VM must either be DRBD-based or not.
+        # All storage backends used by a VM must shared the following attributes: type, shared
+        # @TODO - Implement to above restriction
         vm_storage_type = vm_object.getStorageType()
         if vm_storage_type:
             if storage_type and storage_type != vm_storage_type:

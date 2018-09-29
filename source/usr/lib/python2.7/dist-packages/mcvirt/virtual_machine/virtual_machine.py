@@ -99,6 +99,18 @@ class VirtualMachine(PyroObject):
         """Return the name of the VM"""
         return self.name
 
+    def is_static(self):
+        """Determine if node is statically defined to given nodes.
+        This applies to nodes that use DRBD storage or those that use
+        storage backends that is not shared
+        """
+        is_static = False
+        for disk in self.getHardDriveObjects():
+            if disk.is_static():
+                is_static = True
+
+        return is_static
+
     def _getLibvirtDomainObject(self, allow_remote=False):
         """Look up LibVirt domain object, based on VM name,
         and return object
@@ -1446,12 +1458,19 @@ class VirtualMachine(PyroObject):
         """Returns the node that the VM is registered on"""
         return self.get_config_object().get_config()['node']
 
+    def getStorageNodes(self):
+        """Defines the nodes that the storage is available to for the VM.
+        Unlike getAvailableNodes, this does not change based on whether VM
+        requirements exist on the node (e.g. avialable networks)
+        """
+        # TODO use this method during creation of storage
+        return self.getAvailableNodes()
+
     def getAvailableNodes(self):
         """Returns the nodes that the VM can be run on"""
-        # If nodes has been hard-defined in the config file, return that
-        config_nodes = self.get_config_object().get_config()['available_nodes']
-        if config_nodes is not None:
-            return config_nodes
+        # If the VM is static, return the nodes from the config file
+        if self.is_static():
+            return self.get_config_object().get_config()['available_nodes']
 
         # Otherwise, calculate which nodes the VM can be run on...
         cluster = self._get_registered_object('cluster')
@@ -1460,7 +1479,7 @@ class VirtualMachine(PyroObject):
         storage_backends = [hdd.get_storage_backend() for hdd in self.getHardDriveObjects()]
         network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
-        networks = [network_adapter.get_network() for network_adapter in network_adapters]
+        networks = [network_adapter.get_network_object() for network_adapter in network_adapters]
 
         # Obtain list of available nodes from cluster
         return cluster.get_compatible_nodes(storage_backends=storage_backends, networks=networks)

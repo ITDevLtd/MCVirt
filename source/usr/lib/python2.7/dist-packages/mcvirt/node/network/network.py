@@ -38,6 +38,13 @@ class Network(PyroObject):
         mcvirt_config = MCVirtConfig().get_config()
         return mcvirt_config['networks']
 
+    @property
+    def nodes(self):
+        """Return the nodes that the network is available to"""
+        # Since networks are currently global, obtain all nodes
+        return self._get_registered_object('cluster').get_nodes(return_all=True,
+                                                                include_local=True)
+
     @Expose(locking=True)
     def delete(self):
         """Delete a network from the node"""
@@ -121,9 +128,7 @@ class Network(PyroObject):
         # Default to local node
         if node is None:
             node = self._get_registered_object('cluster').get_local_hostname()
-
-        # Since networks are currently global, always pass
-        return True
+        return node in self.nodes
 
     def ensure_available_on_node(self, node=None):
         """Ensure that network is available on a given node"""

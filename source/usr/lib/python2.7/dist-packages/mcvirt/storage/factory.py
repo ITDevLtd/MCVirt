@@ -82,6 +82,7 @@ class Factory(PyroObject):
         # With the old method of storage, without DRBD, storage was never
         # usable in a shared fashion, so assume that it is not.
         shared = False
+
         # Define default_vg_name
         default_vg_name = None
 

@@ -21,13 +21,19 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.exceptions import (UnsuitableNodeException,
                                NodeAlreadyConfiguredInStorageBackend,
                                StorageBackendInUse,
                                StorageBackendNotAvailableOnNode,
                                InvalidStorageConfiguration,
                                VolumeDoesNotExistError,
-                               VolumeIsNotActiveException)
+                               VolumeIsNotActiveException,
+                               NoConfigurationChangeError,
+                               CannotUnshareInUseStorageBackendError,
+                               NodeUsedByStaticVirtualMachine,
+                               NodeNotConfiguredInStorageBackend,
+                               CannotRemoveNodeFromGlobalStorageBackend)
 from mcvirt.system import System
 
 
@@ -158,7 +164,24 @@ class Base(PyroObject):
         If node is set to None, the default location will be set
         """
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
-        # @TODO Complete
+        # @TODO Add error checking - does it exist?
+
+        def update_location_config(config):
+            """Update location in config"""
+            if node is None:
+                config['location'] = new_location
+            else:
+                config['nodes'][node]['location'] = new_location
+        self.update_config(update_location_config,
+                           'Update location for %s' % self.name)
+
+        if self._is_cluster_master:
+            def update_remote_node(conn):
+                """Update location on remote nodes"""
+                remote_storage_backend = self.get_remote_object(node_object=conn)
+                remote_storage_backend.set_location(new_location=new_location,
+                                                    node=node)
+            self._get_registered_object('cluster').run_remote_command(update_remote_node)
 
     @Expose(locking=True)
     def add_node(self, node_name, custom_location=None):
@@ -214,7 +237,6 @@ class Base(PyroObject):
 
             cluster.run_remote_command(update_remote_mcvirt_config)
 
-    @Expose(locking=True)
     def update_config(self, callback, reason):
         """Update backend storage configuration"""
         def update_mcvirt_config(config):
@@ -227,21 +249,98 @@ class Base(PyroObject):
         mcvirt_config = self._get_registered_object('mcvirt_config')()
         mcvirt_config.update_config(update_mcvirt_config, reason)
 
+    def is_static(self):
+        """Determine if the storage backend implies that
+        nodes are static"""
+        return not self.shared
+
+    def ensure_can_remove_node(self, node_name):
+        """Ensure that a node can be removed from a storage backend"""
+        # Ensure that node is already part of storage backend
+        if self.available_on_node(node_name, raise_on_err=True):
+            raise NodeNotConfiguredInStorageBackend(
+                'Node is not configured for storage backend')
+
+        # Ensure that node has no VMs registered on the node that use this storage backend
+        if self.in_use(node_name):
+            raise StorageBackendInUse(
+                'Virtual machine registered on the node require this storage backend')
+
+        # Ensure that there are no virtual machines that:
+        #  - Have static availalble nodes
+        #  - Use this storage backend; and
+        #  - This node is one of the available nodes
+        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+        for virtual_machine in virtual_machine_factory.getAllVirtualMachines():
+            used_storage_backends = [hdd.get_storage_backend()
+                                     for hdd in virtual_machine.getHardDriveObjects()]
+            if (self in used_storage_backends and virtual_machine.is_static() and
+                    node_name in virtual_machine.getAvailableNodes()):
+                raise NodeUsedByStaticVirtualMachine(
+                    'Storage backend on node is used by static virtual machines')
+
     @Expose(locking=True)
     def remove_node(self, node_name):
         """Remove a node from the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
 
-        # Ensure that node has no VMs registered that use this storage backend
-        pass
+        # Perform checks on cluster master
+        if self._is_cluster_master:
+            self.ensure_can_remove_node(node_name)
 
-    def in_use(self):
+        # Assuming that these checks have passed,
+        # remove node from storage backend
+        def update_config(config):
+            """Update the storage backend config; removing the node"""
+            del config['nodes'][node_name]
+        self.update_config(update_config,
+                           'Remove node %s from storage backend %s' % (node_name, self.name))
+
+        # Perform on remote nodes
+        if self._is_cluster_master:
+            def remove_node_remote(connection):
+                """Update shared status of remote nodes"""
+                remote_storage_backend = self.get_remote_object(node_object=connection)
+                remote_storage_backend.remove_node(node_name)
+            self._get_registered_object('cluster').run_remote_command(
+                remove_node_remote)
+
+    @Expose(locking=True)
+    def set_shared(self, shared):
+        """Set the shared status of the storage backend"""
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+
+        ArgumentValidator.validate_boolean(shared)
+
+        # Check if there's no change to configuration
+        if self.shared == shared:
+            raise NoConfigurationChangeError('Storage backend is already set to %s' % str(shared))
+
+        if self.shared and self.in_use():
+            raise CannotUnshareInUseStorageBackendError(
+                'Storage backend is in use, so cannot unshare')
+
+        def update_shared_config(config):
+            """Set sared parameter to new value"""
+            config['shared'] = shared
+        self.update_config(update_shared_config, 'Update shared status to %s' % shared)
+
+        if self._is_cluster_master:
+            def update_shared_remote_nodes(connection):
+                """Update shared status of remote nodes"""
+                remote_storage_backend = self.get_remote_object(node_object=connection)
+                remote_storage_backend.set_shared(shared)
+            self._get_registered_object('cluster').run_remote_command(
+                update_shared_remote_nodes)
+
+    def in_use(self, node=None):
         """Whether the storage backend is used for any disks objects"""
         # Get VM factory
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
 
         # Iterate over all virtual machine and hard drive objects
-        for virtual_machine in virtual_machine_factory.getAllVirtualMachines():
+        for virtual_machine in virtual_machine_factory.getAllVirtualMachines(node=node):
             for hard_drive in virtual_machine.getHardDriveObjects():
 
                 # If the hard drive object uses the current storage backend,
