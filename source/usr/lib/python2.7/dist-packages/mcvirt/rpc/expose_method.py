@@ -73,9 +73,16 @@ class RunRemoteNodes(object):
                 # Remove from arguments
                 del kwargs['nodes']
 
+                # If return_dict has been specified, obtain variable
+                # and remove from kwargs
+                return_dict = False
+                if 'return_dict' in kwargs:
+                    return_dict = kwargs['return_dict']
+                    del kwargs['return_dict']
+
                 # Setup empty return value, incase localhost is not in the list
                 # of nodes
-                return_val = None
+                return_val = {} if return_dict else None
 
                 # Determine if local node is present in list of nodes.
                 cluster = self._get_registered_object('cluster')
@@ -84,7 +91,11 @@ class RunRemoteNodes(object):
                     # If so, remove node from list, run the local callback first
                     # and capture the output
                     nodes.remove(local_hostname)
-                    return_val = callback(self, *args, **kwargs)
+                    response = callback(self, *args, **kwargs)
+                    if return_dict:
+                        return_val[local_hostname] = response
+                    else:
+                        return_val = response
 
                 # Iterate over remote nodes, obtain the remote object
                 # and executing the function
@@ -93,7 +104,11 @@ class RunRemoteNodes(object):
 
                     # Run the method by obtaining the member attribute, based on the name of
                     # the callback function from of the remote object
-                    getattr(remote_object, callback.__name__)(*args, **kwargs)
+                    response = getattr(remote_object, callback.__name__)(*args, **kwargs)
+
+                    # Add output to return_val if return_dict was specified
+                    if return_dict:
+                        return_val[node] = response
 
                 # Return the returned value from the local callback
                 return return_val
