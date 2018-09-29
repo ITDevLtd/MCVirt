@@ -81,7 +81,7 @@ class FileVolume(BaseVolume):
         """Return the full path of a given volume"""
         return self.storage_backend.get_location(node=node) + '/' + self.name
 
-    @Expose()
+    @Expose(locking=True)
     @RunRemoteNodes()
     def create(self, size):
         """Create volume in storage backend"""
@@ -99,7 +99,7 @@ class FileVolume(BaseVolume):
                 "Error whilst creating disk logical volume:\n" + str(exc)
             )
 
-    @Expose()
+    @Expose(locking=True)
     @RunRemoteNodes()
     def delete(self, ignore_non_existent=False):
         """Delete volume"""
@@ -117,7 +117,7 @@ class FileVolume(BaseVolume):
                 "Error whilst removing logical volume:\n" + str(exc)
             )
 
-    @Expose()
+    @Expose(locking=True)
     @RunRemoteNodes()
     def activate(self):
         """Activate volume"""
@@ -148,7 +148,7 @@ class FileVolume(BaseVolume):
         # @TODO Complete - probably just pass
         raise NotImplementedError
 
-    @Expose()
+    @Expose(locking=True)
     @RunRemoteNodes()
     def resize(self, size, increase=True):
         """Reszie volume"""

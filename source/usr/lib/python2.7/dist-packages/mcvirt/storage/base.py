@@ -152,7 +152,7 @@ class Base(PyroObject):
 
         return MCVirtConfig().get_config()['storage_backends'][self.name]
 
-    @Expose()
+    @Expose(locking=True)
     def set_location(self, new_location, node=None):
         """Set a new location for storage backend.
         None will mean no default location
@@ -161,7 +161,7 @@ class Base(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
         # @TODO Complete
 
-    @Expose()
+    @Expose(locking=True)
     def add_node(self, node_name, custom_location=None):
         """Add a new node to the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
@@ -192,7 +192,7 @@ class Base(PyroObject):
         # @TODO Complete
         pass
 
-    @Expose()
+    @Expose(locking=True)
     def remove_node(self, node_name):
         """Remove a node from the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
@@ -333,7 +333,7 @@ class BaseVolume(PyroObject):
         if not self.check_exists():
             raise VolumeDoesNotExistError('Volume (%s) does not exist' % self.name)
 
-    @Expose()
+    @Expose(locking=True)
     @RunRemoteNodes()
     def wipe(self):
         """Wipe the volume"""
@@ -365,19 +365,19 @@ class BaseVolume(PyroObject):
         """Clone a volume to a new volume"""
         raise NotImplementedError
 
-    @Expose()
+    @Expose(locking=True)
     @RunRemoteNodes()
     def create(self, size):
         """Create volume in storage backend"""
         raise NotImplementedError
 
-    @Expose()
+    @Expose(locking=True)
     @RunRemoteNodes()
     def delete(self, ignore_non_existent):
         """Delete volume"""
         raise NotImplementedError
 
-    @Expose()
+    @Expose(locking=True)
     @RunRemoteNodes()
     def activate(self):
         """Activate volume"""
@@ -404,7 +404,7 @@ class BaseVolume(PyroObject):
         """Deactivate volume"""
         raise NotImplementedError
 
-    @Expose()
+    @Expose(locking=True)
     @RunRemoteNodes()
     def resize(self, size, increase):
         """Reszie volume"""
