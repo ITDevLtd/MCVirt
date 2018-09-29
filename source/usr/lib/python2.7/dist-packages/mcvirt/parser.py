@@ -677,6 +677,31 @@ class Parser(object):
         self.storage_delete_parser.add_argument('Name',
                                                 help='Name of storage backend')
 
+        self.storage_add_node_parser = self.storage_subparsers.add_parser(
+            'add-node',
+            help='Add node to storage backend',
+            parents=[self.parent_parser])
+        self.storage_add_node_parser.add_argument('Name',
+                                                  help='Name of storage backend')
+        self.storage_add_node_parser.add_argument(
+            '--node',
+            dest='nodes',
+            required=False,
+            nargs='+',
+            action='append',
+            default=[],
+            help=('Specifies the node(s) that this will '
+                  "be available to.\n"
+                  'Specify once for each node, e.g. '
+                  "--node node1 --node node2.\n"
+                  'Specify an additional parameter '
+                  'to override the path or volume '
+                  'group for the node, e.g. '
+                  '--node <Node name> '
+                  '<Overriden Volume Group/Path> '
+                  '--node <Node Name>...')
+        )
+
         # Create subparser for commands relating to the local node configuration
         self.node_parser = self.subparsers.add_parser(
             'node',
@@ -1396,7 +1421,7 @@ class Parser(object):
                 elif args.storage_type == 'File' and args.path:
                     location = args.path
 
-                # Check lenght of each node config, to ensure it's not too long
+                # Check length of each node config, to ensure it's not too long
                 invalid_nodes = [True if len(n) > 2 else None for n in args.nodes]
                 if True in invalid_nodes:
                     raise ArgumentParserException(('--node must only be provided with '
@@ -1421,8 +1446,21 @@ class Parser(object):
             elif args.storage_action == 'list':
                 self.print_status(storage_factory.list())
 
-            elif args.storage_action == '':
-                pass
+            elif args.storage_action == 'add-node':
+                storage_backend = storage_factory.get_object(args.Name)
+                rpc.annotate_object(storage_backend)
+
+                # Check lenght of each node config, to ensure it's not too long
+                invalid_nodes = [True if len(n) > 2 else None for n in args.nodes]
+                if True in invalid_nodes:
+                    raise ArgumentParserException(('--node must only be provided with '
+                                                   'node name and optional storage config '
+                                                   'override'))
+
+                for node in args.nodes:
+                    storage_backend.add_node(
+                        node_name=node[0],
+                        custom_location=(node[1] if len(node) == 2 else None))
 
         elif action == 'verify':
             vm_factory = rpc.get_connection('virtual_machine_factory')

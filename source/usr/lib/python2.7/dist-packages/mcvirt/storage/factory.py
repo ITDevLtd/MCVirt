@@ -177,8 +177,7 @@ class Factory(PyroObject):
         storage_objects = []
         cluster = self._get_registered_object('cluster')
 
-        for storage_name in self._get_registered_object('mcvirt_config')().get_config()[
-                Factory.STORAGE_CONFIG_KEY]:
+        for storage_name in self.get_config().keys():
 
             # Obtain storage object
             storage_object = self.get_object(storage_name)
@@ -223,6 +222,14 @@ class Factory(PyroObject):
 
         return storage_objects
 
+    @Expose()
+    def validate_config(self, storage_type, config):
+        """Perform the class method validate_config"""
+        return self.get_class(storage_type).validate_config(
+            cluster=self._get_registered_object('cluster'),
+            config=config
+        )
+
     @Expose(locking=True)
     def create(self, name, storage_type, location, shared=False,
                node_config={}):
@@ -230,44 +237,44 @@ class Factory(PyroObject):
         # Check permissions
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
 
-        # Ensure storage backend does not already exist with same name
-        if self.check_exists(name):
-            raise StorageBackendAlreadyExistsError('Storage backend already exists: %s' % name)
-
-        # Ensure that nodes are valid
-        cluster = self._get_registered_object('cluster')
-
-        for node in node_config:
-            cluster.ensure_node_exists(node, include_local=True)
-
-        # Ensure that either:
-        # a default location is defined
-        # all nodes provide an override location
-        if (not location and
-                (None in [node_config[node]['location']
-                          if 'location' in node_config[node] else None
-                          for node in node_config] or
-                 not node_config)):
-            raise InvalidStorageConfiguration(('A default location has not been set and '
-                                               'some nodes do not have an override set'))
-
-        storage_class = self.get_class(storage_type)
-
-        # Ensure name is valid
-        ArgumentValidator.validate_storage_name(name)
-
-        # Get all locations and verify that the names are valid
-        # @TODO - Refactor this to be more readable
-        no_location = object()
-        for location_itx in [] if not location else [location] + \
-                [node_config[node]['location']
-                 if 'location' in node_config[node]
-                 else no_location
-                 for node in node_config]:
-            if location_itx is not no_location:
-                storage_class.validate_location_name(location_itx)
-
         if self._is_cluster_master:
+            # Ensure storage backend does not already exist with same name
+            if self.check_exists(name):
+                raise StorageBackendAlreadyExistsError('Storage backend already exists: %s' % name)
+
+            # Ensure that nodes are valid
+            cluster = self._get_registered_object('cluster')
+
+            for node in node_config:
+                cluster.ensure_node_exists(node, include_local=True)
+
+            # Ensure that either:
+            # a default location is defined
+            # all nodes provide an override location
+            if (not location and
+                    (None in [node_config[node]['location']
+                              if 'location' in node_config[node] else None
+                              for node in node_config] or
+                     not node_config)):
+                raise InvalidStorageConfiguration(('A default location has not been set and '
+                                                   'some nodes do not have an override set'))
+
+            storage_class = self.get_class(storage_type)
+
+            # Ensure name is valid
+            ArgumentValidator.validate_storage_name(name)
+
+            # Get all locations and verify that the names are valid
+            # @TODO - Refactor this to be more readable
+            no_location = object()
+            for location_itx in [] if not location else [location] + \
+                    [node_config[node]['location']
+                     if 'location' in node_config[node]
+                     else no_location
+                     for node in node_config]:
+                if location_itx is not no_location:
+                    storage_class.validate_location_name(location_itx)
+
             # If no nodes have been specified, get all nodes in cluster
             if not node_config:
                 cluster = self._get_registered_object('cluster')
@@ -286,8 +293,8 @@ class Factory(PyroObject):
             # Ensure that config requirements and system requirements
             # are as expected for the type of storage backend
             # Only required on cluster master, as this checks all nodes in the cluster
-            storage_class.validate_config(
-                cluster=self._get_registered_object('cluster'),
+            self.validate_config(
+                storage_type=storage_type,
                 config=config
             )
 
@@ -365,7 +372,7 @@ class Factory(PyroObject):
     def get_object(self, name):
         """Return the storage object for a given disk"""
         # Get config for storage backend
-        storage_backends_config = MCVirtConfig().get_config()[Factory.STORAGE_CONFIG_KEY]
+        storage_backends_config = self.get_config()
         if (name not in storage_backends_config.keys() or
                 'type' not in storage_backends_config[name]):
             raise StorageBackendDoesNotExist('Storage backend does not exist or is mis-configured')

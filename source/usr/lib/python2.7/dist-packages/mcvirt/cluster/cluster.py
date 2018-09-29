@@ -197,6 +197,9 @@ class Cluster(PyroObject):
         except (MCVirtTypeError, TypeError, ValueError, AssertionError):
             raise InvalidConnectionString('Connection string is invalid')
 
+        Syslogger.logger().debug('Decoded connect string. Adding node %s' %
+                                 node_config['hostname'])
+
         # Determine if node is already connected to cluster
         if self.check_node_exists(node_config['hostname']):
             raise NodeAlreadyPresent(
@@ -327,9 +330,7 @@ class Cluster(PyroObject):
             original_node_cert_gen.add_public_key(pub_key)
 
         # If Drbd is enabled on the local node, configure/enable it on the remote node
-        if self._get_registered_object('node_drbd').is_enabled():
-            remote_drbd = remote_node.get_connection('node_drbd')
-            remote_drbd.enable(secret=MCVirtConfig().get_config()['drbd']['secret'])
+        self.sync_drbd_config(remote_node)
 
         # Sync users
         self.sync_users(remote_node)
@@ -340,11 +341,21 @@ class Cluster(PyroObject):
         # Sync global permissions
         self.sync_permissions(remote_node)
 
+        # Sync storage backends
+        self.sync_storage_backends(remote_node)
+
         # Sync VMs
         self.sync_virtual_machines(remote_node)
 
         # Sync MCVirt configurations
         self.sync_config(remote_node)
+
+    def sync_drbd_config(self, remote_node):
+        """Sync the DRBD config from the local node to the remote one"""
+        Syslogger.logger().debug('Syncing DRBD config')
+        if self._get_registered_object('node_drbd').is_enabled():
+            remote_drbd = remote_node.get_connection('node_drbd')
+            remote_drbd.enable(secret=MCVirtConfig().get_config()['drbd']['secret'])
 
     def sync_users(self, remote_node):
         """Synchronise the local users with the remote node"""
@@ -397,6 +408,31 @@ class Cluster(PyroObject):
                 if (user_object.get_username() not in
                         remote_auth_instance.get_users_in_permission_group(group)):
                     remote_auth_instance.add_user_permission_group(group, user_object)
+
+    def sync_storage_backends(self, remote_object):
+        """Duplicate the storage backend objects to the new node"""
+        # Sync entire storage backend configuration to new node
+        Syslogger.logger().debug('Syncing storage backends')
+        storage_factory = self._get_registered_object('storage_factory')
+        storage_factory_config = storage_factory.get_config()
+
+        remote_mcvirt_config_obj = remote_object.get_connection('mcvirt_config')
+        remote_config = remote_mcvirt_config_obj.get_config_remote()
+
+        # Update remote MCVirt config with entire storage backend config
+        remote_config[storage_factory.STORAGE_CONFIG_KEY] = storage_factory_config
+        remote_mcvirt_config_obj.manual_update_config(
+            remote_config,
+            'Replicate storage backend configuration to new node')
+
+        # Add new node to storage backends that have a default location
+        for storage_backend in storage_factory.get_all():
+            # Determine if storage backend has a default location
+            if storage_backend.get_location(return_default=True):
+                Syslogger.logger().debug('Adding storage backend %s to new node' %
+                                         storage_backend.name)
+                # Add the node to the storage backends
+                storage_backend.add_node(remote_object.name)
 
     def sync_virtual_machines(self, remote_object):
         """Duplicate the VM configurations on the local node onto the remote node"""
@@ -451,13 +487,13 @@ class Cluster(PyroObject):
 
     def sync_config(self, remote_connection):
         """Sync MCVirt configuration"""
-        config = MCVirtConfig().get_config()
+        local_config = self._get_registered_object('mcvirt_config')().get_config()
         remote_mcvirt_config_obj = remote_connection.get_connection('mcvirt_config')
         remote_config = remote_mcvirt_config_obj.get_config_remote()
 
         # Update Git and LDAP configuration to remote node
-        remote_config['git'] = config['git']
-        remote_config['ldap'] = config['ldap']
+        remote_config['git'] = local_config['git']
+        remote_config['ldap'] = local_config['ldap']
         remote_mcvirt_config_obj.manual_update_config(remote_config,
                                                       ('Update LDAP/Git configuration after'
                                                        ' joining node to cluster.'))
@@ -475,11 +511,17 @@ class Cluster(PyroObject):
         # will be replicated to new node) exist on the remote node
         storage_factory = self._get_registered_object('storage_factory')
         remote_storage_factory = remote_connection.get_connection('storage_factory')
-        for storage_backend in storage_factory.get_all_storage_backends():
-            if storage_backend.get_global_location():
+        for storage_backend in storage_factory.get_all():
+            Syslogger.logger().debug('Checking storage backend: %s' % storage_backend.name)
+            # Obtain default storage location and continue if it exists
+            if storage_backend.get_location(return_default=True):
                 # Check that volume group/directory exists on remote machine
-                # @TODO complete
-                pass
+                Syslogger.logger().debug('Validating storage backend')
+                remote_storage_factory.node_pre_check(
+                    storage_type=storage_backend.storage_type,
+                    location=storage_backend.get_location(return_default=True))
+            else:
+                Syslogger.logger().debug('No default location')
 
         # Determine if any of the local networks/VMs exist on the remote node
         remote_network_factory = remote_connection.get_connection('network_factory')
@@ -655,7 +697,7 @@ class Cluster(PyroObject):
         if nodes is None and node is None:
             # Obtain all nodes, without specifying 'return_all', meaning that if the cluster
             # is offline, no nodes will be returned.
-            nodes = self.get_nodes()
+            nodes = self.get_nodes(return_all=False, include_local=False)
 
         # If nodes is empty, set to empty array
         elif nodes is None:

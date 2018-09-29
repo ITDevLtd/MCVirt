@@ -148,3 +148,8 @@ class Connection(object):
     def username(self):
         """Property for the username"""
         return self.__username
+
+    @property
+    def host(self):
+        """Return name of node"""
+        return self.__host

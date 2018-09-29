@@ -78,6 +78,7 @@ class MCVirtConfig(ConfigFile):
                 'cluster':
                 {
                     'cluster_ip': '',
+                    'node_name': get_hostname(),
                     'nodes': {}
                 },
                 'virtual_machines': [],

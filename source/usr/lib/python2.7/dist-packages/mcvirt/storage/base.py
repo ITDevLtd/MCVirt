@@ -165,7 +165,11 @@ class Base(PyroObject):
         """Add a new node to the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
 
-        location = custom_location if custom_location else self.get_location()
+        location = custom_location if custom_location else self.get_location(return_default=True)
+
+        if location is None:
+            raise InvalidStorageConfiguration(
+                'Storage backend has no global location, so must be specified')
 
         # Ensure node is not already attached to storage backend
         if node_name in self.nodes:
@@ -176,26 +180,59 @@ class Base(PyroObject):
         cluster = self._get_registered_object('cluster')
 
         # If adding local node to cluster
-        if node_name == cluster.get_local_hostname():
+        if self._is_cluster_master:
+            if node_name == cluster.get_local_hostname():
 
-            # Ensure that the requested volume exists
-            storage_factory = self._get_registered_object('storage_factory')
-            storage_factory.node_pre_check(storage_type=self.storage_type,
-                                           location=location)
-        else:
-            def remote_command(connection):
-                remote_storage_factory = connection.get_connection('storage_factory')
-                remote_storage_factory.node_pre_check(storage_type=self.storage_type,
-                                                      location=location)
+                # Ensure that the requested volume exists
+                storage_factory = self._get_registered_object('storage_factory')
+                storage_factory.node_pre_check(storage_type=self.storage_type,
+                                               location=location)
+            else:
+                def pre_check_remote(connection):
+                    """Perform pre check on remote node"""
+                    remote_storage_factory = connection.get_connection('storage_factory')
+                    remote_storage_factory.node_pre_check(storage_type=self.storage_type,
+                                                          location=location)
+                cluster.run_remote_command(pre_check_remote, node=node_name)
 
-        # @TODO Complete
-        pass
+        def update_storage_backend_config(config):
+            """Add node to storage backend config"""
+            config['nodes'][node_name] = {
+                'location': custom_location
+            }
+        # Update the config on the local node
+        self.update_config(
+            update_storage_backend_config,
+            'Add node %s to storage backend %s' % (node_name, self.name))
+
+        if self._is_cluster_master:
+            # Perform this function on remote nodes
+            def update_remote_mcvirt_config(connection):
+                """Update MCVirt config on remote node"""
+                remote_storage_backend = self.get_remote_object(node_object=connection)
+                remote_storage_backend.add_node(node_name=node_name, custom_location=custom_location)
+
+            cluster.run_remote_command(update_remote_mcvirt_config)
+
+    @Expose(locking=True)
+    def update_config(self, callback, reason):
+        """Update backend storage configuration"""
+        def update_mcvirt_config(config):
+            """Update MCVirt config by calling callback method"""
+            callback(
+                config[
+                    self._get_registered_object('storage_factory').STORAGE_CONFIG_KEY
+                ][self.name]
+            )
+        mcvirt_config = self._get_registered_object('mcvirt_config')()
+        mcvirt_config.update_config(update_mcvirt_config, reason)
 
     @Expose(locking=True)
     def remove_node(self, node_name):
         """Remove a node from the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
-        # @TODO Complete
+
+        # Ensure that node has no VMs registered that use this storage backend
         pass
 
     def in_use(self):
