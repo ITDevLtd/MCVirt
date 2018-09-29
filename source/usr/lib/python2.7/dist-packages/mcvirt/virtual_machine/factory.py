@@ -317,12 +317,6 @@ class Factory(PyroObject):
         if node is None:
             node = local_hostname
 
-        # If storage type is static, set available nodes to local node
-        if storage_backend and storage_backend.is_static() and len(available_nodes) > 1:
-            if nodes_predefined:
-                raise InvalidNodesException('Storage backend and storage type only allow one node')
-            available_nodes = [node]
-
         # Ensure that the local node is included in the list of available nodes
         if self._is_cluster_master and local_hostname not in available_nodes:
             raise InvalidNodesException('Local node must included in available nodes')

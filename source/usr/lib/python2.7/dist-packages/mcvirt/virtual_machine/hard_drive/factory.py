@@ -251,8 +251,18 @@ class Factory(PyroObject):
             if node not in nodes:
                 nodes.remove(node)
 
-        # Ensure that there is free space on all nodes
+        # If storage is not shared and local storage type,
+        # available nodes can only be 1 node, so calculate it
+        if (storage_type == Local.__name__ and
+                not storage_backend.shared):
+            if self._get_registered_object('cluster').get_local_hostname() in nodes:
+                nodes = [self._get_registered_object('cluster').get_local_hostname()]
+            else:
+                raise InvalidNodesException(
+                    ('Non-shared local storage must be assigned to a '
+                     'single node and local not is not available'))
 
+        # Ensure that there is free space on all nodes
         free_space = storage_backend.get_free_space(nodes=nodes, return_dict=True)
         for node in free_space:
             if free_space[node] < size:
