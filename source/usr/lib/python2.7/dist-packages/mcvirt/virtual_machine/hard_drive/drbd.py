@@ -493,7 +493,8 @@ class Drbd(Base):
 
         # Remove the meta and raw logical volume from all nodes
         self.get_meta_volume().delete(nodes=all_nodes)
-        self.get_raw_volume().delete(nodes=all_nodes)
+        if remove_raw:
+            self.get_raw_volume().delete(nodes=all_nodes)
 
     @Expose(locking=True)
     def initialiseMetaData(self, *args, **kwargs):
@@ -1137,8 +1138,7 @@ class Drbd(Base):
         # Remove the raw logic volume from the source node
         try:
             src_hdd_object = self.get_remote_object(node_name=source_node)
-            src_hdd_object.removeLogicalVolume(raw_logical_volume_name,
-                                               perform_on_nodes=False)
+            src_hdd_object.get_raw_volume().delete()
 
         except:
             # Except all exceptions, as if the initial node connection at the start of the
