@@ -1118,7 +1118,7 @@ class Drbd(Base):
         # Generate Drbd configuration on local and remote node
         self._generateDrbdConfig()
         dest_hdd_object.generateDrbdConfig()
-        NodeDrbd(self.vm_object.mcvirt_object).adjust_drbd_config(
+        self._get_registered_object('node_drbd').adjust_drbd_config(
             self.resource_name
         )
 
