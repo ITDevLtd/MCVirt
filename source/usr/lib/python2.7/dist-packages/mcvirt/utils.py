@@ -30,3 +30,16 @@ def get_all_submodules(target_class):
         subclasses.append(subclass)
         subclasses += get_all_submodules(subclass)
     return subclasses
+
+
+def convert_size_friendly(original):
+    """Convert from MB to a readable size, depneding on
+    size
+    """
+
+    if original <= 1024:
+        return '%iMB' % original
+    elif original < (1024 ** 2):
+        return '%.2fGB' % round(float(original) / 1024, 2)
+    else:
+        return '%.2fTB' % round(float(original) / 1024, 2)

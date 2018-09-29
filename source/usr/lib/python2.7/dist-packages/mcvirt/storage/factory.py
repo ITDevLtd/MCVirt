@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+from texttable import Texttable
 
 from mcvirt.storage.lvm import Lvm
 from mcvirt.storage.file import File
@@ -27,6 +28,7 @@ from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNo
                                InvalidStorageConfiguration, InaccessibleNodeException,
                                NodeVersionMismatch)
 from mcvirt.argument_validator import ArgumentValidator
+from mcvirt.utils import convert_size_friendly
 
 
 class Factory(PyroObject):
@@ -306,6 +308,29 @@ class Factory(PyroObject):
                                        nodes=nodes)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_create)
+
+    @Expose()
+    def list(self):
+        """List the Drbd volumes and statuses"""
+        # Create table and add headers
+        table = Texttable()
+        table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        table.header(('Name', 'Type', 'Location', 'Nodes', 'Shared', 'Free Space'))
+
+        # Set column alignment and widths
+        table.set_cols_width((15, 5, 30, 70, 6, 9))
+        table.set_cols_align(('l', 'l', 'l', 'l', 'l', 'l'))
+
+        for storage_backend in self.get_all():
+            table.add_row((
+                storage_backend.name,
+                storage_backend.storage_type,
+                storage_backend.get_location(),
+                ', '.join(storage_backend.nodes),
+                str(storage_backend.shared),
+                convert_size_friendly(storage_backend.get_free_space())
+            ))
+        return table.draw()
 
     @Expose()
     def node_pre_check(self, location, storage_type):

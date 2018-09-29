@@ -612,6 +612,10 @@ class Parser(object):
             dest='storage_action', metavar='Storage Action',
             help='Action to perform'
         )
+        self.storage_list_parser = self.storage_subparsers.add_parser(
+            'list',
+            help='List storage backends',
+            parents=[self.parent_parser])
         self.storage_create_parser = self.storage_subparsers.add_parser(
             'create',
             help='Create storage backend',
@@ -666,6 +670,12 @@ class Parser(object):
                   '<Overriden Volume Group/Path> '
                   '--node <Node Name>...')
         )
+        self.storage_delete_parser = self.storage_subparsers.add_parser(
+            'delete',
+            help='Delete storage backend',
+            parents=[self.parent_parser])
+        self.storage_delete_parser.add_argument('Name',
+                                                help='Name of storage backend')
 
         # Create subparser for commands relating to the local node configuration
         self.node_parser = self.subparsers.add_parser(
