@@ -33,21 +33,17 @@ class NodeTests(TestBase):
         suite = unittest.TestSuite()
         suite.addTest(NodeTests('test_set_ip_address'))
         suite.addTest(NodeTests('test_set_invalid_ip_address'))
-        suite.addTest(NodeTests('test_set_volume_group'))
-        suite.addTest(NodeTests('test_set_invalid_volume_group'))
         return suite
 
     def setUp(self):
         """Create various objects and deletes any test VMs"""
         super(NodeTests, self).setUp()
         self.original_ip_address = MCVirtConfig().get_config()['cluster']['cluster_ip']
-        self.original_volume_group = MCVirtConfig().get_config()['vm_storage_vg']
 
     def tearDown(self):
         """Reset any values changed to the MCVirt config"""
         def reset_config(config):
             config['cluster']['cluster_ip'] = self.original_ip_address
-            config['vm_storage_vg'] = self.original_volume_group
         MCVirtConfig().update_config(reset_config, 'Reset node configurations')
 
         super(NodeTests, self).tearDown()
@@ -63,14 +59,3 @@ class NodeTests(TestBase):
         """Test the validity checks for IP addresses uses ArgumentValidator"""
         with self.assertRaises(MCVirtTypeError):
             self.parser.parse_arguments('node --set-ip-address test_string')
-
-    def test_set_volume_group(self):
-        """Change the cluster IP address using the argument parser"""
-        test_vg = 'test-vg_name'
-        self.parser.parse_arguments('node --set-vm-vg %s' % test_vg)
-        self.assertEqual(MCVirtConfig().get_config()['vm_storage_vg'], test_vg)
-
-    def test_set_invalid_volume_group(self):
-        """Test the validity checks for volume group name uses ArgumentValidator"""
-        with self.assertRaises(MCVirtTypeError):
-            self.parser.parse_arguments('node --set-vm-vg @vg_name')
