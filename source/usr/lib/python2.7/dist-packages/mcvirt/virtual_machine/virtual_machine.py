@@ -18,11 +18,10 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import xml.etree.ElementTree as ET
+from shutil import rmtree
 import libvirt
-import shutil
+from time import sleep
 from texttable import Texttable
-import time
-import Pyro4
 from enum import Enum
 
 from mcvirt.constants import DirectoryLocation, PowerStates, LockStates, AutoStartStates
@@ -38,6 +37,7 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                VncNotEnabledException, AttributeAlreadyChanged,
                                InvalidModificationFlagException, MCVirtTypeError,
                                UsbDeviceAttachedToVirtualMachine)
+from mcvirt.syslogger import Syslogger
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.usb_device import UsbDevice
@@ -477,7 +477,7 @@ class VirtualMachine(PyroObject):
         if remove_data:
             # Remove VM configuration file
             self.get_config_object().gitRemove('VM \'%s\' has been removed' % self.name)
-            shutil.rmtree(VirtualMachine.get_vm_dir(self.name))
+            rmtree(VirtualMachine.get_vm_dir(self.name))
 
         # Remove VM from MCVirt configuration
         def updateMCVirtConfig(config):
@@ -842,7 +842,7 @@ class VirtualMachine(PyroObject):
                 )
 
             # Wait for 5 seconds before checking the VM state again
-            time.sleep(5)
+            sleep.sleep(5)
 
         # Unregister the VM on the local node
         self._unregister()
@@ -942,7 +942,7 @@ class VirtualMachine(PyroObject):
         except Exception:
             # Wait 10 seconds before performing the tear-down, as Drbd
             # will hold the block device open for a short period
-            time.sleep(10)
+            sleep.sleep(10)
 
             if self.get_name() in factory.getAllVmNames(node=get_hostname()):
                 # Set Drbd on remote node to secondary
@@ -957,7 +957,7 @@ class VirtualMachine(PyroObject):
                 # Otherwise, if VM is registered on remote node, set the
                 # local Drbd state to secondary
                 for disk_object in self.getHardDriveObjects():
-                    time.sleep(10)
+                    sleep.sleep(10)
                     disk_object._drbdSetSecondary()
 
                 # Register VM as being registered on the local node
@@ -1292,6 +1292,7 @@ class VirtualMachine(PyroObject):
 
         # Activate hard disks
         for disk_object in self.getHardDriveObjects():
+            # Activate on local node
             disk_object.activateDisk()
 
         # Obtain domain XML
@@ -1328,7 +1329,12 @@ class VirtualMachine(PyroObject):
         try:
             self._get_registered_object(
                 'libvirt_connector').get_connection().defineXML(domain_xml_string)
-        except:
+        except Exception, e:
+            try:
+                Syslogger.logger().error('Libvirt error whilst registering %s:\n%s' %
+                                         (self.get_name(), str(e)))
+            except:
+                pass
             raise LibvirtException('Error: An error occurred whilst registering VM')
 
         if set_node:
