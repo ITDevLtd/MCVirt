@@ -37,7 +37,7 @@ class File(Base):
     @classmethod
     def ensure_exists(cls, location):
         """Ensure that the volume group exists"""
-        if not cls.check_exists(location):
+        if not cls.check_exists_local(location):
             raise InvalidStorageConfiguration(
                 'Directory %s does not exist' % location
             )

@@ -34,14 +34,14 @@ class Lvm(Base):
     @staticmethod
     def check_exists_local(volume_group):
         """Determine if the volume group actually exists on the node."""
-        _, out, _ = System.runCommand(['vgs', '|', 'grep', volume_group],
-                                      False, DirectoryLocation.BASE_STORAGE_DIR)
-        return bool(out)
+        exit_code, _, _ = System.runCommand(['vgs', volume_group, '--noheadings', '--nosuffix'],
+                                            False, DirectoryLocation.BASE_STORAGE_DIR)
+        return not bool(exit_code)
 
     @classmethod
     def ensure_exists(cls, location):
         """Ensure that the volume group exists"""
-        if not cls.check_exists(location):
+        if not cls.check_exists_local(location):
             raise InvalidStorageConfiguration(
                 'Volume group %s does not exist' % location
             )
