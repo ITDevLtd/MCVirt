@@ -156,7 +156,7 @@ class LvmVolume(BaseVolume):
         try:
             System.runCommand(['lvcreate', '--snapshot', self.get_path(),
                                '--name', destination_volume.name,
-                               '--size', size])
+                               '--size', str(size)])
         except MCVirtCommandException, exc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst snapshotting disk:\n" + str(exc)

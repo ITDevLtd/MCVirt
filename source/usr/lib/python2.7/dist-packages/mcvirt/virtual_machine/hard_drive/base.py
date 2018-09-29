@@ -250,14 +250,17 @@ class Base(PyroObject):
             del hdd_factory.CACHED_OBJECTS[cache_key]
         self.unregister_object()
 
-    def duplicate(self, destination_vm_object, destination_storage_backend=None):
+    def duplicate(self, destination_vm_object, storage_backend=None):
         """Clone the hard drive and attach it to the new VM object"""
         self._ensure_exists()
+
+        if not storage_backend:
+            storage_backend = self.get_storage_backend()
 
         # Create new disk object, using the same type, size and disk_id
         new_disk_object = self.__class__(vm_object=destination_vm_object, disk_id=self.disk_id,
                                          driver=self.driver,
-                                         storage_backend=destination_storage_backend)
+                                         storage_backend=storage_backend)
         # Register new disk object with pyro
         self._register_object(new_disk_object)
 

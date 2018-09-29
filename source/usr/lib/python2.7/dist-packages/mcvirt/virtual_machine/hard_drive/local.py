@@ -105,7 +105,8 @@ class Local(Base):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
         self._ensure_exists()
         new_disk = Local(vm_object=destination_vm_object, driver=self.driver,
-                         disk_id=self.disk_id)
+                         disk_id=self.disk_id,
+                         storage_backend=self.get_storage_backend())
         self._register_object(new_disk)
 
         # Clone original volume to new volume

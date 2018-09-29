@@ -318,7 +318,7 @@ class Factory(PyroObject):
             node = local_hostname
 
         # If storage type is static, set available nodes to local node
-        if storage_backend.is_static() and len(available_nodes) > 1:
+        if storage_backend and storage_backend.is_static() and len(available_nodes) > 1:
             if nodes_predefined:
                 raise InvalidNodesException('Storage backend and storage type only allow one node')
             available_nodes = [node]
@@ -387,7 +387,7 @@ class Factory(PyroObject):
             def remote_command(remote_connection):
                 """Create VM on remote node"""
                 remote_storage_backend = storage_backend.get_remote_object(
-                    node_object=remote_connection)
+                    node_object=remote_connection) if storage_backend else None
                 virtual_machine_factory = remote_connection.get_connection(
                     'virtual_machine_factory'
                 )

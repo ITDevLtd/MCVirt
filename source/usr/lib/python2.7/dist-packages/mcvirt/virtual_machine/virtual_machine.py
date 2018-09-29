@@ -1130,7 +1130,7 @@ class VirtualMachine(PyroObject):
         return new_vm_object
 
     @Expose(locking=True)
-    def duplicate(self, duplicate_vm_name, retain_mac=False):
+    def duplicate(self, duplicate_vm_name, storage_backend=None, retain_mac=False):
         """Duplicates a VM, creating an identical machine, making a
            copy of the storage"""
         ArgumentValidator.validate_hostname(duplicate_vm_name)
@@ -1154,10 +1154,12 @@ class VirtualMachine(PyroObject):
 
         # Create new VM for clone, without hard disks
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+
         new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.getCPU(),
                                                         self.getRAM(), [], [],
                                                         available_nodes=self.getAvailableNodes(),
-                                                        node=self.getNode())
+                                                        node=self.getNode(),
+                                                        storage_backend=storage_backend)
 
         network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
@@ -1172,7 +1174,7 @@ class VirtualMachine(PyroObject):
         # Clone the hard drives of the VM
         disk_objects = self.getHardDriveObjects()
         for disk_object in disk_objects:
-            disk_object.duplicate(new_vm_object)
+            disk_object.duplicate(new_vm_object, storage_backend=storage_backend)
 
         return new_vm_object
 
