@@ -261,26 +261,28 @@ class Drbd(Base):
                                         available_on_local_node=True) and
                 node_drdb.is_enabled())
 
-    def _get_raw_volume(self):
+    @Expose()
+    def get_raw_volume(self):
         """Return a volume object for the raw volume"""
         return self._get_volume(self._get_volume_name(self.DRBD_RAW_SUFFIX))
 
-    def _get_meta_volume(self):
+    @Expose()
+    def get_meta_volume(self):
         """Return a volume object for the raw volume"""
         return self._get_volume(self._get_volume_name(self.DRBD_META_SUFFIX))
 
     def _check_exists(self):
         """Check the required storage elements exist on the system"""
-        return bool(self._get_raw_volume().check_exists() and
-                    self._get_meta_volume().check_exists())
+        return bool(self.get_raw_volume().check_exists() and
+                    self.get_meta_volume().check_exists())
 
     def activateDisk(self):
         """Ensure that the disk is ready to be used by a VM on the local node"""
         self._ensure_exists()
 
         # Ensure that meta and data volumes are active
-        self._get_raw_volume().ensure_active()
-        self._get_meta_volume().ensure_active()
+        self.get_raw_volume().ensure_active()
+        self.get_meta_volume().ensure_active()
         self._checkDrbdStatus()
 
         # If the disk is not already set to primary, set it to primary
@@ -297,7 +299,7 @@ class Drbd(Base):
     def getSize(self):
         """Gets the size of the disk (in MB)"""
         self._ensure_exists()
-        return self._get_raw_volume().get_size()
+        return self.get_raw_volume().get_size()
 
     def create(self, size):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
@@ -323,7 +325,7 @@ class Drbd(Base):
         progress = Drbd.CREATE_PROGRESS.START
         try:
             # Create Drbd raw logical volume
-            raw_volume = self._get_raw_volume()
+            raw_volume = self.get_raw_volume()
             raw_volume.create(size, nodes=nodes)
 
             progress = Drbd.CREATE_PROGRESS.CREATE_RAW_LV
@@ -334,7 +336,7 @@ class Drbd(Base):
 
             # Create Drbd meta logical volume
             meta_volume_size = self._calculateMetaDataSize()
-            meta_volume = self._get_meta_volume()
+            meta_volume = self.get_meta_volume()
             meta_volume.create(meta_volume_size, nodes=nodes)
 
             progress = Drbd.CREATE_PROGRESS.CREATE_META_LV
@@ -490,8 +492,8 @@ class Drbd(Base):
         self._removeDrbdConfig()
 
         # Remove the meta and raw logical volume from all nodes
-        self._get_meta_volume().delete(nodes=all_nodes)
-        self._get_raw_volume().delete(nodes=all_nodes)
+        self.get_meta_volume().delete(nodes=all_nodes)
+        self.get_raw_volume().delete(nodes=all_nodes)
 
     @Expose(locking=True)
     def initialiseMetaData(self, *args, **kwargs):
@@ -509,17 +511,17 @@ class Drbd(Base):
         """Ensure that raw and meta volumes are a consistent size
         across the cluster
         """
-        raw_sizes = self._get_raw_volume().get_size(nodes=self.vm_object.getAvailableNodes(),
+        raw_sizes = self.get_raw_volume().get_size(nodes=self.vm_object.getAvailableNodes(),
                                                     return_dict=True)
         if raw_sizes.values()[0] != raw_sizes.values()[1]:
             raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
-                                              self._get_raw_volume().name)
+                                              self.get_raw_volume().name)
 
-        meta_sizes = self._get_meta_volume().get_size(nodes=self.vm_object.getAvailableNodes(),
+        meta_sizes = self.get_meta_volume().get_size(nodes=self.vm_object.getAvailableNodes(),
                                                       return_dict=True)
         if meta_sizes.values()[0] != meta_sizes.values()[1]:
             raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
-                                              self._get_meta_volume().name)
+                                              self.get_meta_volume().name)
 
 
     @Expose(locking=True)
@@ -561,7 +563,7 @@ class Drbd(Base):
         nodes = self.vm_object.getAvailableNodes()
 
         # Increase size of RAW volume
-        self._get_raw_volume().resize(increase_size,
+        self.get_raw_volume().resize(increase_size,
                                       increase=True,
                                       nodes=nodes)
 
@@ -569,7 +571,7 @@ class Drbd(Base):
         meta_logical_volume_size = self._calculateMetaDataSize()
 
         # Resize META volume
-        self._get_meta_volume().resize(meta_logical_volume_size,
+        self.get_meta_volume().resize(meta_logical_volume_size,
                                        increase=True,
                                        nodes=nodes)
 
@@ -1072,7 +1074,8 @@ class Drbd(Base):
 
     def move(self, destination_node, source_node):
         """Replace a remote node for the Drbd volume with a new node
-        and sync the data
+        and sync the data. This MUST be run on the node that will be kept
+        in the cluster.
         """
         # Attempt to remove all related configuration/volume groups on source node, except
         # raw logical volume, as this would be useful in case of any failures during the rest of
@@ -1082,7 +1085,9 @@ class Drbd(Base):
             src_hdd_object.removeStorage(local_only=True, remove_raw=False)
 
         except InaccessibleNodeException:
-            Syslogger.logger().warning('Could not connect to remote node.')
+            Syslogger.logger().warning(('Could not connect to remote node \'%s\' - '
+                                        'storage and DRBD configuration will '
+                                        'still be present on node') % source_node)
 
         # Disconnect the local Drbd volume
         self._drbdDisconnect()
@@ -1090,31 +1095,26 @@ class Drbd(Base):
         # Obtain the size of the disk to be created
         disk_size = self.getSize()
 
-        dest_hdd_object = self.get_remote_object(remote_node=destination_node, registered=False)
+        # Create disk object for destination node
+        dest_hdd_object = self.get_remote_object(remote_node=destination_node,
+                                                 registered=False)
 
         # Create the storage on the destination node
-        raw_logical_volume_name = self._getLogicalVolumeName(
-            self.DRBD_RAW_SUFFIX)
-        dest_hdd_object.createLogicalVolume(raw_logical_volume_name, disk_size,
-                                            perform_on_nodes=False)
+        dest_raw_volume = dest_hdd_object.get_raw_volume()
+        dest_raw_volume.create(disk_size)
 
         # Activate and zero raw volume
-        dest_hdd_object.activateLogicalVolume(raw_logical_volume_name, disk_size,
-                                              perform_on_nodes=False)
-        dest_hdd_object.zeroLogicalVolume(raw_logical_volume_name,
-                                          perform_on_nodes=False)
+        dest_raw_volume.activate()
+        dest_raw_volume.wipe()
 
-        meta_logical_volume_name = self._getLogicalVolumeName(self.DRBD_META_SUFFIX)
+        # Create meta volume for destination, calculate size and create
+        dest_meta_volume = dest_hdd_object.get_meta_volume()
         meta_volume_size = self._calculateMetaDataSize()
-        dest_hdd_object.createLogicalVolume(meta_logical_volume_name,
-                                            meta_volume_size,
-                                            perform_on_nodes=False)
+        dest_meta_volume.create(meta_volume_size)
 
         # Activate and zero meta volume
-        dest_hdd_object.activateLogicalVolume(meta_logical_volume_name)
-        dest_hdd_object.zeroLogicalVolume(meta_logical_volume_name,
-                                          meta_volume_size,
-                                          perform_on_nodes=False)
+        dest_meta_volume.activate()
+        dest_meta_volume.wipe()
 
         # Generate Drbd configuration on local and remote node
         self._generateDrbdConfig()
@@ -1230,8 +1230,8 @@ class Drbd(Base):
     def _generateDrbdConfig(self):
         """Generates the Drbd resource configuration"""
         # Create configuration for use with the template
-        raw_lv_path = self._get_raw_volume().get_path()
-        meta_lv_path = self._get_meta_volume().get_path()
+        raw_lv_path = self.get_raw_volume().get_path()
+        meta_lv_path = self.get_meta_volume().get_path()
         drbd_config = \
             {
                 'resource_name': self.resource_name,
@@ -1287,7 +1287,7 @@ class Drbd(Base):
 
     def _calculateMetaDataSize(self):
         """Determines the size of the Drbd meta volume"""
-        raw_volume = self._get_raw_volume()
+        raw_volume = self.get_raw_volume()
         raw_size_sectors = raw_volume.get_sectors()
         sector_size = raw_volume.get_sector_size()
 
