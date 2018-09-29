@@ -1461,9 +1461,15 @@ class VirtualMachine(PyroObject):
     def ensureRegisteredLocally(self):
         """Ensures that the VM is registered locally, otherwise an exception is thrown"""
         if not self.isRegisteredLocally():
-            raise VmRegisteredElsewhereException(
-                'The VM \'%s\' is registered on the remote node: %s' %
-                (self.get_name(), self.getNode()))
+            node = self.getNode()
+            if node:
+                raise VmRegisteredElsewhereException(
+                    'The VM \'%s\' is registered on the remote node: %s' %
+                    (self.get_name(), self.getNode()))
+            else:
+                raise VmRegisteredElsewhereException(
+                    'VM \'%s\' is not registered on a node' % self.get_name()
+                )
 
     @Expose()
     def getVncPort(self):
