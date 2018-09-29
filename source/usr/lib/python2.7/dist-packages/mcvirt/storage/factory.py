@@ -26,7 +26,7 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNotExist,
                                InvalidStorageConfiguration, InaccessibleNodeException,
-                               NodeVersionMismatch)
+                               NodeVersionMismatch, StorageBackendAlreadyExistsError)
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.utils import convert_size_friendly
 
@@ -225,24 +225,29 @@ class Factory(PyroObject):
 
     @Expose(locking=True)
     def create(self, name, storage_type, location, shared=False,
-               nodes={}):
+               node_config={}):
         """Create storage backend"""
         # Check permissions
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
 
+        # Ensure storage backend does not already exist with same name
+        if self.check_exists(name):
+            raise StorageBackendAlreadyExistsError('Storage backend already exists: %s' % name)
+
         # Ensure that nodes are valid
         cluster = self._get_registered_object('cluster')
 
-        for node in nodes:
-            cluster.ensure_node_exists(nodes, include_local=True)
+        for node in node_config:
+            cluster.ensure_node_exists(node, include_local=True)
 
         # Ensure that either:
         # a default location is defined
         # all nodes provide an override location
         if (not location and
-                (None in [nodes[node]['location'] if 'location' in nodes[node] else None
-                          for node in nodes] or
-                 not nodes)):
+                (None in [node_config[node]['location']
+                          if 'location' in node_config[node] else None
+                          for node in node_config] or
+                 not node_config)):
             raise InvalidStorageConfiguration(('A default location has not been set and '
                                                'some nodes do not have an override set'))
 
@@ -250,13 +255,23 @@ class Factory(PyroObject):
 
         # Ensure name is valid
         ArgumentValidator.validate_storage_name(name)
-        storage_class.validate_location_name(location)
+
+        # Get all locations and verify that the names are valid
+        # @TODO - Refactor this to be more readable
+        no_location = object()
+        for location_itx in [] if not location else [location] + \
+                [node_config[node]['location']
+                 if 'location' in node_config[node]
+                 else no_location
+                 for node in node_config]:
+            if location_itx is not no_location:
+                storage_class.validate_location_name(location_itx)
 
         if self._is_cluster_master:
             # If no nodes have been specified, get all nodes in cluster
-            if not nodes:
+            if not node_config:
                 cluster = self._get_registered_object('cluster')
-                nodes = {
+                node_config = {
                     node: {'location': None}
                     for node in cluster.get_nodes(return_all=True, include_local=True)
                 }
@@ -264,7 +279,7 @@ class Factory(PyroObject):
         # Create config
         config = {'type': storage_type,
                   'shared': shared,
-                  'nodes': nodes,
+                  'nodes': node_config,
                   'location': location}
 
         if self._is_cluster_master:
@@ -277,10 +292,10 @@ class Factory(PyroObject):
             )
 
             # Ensure pre-requisites for storage backend pass on each node
-            for node in nodes:
-                node_location = (nodes[node]['location']
-                                 if 'location' in nodes[node] and
-                                 nodes[node]['location'] is not None else location)
+            for node in node_config:
+                node_location = (node_config[node]['location']
+                                 if 'location' in node_config[node] and
+                                 node_config[node]['location'] is not None else location)
 
                 if node == cluster.get_local_hostname():
                     self.node_pre_check(location=node_location, storage_type=storage_type)
@@ -291,7 +306,7 @@ class Factory(PyroObject):
                         storage_factory = connection.get_connection('storage_factory')
                         storage_factory.node_pre_check(location=node_location,
                                                        storage_type=storage_type)
-                    cluster.run_remote_command(remote_command, nodes=[node])
+                    cluster.run_remote_command(remote_command, node=node)
 
         # Add new storage backend to MCVirt config
         def update_config(mcvirt_config):
@@ -305,7 +320,7 @@ class Factory(PyroObject):
                 storage_factory = remote_connection.get_connection('storage_factory')
                 storage_factory.create(name=name, storage_type=storage_type,
                                        location=location, shared=shared,
-                                       nodes=nodes)
+                                       node_config=node_config)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_create)
 

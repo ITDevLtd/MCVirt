@@ -1404,17 +1404,18 @@ class Parser(object):
                                                    'override'))
 
                 # Split nodes argument into nodes and storage location overrides
-                nodes = {
+                node_config = {
                     node[0]: {'location': node[1] if len(node) == 2 else None}
                     for node in args.nodes
                 }
                 storage_factory.create(name=args.Name,
                                        storage_type=args.storage_type,
-                                       nodes=nodes,
+                                       node_config=node_config,
                                        shared=args.shared,
                                        location=location)
             elif args.storage_action == 'delete':
-                storage_backend = storage_factory.getObject(args.storage_name)
+                storage_backend = storage_factory.get_object(args.Name)
+                rpc.annotate_object(storage_backend)
                 storage_backend.delete()
 
             elif args.storage_action == 'list':

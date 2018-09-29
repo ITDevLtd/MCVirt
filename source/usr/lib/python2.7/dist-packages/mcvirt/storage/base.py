@@ -121,7 +121,7 @@ class Base(PyroObject):
         # Remove VM from MCVirt configuration
         def update_mcvirt_config(config):
             """Remove object from mcvirt config"""
-            config['storage_backends'].remove(self.name)
+            del config['storage_backends'][self.name]
         MCVirtConfig().update_config(
             update_mcvirt_config,
             'Removed storage backend \'%s\' from global MCVirt config' %
@@ -132,9 +132,7 @@ class Base(PyroObject):
         if self._is_cluster_master:
             def remote_command(remote_object):
                 """Delete backend storage from remote nodes"""
-                storage_factory = remote_object.get_connection('storage_factory')
-                remote_storage_backend = storage_factory.getVirtualMachineByName(self.name)
-                remote_object.annotate_object(remote_storage_backend)
+                remote_storage_backend = self.get_remote_object(node_object=remote_object)
                 remote_storage_backend.delete()
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
@@ -142,6 +140,7 @@ class Base(PyroObject):
         # Remove cached pyro object
         storage_factory = self._get_registered_object('storage_factory')
         if self.name in storage_factory.CACHED_OBJECTS:
+            self.unregister_object()
             del storage_factory.CACHED_OBJECTS[self.name]
 
     @Expose()

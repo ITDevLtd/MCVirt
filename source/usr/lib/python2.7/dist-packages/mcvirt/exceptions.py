@@ -729,6 +729,12 @@ class InconsistentVolumeSizeError(MCVirtException):
     pass
 
 
+class StorageBackendAlreadyExistsError(MCVirtException):
+    """Storage volume already exist with same name"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)
