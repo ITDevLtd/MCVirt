@@ -215,7 +215,7 @@ class Base(PyroObject):
         # If no matches have been found, return False
         return False
 
-    def get_location(self, node=None, return_global=False):
+    def get_location(self, node=None, return_default=False):
         """Return the location for a given node, default to local node"""
         # Default node to local node
         if node is None:
@@ -231,7 +231,7 @@ class Base(PyroObject):
         return (config['nodes'][node]['location']
                 if 'location' in config['nodes'][node] and
                 config['nodes'][node]['location'] and
-                not return_global
+                not return_default
                 else config['location'])
 
     def available_on_node(self, node=None, raise_on_err=True):
