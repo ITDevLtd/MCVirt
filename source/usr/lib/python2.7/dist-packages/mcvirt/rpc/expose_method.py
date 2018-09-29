@@ -22,6 +22,8 @@ from mcvirt.rpc.lock import lock_log_and_call
 
 class Expose(object):
     """Decorator for exposing method via Pyro and optional log and locking"""
+    # @TODO Add permission checking, which is only performed during
+    #       pyro call to method
 
     SESSION_OBJECT = None
 
