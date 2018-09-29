@@ -81,9 +81,9 @@ class Base(PyroObject):
     def __eq__(self, comp):
         """Allow for comparison of storage objects baesd on name"""
         # Ensure class and name of object match
-        if ('__class__' in comp and
+        if ('__class__' in dir(comp) and
                 comp.__class__ == self.__class__ and
-                'name' in comp and comp.name == self.name):
+                'name' in dir(comp) and comp.name == self.name):
             return True
 
         # Otherwise return false
