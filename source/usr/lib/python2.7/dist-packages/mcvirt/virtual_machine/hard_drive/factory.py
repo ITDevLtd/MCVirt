@@ -251,20 +251,17 @@ class Factory(PyroObject):
                 nodes.remove(node)
 
         # Ensure that there is free space on all nodes
-        for node in nodes:
-            if node == cluster.get_local_hostname():
-                check_storage_backend = storage_backend
-            else:
-                check_storage_backend = storage_backend.get_remote_object(node=node)
 
-            free = check_storage_backend.get_free_space()
-            if free < size:
+        free_space = storage_backend.get_free_space(nodes=nodes, return_dict=True)
+        for node in free_space:
+            if free_space[node] < size:
                 raise InsufficientSpaceException('Attempted to create a disk with %i MB, '
                                                  'but there is only %i MB of free space '
                                                  'available in storage backend \'%s\' '
                                                  'on node %s.' %
-                                                 (size, free, storage_backend.name,
-                                                  cluster.get_local_hostname()))
+                                                 (size, free_space[node],
+                                                  storage_backend.name,
+                                                  node))
 
         return nodes, storage_type, storage_backend
 

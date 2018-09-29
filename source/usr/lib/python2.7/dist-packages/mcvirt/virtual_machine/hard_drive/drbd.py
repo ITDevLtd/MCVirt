@@ -36,7 +36,9 @@ from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistEx
                                DrbdVolumeNotInSyncException, MCVirtCommandException,
                                DrbdNotEnabledOnNode, InvalidNodesException,
                                TooManyParametersException, ArgumentParserException,
-                               VmNotRegistered, InaccessibleNodeException)
+                               VmNotRegistered, InaccessibleNodeException,
+                               InsufficientSpaceException,
+                               InconsistentVolumeSizeError)
 
 
 class DrbdConnectionState(Enum):
@@ -503,6 +505,23 @@ class Drbd(Base):
         """Performs an initialisation of the meta data, using drbdadm"""
         System.runCommand([NodeDrbd.DrbdADM, 'create-md', self.resource_name])
 
+    def _ensure_consistent_volumes_size(self):
+        """Ensure that raw and meta volumes are a consistent size
+        across the cluster
+        """
+        raw_sizes = self._get_raw_volume().get_size(nodes=self.vm_object.getAvailableNodes(),
+                                                    return_dict=True)
+        if raw_sizes.values()[0] != raw_sizes.values()[1]:
+            raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
+                                              self._get_raw_volume().name)
+
+        meta_sizes = self._get_meta_volume().get_size(nodes=self.vm_object.getAvailableNodes(),
+                                                      return_dict=True)
+        if meta_sizes.values()[0] != meta_sizes.values()[1]:
+            raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
+                                              self._get_meta_volume().name)
+
+
     @Expose(locking=True)
     def increaseSize(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
@@ -510,8 +529,27 @@ class Drbd(Base):
             PERMISSIONS.MODIFY_VM, self.vm_object
         )
 
+        # Ensure disks are the same size
+        self._ensure_consistent_volumes_size()
+
         # Ensure increase_size is a valid positive integer
         ArgumentValidator.validate_positive_integer(increase_size)
+
+        # Ensure that there is enough free space on the storage backend
+        # for the increased size (excluding meta data)
+        # @TODO Also ensure there's enough free space for meta data
+        free_space = self.get_storage_backend().get_free_space(
+            nodes=self.vm_object.getAvailableNodes(), return_dict=True)
+
+        for node in free_space:
+            if free_space[node] < increase_size:
+                raise InsufficientSpaceException('Attempted to increase disk by %iMB, '
+                                                 'but there is only %i MB of free space '
+                                                 'available in storage backend \'%s\' '
+                                                 'on node %s.' %
+                                                 (increase_size, free_space[node],
+                                                  self.get_storage_backend().name,
+                                                  node))
 
         # Ensure that the DRBD volume is in a valid, connected state.
         self._checkDrbdStatus()
@@ -519,14 +557,21 @@ class Drbd(Base):
         # Disconnect DRBD volume
         self._drbdDisconnect()
 
+        # Obtain list of nodes
+        nodes = self.vm_object.getAvailableNodes()
+
         # Increase size of RAW volume
-        self._get_raw_volume().resize(increase_size, increase=True)
+        self._get_raw_volume().resize(increase_size,
+                                      increase=True,
+                                      nodes=nodes)
 
         # Recalculate META volume size
         meta_logical_volume_size = self._calculateMetaDataSize()
 
         # Resize META volume
-        self._get_meta_volume().resize(meta_logical_volume_size)
+        self._get_meta_volume().resize(meta_logical_volume_size,
+                                       increase=True,
+                                       nodes=nodes)
 
         # Resize DRBD volume
         self._drbd_resize()
@@ -537,6 +582,9 @@ class Drbd(Base):
             remote_disk.drbd_resize()
         cluster.run_remote_command(callback_method=remoteCommand,
                                    nodes=self.vm_object._get_remote_nodes())
+
+        # Ensure taht volumes are the same size after resize
+        self._ensure_consistent_volumes_size()
 
         # Re-Connect DRBD volume
         self._drbdConnect()
@@ -971,11 +1019,15 @@ class Drbd(Base):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.vm_object)
 
+        # Obtain remote object is local node is not either of the
+        # available nodes for the storage
         if get_hostname() not in self.vm_object.getAvailableNodes():
             remote_object = self.get_remote_object(
                 node_name=(self.vm_object.getNode() or self.vm_object.getAvailableNodes()[0]))
             return remote_object.resync(source_node=source_node, auto_determine=auto_determine)
 
+        # If a source node has been defined, ensure it exists and auto_determine has not also
+        # been passed
         if source_node:
             if source_node not in self.vm_object.getAvailableNodes():
                 raise InvalidNodesException('Invalid node name')

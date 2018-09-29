@@ -1411,6 +1411,7 @@ class VirtualMachine(PyroObject):
 
     def _get_remote_nodes(self):
         """Returns a list of remote available nodes"""
+        # @TODO rename ot get_remote_nodes
         # Obtain list of available nodes
         nodes = self.getAvailableNodes()
 

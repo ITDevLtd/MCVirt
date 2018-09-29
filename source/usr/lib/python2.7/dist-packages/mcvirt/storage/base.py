@@ -267,8 +267,7 @@ class Base(PyroObject):
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
-                          node_object=None,   # Otherwise, pass a remote node connection
-                          return_node=False):
+                          node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the current storage backend object on a remote node"""
         cluster = self._get_registered_object('cluster')
         if node_object is None:
@@ -277,12 +276,10 @@ class Base(PyroObject):
         remote_storage_factory = node_object.get_connection('storage_factory')
         remote_storage = remote_storage_factory.get_object(self.name)
         node_object.annotate_object(remote_storage)
-        if return_node:
-            return remote_storage, node_object
-        else:
-            return remote_storage
+        return remote_storage
 
     @Expose()
+    @RunRemoteNodes()
     def get_free_space(self):
         """Return the amount of free spacae in the storage backend"""
         raise NotImplementedError
@@ -313,8 +310,7 @@ class BaseVolume(PyroObject):
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
-                          node_object=None,   # Otherwise, pass a remote node connection
-                          return_node=False):
+                          node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the current volume object on a remote node"""
         cluster = self._get_registered_object('cluster')
         if node_object is None and node is not None:
@@ -322,18 +318,15 @@ class BaseVolume(PyroObject):
 
         # Obtian remote storage backend
         remote_storage = self.storage_backend.get_remote_object(
-            node_object=node_object, return_node=False
+            node_object=node_object
         )
 
         # Obtian remote volume and annotate
         remote_volume = remote_storage.get_volume(self.name)
         node_object.annotate_object(remote_volume)
 
-        # Return remote_volume (and node)
-        if return_node:
-            return remote_volume, node_object
-        else:
-            return remote_volume
+        # Return remote_volume
+        return remote_volume
 
     def ensure_exists(self):
         """Ensure that the volume exists"""
@@ -372,14 +365,20 @@ class BaseVolume(PyroObject):
         """Clone a volume to a new volume"""
         raise NotImplementedError
 
+    @Expose()
+    @RunRemoteNodes()
     def create(self, size):
         """Create volume in storage backend"""
         raise NotImplementedError
 
+    @Expose()
+    @RunRemoteNodes()
     def delete(self, ignore_non_existent):
         """Delete volume"""
         raise NotImplementedError
 
+    @Expose()
+    @RunRemoteNodes()
     def activate(self):
         """Activate volume"""
         raise NotImplementedError
@@ -405,6 +404,8 @@ class BaseVolume(PyroObject):
         """Deactivate volume"""
         raise NotImplementedError
 
+    @Expose()
+    @RunRemoteNodes()
     def resize(self, size, increase):
         """Reszie volume"""
         raise NotImplementedError
@@ -413,6 +414,8 @@ class BaseVolume(PyroObject):
         """Determine whether volume exists"""
         raise NotImplementedError
 
+    @Expose()
+    @RunRemoteNodes()
     def get_size(self):
         """Obtain the size of the volume"""
         raise NotImplementedError

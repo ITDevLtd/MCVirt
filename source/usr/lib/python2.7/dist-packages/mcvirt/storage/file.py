@@ -22,7 +22,7 @@ from mcvirt.exceptions import (InvalidStorageConfiguration,
                                VolumeAlreadyExistsError,
                                DDCommandError, VolumeDoesNotExistError,
                                ExternalStorageCommandErrorException)
-from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
 from mcvirt.system import System
 
 
@@ -53,6 +53,7 @@ class File(Base):
         return FileVolume
 
     @Expose()
+    @RunRemoteNodes()
     def get_free_space(self):
         """Return the free space in megabytes."""
         # Obtain statvfs object
@@ -80,6 +81,8 @@ class FileVolume(BaseVolume):
         """Return the full path of a given volume"""
         return self.storage_backend.get_location(node=node) + '/' + self.name
 
+    @Expose()
+    @RunRemoteNodes()
     def create(self, size):
         """Create volume in storage backend"""
         # Ensure volume does not already exist
@@ -96,6 +99,8 @@ class FileVolume(BaseVolume):
                 "Error whilst creating disk logical volume:\n" + str(exc)
             )
 
+    @Expose()
+    @RunRemoteNodes()
     def delete(self, ignore_non_existent=False):
         """Delete volume"""
         # Determine if logical volume exists before attempting to remove it
@@ -112,6 +117,8 @@ class FileVolume(BaseVolume):
                 "Error whilst removing logical volume:\n" + str(exc)
             )
 
+    @Expose()
+    @RunRemoteNodes()
     def activate(self):
         """Activate volume"""
         # Ensure volume exists
@@ -131,23 +138,32 @@ class FileVolume(BaseVolume):
         """Snapshot volume"""
         # Ensure volume exists
         self.ensure_exists()
+
+        # @TODO  Complete - maybe leave NotImplementedEror if not
+        # supported, or raise better exception
         raise NotImplementedError
 
     def deactivate(self):
         """Deactivate volume"""
+        # @TODO Complete - probably just pass
         raise NotImplementedError
 
+    @Expose()
+    @RunRemoteNodes()
     def resize(self, size, increase=True):
         """Reszie volume"""
         # Ensure volume exists
         self.ensure_exists()
 
+        # @TODO Complete
         raise NotImplementedError
 
     def check_exists(self):
         """Determine whether logical volume exists"""
         return os.path.exists(self.get_path())
 
+    @Expose()
+    @RunRemoteNodes()
     def get_size(self):
         """Obtain the size of a logical volume"""
         self.ensure_exists()

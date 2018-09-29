@@ -57,6 +57,7 @@ class Lvm(Base):
         return LvmVolume
 
     @Expose()
+    @RunRemoteNodes()
     def get_free_space(self):
         """Return the free space in megabytes."""
         _, out, _ = System.runCommand(['vgs', self.get_location(),
@@ -174,6 +175,8 @@ class LvmVolume(BaseVolume):
         """Deactivate volume"""
         raise NotImplementedError
 
+    @Expose()
+    @RunRemoteNodes()
     def resize(self, size, increase=True):
         """Reszie volume"""
         # Ensure volume exists
@@ -199,6 +202,8 @@ class LvmVolume(BaseVolume):
         """Determine whether logical volume exists"""
         return os.path.lexists(self.get_path())
 
+    @Expose()
+    @RunRemoteNodes()
     def get_size(self):
         """Obtain the size of a logical volume"""
         self.ensure_exists()
