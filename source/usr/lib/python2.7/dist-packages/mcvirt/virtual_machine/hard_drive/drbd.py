@@ -512,17 +512,16 @@ class Drbd(Base):
         across the cluster
         """
         raw_sizes = self.get_raw_volume().get_size(nodes=self.vm_object.getAvailableNodes(),
-                                                    return_dict=True)
+                                                   return_dict=True)
         if raw_sizes.values()[0] != raw_sizes.values()[1]:
             raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
                                               self.get_raw_volume().name)
 
         meta_sizes = self.get_meta_volume().get_size(nodes=self.vm_object.getAvailableNodes(),
-                                                      return_dict=True)
+                                                     return_dict=True)
         if meta_sizes.values()[0] != meta_sizes.values()[1]:
             raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
                                               self.get_meta_volume().name)
-
 
     @Expose(locking=True)
     def increaseSize(self, increase_size):
@@ -564,16 +563,16 @@ class Drbd(Base):
 
         # Increase size of RAW volume
         self.get_raw_volume().resize(increase_size,
-                                      increase=True,
-                                      nodes=nodes)
+                                     increase=True,
+                                     nodes=nodes)
 
         # Recalculate META volume size
         meta_logical_volume_size = self._calculateMetaDataSize()
 
         # Resize META volume
         self.get_meta_volume().resize(meta_logical_volume_size,
-                                       increase=True,
-                                       nodes=nodes)
+                                      increase=True,
+                                      nodes=nodes)
 
         # Resize DRBD volume
         self._drbd_resize()
