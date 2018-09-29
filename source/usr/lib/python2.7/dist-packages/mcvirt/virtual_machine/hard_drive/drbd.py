@@ -31,6 +31,7 @@ from mcvirt.rpc.expose_method import Expose
 from mcvirt.constants import DirectoryLocation
 from mcvirt.utils import get_hostname
 from mcvirt.syslogger import Syslogger
+from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistException,
                                DrbdVolumeNotInSyncException, MCVirtCommandException,
                                DrbdNotEnabledOnNode, InvalidNodesException,
@@ -510,6 +511,7 @@ class Drbd(Base):
         )
 
         # Ensure increase_size is a valid positive integer
+        ArgumentValidator.validate_positive_integer(increase_size)
 
         # Ensure that the DRBD volume is in a valid, connected state.
         self._checkDrbdStatus()
@@ -518,19 +520,13 @@ class Drbd(Base):
         self._drbdDisconnect()
 
         # Increase size of RAW volume
-        self._resize_logical_volume(
-            self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX),
-            '+%s' % increase_size
-        )
+        self._get_raw_volume().resize(increase_size, increase=True)
 
         # Recalculate META volume size
         meta_logical_volume_size = self._calculateMetaDataSize()
 
         # Resize META volume
-        self._resize_logical_volume(
-            self._getLogicalVolumeName(self.DRBD_META_SUFFIX),
-            meta_logical_volume_size
-        )
+        self._get_meta_volume().resize(meta_logical_volume_size)
 
         # Resize DRBD volume
         self._drbd_resize()
