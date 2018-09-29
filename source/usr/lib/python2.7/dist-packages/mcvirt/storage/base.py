@@ -215,11 +215,14 @@ class Base(PyroObject):
         # If no matches have been found, return False
         return False
 
-    def get_location(self, node=None):
+    def get_location(self, node=None, return_global=False):
         """Return the location for a given node, default to local node"""
+        # Default node to local node
         if node is None:
             cluster = self._get_registered_object('cluster')
             node = cluster.get_local_hostname()
+
+        # Raise exception if node is not configured for storage backend
         if node not in self.nodes:
             raise UnsuitableNodeException(
                 'Node does not support storage backend: %s, %s' % (node, self.name)
@@ -227,8 +230,9 @@ class Base(PyroObject):
         config = self.get_config()
         return (config['nodes'][node]['location']
                 if 'location' in config['nodes'][node] and
-                config['nodes'][node]['location']
-                else config['nodes']['location'])
+                config['nodes'][node]['location'] and
+                not return_global
+                else config['location'])
 
     def available_on_node(self, node=None, raise_on_err=True):
         """Determine if the storage volume is available on
