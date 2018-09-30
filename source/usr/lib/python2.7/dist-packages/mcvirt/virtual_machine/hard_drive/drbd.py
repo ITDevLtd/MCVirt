@@ -309,7 +309,7 @@ class Drbd(Base):
         self._ensure_exists()
         return self.get_raw_volume().get_size()
 
-    def create(self, size, nodes=None):
+    def create(self, size):
         """Creates a new hard drive, attaches the disk to the VM and records the disk
         in the VM configuration"""
         # Ensure user has privileges to create a Drbd volume
@@ -321,13 +321,9 @@ class Drbd(Base):
             raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
 
         # Get remote nodes - can assume that this is just 1 since DRBD only support two nodes
-        if nodes is None:
-            remote_nodes = self.vm_object._get_remote_nodes()
-            nodes = list(remote_nodes) + [
-                self._get_registered_object('cluster').get_local_hostname()]
-        else:
-            remote_nodes = list(nodes)
-            remote_nodes.remove(self._get_registered_object('cluster').get_local_hostname())
+        remote_nodes = self.vm_object._get_remote_nodes()
+        nodes = list(remote_nodes) + [
+            self._get_registered_object('cluster').get_local_hostname()]
         if len(remote_nodes) != 1:
             raise InvalidNodesException('Only one remote node can be used')
 

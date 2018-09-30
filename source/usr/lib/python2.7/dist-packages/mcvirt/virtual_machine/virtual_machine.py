@@ -1489,7 +1489,8 @@ class VirtualMachine(PyroObject):
     def getAvailableNodes(self):
         """Returns the nodes that the VM can be run on"""
         # If the VM is static, return the nodes from the config file
-        if self.is_static():
+        if (self.is_static() or
+                self.get_config_object().get_config()['available_nodes'] is not None):
             return self.get_config_object().get_config()['available_nodes']
 
         # Otherwise, calculate which nodes the VM can be run on...

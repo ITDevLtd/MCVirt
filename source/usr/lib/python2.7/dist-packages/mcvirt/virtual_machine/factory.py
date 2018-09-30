@@ -372,7 +372,12 @@ class Factory(PyroObject):
             name)
 
         # Create VM configuration file
-        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation,
+        # This is hard coded method of determining is_static, as seen in hard drive object
+        # @TODO Refactor into method that's shared with is_static
+        config_nodes = (None
+                        if (storage_backend.shared and storage_type == 'Local')
+                        else available_nodes)
+        VirtualMachineConfig.create(name, config_nodes, cpu_cores, memory_allocation,
                                     graphics_driver)
 
         # Add VM to remote nodes
