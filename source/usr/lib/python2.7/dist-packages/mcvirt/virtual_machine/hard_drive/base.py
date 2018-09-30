@@ -465,7 +465,7 @@ class Base(PyroObject):
         self.vm_object._setLockState(LockStates.LOCKED)
 
         source_volume = self.get_backup_source_volume()
-        backup_volume = self.get_backup_volume()
+        backup_volume = self.get_backup_snapshot_volume()
 
         try:
             source_volume.snapshot_volume(backup_volume, self.SNAPSHOT_SIZE)
@@ -498,6 +498,10 @@ class Base(PyroObject):
 
         # Unlock the VM
         self.vm_object._setLockState(LockStates.UNLOCKED)
+
+    def get_backup_source_volume(self):
+        """Retrun the source volume for snapshotting for backeups"""
+        raise NotImplementedError
 
     def get_backup_snapshot_volume(self):
         """Return a volume object for the disk object"""

@@ -1318,10 +1318,10 @@ class Drbd(Base):
         config['sync_state'] = self._sync_state
         return config
 
-    def _getBackupLogicalVolume(self):
-        """Returns the storage device for the backup"""
-        return self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX)
+    def get_backup_source_volume(self):
+        """Retrun the source volume for snapshotting for backeups"""
+        return self.get_raw_volume()
 
-    def _getBackupSnapshotLogicalVolume(self):
-        """Returns the logical volume name for the backup snapshot"""
-        return self._getLogicalVolumeName(self.DRBD_RAW_SUFFIX) + self.SNAPSHOT_SUFFIX
+    def get_backup_snapshot_volume(self):
+        """Return a volume object for the disk object"""
+        return self._get_volume(self._get_volume_name(self.DRBD_RAW_SUFFIX) + self.SNAPSHOT_SUFFIX)
