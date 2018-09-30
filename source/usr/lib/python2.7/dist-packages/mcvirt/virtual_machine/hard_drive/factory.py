@@ -247,8 +247,8 @@ class Factory(PyroObject):
 
         # Remove any nodes from the list of nodes that aren't
         # available to the node
-        for node in storage_backend.nodes:
-            if node not in nodes:
+        for node in nodes:
+            if node not in storage_backend.nodes:
                 nodes.remove(node)
 
         # If storage is not shared and local storage type,
