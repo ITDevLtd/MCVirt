@@ -89,7 +89,7 @@ class Factory(PyroObject):
         # Attempt to obtain local instance of default storage. Ignore if there is no 'default'
         # storage backend because 'vm_storage_vg' was never set.
         try:
-            local_storage_object = self.get_object('default')
+            local_storage_object = self.get_object(DEFAULT_STORAGE_NAME)
 
             # Get the configuration for each of the nodes
             local_storage_config = local_storage_object.get_config()
@@ -120,7 +120,7 @@ class Factory(PyroObject):
 
         # If no nodes have storage configured, mark storage as having been configured and return
         if not len(current_node_configs):
-            self.set_default_v9_release_config({})
+            self.set_default_v9_release_config(None)
             return
 
         # Get volume groups and convert to list to get unique values
@@ -143,6 +143,86 @@ class Factory(PyroObject):
         }
         self.set_default_v9_release_config(storage_config)
 
+        # Obtain the default storage backend
+        storage_backend = self.get_object(DEFAULT_STORAGE_NAME)
+
+        # Go through each of the VMs to update config for new storage backends
+        for virtual_machine in (self._get_registered_object(
+                'virtual_machiine_factory').getAllgetAllVirtualMachines()):
+
+            # Obtain the VM config object and config
+            vm_config_object = virtual_machine.get_config_object()
+            config = vm_config_object.get_config()
+
+            # Iterate through each of the disks to update the config
+            for disk_id in config['hard_disks'].keys():
+                # Determine if a custom volume group has been used
+                # for the VM
+                if 'custom_volume_group' in config['hard_disks'][disk_id]:
+                    # Attempt to find storage backend that provides
+                    # the custom volume group
+                    custom_storage_backends = self.get_all(
+                        storage_type=Lvm.__name__,
+                        default_location=config['hard_disks'][disk_id]['custom_volume_group'])
+
+                    # If no storage backends match the location, create one:
+                    if not custom_storage_backends:
+                        # Determine a free name for the storage backend
+                        #  Setup iterator for name
+                        itx = 1
+                        # Default the name to the volume group name
+                        custom_storage_backend_name = \
+                            config['hard_disks'][disk_id]['custom_volume_group']
+
+                        while True:
+                            # Determine if the name is free, if so break
+                            if not self.check_exists(custom_storage_backend_name):
+                                break
+
+                            # Otherwise, update name and increment iterator
+                            custom_storage_backend_name = '%s-%i' % (
+                                config['hard_disks'][disk_id]['custom_volume_group'],
+                                itx
+                            )
+
+                        # Once name is obtained, create the storage backend.
+                        # Set name, use LVM as storage type, set location to volume group,
+                        # disable sharing and set nodes to the list of available nodes
+                        # of the VM, since, it must exist on all of these, in theory... 
+                        custom_storage_backend = self.create(
+                            name=custom_storage_backend_name,
+                            storage_type=Lvm.__name__,
+                            location=config['hard_disks'][disk_id]['custom_volume_group'],
+                            shared=False,
+                            node_config={node: {'location': None}
+                                         for node in config['available_nodes']})
+
+                    else:
+                        # Otherwise, if a storage backend was found...
+                        custom_storage_backend = custom_storage_backends[0]
+                        # Ensure that all of the nodes that the VM was available to
+                        # are in the list of nodes for the storage backend, otherwise
+                        # add them.
+                        for node in config['available_nodes']:
+                            if node not in custom_storage_backend.nodes:
+                                custom_storage_backend.add_node(node)
+
+                    # Remove the custom volume group from te storage
+                    del config['hard_disks'][disk_id]['custom_volume_group']
+
+                else:
+                    # Otherwise, if custom volume group was not defined, used the default one
+                    custom_storage_backend = storage_backend
+
+                # Update disk config, adding the parameter for storage_backend
+                config['hard_disks'][disk_id]['storage_backend'] = custom_storage_backend.name
+
+            # Update the VM config on the local and remote nodes
+            vm_config_object.manual_update_config(config,
+                'Update storage backend configuration for VM')
+
+
+
     @Expose(locking=True)
     def set_default_v9_release_config(self, config):
         """Update default storage config across cluster"""
@@ -154,6 +234,11 @@ class Factory(PyroObject):
             if config:
                 # Update config for default storage
                 mcvirt_config[Factory.STORAGE_CONFIG_KEY][DEFAULT_STORAGE_NAME] = config
+
+            # If config is None and default storage backend exists in config, remove it.
+            elif (config is None and
+                    DEFAULT_STORAGE_NAME in mcvirt_config[Factory.STORAGE_CONFIG_KEY]):
+                del mcvirt_config[Factory.STORAGE_CONFIG_KEY][DEFAULT_STORAGE_NAME]
 
             # Mark default config as having been configured
             mcvirt_config['default_storage_configured'] = True
@@ -174,7 +259,7 @@ class Factory(PyroObject):
     @Expose()
     def get_all(self, available_on_local_node=None, nodes=[], drbd=None,
                 storage_type=None, shared=None, nodes_predefined=False,
-                global_=None):
+                global_=None, default_location=None):
         """Return all storage backends, with optional filtering"""
         storage_objects = []
         cluster = self._get_registered_object('cluster')
@@ -186,6 +271,11 @@ class Factory(PyroObject):
 
             # Check if storage backend is global or not
             if global_ is not None and storage_object.is_global != global_:
+                continue
+
+            # Check if default location matches requested
+            if (default_location is not None and
+                    storage_object.get_location(return_default=True) != default_location):
                 continue
 
             # Check storage is available on local node
