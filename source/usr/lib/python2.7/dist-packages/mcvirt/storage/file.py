@@ -211,7 +211,7 @@ class FileVolume(BaseVolume):
         self.ensure_exists()
 
         # Obtain size from os stat (in bytes)
-        size_b = os.stat(self.get_path())
+        size_b = os.stat(self.get_path()).st_size
 
         # Convert size in bytes to megabytes
         size_mb = float(size_b) / (1024 ** 2)

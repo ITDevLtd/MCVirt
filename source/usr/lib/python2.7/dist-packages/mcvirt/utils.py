@@ -42,4 +42,4 @@ def convert_size_friendly(original):
     elif original < (1024 ** 2):
         return '%.2fGB' % round(float(original) / 1024, 2)
     else:
-        return '%.2fTB' % round(float(original) / 1024, 2)
+        return '%.2fTB' % round(float(original) / (1024 ** 2), 2)

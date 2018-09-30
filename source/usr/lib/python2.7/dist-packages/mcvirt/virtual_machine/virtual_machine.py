@@ -45,7 +45,7 @@ from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.utils import get_hostname
+from mcvirt.utils import get_hostname, convert_size_friendly
 from mcvirt.argument_validator import ArgumentValidator
 
 
@@ -347,9 +347,13 @@ class VirtualMachine(PyroObject):
         else:
             return PowerStates.UNKNOWN
 
-    @Expose()
+    @Expose(locking=True)
     def getInfo(self):
         """Gets information about the current VM"""
+        # Manually set permissions asserted, as this function can
+        # run high privilege calls, but doesn't not require
+        # permission checking
+        self._get_registered_object('auth').set_permission_asserted()
         warnings = ''
 
         if not self.isRegistered():
@@ -368,7 +372,8 @@ class VirtualMachine(PyroObject):
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.add_row(('Name', self.get_name()))
         table.add_row(('CPU Cores', self.getCPU()))
-        table.add_row(('Memory Allocation', str(int(self.getRAM()) / 1024) + 'MB'))
+        table.add_row(('Memory Allocation',
+                       convert_size_friendly(int(self.getRAM()) / 1024)))
         table.add_row(('State', self._getPowerState().name))
         table.add_row(('Autostart', self._get_autostart_state().name))
         table.add_row(('Node', self.getNode()))
@@ -409,7 +414,7 @@ class VirtualMachine(PyroObject):
             for disk_object in sorted(disk_objects, key=lambda disk: disk.disk_id):
                 table.add_row(
                     (str(disk_object.disk_id),
-                     str(int(disk_object.getSize()) / 1000) + 'GB')
+                     convert_size_friendly(disk_object.getSize()))
                 )
         else:
             warnings += "No hard disks present on machine\n"
