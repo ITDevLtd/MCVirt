@@ -173,7 +173,8 @@ class Factory(PyroObject):
 
     @Expose()
     def get_all(self, available_on_local_node=None, nodes=[], drbd=None,
-                storage_type=None, shared=None, nodes_predefined=False):
+                storage_type=None, shared=None, nodes_predefined=False,
+                global_=None):
         """Return all storage backends, with optional filtering"""
         storage_objects = []
         cluster = self._get_registered_object('cluster')
@@ -182,6 +183,10 @@ class Factory(PyroObject):
 
             # Obtain storage object
             storage_object = self.get_object(storage_name)
+
+            # Check if storage backend is global or not
+            if global_ is not None and storage_object.is_global != global_:
+                continue
 
             # Check storage is available on local node
             if (available_on_local_node and

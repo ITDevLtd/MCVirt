@@ -120,6 +120,13 @@ class Base(PyroObject):
         """Return storage type for storage backend"""
         return self.__class__.__name__
 
+    @property
+    def is_global(self):
+        """Determine if storage backend is global"""
+        # Currently, none of the storage backends are global
+        # @TODO Implement once global feature is present
+        return False
+
     @Expose(locking=True)
     def delete(self):
         """Shared function to remove storage"""

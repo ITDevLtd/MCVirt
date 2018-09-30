@@ -30,7 +30,7 @@ from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
                                InvalidConnectionString, DrbdNotInstalledException,
                                CouldNotConnectToNodeException, InaccessibleNodeException,
                                MissingConfigurationException, NodeVersionMismatch,
-                               MCVirtTypeError)
+                               MCVirtTypeError, InvalidStorageConfiguration)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.user_types.connection_user import ConnectionUser
 from mcvirt.auth.permissions import PERMISSIONS
@@ -176,7 +176,7 @@ class Cluster(PyroObject):
                                                 (get_hostname(), cluster_ip, resolve_ip))
 
     @Expose(locking=True)
-    def add_node(self, node_connection_string):
+    def add_node(self, node_connection_string, location_overrides=None):
         """Connect to a remote MCVirt machine, setup shared authentication
         and clusters the machines.
         """
@@ -211,11 +211,14 @@ class Cluster(PyroObject):
         ).get_cert_generator(node_config['hostname'])
         ssl_object.ca_pub_file = node_config['ca_cert']
 
+        # If location_overrides was not specified, default to empty dict
+        location_overrides = {} if location_overrides is None else location_overrides
+
         # Check remote machine, to ensure it can be synced without any
         # conflicts
         remote = Connection(username=node_config['username'], password=node_config['password'],
                             host=node_config['hostname'])
-        self.check_remote_machine(remote)
+        self.check_remote_machine(remote, location_overrides=location_overrides)
         remote = None
         original_cluster_nodes = self.get_nodes()
 
@@ -342,7 +345,7 @@ class Cluster(PyroObject):
         self.sync_permissions(remote_node)
 
         # Sync storage backends
-        self.sync_storage_backends(remote_node)
+        self.sync_storage_backends(remote_node, location_overrides=location_overrides)
 
         # Sync VMs
         self.sync_virtual_machines(remote_node)
@@ -409,11 +412,12 @@ class Cluster(PyroObject):
                         remote_auth_instance.get_users_in_permission_group(group)):
                     remote_auth_instance.add_user_permission_group(group, user_object)
 
-    def sync_storage_backends(self, remote_object):
+    def sync_storage_backends(self, remote_object, location_overrides):
         """Duplicate the storage backend objects to the new node"""
         # Sync entire storage backend configuration to new node
         Syslogger.logger().debug('Syncing storage backends')
         storage_factory = self._get_registered_object('storage_factory')
+        remote_storage_factory = remote_object.get_connection('storage_factory')
         storage_factory_config = storage_factory.get_config()
 
         remote_mcvirt_config_obj = remote_object.get_connection('mcvirt_config')
@@ -428,10 +432,23 @@ class Cluster(PyroObject):
         # Add new node to storage backends that have a default location
         for storage_backend in storage_factory.get_all():
             # Determine if storage backend has a default location
-            if storage_backend.get_location(return_default=True):
+            location = (location_overrides[storage_backend.name]
+                        if storage_backend.name in location_overrides
+                        else storage_backend.get_location(return_default=True))
+            if location:
                 Syslogger.logger().debug('Adding storage backend %s to new node' %
                                          storage_backend.name)
-                # Add the node to the storage backends
+                try:
+                    remote_storage_factory.node_pre_check(
+                        storage_type=storage_backend.storage_type,
+                        location=location)
+                except Exception, exc:
+                    Syslogger.logger().warning(
+                        'Storage backend location does not exist on node: %s %s %s %s' %
+                        (storage_backend.name, remote_object.name, location, str(exc)))
+                    # Ignore and continue with next storage backend
+                    continue
+                # Since pre check passed, add the node to the storage backends
                 storage_backend.add_node(remote_object.name)
 
     def sync_virtual_machines(self, remote_object):
@@ -498,7 +515,7 @@ class Cluster(PyroObject):
                                                       ('Update LDAP/Git configuration after'
                                                        ' joining node to cluster.'))
 
-    def check_remote_machine(self, remote_connection):
+    def check_remote_machine(self, remote_connection, location_overrides):
         """Perform checks on the remote node to ensure that there will be
         no object conflicts when syncing the Network and VM configurations
         """
@@ -507,21 +524,29 @@ class Cluster(PyroObject):
         if len(remote_cluster.get_nodes(return_all=True)):
             raise RemoteObjectConflict('Remote node already has nodes attached')
 
-        # Ensure that all all storage backends (that have default locations and
-        # will be replicated to new node) exist on the remote node
+        # Get local and remote storage factories
         storage_factory = self._get_registered_object('storage_factory')
         remote_storage_factory = remote_connection.get_connection('storage_factory')
-        for storage_backend in storage_factory.get_all():
+
+        # Ensure that all global storage backends (which will be replicated to new
+        # node) exist on the remote node. Also check any locations specified in overrides
+        storage_backends = storage_factory.get_all(global_=True)
+        for name in location_overrides.keys():
+            if name not in [storage_backend.name for storage_backend in storage_backends]:
+                storage_backends.append(storage_factory.get_object(name=name))
+
+        # Check each of the backends will MUST be added to the node
+        for storage_backend in storage_backends:
             Syslogger.logger().debug('Checking storage backend: %s' % storage_backend.name)
-            # Obtain default storage location and continue if it exists
-            if storage_backend.get_location(return_default=True):
-                # Check that volume group/directory exists on remote machine
-                Syslogger.logger().debug('Validating storage backend')
-                remote_storage_factory.node_pre_check(
-                    storage_type=storage_backend.storage_type,
-                    location=storage_backend.get_location(return_default=True))
-            else:
-                Syslogger.logger().debug('No default location')
+            # Determine location, either the default or override, if specified
+            location = (location_overrides[storage_backend.name]
+                        if storage_backend.name in location_overrides
+                        else storage_backend.get_location(default=True))
+            # Check that volume group/directory exists on remote machine
+            Syslogger.logger().debug('Validating storage backend')
+            remote_storage_factory.node_pre_check(
+                storage_type=storage_backend.storage_type,
+                location=location)
 
         # Determine if any of the local networks/VMs exist on the remote node
         remote_network_factory = remote_connection.get_connection('network_factory')
