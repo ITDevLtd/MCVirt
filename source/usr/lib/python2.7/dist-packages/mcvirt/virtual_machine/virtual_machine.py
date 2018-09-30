@@ -71,6 +71,34 @@ class VirtualMachine(PyroObject):
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
 
+    @Expose()
+    def set_v9_release_config(self, config):
+        """Update disk configurations with new storage backends
+        for v9 release
+        """
+        # Check permissions
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        def update_config(vm_config):
+            """Update VM config"""
+            for disk_id in config.keys():
+                vm_config['hard_disks'][disk_id]['storage_backend'] = config[disk_id]
+                if 'custom_volume_group' in vm_config['hard_disks'][disk_id]:
+                    del vm_config['hard_disks'][disk_id]['custom_volume_group']
+        self.get_config_object().update_config(
+            update_config,
+            'Update storage backends for disks for v9 release')
+        if self._is_cluster_master:
+            def update_remote_node(connection):
+                """Update configuration of remote node"""
+                virtual_machine_factory = connection.get_connection('virtual_machine_factory')
+                virtual_machine = virtual_machine_factory.getVirtualMachineByName(
+                    self.get_name())
+                connection.annotate_object(virtual_machine)
+                virtual_machine.set_v9_release_config(config)
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(update_remote_node)
+
     def get_remote_object(self, include_node=False, set_cluster_master=False):
         """Return a instance of the virtual machine object
         on the machine that the VM is registered

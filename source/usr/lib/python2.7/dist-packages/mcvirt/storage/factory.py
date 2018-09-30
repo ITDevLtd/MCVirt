@@ -153,6 +153,7 @@ class Factory(PyroObject):
             # Obtain the VM config object and config
             vm_config_object = virtual_machine.get_config_object()
             config = vm_config_object.get_config()
+            new_storage_config = {}
 
             # Iterate through each of the disks to update the config
             for disk_id in config['hard_disks'].keys():
@@ -207,21 +208,15 @@ class Factory(PyroObject):
                             if node not in custom_storage_backend.nodes:
                                 custom_storage_backend.add_node(node)
 
-                    # Remove the custom volume group from te storage
-                    del config['hard_disks'][disk_id]['custom_volume_group']
-
                 else:
                     # Otherwise, if custom volume group was not defined, used the default one
                     custom_storage_backend = storage_backend
 
                 # Update disk config, adding the parameter for storage_backend
-                config['hard_disks'][disk_id]['storage_backend'] = custom_storage_backend.name
+                new_storage_config[disk_id] = custom_storage_backend.name
 
             # Update the VM config on the local and remote nodes
-            vm_config_object.manual_update_config(config,
-                'Update storage backend configuration for VM')
-
-
+            virtual_machine.set_v9_release_config()
 
     @Expose(locking=True)
     def set_default_v9_release_config(self, config):
