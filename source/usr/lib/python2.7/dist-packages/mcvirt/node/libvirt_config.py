@@ -30,6 +30,8 @@ from mcvirt.exceptions import LibvirtNotInstalledException
 class LibvirtConfig(PyroObject):
     """Provides configuration for libvirtd"""
 
+    LIBVIRT_USER = 'libvirt-qemu'
+    LIBVIRT_GROUP = 'kvm'
     CONFIG_FILE = '/etc/libvirt/libvirtd.conf'
     CONFIG_TEMPLATE = '/usr/lib/python2.7/dist-packages/mcvirt/templates/libvirtd.conf'
     DEFAULT_FILE = '/etc/default/%s'

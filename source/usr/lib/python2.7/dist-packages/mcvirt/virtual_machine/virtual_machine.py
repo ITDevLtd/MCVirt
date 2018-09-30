@@ -254,6 +254,15 @@ class VirtualMachine(PyroObject):
             try:
                 self._getLibvirtDomainObject().create()
             except Exception, e:
+                # Interogate exception to attempt to determine cause
+                # of failure
+                if 'Could not open ' in str(e) and ': Permission denied' in str(e):
+                    # A disk could not be opened
+                    # Iterate through hard drives and disk drive to determine
+                    # which of these couldn't be opened
+                    # @TODO complete
+                    pass
+
                 raise LibvirtException('Failed to start VM: %s' % e)
 
         elif not self._cluster_disabled and self.isRegisteredRemotely():

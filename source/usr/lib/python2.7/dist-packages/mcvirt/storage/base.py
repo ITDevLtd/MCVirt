@@ -40,6 +40,11 @@ from mcvirt.system import System
 class Base(PyroObject):
     """Provides base functionality for storage backends"""
 
+    @classmethod
+    def check_permissions(cls, libvirt_config, directory):
+        """Method to check permissions of directory"""
+        raise NotImplementedError
+
     @staticmethod
     def validate_config(cluster, config):
         """Validate config"""
@@ -48,7 +53,7 @@ class Base(PyroObject):
             cluster.ensure_node_exists(node, include_local=True)
 
     @classmethod
-    def node_pre_check(cls, cluster, location):
+    def node_pre_check(cls, cluster, libvirt_config, location):
         """Ensure volume group exists on node"""
         try:
             cls.ensure_exists(location)
@@ -56,6 +61,7 @@ class Base(PyroObject):
             raise InvalidStorageConfiguration(
                 '%s on node %s' % (str(exc), cluster.get_local_hostname())
             )
+        cls.check_permissions(libvirt_config, location)
 
     @classmethod
     def validate_location_name(cls, location):

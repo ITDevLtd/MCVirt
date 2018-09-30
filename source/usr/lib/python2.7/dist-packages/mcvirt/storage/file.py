@@ -16,6 +16,9 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os
+import pwd
+import grp
+import stat
 
 from mcvirt.storage.base import Base, BaseVolume
 from mcvirt.exceptions import (InvalidStorageConfiguration,
@@ -31,8 +34,41 @@ from mcvirt.system import System
 class File(Base):
     """Storage backend for file based storage"""
 
-    @staticmethod
-    def check_exists_local(directory):
+    @classmethod
+    def check_permissions(cls, libvirt_config, directory):
+        """Check permissions of directory and attempt to fix
+        if libvirt user does not have permissions to read/write
+        """
+        require_permissions_if_owned = (
+            stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR |
+            stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP
+        )
+        required_permissions_global = (
+            stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH
+        )
+        libvirt_user_uid = pwd.getpwnam(libvirt_config.LIBVIRT_USER).pw_uid
+        libvirt_group_gid = grp.getgrnam(libvirt_config.LIBVIRT_GROUP).gr_gid
+        stat_info = os.stat(directory)
+
+        # Check owner and group of directory
+        if ((stat_info.st_uid != libvirt_user_uid or
+             stat_info.st_gid != libvirt_group_gid or not
+             # Check that libvirt has RWX (user and group)
+             (stat_info.st_mode & require_permissions_if_owned ==
+              require_permissions_if_owned)) and not
+                # Otherwise, Check if 'other' has RWX
+                (stat_info.st_mode & required_permissions_global ==
+                 required_permissions_global)):
+
+            # User/group are not those required for libvirt and permissions
+            # of directory is not 777
+            # Attempt to change directory owner/group
+            os.chown(directory, libvirt_user_uid, libvirt_group_gid)
+            # Append the required permissions to the current permissions
+            os.chmod(directory, stat_info.st_mode | require_permissions_if_owned)
+
+    @classmethod
+    def check_exists_local(cls, directory):
         """Determine if the directory actually exists on the node."""
         return os.path.isdir(directory)
 

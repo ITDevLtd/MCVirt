@@ -31,8 +31,13 @@ from mcvirt.argument_validator import ArgumentValidator
 class Lvm(Base):
     """Storage backend for LVM based storage"""
 
-    @staticmethod
-    def check_exists_local(volume_group):
+    @classmethod
+    def check_permissions(cls, libvirt_config, directory):
+        """No permission checking is required for LVM"""
+        return
+
+    @classmethod
+    def check_exists_local(cls, volume_group):
         """Determine if the volume group actually exists on the node."""
         exit_code, _, _ = System.runCommand(['vgs', volume_group, '--noheadings', '--nosuffix'],
                                             False, DirectoryLocation.BASE_STORAGE_DIR)

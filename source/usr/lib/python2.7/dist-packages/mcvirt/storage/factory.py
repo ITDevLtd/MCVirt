@@ -365,7 +365,10 @@ class Factory(PyroObject):
         """Ensure node is suitable for storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
         cluster = self._get_registered_object('cluster')
-        self.get_class(storage_type).node_pre_check(cluster, location)
+        libvirt_config = self._get_registered_object('libvirt_config')
+        self.get_class(storage_type).node_pre_check(cluster=cluster,
+                                                    libvirt_config=libvirt_config,
+                                                    location=location)
 
     def get_config(self):
         """Return the configs for storage backends"""
@@ -380,9 +383,13 @@ class Factory(PyroObject):
         """Return the storage object for a given disk"""
         # Get config for storage backend
         storage_backends_config = self.get_config()
+
+        # Ensure exists and config is valid
         if (name not in storage_backends_config.keys() or
                 'type' not in storage_backends_config[name]):
-            raise StorageBackendDoesNotExist('Storage backend does not exist or is mis-configured')
+            raise StorageBackendDoesNotExist('Storage backend does not exist: %s' % name)
+
+        # Obtain storage type from config
         storage_type = storage_backends_config[name]['type']
 
         # Create required storage object, based on type
