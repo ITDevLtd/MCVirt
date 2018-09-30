@@ -247,7 +247,8 @@ class Base(PyroObject):
             def update_remote_mcvirt_config(connection):
                 """Update MCVirt config on remote node"""
                 remote_storage_backend = self.get_remote_object(node_object=connection)
-                remote_storage_backend.add_node(node_name=node_name, custom_location=custom_location)
+                remote_storage_backend.add_node(node_name=node_name,
+                                                custom_location=custom_location)
 
             cluster.run_remote_command(update_remote_mcvirt_config)
 

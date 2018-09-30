@@ -445,4 +445,3 @@ class ElevatePermission(object):
         else:
             Syslogger.logger().warning(
                 'Elevated permissions disaapeared before removing')
-

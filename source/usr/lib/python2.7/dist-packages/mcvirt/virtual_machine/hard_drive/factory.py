@@ -330,7 +330,7 @@ class Factory(PyroObject):
         hdd_object = self.getClass(storage_type)(vm_object=vm_object, driver=driver,
                                                  storage_backend=storage_backend)
         self._register_object(hdd_object)
-        hdd_object.create(size=size)
+        hdd_object.create(size=size, nodes=nodes)
         return hdd_object
 
     def _get_available_storage_types(self):
