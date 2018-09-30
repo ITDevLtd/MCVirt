@@ -585,9 +585,6 @@ class Base(PyroObject):
         # Configure the source of the disk
         source_xml = ET.SubElement(device_xml, 'source')
         source_xml.set(self.get_storage_backend().libvirt_source_parameter, self._getDiskPath())
-        # if self.get_storage_backend().libvirt_source_parameter == 'file':
-        #     format_xml = ET.SubElement(source_xml)
-        #     source_xml.set()
 
         # Configure the target
         target_xml = ET.SubElement(device_xml, 'target')
