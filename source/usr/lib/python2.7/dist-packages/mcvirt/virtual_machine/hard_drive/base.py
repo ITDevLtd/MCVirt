@@ -220,13 +220,13 @@ class Base(PyroObject):
     @Expose(locking=True)
     def delete(self):
         """Delete the logical volume for the disk"""
-        self._ensure_exists()
-
-        # Ensure that the user has permissions to add create storage
+        # Ensure that the user has permissions to add delete storage
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
         )
+
+        self._ensure_exists()
 
         cache_key = (self.vm_object.get_name(), self.disk_id, self.get_type())
 
@@ -288,6 +288,11 @@ class Base(PyroObject):
     def addToVirtualMachine(self, register=True):
         """Add the hard drive to the virtual machine,
            and performs the base function on all nodes in the cluster"""
+        # Ensure that the user has permissions to modify VM
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM,
+            self.vm_object
+        )
         # Update the libvirt domain XML configuration
         if self.vm_object.isRegisteredLocally():
             self._registerLibvirt()
@@ -333,6 +338,11 @@ class Base(PyroObject):
     def removeFromVirtualMachine(self, unregister=False, all_nodes=True):
         """Remove the hard drive from a VM configuration and perform all nodes
            in the cluster"""
+        # Ensure that the user has permissions to modify VM
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM,
+            self.vm_object
+        )
         # If the VM that the hard drive is attached to is registered on the local
         # node, remove the hard drive from the LibVirt configuration
         if unregister and self.vm_object.isRegisteredLocally():
