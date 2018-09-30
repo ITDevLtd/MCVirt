@@ -61,6 +61,16 @@ class Lvm(Base):
         """Return the volume class for the storage backend"""
         return LvmVolume
 
+    @property
+    def libvirt_device_type(self):
+        """The libvirt property for storage path"""
+        return 'block'
+
+    @property
+    def libvirt_source_parameter(self):
+        """The libvirt property for source"""
+        return 'raw'
+
     @Expose()
     @RunRemoteNodes()
     def get_free_space(self):

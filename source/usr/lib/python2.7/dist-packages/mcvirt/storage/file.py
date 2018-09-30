@@ -90,6 +90,16 @@ class File(Base):
         """Return the volume class for the storage backend"""
         return FileVolume
 
+    @property
+    def libvirt_device_type(self):
+        """The libvirt property for storage path"""
+        return 'file'
+
+    @property
+    def libvirt_source_parameter(self):
+        """The libvirt property for source"""
+        return 'file'
+
     @Expose()
     @RunRemoteNodes()
     def get_free_space(self):
@@ -165,8 +175,34 @@ class FileVolume(BaseVolume):
         # Ensure volume exists
         self.ensure_exists()
 
-        # Otherwise, do nothing, as files do not
-        # need activating
+        require_permissions_if_owned = (
+            stat.S_IRUSR | stat.S_IWUSR |
+            stat.S_IRGRP | stat.S_IWGRP
+        )
+        required_permissions_global = (
+            stat.S_IROTH | stat.S_IWOTH
+        )
+        libvirt_config = self._get_registered_object('libvirt_config')
+        libvirt_user_uid = pwd.getpwnam(libvirt_config.LIBVIRT_USER).pw_uid
+        libvirt_group_gid = grp.getgrnam(libvirt_config.LIBVIRT_GROUP).gr_gid
+        stat_info = os.stat(self.get_path())
+
+        # Check owner and group of directory
+        if ((stat_info.st_uid != libvirt_user_uid or
+             stat_info.st_gid != libvirt_group_gid or not
+             # Check that libvirt has RWX (user and group)
+             (stat_info.st_mode & require_permissions_if_owned ==
+              require_permissions_if_owned)) and not
+                # Otherwise, Check if 'other' has RWX
+                (stat_info.st_mode & required_permissions_global ==
+                 required_permissions_global)):
+
+            # User/group are not those required for libvirt and permissions
+            # of directory is not 777
+            # Attempt to change directory owner/group
+            os.chown(self.get_path(), libvirt_user_uid, libvirt_group_gid)
+            # Append the required permissions to the current permissions
+            os.chmod(self.get_path(), stat_info.st_mode | require_permissions_if_owned)
         return
 
     def is_active(self):
@@ -186,8 +222,8 @@ class FileVolume(BaseVolume):
 
     def deactivate(self):
         """Deactivate volume"""
-        # @TODO Complete - probably just pass
-        raise NotImplementedError
+        # There is nothing to do to deactivate
+        pass
 
     @Expose(locking=True)
     @RunRemoteNodes()
