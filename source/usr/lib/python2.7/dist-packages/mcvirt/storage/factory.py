@@ -148,7 +148,7 @@ class Factory(PyroObject):
 
         # Go through each of the VMs to update config for new storage backends
         for virtual_machine in (self._get_registered_object(
-                'virtual_machiine_factory').getAllgetAllVirtualMachines()):
+                'virtual_machine_factory').getAllVirtualMachines()):
 
             # Obtain the VM config object and config
             vm_config_object = virtual_machine.get_config_object()
@@ -189,7 +189,7 @@ class Factory(PyroObject):
                         # Once name is obtained, create the storage backend.
                         # Set name, use LVM as storage type, set location to volume group,
                         # disable sharing and set nodes to the list of available nodes
-                        # of the VM, since, it must exist on all of these, in theory... 
+                        # of the VM, since, it must exist on all of these, in theory...
                         custom_storage_backend = self.create(
                             name=custom_storage_backend_name,
                             storage_type=Lvm.__name__,
@@ -216,7 +216,7 @@ class Factory(PyroObject):
                 new_storage_config[disk_id] = custom_storage_backend.name
 
             # Update the VM config on the local and remote nodes
-            virtual_machine.set_v9_release_config()
+            virtual_machine.set_v9_release_config(new_storage_config)
 
     @Expose(locking=True)
     def set_default_v9_release_config(self, config):
@@ -358,13 +358,12 @@ class Factory(PyroObject):
 
             # Get all locations and verify that the names are valid
             # @TODO - Refactor this to be more readable
-            no_location = object()
             for location_itx in [] if not location else [location] + \
                     [node_config[node]['location']
                      if 'location' in node_config[node]
-                     else no_location
+                     else None
                      for node in node_config]:
-                if location_itx is not no_location:
+                if location_itx is not None:
                     storage_class.validate_location_name(location_itx)
 
             # If no nodes have been specified, get all nodes in cluster
