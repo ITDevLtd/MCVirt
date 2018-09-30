@@ -208,7 +208,7 @@ class Factory(PyroObject):
             # stop the nodes being changed whilst storage backend is determined
             nodes_predefined = True
 
-        # Since DRBD was not determined, if storage type has not been determined,
+        # Since DRBD was not specified/determined, if storage type has not been determined,
         # force Local storage
         elif storage_type is None:
             storage_type = Local.__name__
@@ -277,7 +277,8 @@ class Factory(PyroObject):
         return nodes, storage_type, storage_backend
 
     @Expose(locking=True)
-    def create(self, vm_object, size, storage_type, driver, storage_backend=None):
+    def create(self, vm_object, size, storage_type, driver, storage_backend=None,
+               nodes=None):
         """Performs the creation of a hard drive, using a given storage type"""
         vm_object = self._convert_remote_object(vm_object)
         if storage_backend is not None:
@@ -290,7 +291,13 @@ class Factory(PyroObject):
         )
 
         # Determine nodes that the VM is already available to
-        nodes = vm_object.getAvailableNodes()
+        if nodes is None:
+            nodes = vm_object.getAvailableNodes()
+        else:
+            for node in nodes:
+                self._get_registered_object('cluster').ensure_node_exists(
+                    node, include_local=True)
+
         # Specify nodes_predefined to stop available nodes from being changed when
         # determining storage specifications
         nodes, storage_type, storage_backend = self.ensure_hdd_valid(size, storage_type, nodes,
@@ -301,7 +308,6 @@ class Factory(PyroObject):
         # disks already attached to the VM.
         # All disks attached to a VM must either be DRBD-based or not.
         # All storage backends used by a VM must shared the following attributes: type, shared
-        # @TODO - Implement to above restriction
         vm_storage_type = vm_object.getStorageType()
         if vm_storage_type:
             if storage_type and storage_type != vm_storage_type:
@@ -309,6 +315,17 @@ class Factory(PyroObject):
                     ('Spcifeid storage type \'%s\' does not match '
                      'VM\'s current storage type: %s') % (storage_type, vm_storage_type)
                 )
+            vm_hdds = vm_object.getHardDriveObjects()
+            if vm_hdds:
+                for vm_hdd in vm_hdds:
+                    if storage_backend.shared != vm_hdd.get_storage_backend().shared:
+                        raise InvalidStorageBackendError(
+                            ('Storage backend for new disk must have the same shared '
+                             'status as current disks'))
+                    elif storage_backend.storage_type != vm_hdd.get_storage_backend().storage_type:
+                        raise InvalidStorageBackendError(
+                            ('Storage backend for new disk must be the same type '
+                             'as current disks'))
 
         hdd_object = self.getClass(storage_type)(vm_object=vm_object, driver=driver,
                                                  storage_backend=storage_backend)

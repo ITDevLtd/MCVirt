@@ -123,8 +123,11 @@ class Factory(PyroObject):
     @Expose()
     def listVms(self, include_ram=False, include_cpu=False, include_disk=False):
         """Lists the VMs that are currently on the host"""
+        # Create base table
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
+
+        # Add headers
         headers = ['VM Name', 'State', 'Node']
         if include_ram:
             headers.append('RAM Allocation')
@@ -135,6 +138,7 @@ class Factory(PyroObject):
 
         table.header(tuple(headers))
 
+        # Iterate over VMs and add to list
         for vm_object in sorted(self.getAllVirtualMachines(), key=lambda vm: vm.name):
             vm_row = [vm_object.get_name(), vm_object._getPowerState().name,
                       vm_object.getNode() or 'Unregistered']
@@ -321,11 +325,6 @@ class Factory(PyroObject):
         if self._is_cluster_master and local_hostname not in available_nodes:
             raise InvalidNodesException('Local node must included in available nodes')
 
-        all_nodes = cluster_object.get_nodes(return_all=True, include_local=True)
-        for check_node in available_nodes:
-            if check_node not in all_nodes:
-                raise NodeDoesNotExistException('Node \'%s\' does not exist' % check_node)
-
         # Ensure storage_type is a valid type, if specified
         hard_drive_factory = self._get_registered_object('hard_drive_factory')
         assert storage_type in [None] + [
@@ -413,7 +412,8 @@ class Factory(PyroObject):
             for hard_drive_size in hard_drives:
                 hard_drive_factory.create(vm_object=vm_object, size=hard_drive_size,
                                           storage_type=storage_type, driver=hard_drive_driver,
-                                          storage_backend=storage_backend)
+                                          storage_backend=storage_backend,
+                                          nodes=available_nodes)
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML

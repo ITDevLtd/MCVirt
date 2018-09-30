@@ -336,6 +336,10 @@ class Factory(PyroObject):
     @Expose()
     def list(self):
         """List the Drbd volumes and statuses"""
+        # Set permissions as having been checked, as listing VMs
+        # does not require permissions
+        self._get_registered_object('auth').set_permission_asserted()
+
         # Create table and add headers
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)

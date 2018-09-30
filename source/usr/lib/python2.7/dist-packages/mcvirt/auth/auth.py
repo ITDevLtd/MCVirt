@@ -72,7 +72,7 @@ class Auth(PyroObject):
     def has_permission_asserted(self):
         """Return whether permission has been asserted using assert_permission"""
         if 'PERMISSION_ASSERTED' in dir(Pyro4.current_context):
-            return (Pyro4.current_context.PERMISSION_ASSERTED is True)
+            return Pyro4.current_context.PERMISSION_ASSERTED is True
         else:
             return False
 
