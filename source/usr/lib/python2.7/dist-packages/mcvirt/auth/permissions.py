@@ -29,7 +29,8 @@ PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY
                                    'MANAGE_USERS', 'TEST_SUPERUSER_PERMISSION',
                                    'TEST_OWNER_PERMISSION', 'TEST_USER_PERMISSION',
                                    'SUPERUSER', 'MANAGE_NODE', 'SET_SYNC_STATE',
-                                   'MANAGE_ISO', 'MANGAE_STORAGE'])
+                                   'MANAGE_ISO', 'MANAGE_STORAGE_BACKEND',
+                                   'MANAGE_STORAGE_VOLUME'])
 
 # Set the permissions for the permissions groups
 PERMISSION_GROUPS = \

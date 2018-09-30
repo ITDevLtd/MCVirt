@@ -24,6 +24,7 @@ from mcvirt.exceptions import (InvalidStorageConfiguration,
                                VolumeAlreadyExistsError)
 from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
 from mcvirt.system import System
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.constants import DirectoryLocation
 from mcvirt.argument_validator import ArgumentValidator
 
@@ -87,6 +88,8 @@ class LvmVolume(BaseVolume):
     @RunRemoteNodes()
     def create(self, size):
         """Create volume in storage backend"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME,
+                                                              allow_indirect=True)
         # Ensure volume does not already exist
         if self.check_exists():
             raise VolumeAlreadyExistsError('Volume (%s) already exists' % self.name)
@@ -109,6 +112,8 @@ class LvmVolume(BaseVolume):
     @RunRemoteNodes()
     def delete(self, ignore_non_existent=False):
         """Delete volume"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME,
+                                                              allow_indirect=True)
         # Create command arguments
         command_args = ['lvremove', '-f', self.get_path()]
 
@@ -130,6 +135,8 @@ class LvmVolume(BaseVolume):
     @RunRemoteNodes()
     def activate(self):
         """Activate volume"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME,
+                                                              allow_indirect=True)
         # Ensure volume exists
         self.ensure_exists()
         # Create command arguments
@@ -179,6 +186,8 @@ class LvmVolume(BaseVolume):
     @RunRemoteNodes()
     def resize(self, size, increase=True):
         """Reszie volume"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME,
+                                                              allow_indirect=True)
         # Ensure volume exists
         self.ensure_exists()
 

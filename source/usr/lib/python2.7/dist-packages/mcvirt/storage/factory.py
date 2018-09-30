@@ -226,6 +226,7 @@ class Factory(PyroObject):
     @Expose()
     def validate_config(self, storage_type, config):
         """Perform the class method validate_config"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
         return self.get_class(storage_type).validate_config(
             cluster=self._get_registered_object('cluster'),
             config=config
@@ -236,7 +237,7 @@ class Factory(PyroObject):
                node_config={}):
         """Create storage backend"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         if self._is_cluster_master:
             # Ensure storage backend does not already exist with same name
@@ -358,6 +359,7 @@ class Factory(PyroObject):
     @Expose()
     def node_pre_check(self, location, storage_type):
         """Ensure node is suitable for storage backend"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
         cluster = self._get_registered_object('cluster')
         self.get_class(storage_type).node_pre_check(cluster, location)
 

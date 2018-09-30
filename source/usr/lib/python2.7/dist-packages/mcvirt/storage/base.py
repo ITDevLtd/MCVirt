@@ -118,7 +118,7 @@ class Base(PyroObject):
     def delete(self):
         """Shared function to remove storage"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         # Determine if storage backend if used by VMs
         if self.in_use():
@@ -153,7 +153,8 @@ class Base(PyroObject):
     def get_config(self):
         """Get config for storage backend"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND,
+                                                              allow_indirect=True)
 
         return MCVirtConfig().get_config()['storage_backends'][self.name]
 
@@ -163,7 +164,7 @@ class Base(PyroObject):
         None will mean no default location
         If node is set to None, the default location will be set
         """
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
         # @TODO Add error checking - does it exist?
 
         def update_location_config(config):
@@ -186,7 +187,7 @@ class Base(PyroObject):
     @Expose(locking=True)
     def add_node(self, node_name, custom_location=None):
         """Add a new node to the storage backend"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         location = custom_location if custom_location else self.get_location(return_default=True)
 
@@ -282,7 +283,7 @@ class Base(PyroObject):
     @Expose(locking=True)
     def remove_node(self, node_name):
         """Remove a node from the storage backend"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         # Perform checks on cluster master
         if self._is_cluster_master:
@@ -309,7 +310,7 @@ class Base(PyroObject):
     def set_shared(self, shared):
         """Set the shared status of the storage backend"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANGAE_STORAGE)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         ArgumentValidator.validate_boolean(shared)
 
@@ -388,6 +389,8 @@ class Base(PyroObject):
     @Expose()
     def get_volume(self, name):
         """Return a volume for the current storage volume"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME,
+                                                              allow_indirect=True)
         # Create volume object
         volume = self._volume_class(name=name, storage_backend=self)
         # Register with daemon
@@ -476,6 +479,8 @@ class BaseVolume(PyroObject):
     @RunRemoteNodes()
     def wipe(self):
         """Wipe the volume"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME,
+                                                              allow_indirect=True)
         System.perform_dd(source=System.WIPE,
                           destination=self.get_path(),
                           size=self.get_size())

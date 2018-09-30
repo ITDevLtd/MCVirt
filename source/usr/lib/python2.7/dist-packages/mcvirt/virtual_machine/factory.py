@@ -32,6 +32,7 @@ from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException,
                                MCVirtTypeError)
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.auth.auth import ElevatePermission
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
 from mcvirt.argument_validator import ArgumentValidator
@@ -411,9 +412,10 @@ class Factory(PyroObject):
             # Create disk images
             hard_drive_factory = self._get_registered_object('hard_drive_factory')
             for hard_drive_size in hard_drives:
-                hard_drive_factory.create(vm_object=vm_object, size=hard_drive_size,
-                                          storage_type=storage_type, driver=hard_drive_driver,
-                                          storage_backend=storage_backend)
+                with ElevatePermission(PERMISSIONS.MANAGE_STORAGE_VOLUME):
+                    hard_drive_factory.create(vm_object=vm_object, size=hard_drive_size,
+                                              storage_type=storage_type, driver=hard_drive_driver,
+                                              storage_backend=storage_backend)
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML

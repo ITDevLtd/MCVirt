@@ -134,6 +134,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
                         Pyro4.current_context.ignore_drbd = False
                     if Pyro4.current_context.cluster_master:
                         self.registered_factories['cluster'].check_node_versions()
+                    Pyro4.current_context.PERMISSION_ASSERTED = False
                     return session_id
 
             # If a session id has been passed, store it and check the
@@ -183,6 +184,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
                     if Pyro4.current_context.cluster_master:
                         self.registered_factories['cluster'].check_node_versions()
+                    Pyro4.current_context.PERMISSION_ASSERTED = False
                     return session_id
         except Pyro4.errors.SecurityError:
             raise

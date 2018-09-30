@@ -43,6 +43,7 @@ from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.usb_device import UsbDevice
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.auth.auth import ElevatePermission
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
@@ -462,7 +463,8 @@ class VirtualMachine(PyroObject):
         # with VM
         if remove_data and get_hostname() in self.getAvailableNodes():
             for disk_object in self.getHardDriveObjects():
-                disk_object.delete()
+                with ElevatePermission(PERMISSIONS.MANAGE_STORAGE_VOLUME):
+                    disk_object.delete()
 
         # 'Undefine' object from LibVirt
         if self.isRegisteredLocally():
