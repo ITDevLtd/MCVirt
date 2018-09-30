@@ -376,7 +376,8 @@ class Factory(PyroObject):
         # This is hard coded method of determining is_static, as seen in hard drive object
         # @TODO Refactor into method that's shared with is_static
         config_nodes = (None
-                        if ((storage_backend and storage_backend.shared and storage_type == 'Local') or
+                        if ((storage_backend and storage_backend.shared and
+                             storage_type == 'Local') or
                             (is_static is not None and not is_static))
                         else available_nodes)
         VirtualMachineConfig.create(name, config_nodes, cpu_cores, memory_allocation,
