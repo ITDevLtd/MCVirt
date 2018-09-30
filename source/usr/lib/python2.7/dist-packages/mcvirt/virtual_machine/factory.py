@@ -266,9 +266,10 @@ class Factory(PyroObject):
                                        # across them and networks exist on all nodes.
                 storage_type=None,  # Storage type (string)
                 hard_drive_driver=None, graphics_driver=None, modification_flags=None,
-                storage_backend=None):  # Storage backend to be used. If not specified,
+                storage_backend=None,   # Storage backend to be used. If not specified,
                                         # will default to an available storage backend,
                                         # if only 1 is avaiallbe.
+                is_static=None):  # Manually override whether the VM is marked as static
         """Create a VM and returns the virtual_machine object for it"""
         # @TODO: Does this method need to do EVERYTHING?
         #       Maybe it should create the BARE MINIMUM required for a VM
@@ -375,7 +376,8 @@ class Factory(PyroObject):
         # This is hard coded method of determining is_static, as seen in hard drive object
         # @TODO Refactor into method that's shared with is_static
         config_nodes = (None
-                        if (storage_backend.shared and storage_type == 'Local')
+                        if ((storage_backend and storage_backend.shared and storage_type == 'Local') or
+                            (is_static is not None and not is_static))
                         else available_nodes)
         VirtualMachineConfig.create(name, config_nodes, cpu_cores, memory_allocation,
                                     graphics_driver)

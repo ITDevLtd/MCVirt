@@ -109,6 +109,11 @@ class VirtualMachine(PyroObject):
             if disk.is_static():
                 is_static = True
 
+        # If nodes have been defined in the VM config, then the nodes
+        # are static
+        if self.get_config_object().get_config()['available_nodes'] is not None:
+            is_static = True
+
         return is_static
 
     def _getLibvirtDomainObject(self, allow_remote=False):
@@ -1112,7 +1117,8 @@ class VirtualMachine(PyroObject):
         new_vm_object = vm_factory._create(clone_vm_name, self.getCPU(),
                                            self.getRAM(), [], [],
                                            available_nodes=self.getAvailableNodes(),
-                                           node=self.getNode())
+                                           node=self.getNode(),
+                                           is_static=self.is_static())
 
         network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
@@ -1489,8 +1495,7 @@ class VirtualMachine(PyroObject):
     def getAvailableNodes(self):
         """Returns the nodes that the VM can be run on"""
         # If the VM is static, return the nodes from the config file
-        if (self.is_static() or
-                self.get_config_object().get_config()['available_nodes'] is not None):
+        if self.is_static():
             return self.get_config_object().get_config()['available_nodes']
 
         # Otherwise, calculate which nodes the VM can be run on...
