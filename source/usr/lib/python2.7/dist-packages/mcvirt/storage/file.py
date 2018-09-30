@@ -24,6 +24,7 @@ from mcvirt.exceptions import (InvalidStorageConfiguration,
                                ExternalStorageCommandErrorException)
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
+from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.system import System
 
 
@@ -46,7 +47,7 @@ class File(Base):
     @classmethod
     def validate_location_name(cls, location):
         """Ensure volume group name is valid"""
-        raise NotImplementedError
+        ArgumentValidator.validate_directory(location)
 
     @property
     def _volume_class(self):
@@ -76,7 +77,7 @@ class FileVolume(BaseVolume):
 
     def _validate_name(self):
         """Ensurue name of object is valid"""
-        raise NotImplementedError
+        ArgumentValidator.validate_file_name(self.name)
 
     def get_path(self, node=None):
         """Return the full path of a given volume"""

@@ -146,3 +146,15 @@ class ArgumentValidator(object):
         pattern = re.compile("^[A-Z0-9a-z_-]+$")
         if not pattern.match(lv_name):
             raise MCVirtTypeError('%s is not a valid logical volume name' % lv_name)
+
+    @staticmethod
+    def validate_directory(directory):
+        """Validate directory path"""
+        if not re.compile("^(/)?([^/\0]+(/)?)+$").match(directory):
+            raise MCVirtTypeError('%s is not a valid directory' % directory)
+
+    @staticmethod
+    def validate_file_name(file_name):
+        """Validate a fileename"""
+        if not re.compile("^[^/\0]+$").match(file_name):
+            raise MCVirtTypeError('%s is not a valid filename' % file_name)
