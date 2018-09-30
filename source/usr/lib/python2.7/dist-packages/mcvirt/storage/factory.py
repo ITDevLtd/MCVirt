@@ -422,6 +422,8 @@ class Factory(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_create)
 
+        return self.get_object(name)
+
     @Expose()
     def list(self):
         """List the Drbd volumes and statuses"""
