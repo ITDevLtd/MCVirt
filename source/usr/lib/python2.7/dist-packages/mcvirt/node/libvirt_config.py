@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from Cheetah.Template import Template
 import os
+from Cheetah.Template import Template
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
@@ -100,3 +100,4 @@ libvirtd_opts=" --listen --verbose %s"
         """Force libvirt to reload it's configuration"""
         action = 'restart' if self.hard_restart else 'force-reload'
         System.runCommand(['service', self.service_name, action])
+        self.hard_restart = False
