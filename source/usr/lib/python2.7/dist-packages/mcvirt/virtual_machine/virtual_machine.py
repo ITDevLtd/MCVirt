@@ -440,13 +440,17 @@ class VirtualMachine(PyroObject):
         if not (self._get_registered_object('auth').check_permission(
                 PERMISSIONS.MODIFY_VM, self) or
                 (self.getCloneParent() and
-                    self._get_registered_object('auth').check_permission(
-                        PERMISSIONS.DELETE_CLONE, self))
+                 self._get_registered_object('auth').check_permission(
+                     PERMISSIONS.DELETE_CLONE, self))
                 ):
             raise InsufficientPermissionsException(
                 ('User does not have the required permission - '
                  'User must have MODIFY_VM permission or be the owner of the cloned VM')
             )
+        else:
+            # Manually set permission asserted, since we do a complex permission
+            # check, which doesn't explicitly use assert_permission
+            self._get_registered_object('auth').set_permission_asserted()
 
         # Determine if VM is running
         if self._is_cluster_master and self._getPowerState() == PowerStates.RUNNING:
