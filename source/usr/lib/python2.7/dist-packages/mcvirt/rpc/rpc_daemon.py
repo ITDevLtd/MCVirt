@@ -289,73 +289,27 @@ class RpcNSMixinDaemon(object):
 
     def register_factories(self):
         """Register base MCVirt factories with RPC daemon"""
-        # Create Virtual machine factory object and register with daemon
-        virtual_machine_factory = VirtualMachineFactory()
-        self.register(virtual_machine_factory, objectId='virtual_machine_factory', force=True)
-
-        # Create network factory object and register with daemon
-        network_factory = NetworkFactory()
-        self.register(network_factory, objectId='network_factory', force=True)
-
-        # Create network factory object and register with daemon
-        hard_drive_factory = HardDriveFactory()
-        self.register(hard_drive_factory, objectId='hard_drive_factory', force=True)
-
-        # Create ISO factory object and register with daemon
-        iso_factory = IsoFactory()
-        self.register(iso_factory, objectId='iso_factory', force=True)
-
-        # Create auth object and register with daemon
-        auth = Auth()
-        self.register(auth, objectId='auth', force=True)
-
-        # Create user factory object and register with Daemon
-        user_factory = UserFactory()
-        self.register(user_factory, objectId='user_factory', force=True)
-
-        # Create cluster object and register with Daemon
-        cluster = Cluster()
-        self.register(cluster, objectId='cluster', force=True)
-
-        # Create node Drbd object and register with daemon
-        node_drbd = NodeDrbd()
-        self.register(node_drbd, objectId='node_drbd', force=True)
-
-        # Create network adapter factory and register with daemon
-        network_adapter_factory = NetworkAdapterFactory()
-        self.register(network_adapter_factory, objectId='network_adapter_factory', force=True)
-
-        # Create node instance and register with daemon
-        node = Node()
-        self.register(node, objectId='node', force=True)
-
-        # Create storage factory instance and register with daemon
-        storage_factory = StorageFactory()
-        self.register(storage_factory, objectId='storage_factory', force=True)
-
-        # Create logger object and register with daemon
-        logger = Logger.get_logger()
-        self.register(logger, objectId='logger', force=True)
-
-        # Create and register SSLSocketFactory object
-        certificate_generator_factory = CertificateGeneratorFactory()
-        self.register(certificate_generator_factory,
-                      objectId='certificate_generator_factory', force=True)
-
-        # Create libvirt config object and register with daemon
-        libvirt_config = LibvirtConfig()
-        self.register(libvirt_config, objectId='libvirt_config', force=True)
-
-        # Create and register libvirt connector object
-        libvirt_connector = LibvirtConnector()
-        self.register(libvirt_connector, objectId='libvirt_connector', force=True)
-
-        # Create and register LDAP factory object
-        ldap_factory = LdapFactory()
-        self.register(ldap_factory, objectId='ldap_factory', force=True)
-
-        # Register MCVirtConfig
-        self.register(MCVirtConfig, objectId='mcvirt_config', force=True)
+        registration_factories = [
+            [VirtualMachineFactory(), 'virtual_machine_factory'],
+            [NetworkFactory(), 'network_factory'],
+            [HardDriveFactory(), 'hard_drive_factory'],
+            [IsoFactory(), 'iso_factory'],
+            [Auth(), 'auth'],
+            [UserFactory(), 'user_factory'],
+            [Cluster(), 'cluster'],
+            [NodeDrbd(), 'node_drbd'],
+            [NetworkAdapterFactory(), 'network_adapter_factory'],
+            [Node(), 'node'],
+            [StorageFactory(), 'storage_factory'],
+            [Logger.get_logger(), 'logger'],
+            [CertificateGeneratorFactory(), 'certificate_generator_factory'],
+            [LibvirtConfig(), 'libvirt_config'],
+            [LibvirtConnector(), 'libvirt_connector'],
+            [LdapFactory(), 'ldap_factory'],
+            [MCVirtConfig, 'mcvirt_config']
+        ]
+        for factory_object, name in registration_factories:
+            self.register(factory_object, objectId=name, force=True)
 
         # Create an MCVirt session
         session_object = Session()
