@@ -88,8 +88,26 @@ class Base(PyroObject):
 
     @property
     def storage_backend(self):
-        """Return storage backend"""
+        """Return storage backend.
+        When object is initalised from config, this is
+        set to a string of the storage backend name.
+        When the get_storage_backend is run, it is
+        converted to a storage backend object.
+        When the config is saved, the storage backend
+        is saved as a string, which returns the name of
+        the storage backend.
+        """
         return self._storage_backend
+
+    @property
+    def libvirt_device_type(self):
+        """Return the libvirt device type of the storage backend"""
+        return self.get_storage_backend().libvirt_device_type
+
+    @property
+    def libvirt_source_parameter(self):
+        """Return the libvirt source parameter fro storage backend"""
+        return self.get_storage_backend().libvirt_source_parameter
 
     def __setattr__(self, name, value):
         """Override setattr to ensure that the value of
@@ -573,7 +591,7 @@ class Base(PyroObject):
         """Create a basic libvirt XML configuration for the connection to the disk"""
         # Create the base disk XML element
         device_xml = ET.Element('disk')
-        device_xml.set('type', self.get_storage_backend().libvirt_device_type)
+        device_xml.set('type', self.libvirt_device_type)
         device_xml.set('device', 'disk')
 
         # Configure the interface driver to the disk
@@ -584,7 +602,7 @@ class Base(PyroObject):
 
         # Configure the source of the disk
         source_xml = ET.SubElement(device_xml, 'source')
-        source_xml.set(self.get_storage_backend().libvirt_source_parameter, self._getDiskPath())
+        source_xml.set(self.libvirt_source_parameter, self._getDiskPath())
 
         # Configure the target
         target_xml = ET.SubElement(device_xml, 'target')
