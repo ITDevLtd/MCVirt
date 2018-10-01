@@ -476,9 +476,10 @@ class VirtualMachine(PyroObject):
         return table.draw() + "\n" + warnings
 
     @Expose(locking=True)
-    def delete(self, remove_data=False, local_only=False):
+    def delete(self, keep_disks=False, keep_config=False, local_only=False):
         """Delete the VM - removing it from LibVirt and from the filesystem"""
-        ArgumentValidator.validate_boolean(remove_data)
+        ArgumentValidator.validate_boolean(keep_disks)
+        ArgumentValidator.validate_boolean(keep_config)
         ArgumentValidator.validate_boolean(local_only)
 
         # Check the user has permission to modify VMs or
@@ -509,9 +510,9 @@ class VirtualMachine(PyroObject):
         if self.getCloneChildren():
             raise CannotDeleteClonedVmException('Can\'t delete cloned VM')
 
-        # If 'remove_data' has been passed as True, delete disks associated
+        # Unless 'keep_disks' has been passed as True, delete disks associated
         # with VM
-        if remove_data and get_hostname() in self.getAvailableNodes():
+        if (not keep_disks) and get_hostname() in self.getAvailableNodes():
             for disk_object in self.getHardDriveObjects():
                 disk_object.delete()
 
@@ -535,9 +536,9 @@ class VirtualMachine(PyroObject):
                 removeCloneChildConfig, 'Removed clone child \'%s\' from \'%s\'' %
                 (self.get_name(), self.getCloneParent()))
 
-        # If 'remove_data' has been passed as True, delete directory
+        # Unless 'keep_config' has been passed as True, delete directory
         # from VM storage
-        if remove_data:
+        if not keep_config:
             # Remove VM configuration file
             self.get_config_object().gitRemove('VM \'%s\' has been removed' % self.name)
             rmtree(VirtualMachine.get_vm_dir(self.name))
@@ -555,7 +556,7 @@ class VirtualMachine(PyroObject):
                 vm_factory = remote_object.get_connection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
                 remote_object.annotate_object(remote_vm)
-                remote_vm.delete(remove_data=remove_data)
+                remote_vm.delete(keep_disks=keep_disks, keep_config=keep_config)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
