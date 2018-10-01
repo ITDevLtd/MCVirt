@@ -333,7 +333,7 @@ class VirtualMachineTests(TestBase):
             1,
             original_memory_allocation,
             [100],
-            [self.test_network_name],
+            ['Production'],
             storage_type='Local')
         self.rpc.annotate_object(test_vm_object)
         self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))

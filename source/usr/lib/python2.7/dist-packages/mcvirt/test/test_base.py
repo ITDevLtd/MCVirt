@@ -21,7 +21,6 @@ import threading
 from mcvirt.client.rpc import Connection
 from mcvirt.parser import Parser
 from mcvirt.constants import PowerStates, LockStates
-from mcvirt.system import System
 
 
 def skip_drbd(required):
@@ -41,25 +40,6 @@ def skip_drbd(required):
     return wrapper_gen
 
 
-class TestNetworkInterface(object):
-    """Create test network interface"""
-
-    def __init__(self, network_factory, cluster, interface):
-        """Create the inteface"""
-        self.interface = interface
-        self.network_factory = network_factory
-        self.cluster = cluster
-        self.network_factory.create_dummy_interface(
-            self.interface, nodes=self.cluster.get_nodes(include_local=True))
-
-    def __del__(self):
-        """Remove the interface on object delete"""
-        self.network_factory.delete_dummy_interface(
-            self.interface, nodes=self.cluster.get_nodes(include_local=True))
-        self.network_factory = None
-        self.cluster = None
-
-
 class TestBase(unittest.TestCase):
     """Provide base test case, with constructor/destructor
     for providing access to the parser and RPC
@@ -69,8 +49,6 @@ class TestBase(unittest.TestCase):
     # that are supplied with MCVirt
     RPC_USERNAME = 'mjc'
     RPC_PASSWORD = 'pass'
-
-    DUMMY_INTERFACE = None
 
     def setUp(self):
         """Obtain connections to the daemon and create various
@@ -90,27 +68,6 @@ class TestBase(unittest.TestCase):
         self.parser.USERNAME = self.RPC_USERNAME
         self.parser.SESSION_ID = self.rpc.session_id
 
-        # Create test network definitions and interface
-        self.test_physical_interface = 'virbr10-dummy'
-        self.test_network_name_temp = 'mcvirt-unittest-dummy-network-temp'
-        self.test_network_name = 'mcvirt-unittest-dummy-network'
-        TestBase.DUMMY_INTERFACE = TestNetworkInterface(
-            network_factory=self.RPC_DAEMON.DAEMON.registered_factories['network_factory'],
-            cluster=self.RPC_DAEMON.DAEMON.registered_factories['cluster'],
-            interface=self.test_physical_interface)
-
-        # Create network for dummy interface
-        self.network_factory = self.rpc.get_connection('network_factory')
-        self.test_network = self.network_factory.create(
-            self.test_network_name,
-            self.test_physical_interface)
-
-        # Determine if the test network exists. If so, delete it
-        if self.network_factory.check_exists(self.test_network_name_temp):
-            network = self.network_factory.get_network_by_name(self.test_network_name)
-            self.rpc.annotate_object(network)
-            network.delete()
-
         # Setup variable for test VM
         self.test_vms = \
             {
@@ -120,7 +77,7 @@ class TestBase(unittest.TestCase):
                     'cpu_count': 1,
                     'memory_allocation': 100,
                     'disk_size': [100],
-                    'networks': [self.test_network_name]
+                    'networks': ['Production']
                 },
                 'TEST_VM_2':
                 {
@@ -128,7 +85,7 @@ class TestBase(unittest.TestCase):
                     'cpu_count': 2,
                     'memory_allocation': 120,
                     'disk_size': [100],
-                    'networks': [self.test_network_name]
+                    'networks': ['Production']
                 }
             }
 
@@ -137,6 +94,16 @@ class TestBase(unittest.TestCase):
         self.stop_and_delete(self.test_vms['TEST_VM_1']['name'])
 
         self.vm_factory = self.rpc.get_connection('virtual_machine_factory')
+
+        self.test_network_name = 'testnetwork'
+        self.test_physical_interface = 'vmbr0'
+        self.network_factory = self.rpc.get_connection('network_factory')
+
+        # Determine if the test network exists. If so, delete it
+        if self.network_factory.check_exists(self.test_network_name):
+            network = self.network_factory.get_network_by_name(self.test_network_name)
+            self.rpc.annotate_object(network)
+            network.delete()
 
     def tearDown(self):
         """Destroy stored objects."""
@@ -148,10 +115,6 @@ class TestBase(unittest.TestCase):
         # Remove the test network, if it exists
         if self.network_factory.check_exists(self.test_network_name):
             network = self.network_factory.get_network_by_name(self.test_network_name)
-            self.rpc.annotate_object(network)
-            network.delete()
-        if self.network_factory.check_exists(self.test_network_name_temp):
-            network = self.network_factory.get_network_by_name(self.test_network_name_temp)
             self.rpc.annotate_object(network)
             network.delete()
 

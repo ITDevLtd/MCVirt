@@ -29,11 +29,10 @@ from mcvirt.exceptions import (NetworkAlreadyExistsException, LibvirtException,
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.node.network.network import Network
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.syslogger import Syslogger
 from mcvirt.utils import get_hostname
-from mcvirt.system import System
 from mcvirt.constants import DEFAULT_LIBVIRT_NETWORK_NAME
 
 
@@ -185,16 +184,6 @@ class Factory(PyroObject):
         # matches the requested name
         return (name in networks.keys())
 
-    def get_remote_object(self,
-                          node=None,          # The name of the remote node to connect to
-                          node_object=None):  # Otherwise, pass a remote node connection
-        """Obtain an instance of the network factory on a remote node"""
-        cluster = self._get_registered_object('cluster')
-        if node_object is None:
-            node_object = cluster.get_remote_node(node)
-
-        return node_object.get_connection('network_factory')
-
     def initialise(self):
         """Delete the default libvirt network if it exists"""
         libvirt = self._get_registered_object('libvirt_connector').get_connection()
@@ -215,26 +204,3 @@ class Factory(PyroObject):
             Syslogger.logger().info(
                 'Failed to find default network (%s)' % DEFAULT_LIBVIRT_NETWORK_NAME
             )
-
-    @Expose()
-    @RunRemoteNodes()
-    def create_dummy_interface(self, interface_name,
-                               ip_address='10.9.8.7',
-                               mac_address='52:54:00:7e:27:af'):
-        """Method to create dummy interface - only
-        used during system tests
-        """
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-        System.runCommand(['ip', 'link', 'add', interface_name, 'type', 'dummy'])
-        System.runCommand(['ip', 'link', 'set', interface_name, 'address', '52:54:00:7e:27:af'])
-        System.runCommand(['ifconfig', interface_name, ip_address])
-
-    @Expose()
-    @RunRemoteNodes()
-    def delete_dummy_interface(self, interface_name):
-        """Method to create dummy interface - only
-        used during system tests
-        """
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-        System.runCommand(['ifconfig', interface_name, 'down'])
-        System.runCommand(['ip', 'link', 'delete', interface_name])

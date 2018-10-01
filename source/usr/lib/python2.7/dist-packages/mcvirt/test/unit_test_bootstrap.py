@@ -19,7 +19,6 @@ import unittest
 import threading
 
 from mcvirt.client.rpc import Connection
-from mcvirt.test.test_base import TestBase
 from mcvirt.test.node.network_tests import NetworkTests
 from mcvirt.test.lock.lock_tests import LockTests
 from mcvirt.test.ldap_tests import LdapTests
@@ -58,22 +57,21 @@ class UnitTestBootstrap(object):
         lock_tests_suite = LockTests.suite()
         ldap_tests_suite = LdapTests.suite()
 
-        TestBase.RPC_DAEMON = self.daemon
         OnlineMigrateTests.RPC_DAEMON = self.daemon
         AuthTests.RPC_DAEMON = self.daemon
         UpdateTests.RPC_DAEMON = self.daemon
 
         self.all_tests = unittest.TestSuite([
-            auth_test_suite
-            # virtual_machine_test_suite,
-            # network_test_suite,
-            # drbd_test_suite,
-            # update_test_suite,
-            # node_test_suite,
-            # online_migrate_test_suite,
-            # validation_test_suite,
-            # lock_tests_suite,
-            # ldap_tests_suite
+            auth_test_suite,
+            virtual_machine_test_suite,
+            network_test_suite,
+            drbd_test_suite,
+            update_test_suite,
+            node_test_suite,
+            online_migrate_test_suite,
+            validation_test_suite,
+            lock_tests_suite,
+            ldap_tests_suite
         ])
 
     def daemon_loop_condition(self):
@@ -94,7 +92,6 @@ class UnitTestBootstrap(object):
             self.daemon_run = False
             OnlineMigrateTests.RPC_DAEMON = None
             AuthTests.RPC_DAEMON = None
-            TestBase.RPC_DAEMON = None
             self.daemon.shutdown(0, 0)
 
             # Wait for daemon to stop
