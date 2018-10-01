@@ -18,6 +18,12 @@ MCVirt is implemented in Python, using the `libvirt virtualisation library <http
 Getting started
 ===============
 
+BETA WARNING
+============
+The master branch currently contains a beta release of v9.0.0.
+
+To use the latest stable release, please switch to tag v8.3.0.
+
 Installation
 ------------
 
