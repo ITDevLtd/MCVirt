@@ -609,13 +609,13 @@ class Cluster(PyroObject):
             remote_vm_factory = remote_connection.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.getVirtualMachineByName(vm_name)
             remote_connection.annotate_object(remote_vm)
-            remote_vm.delete(remove_data=True, local_only=True)
+            remote_vm.delete(local_only=True)
 
         # Remove any VMs that are only present on the remote node
         node_to_remove_con = self.get_remote_node(node_name_to_remove)
         for vm_object in all_vm_objects:
             if vm_object.getAvailableNodes() == [node_name_to_remove]:
-                vm_object.delete(remove_data=True, local_only=True)
+                vm_object.delete(local_only=True)
                 self.run_remote_command(callback_method=remove_vm, nodes=all_nodes,
                                         kwargs={'vm_name': vm_object.get_name()})
             else:

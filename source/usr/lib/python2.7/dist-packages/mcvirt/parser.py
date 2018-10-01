@@ -258,8 +258,22 @@ class Parser(object):
         # Get arguments for deleting a VM
         self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
                                                         parents=[self.parent_parser])
+
+        # This argument is deprecated, this is now default functionality, replaced
+        # with --keep-data and --keep-config
         self.delete_parser.add_argument('--delete-data', dest='delete_data', action='store_true',
-                                        help='Deletes the VM data from the host')
+                                        help=argparse.SUPPRESS)
+        self.delete_parser.add_argument('--keep-config', dest='keep_config', action='store_true',
+                                        help=('Keeps the VM configuration directory\n'
+                                              'Note: A new VM cannot be created with '
+                                              'the same name until this directory '
+                                              'is removed'))
+        self.delete_parser.add_argument('--keep-disks', dest='keep_disks', action='store_true',
+                                        help=('Keeps the VM hard drives '
+                                              '(files on disk or logical volume)\n'
+                                              'Note: A new VM cannot be created with '
+                                              'the same name until this directory '
+                                              'is removed'))
         self.delete_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
         # Get arguments for registering a VM
@@ -1126,7 +1140,8 @@ class Parser(object):
             vm_factory = rpc.get_connection('virtual_machine_factory')
             vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
             rpc.annotate_object(vm_object)
-            vm_object.delete(args.delete_data)
+            vm_object.delete(keep_disks=args.keep_disks,
+                             keep_config=args.keep_config)
 
         elif action == 'register':
             vm_factory = rpc.get_connection('virtual_machine_factory')

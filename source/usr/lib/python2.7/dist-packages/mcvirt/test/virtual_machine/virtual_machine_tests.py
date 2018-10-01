@@ -135,7 +135,7 @@ class VirtualMachineTests(TestBase):
         # Obtain VM object
         vm_object_2 = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_2']['name'])
         self.rpc.annotate_object(vm_object_2)
-        vm_object_2.delete(True)
+        vm_object_2.delete()
 
     @skip_drbd(False)
     def test_create_drbd_not_enabled(self):
@@ -165,7 +165,7 @@ class VirtualMachineTests(TestBase):
         self.create_vm('TEST_VM_1', storage_type)
 
         # Remove VM using parser
-        self.parser.parse_arguments('delete %s --delete-data' % self.test_vms['TEST_VM_1']['name'])
+        self.parser.parse_arguments('delete %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure VM has been deleted
         self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
@@ -219,13 +219,13 @@ class VirtualMachineTests(TestBase):
 
         # Attempt to delete parent
         with self.assertRaises(CannotDeleteClonedVmException):
-            test_vm_parent.delete(True)
+            test_vm_parent.delete()
 
         # Remove clone
-        test_vm_clone.delete(True)
+        test_vm_clone.delete()
 
         # Remove parent
-        test_vm_parent.delete(True)
+        test_vm_parent.delete()
 
     @skip_drbd(True)
     def test_clone_drbd(self):
@@ -240,7 +240,7 @@ class VirtualMachineTests(TestBase):
                 (self.test_vms['TEST_VM_1']['name'],
                  self.test_vms['TEST_VM_2']['name']))
 
-        test_vm_parent.delete(True)
+        test_vm_parent.delete()
 
     def test_duplicate_local(self):
         """Perform test_duplicate test with Local storage"""
@@ -297,10 +297,10 @@ class VirtualMachineTests(TestBase):
         test_vm_parent.stop()
 
         # Remove parent
-        test_vm_parent.delete(True)
+        test_vm_parent.delete()
 
         # Remove duplicate
-        test_vm_duplicate.delete(True)
+        test_vm_duplicate.delete()
 
     def test_invalid_name(self):
         """Attempt to create a virtual machine with an invalid name"""
@@ -356,7 +356,7 @@ class VirtualMachineTests(TestBase):
         self.assertEqual(int(test_vm_object.getRAM()), int(original_memory_allocation))
 
         # Remove test VM
-        test_vm_object.delete(True)
+        test_vm_object.delete()
 
     def test_vm_directory_already_exists(self):
         """Attempt to create a VM whilst the directory for the VM already exists"""
@@ -518,7 +518,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(test_vm_object.getPowerState() is PowerStates.STOPPED.value)
 
         # Delete VM
-        test_vm_object.delete(True)
+        test_vm_object.delete()
 
         # Ensure VM no longer exists
         self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
@@ -612,7 +612,7 @@ class VirtualMachineTests(TestBase):
                 domain_config.find('./devices/disk[@type="block"]/target').get('bus'),
                 disk_driver[1]
             )
-            vm_object.delete(True)
+            vm_object.delete()
 
     def test_live_iso_change(self):
         """Change the ISO attached to a running VM"""
@@ -646,4 +646,4 @@ class VirtualMachineTests(TestBase):
         )
 
         test_vm_object.stop()
-        test_vm_object.delete(True)
+        test_vm_object.delete()
