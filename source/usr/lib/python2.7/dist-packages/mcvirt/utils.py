@@ -18,6 +18,7 @@
 import socket
 from os.path import isfile
 
+
 class HostnameCache(object):
     """Class to hold cached hostname"""
     HOSTNAME = None
@@ -26,6 +27,7 @@ class HostnameCache(object):
 def get_network_hostname():
     """Return the hostname of the system, using the socket"""
     return socket.gethostname()
+
 
 def get_hostname():
     """Return the hostname of the system stored in a custom config file"""
@@ -49,6 +51,28 @@ def get_hostname():
 
     # Return cached hostname
     return HostnameCache.HOSTNAME
+
+
+def ensure_hostname_consistent():
+    """Ensure that the system current hostname
+    matches the hostname recorded in the config file
+    """
+    if get_hostname() != get_network_hostname():
+        raise Exception(("Fatal Error: System hostname appears to have changed.\n"
+                         "Original Hostname: %(original)s, New hostname: %(new)s"
+                         "If this is expected, perform the following:\n"
+                         " - Update the hostname in /etc/mcvirt/hostname.conf\n"
+                         " - Renmame the host directory /var/lib/mcvirt/%(original)s"
+                         " to /var/lib/mcvirt/%(new)s\n"
+                         ' - Update uses of the hostname in'
+                         '/var/lib/mcvirt/%(new)s/config.json, '
+                         '/var/lib/mcvirt/<hostname>/config.json on all remote nodes, '
+                         '/var/lib/mcvirt/%(new)s/vm/*/config.json and '
+                         "/var/lib/mcvirt/<hostname>/vm/*/config.json on all remote nodes.\n"
+                         "\nIf this was NOT expected, please check system hostname and "
+                         "DNS configuration.") % {'original': get_hostname(),
+                                                  'new': get_network_hostname()})
+
 
 def get_all_submodules(target_class):
     """Return all inheriting classes, recursively"""
