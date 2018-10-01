@@ -276,7 +276,7 @@ class Factory(PyroObject):
 
             # Check storage is available on local node
             if (available_on_local_node and
-                    cluster.get_local_hostname() not in storage_object.nodes):
+                    get_hostname() not in storage_object.nodes):
                 continue
 
             # If nodes are specified...
@@ -396,7 +396,7 @@ class Factory(PyroObject):
                                  if 'location' in node_config[node] and
                                  node_config[node]['location'] is not None else location)
 
-                if node == cluster.get_local_hostname():
+                if node == get_hostname():
                     self.node_pre_check(location=node_location, storage_type=storage_type)
                 else:
                     # If node is a remote node, run the command remotely
