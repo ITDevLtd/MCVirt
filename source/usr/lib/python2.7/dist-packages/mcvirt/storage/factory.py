@@ -19,6 +19,7 @@ from texttable import Texttable
 
 from mcvirt.storage.lvm import Lvm
 from mcvirt.storage.file import File
+from mcvirt.storage.base import Base
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.constants import DEFAULT_STORAGE_NAME
@@ -28,7 +29,7 @@ from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNo
                                InvalidStorageConfiguration, InaccessibleNodeException,
                                NodeVersionMismatch, StorageBackendAlreadyExistsError)
 from mcvirt.argument_validator import ArgumentValidator
-from mcvirt.utils import convert_size_friendly
+from mcvirt.utils import convert_size_friendly, get_all_submodules
 
 
 class Factory(PyroObject):
@@ -493,7 +494,7 @@ class Factory(PyroObject):
 
     def get_storage_types(self):
         """Return the available storage types that MCVirt provides"""
-        return self.STORAGE_TYPES
+        return get_all_submodules(Base)
 
     def get_class(self, storage_type):
         """Obtain the storage class for a given storage type"""
