@@ -69,7 +69,7 @@ class Lvm(Base):
     @property
     def libvirt_source_parameter(self):
         """The libvirt property for source"""
-        return 'raw'
+        return 'dev'
 
     @Expose()
     @RunRemoteNodes()

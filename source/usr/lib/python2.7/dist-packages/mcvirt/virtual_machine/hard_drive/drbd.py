@@ -239,6 +239,22 @@ class Drbd(Base):
         """Return the disk object config items"""
         return super(Drbd, self).config_properties + ['drbd_port', 'drbd_minor']
 
+    @property
+    def libvirt_device_type(self):
+        """Return the libvirt device type of the storage backend.
+        This is overriden from the storage backend as DRBD provides
+        an independent block device.
+        """
+        return 'block'
+
+    @property
+    def libvirt_source_parameter(self):
+        """Return the libvirt source parameter fro storage backend.
+        This is overriden from the storage backend as DRBD provides
+        an independent block device.
+        """
+        return 'dev'
+
     @Expose()
     def get_resource_name(self):
         """Obtain the resource name"""
