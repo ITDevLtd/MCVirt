@@ -33,6 +33,7 @@ from mcvirt.rpc.expose_method import Expose
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.syslogger import Syslogger
 from mcvirt.utils import get_hostname
+from mcvirt.constants import DEFAULT_LIBVIRT_NETWORK_NAME
 
 
 class Factory(PyroObject):
@@ -187,7 +188,7 @@ class Factory(PyroObject):
         """Delete the default libvirt network if it exists"""
         libvirt = self._get_registered_object('libvirt_connector').get_connection()
         try:
-            default = libvirt.networkLookupByName('default')
+            default = libvirt.networkLookupByName(DEFAULT_LIBVIRT_NETWORK_NAME)
             try:
                 default.destroy()
             except:
@@ -199,5 +200,7 @@ class Factory(PyroObject):
                 pass
 
         except libvirtError:
-            # Fail silently
-            Syslogger.logger().info('Failed to find default network')
+            # Fail silently (ish)
+            Syslogger.logger().info(
+                'Failed to find default network (%s)' % DEFAULT_LIBVIRT_NETWORK_NAME
+            )

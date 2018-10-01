@@ -70,9 +70,17 @@ class Drbd(PyroObject):
                 json.dump({'username': hook_user, 'password': hook_pass}, fh)
 
     @Expose()
-    def is_enabled(self):
+    def is_enabled(self, node=None):
         """Determine whether Drbd is enabled on the node or not"""
-        return self.get_config()['enabled']
+        cluster = self._get_registered_object('cluster')
+        if node is None or node == cluster.get_local_hostname():
+            return self.get_config()['enabled']
+
+        def get_remote_enabled(connection):
+            """Obtain remote DRBD enabled"""
+            remote_node_drbd = connection.get_connection('node_drbd')
+            return remote_node_drbd.is_enabled()
+        return cluster.run_remote_command(get_remote_enabled, node=node)
 
     @Expose()
     def is_installed(self):

@@ -18,6 +18,8 @@
 
 import re
 from mcvirt.exceptions import MCVirtTypeError
+from mcvirt.constants import (DEFAULT_LIBVIRT_NETWORK_NAME,
+                              DEFAULT_STORAGE_NAME)
 
 
 class ArgumentValidator(object):
@@ -51,8 +53,28 @@ class ArgumentValidator(object):
                              ' be 64 characters or less in length'
                              ' and start with an alpha-numeric character')
 
-        if name == 'default':
-            raise MCVirtTypeError('Network name cannot be \'default\'')
+        if name == DEFAULT_LIBVIRT_NETWORK_NAME:
+            raise MCVirtTypeError('Network name cannot be \'%s\'' % DEFAULT_LIBVIRT_NETWORK_NAME)
+        try:
+            if len(name) > 64 or not len(name):
+                raise MCVirtTypeError(exception_message)
+            disallowed = re.compile(r"[^A-Z\d-]", re.IGNORECASE)
+            if disallowed.search(name):
+                raise MCVirtTypeError(exception_message)
+            if name.startswith('-') or name.endswith('-'):
+                raise MCVirtTypeError(exception_message)
+        except (ValueError, TypeError):
+            raise MCVirtTypeError(exception_message)
+
+    @staticmethod
+    def validate_storage_name(name):
+        """Validate the name of a storage backend"""
+        exception_message = ('Storage name must only use alpha-numeric characters and dashes,'
+                             ' be 64 characters or less in length'
+                             ' and start with an alpha-numeric character')
+
+        if name == DEFAULT_STORAGE_NAME:
+            raise MCVirtTypeError('Storage name cannot be \'%s\'' % DEFAULT_STORAGE_NAME)
         try:
             if len(name) > 64 or not len(name):
                 raise MCVirtTypeError(exception_message)
@@ -117,3 +139,22 @@ class ArgumentValidator(object):
         pattern = re.compile("^[A-Z0-9a-z_-]+$")
         if not pattern.match(vg_name):
             raise MCVirtTypeError('%s is not a valid volume group name' % vg_name)
+
+    @staticmethod
+    def validate_logical_volume_name(lv_name):
+        """Validate a volume group name"""
+        pattern = re.compile("^[A-Z0-9a-z_-]+$")
+        if not pattern.match(lv_name):
+            raise MCVirtTypeError('%s is not a valid logical volume name' % lv_name)
+
+    @staticmethod
+    def validate_directory(directory):
+        """Validate directory path"""
+        if not re.compile("^(/)?([^/\0]+(/)?)+$").match(directory):
+            raise MCVirtTypeError('%s is not a valid directory' % directory)
+
+    @staticmethod
+    def validate_file_name(file_name):
+        """Validate a fileename"""
+        if not re.compile("^[^/\0]+$").match(file_name):
+            raise MCVirtTypeError('%s is not a valid filename' % file_name)

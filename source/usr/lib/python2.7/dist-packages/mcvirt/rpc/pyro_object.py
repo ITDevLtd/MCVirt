@@ -97,4 +97,10 @@ class PyroObject(object):
         if self._is_pyro_initialised:
             if obj is None:
                 obj = self
+            try:
+                Syslogger.logger().debug('Unregistering object (dynamic): %s' % obj)
+            except:
+                pass
+
+            # Unregister object from pyro
             self._pyroDaemon.unregister(obj)

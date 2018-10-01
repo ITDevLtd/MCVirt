@@ -22,6 +22,10 @@ import Pyro4
 from mcvirt.utils import get_all_submodules
 
 
+# Exceptions can be tagged using:
+# Namespace (e.g. VirtualMachine) - Useful for a particular namepsace
+# Common - Shared exceptions used throughout the codebase
+
 class MCVirtException(Exception):
     """Provide an exception to be thrown for errors in MCVirt"""
 
@@ -95,7 +99,7 @@ class NodeAlreadyPresent(MCVirtException):
 
 
 class NodeDoesNotExistException(MCVirtException):
-    """The node does not exist"""
+    """The node does not exist. Tag: Cluster"""
 
     pass
 
@@ -107,7 +111,7 @@ class RemoteObjectConflict(MCVirtException):
 
 
 class ClusterNotInitialisedException(MCVirtException):
-    """The cluster has not been initialised, so cannot connect to the remote node"""
+    """The cluster has not been initialised, so cannot connect to the remote node. Tag: Cluster"""
 
     pass
 
@@ -125,67 +129,67 @@ class CAFileAlreadyExists(MCVirtException):
 
 
 class IncorrectCredentials(MCVirtException):
-    """The supplied credentials are incorrect"""
+    """The supplied credentials are incorrect. Tag: Authentication"""
 
     pass
 
 
 class InvalidUsernameException(MCVirtException):
-    """Username is within a reserved namespace"""
+    """Username is within a reserved namespace. Tag: Authentication"""
 
     pass
 
 
 class AuthenticationError(MCVirtException):
-    """Incorrect credentials"""
+    """Incorrect credentials. Tag: Authentication"""
 
     pass
 
 
 class CurrentUserError(MCVirtException):
-    """Error whilst obtaining current pyro user"""
+    """Error whilst obtaining current pyro user. Tag: Authentication"""
 
     pass
 
 
 class UserDoesNotExistException(MCVirtException):
-    """The specified user does not exist"""
+    """The specified user does not exist. Tag: Authentication"""
 
     pass
 
 
 class PasswordsDoNotMatchException(MCVirtException):
-    """The new passwords do not match"""
+    """The new passwords do not match. Tag: Authentication"""
 
     pass
 
 
 class RemoteCommandExecutionFailedException(MCVirtException):
-    """A remote command execution fails"""
+    """A remote command execution fails. Tag: Cluster"""
 
     pass
 
 
 class UnknownRemoteCommandException(MCVirtException):
-    """An unknown command was passed to the remote machine"""
+    """An unknown command was passed to the remote machine. Tag: Cluster"""
 
     pass
 
 
 class NodeAuthenticationException(MCVirtException):
-    """Incorrect password supplied for remote node"""
+    """Incorrect password supplied for remote nodeTag: Cluster"""
 
     pass
 
 
 class CouldNotConnectToNodeException(MCVirtException):
-    """Could not connect to remove cluster node"""
+    """Could not connect to remove cluster node. Tag: Cluster"""
 
     pass
 
 
 class RemoteNodeLockedException(MCVirtException):
-    """Remote node is locked"""
+    """Remote node is locked. Tag: Cluster"""
 
     pass
 
@@ -229,19 +233,22 @@ class IsoInUseException(MCVirtException):
 
 
 class DrbdNotInstalledException(MCVirtException):
-    """Drbd is not installed"""
+    """Drbd is not installed. Tag: Drbd"""
 
     pass
 
 
 class DrbdAlreadyEnabled(MCVirtException):
-    """Drbd has already been enabled on this node"""
+    """Drbd has already been enabled on this node. Tag: Drbd"""
 
     pass
 
 
 class DrbdNotEnabledOnNode(MCVirtException):
-    """Drbd volumes cannot be created on a node that has not been configured to use Drbd"""
+    """Drbd volumes cannot be created on a node that
+    has not been configured to use Drbd.
+    Tag: Drbd
+    """
 
     pass
 
@@ -271,7 +278,7 @@ class NetworkUtilizedException(MCVirtException):
 
 
 class ArgumentParserException(MCVirtException):
-    """An invalid argument was provided"""
+    """An invalid argument was provided. Tag: Common"""
 
     pass
 
@@ -283,7 +290,7 @@ class StorageTypeNotSpecified(MCVirtException):
 
 
 class InvalidNodesException(MCVirtException):
-    """The nodes passed is invalid"""
+    """The nodes passed is invalid. Tag: Common"""
 
     pass
 
@@ -307,7 +314,15 @@ class LogicalVolumeDoesNotExistException(MCVirtException):
 
 
 class LogicalVolumeIsNotActiveException(MCVirtException):
-    """Logical volume is not active"""
+    """Logical volume is not active.
+    @TODO Remove in factour of VolumeIsNotActiveException
+    """
+
+    pass
+
+
+class VolumeIsNotActiveException(MCVirtException):
+    """Volume is not active"""
 
     pass
 
@@ -439,7 +454,7 @@ class VmStoppedException(MCVirtException):
 
 
 class UnsuitableNodeException(MCVirtException):
-    """The node is unsuitable to run the VM"""
+    """The node is unsuitable to run the VM. Tag: Common"""
 
     pass
 
@@ -475,7 +490,11 @@ class VirtualMachineLockException(MCVirtException):
 
 
 class InvalidArgumentException(MCVirtException):
-    """Argument given is not valid"""
+    """
+    Argument given is not valid.
+    Tag: Common
+    @TODO remove in favour of ArgumentParserException
+    """
 
     pass
 
@@ -571,13 +590,13 @@ class BlankPasswordException(MCVirtException):
 
 
 class NodeVersionMismatch(MCVirtException, Pyro4.errors.SecurityError):
-    """A node is running a different version of MCVirt"""
+    """A node is running a different version of MCVirt. Tag: Cluster"""
 
     pass
 
 
 class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
-    """Unable to connect to node in the cluster"""
+    """Unable to connect to node in the cluster. Tag: Cluster"""
 
     pass
 
@@ -607,7 +626,7 @@ class InvalidGraphicsDriverException(MCVirtException):
 
 
 class TooManyParametersException(MCVirtException):
-    """Too many parameters have been defined"""
+    """Too many parameters have been defined. Tag: Common"""
 
     pass
 
@@ -619,7 +638,7 @@ class InvalidModificationFlagException(MCVirtException):
 
 
 class MCVirtTypeError(MCVirtException):
-    """TypeError raised by MCVirt"""
+    """TypeError raised by MCVirt. Tag: Common"""
 
     pass
 
@@ -632,6 +651,126 @@ class UsbDeviceAttachedToVirtualMachine(MCVirtException):
 
 class UnknownLdapError(MCVirtException):
     """An unknown LDAP error has occurred"""
+
+    pass
+
+
+class StorageBackendDoesNotExist(MCVirtException):
+    """Storage backend does not exist"""
+
+    pass
+
+
+class InvalidStorageConfiguration(MCVirtException):
+    """Invalid storage configuration"""
+
+    pass
+
+
+class NodeAlreadyConfiguredInStorageBackend(MCVirtException):
+    """Node is already configured for the storage backend"""
+
+    pass
+
+
+class StorageBackendInUse(MCVirtException):
+    """Storage is in use and cannot be deleted"""
+
+    pass
+
+
+class StorageBackendNotAvailableOnNode(MCVirtException):
+    """Storage backend defined, is not available on the given node"""
+
+    pass
+
+
+class UnknownStorageBackendException(MCVirtException):
+    """Storage backend either not specified and multiple avialaable or
+    no storage backends available
+    """
+
+    pass
+
+
+class VolumeDoesNotExistError(MCVirtException):
+    """Volume does not exist"""
+
+    pass
+
+
+class VolumeAlreadyExistsError(MCVirtException):
+    """Volume already exists"""
+
+    pass
+
+
+class DDCommandError(MCVirtException):
+    """An error ocurred whilst running dd"""
+
+    pass
+
+
+class NetworkNotAvailableOnNodeError(MCVirtException):
+    """Network is not available on given node"""
+
+    pass
+
+
+class InvalidStorageBackendError(MCVirtException):
+    """Selected storage backend does not support DRBD"""
+
+    pass
+
+
+class InconsistentVolumeSizeError(MCVirtException):
+    """Volumes are of an inconsistent size across cluster"""
+
+    pass
+
+
+class StorageBackendAlreadyExistsError(MCVirtException):
+    """Storage volume already exist with same name"""
+
+    pass
+
+
+class NoConfigurationChangeError(MCVirtException):
+    """A change was requested that resulted in no change
+    Tag: Common
+    """
+
+    pass
+
+
+class CannotUnshareInUseStorageBackendError(MCVirtException):
+    """A shared storage backend that is used by VMs
+    cannot be unshared
+    """
+
+    pass
+
+
+class NodeUsedByStaticVirtualMachine(MCVirtException):
+    """Node is in use by static virtual machines"""
+
+    pass
+
+
+class NodeNotConfiguredInStorageBackend(MCVirtException):
+    """Node is not configured for the storage backend"""
+
+    pass
+
+
+class CannotRemoveNodeFromGlobalStorageBackend(MCVirtException):
+    """A node cannot be removed from a global storage backend"""
+
+    pass
+
+
+class AlreadyElevatedPermissionsError(MCVirtException):
+    """Cannot elevate permissions twice"""
 
     pass
 

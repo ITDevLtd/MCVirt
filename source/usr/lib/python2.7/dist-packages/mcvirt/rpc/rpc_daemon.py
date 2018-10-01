@@ -36,6 +36,7 @@ from mcvirt.virtual_machine.network_adapter.factory import Factory as NetworkAda
 from mcvirt.logger import Logger
 from mcvirt.node.drbd import Drbd as NodeDrbd
 from mcvirt.node.node import Node
+from mcvirt.storage.factory import Factory as StorageFactory
 from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.rpc.certificate_generator_factory import CertificateGeneratorFactory
 from mcvirt.node.libvirt_config import LibvirtConfig
@@ -127,12 +128,13 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
                     if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
                                               user_object=user_object) and
-                            Annotations.IGNORE_Drbd in data):
-                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
+                            Annotations.IGNORE_DRBD in data):
+                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
                     else:
                         Pyro4.current_context.ignore_drbd = False
                     if Pyro4.current_context.cluster_master:
                         self.registered_factories['cluster'].check_node_versions()
+                    Pyro4.current_context.PERMISSION_ASSERTED = False
                     return session_id
 
             # If a session id has been passed, store it and check the
@@ -175,13 +177,14 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
                     if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
                                               user_object=user_object) and
-                            Annotations.IGNORE_Drbd in data):
-                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_Drbd]
+                            Annotations.IGNORE_DRBD in data):
+                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
                     else:
                         Pyro4.current_context.ignore_drbd = False
 
                     if Pyro4.current_context.cluster_master:
                         self.registered_factories['cluster'].check_node_versions()
+                    Pyro4.current_context.PERMISSION_ASSERTED = False
                     return session_id
         except Pyro4.errors.SecurityError:
             raise
@@ -223,6 +226,7 @@ class RpcNSMixinDaemon(object):
         # Wait for nameserver
         Syslogger.logger().debug('Wait for connection to nameserver')
         self.obtain_connection()
+        Syslogger.logger().debug('Obtained nameserver connection')
 
         RpcNSMixinDaemon.DAEMON = BaseRpcDaemon(host=self.hostname)
         self.register_factories()
@@ -242,6 +246,7 @@ class RpcNSMixinDaemon(object):
                     signal.SIGSEGV, signal.SIGTERM):
             signal.signal(sig, self.shutdown)
 
+        Syslogger.logger().debug('Initialising objects')
         for registered_object in RpcNSMixinDaemon.DAEMON.registered_factories:
             obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
             if type(obj) is not types.TypeType:  # noqa
@@ -252,8 +257,10 @@ class RpcNSMixinDaemon(object):
         """Start the Pyro daemon"""
         Pyro4.current_context.STARTUP_PERIOD = False
         Syslogger.logger().debug('Authentication enabled')
-        Syslogger.logger().debug('Starting daemon request loop')
+        Syslogger.logger().debug('Obtaining lock')
         with DaemonLock.LOCK:
+            Syslogger.logger().debug('Obtained lock')
+            Syslogger.logger().debug('Starting daemon request loop')
             RpcNSMixinDaemon.DAEMON.requestLoop(*args, **kwargs)
         Syslogger.logger().debug('Daemon request loop finished')
 
@@ -322,6 +329,10 @@ class RpcNSMixinDaemon(object):
         node = Node()
         self.register(node, objectId='node', force=True)
 
+        # Create storage factory instance and register with daemon
+        storage_factory = StorageFactory()
+        self.register(storage_factory, objectId='storage_factory', force=True)
+
         # Create logger object and register with daemon
         logger = Logger.get_logger()
         self.register(logger, objectId='logger', force=True)
@@ -366,3 +377,4 @@ class RpcNSMixinDaemon(object):
                 Syslogger.logger().warn('Connecting to name server: %s' % str(e))
                 # Wait for 1 second for name server to come up
                 time.sleep(1)
+            Syslogger.logger().debug('Connection to name server complete')

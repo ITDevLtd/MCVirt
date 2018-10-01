@@ -172,7 +172,7 @@ class VirtualMachineTests(TestBase):
 
         # Ensure that VM directory does not exist
         self.assertFalse(os.path.exists(
-            VirtualMachine._get_vm_dir(self.test_vms['TEST_VM_1']['name'])
+            VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name'])
         ))
 
     def test_clone_local(self):
@@ -361,7 +361,7 @@ class VirtualMachineTests(TestBase):
     def test_vm_directory_already_exists(self):
         """Attempt to create a VM whilst the directory for the VM already exists"""
         # Create the directory for the VM
-        os.makedirs(VirtualMachine._get_vm_dir(self.test_vms['TEST_VM_1']['name']))
+        os.makedirs(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
 
         # Attempt to create VM, expecting an exception for the directory already existing
         with self.assertRaises(VmDirectoryAlreadyExistsException):
@@ -378,7 +378,7 @@ class VirtualMachineTests(TestBase):
         self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
 
         # Remove directory
-        shutil.rmtree(VirtualMachine._get_vm_dir(self.test_vms['TEST_VM_1']['name']))
+        shutil.rmtree(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
 
     def test_start_local(self):
         """Perform the test_start test with Local storage"""

@@ -15,9 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
-
-import libvirt
 import os
 
 from mcvirt.system import System
@@ -27,7 +24,6 @@ from mcvirt.exceptions import (VmAlreadyStartedException, VmIsCloneException,
                                CannotMigrateLocalDiskException,
                                MCVirtCommandException)
 from mcvirt.virtual_machine.hard_drive.base import Base
-from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.expose_method import Expose
 
@@ -38,28 +34,37 @@ class Local(Base):
     MAXIMUM_DEVICES = 4
     CACHE_MODE = 'directsync'
 
-    def __init__(self, logical_volume=None, *args, **kwargs):
-        """Sets member variables and obtains libvirt domain object"""
-        self._logical_volume = logical_volume
+    def __init__(self, custom_disk_name=None, *args, **kwargs):
+        """Set member variables and obtains libvirt domain object"""
+        self._custom_disk_name = custom_disk_name
         super(Local, self).__init__(*args, **kwargs)
 
     @property
-    def logical_volume(self):
-        if self._logical_volume:
-            return self._logical_volume
+    def disk_name(self):
+        """Return disk name"""
+        if self.custom_disk_name:
+            return self.custom_disk_name
         vm_name = self.vm_object.get_name()
         return 'mcvirt_vm-%s-disk-%s' % (vm_name, self.disk_id)
 
     @property
+    def custom_disk_name(self):
+        """Return custom disk name"""
+        return self._custom_disk_name
+
+    @property
     def config_properties(self):
         """Return the disk object config items"""
-        return super(Local, self).config_properties + ['logical_volume']
+        return super(Local, self).config_properties + ['custom_disk_name']
 
     @staticmethod
-    def isAvailable(pyro_object):
+    def isAvailable(storage_factory, node_drdb):
         """Determine if local storage is available on the node"""
-        return (pyro_object._get_registered_object('node').is_volume_group_set() and
-                pyro_object._get_registered_object('node').volume_group_exists())
+        return bool(storage_factory.get_all(available_on_local_node=True))
+
+    def _get_data_volume(self):
+        """Obtain the data volume object for the disk"""
+        return self._get_volume(self.disk_name)
 
     @Expose(locking=True)
     def increaseSize(self, increase_size):
@@ -72,58 +77,40 @@ class Local(Base):
         self._ensure_exists()
 
         # Ensure VM is stopped
-        from mcvirt.virtual_machine.virtual_machine import PowerStates
-        if (self.vm_object._getPowerState() is not PowerStates.STOPPED):
+        if not self.vm_object.is_stopped:
             raise VmAlreadyStartedException('VM must be stopped before increasing disk size')
 
         # Ensure that VM has not been cloned and is not a clone
-        if (self.vm_object.getCloneParent() or self.vm_object.getCloneChildren()):
+        if self.vm_object.getCloneParent() or self.vm_object.getCloneChildren():
             raise VmIsCloneException('Cannot increase the disk of a cloned VM or a clone.')
 
-        command_args = ('lvextend', '-L', '+%sM' % increase_size,
-                        self._getDiskPath())
-        try:
-            System.runCommand(command_args)
-        except MCVirtCommandException, e:
-            raise ExternalStorageCommandErrorException(
-                "Error whilst extending logical volume:\n" + str(e)
-            )
+        # Obtain volume for the disk and resize
+        volume = self._get_data_volume()
+        volume.resize(increase_size, increase=True)
 
     def _check_exists(self):
         """Checks if a disk exists, which is required before any operations
         can be performed on the disk"""
-        self._ensureLogicalVolumeExists(
-            self._getDiskName())
-        return True
+        return self._get_data_volume().check_exists()
 
     def _removeStorage(self):
         """Removes the backing logical volume"""
-        self._ensure_exists()
-        self._removeLogicalVolume(self._getDiskName())
+        self._get_data_volume().delete()
 
     def getSize(self):
         """Gets the size of the disk (in MB)"""
-        self._ensure_exists()
-        return self._get_logical_volume_size(self._getDiskName())
+        return self._get_data_volume().get_size()
 
     def clone(self, destination_vm_object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
         self._ensure_exists()
         new_disk = Local(vm_object=destination_vm_object, driver=self.driver,
-                         disk_id=self.disk_id)
+                         disk_id=self.disk_id,
+                         storage_backend=self.get_storage_backend())
         self._register_object(new_disk)
-        new_logical_volume_name = new_disk._getDiskName()
-        disk_size = self.getSize()
 
-        # Perform a logical volume snapshot
-        command_args = ('lvcreate', '-L', '%sM' % disk_size, '-s',
-                        '-n', new_logical_volume_name, self._getDiskPath())
-        try:
-            System.runCommand(command_args)
-        except MCVirtCommandException, e:
-            raise ExternalStorageCommandErrorException(
-                "Error whilst cloning disk logical volume:\n" + str(e)
-            )
+        # Clone original volume to new volume
+        self._get_data_volume().clone(new_disk._get_data_volume())
 
         new_disk.addToVirtualMachine()
         return new_disk
@@ -131,15 +118,7 @@ class Local(Base):
     def create(self, size):
         """Creates a new disk image, attaches the disk to the VM and records the disk
         in the VM configuration"""
-        disk_path = self._getDiskPath()
-        logical_volume_name = self._getDiskName()
-
-        # Ensure the disk doesn't already exist
-        if (os.path.lexists(disk_path)):
-            raise DiskAlreadyExistsException('Disk already exists: %s' % disk_path)
-
-        # Create the raw disk image
-        self._createLogicalVolume(logical_volume_name, size)
+        self._get_data_volume().create(size)
 
         # Attach to VM and create disk object
         self.addToVirtualMachine()
@@ -147,33 +126,36 @@ class Local(Base):
     def activateDisk(self):
         """Starts the disk logical volume"""
         self._ensure_exists()
-        self._activateLogicalVolume(self._getDiskName())
+        self._get_data_volume().activate()
 
     def deactivateDisk(self):
         """Deactivates the disk loglcal volume"""
-        self._ensure_exists()
+        self._get_data_volume().deactivate()
 
     def preMigrationChecks(self):
         """Perform pre-migration checks"""
-        raise CannotMigrateLocalDiskException('VMs using local disks cannot be migrated')
+        # @TODO Allow migration for shared disks - worth ensuring that the disks is actually
+        # available on both nodes
+        if not self.get_storage_backend().shared:
+            raise CannotMigrateLocalDiskException('VMs using local disks cannot be migrated')
 
     def _getDiskPath(self):
         """Returns the path of the raw disk image"""
-        return self._getLogicalVolumePath(self._getDiskName())
+        return self._get_data_volume().get_path()
 
     def _getDiskName(self):
         """Returns the name of a disk logical volume, for a given VM"""
-        return self.logical_volume
+        return self.disk_name
 
     def _getMCVirtConfig(self):
         """Returns the MCVirt hard drive configuration for the Local hard drive"""
         # There are no configurations for the disk stored by MCVirt
         return super(Local, self)._getMCVirtConfig()
 
-    def _getBackupLogicalVolume(self):
-        """Returns the storage device for the backup"""
-        return self._getDiskName()
+    def get_backup_source_volume(self):
+        """Retrun the source volume for snapshotting for backeups"""
+        return self._get_data_volume()
 
-    def _getBackupSnapshotLogicalVolume(self):
-        """Returns the logical volume name for the backup snapshot"""
-        return self._getDiskName + self.SNAPSHOT_SUFFIX
+    def get_backup_snapshot_volume(self):
+        """Return a volume object for the disk object"""
+        return self._get_volume(self.disk_name + self.SNAPSHOT_SUFFIX)
