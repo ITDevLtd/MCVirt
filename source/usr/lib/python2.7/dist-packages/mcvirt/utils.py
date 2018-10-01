@@ -16,12 +16,39 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import socket
+from os.path import isfile
+
+class HostnameCache(object):
+    """Class to hold cached hostname"""
+    HOSTNAME = None
 
 
-def get_hostname():
-    """Return the hostname of the system"""
+def get_network_hostname():
+    """Return the hostname of the system, using the socket"""
     return socket.gethostname()
 
+def get_hostname():
+    """Return the hostname of the system stored in a custom config file"""
+    # Hard code file location as constants DirectoryLocation class
+    # needs to use this function to obtain /var/lib/mcvirt/<hostname>
+    # It's need is greater than our own
+    hostname_file = '/etc/mcvirt/hostname.conf'
+
+    # If the hostname file does not exist, get the hostnmae from
+    # the current socket hostname and write to file
+    if not isfile(hostname_file):
+        HostnameCache.HOSTNAME = get_network_hostname()
+        with open(hostname_file, 'w') as fh:
+            fh.write(HostnameCache.HOSTNAME)
+
+    # If the hostname has not been cached in the local variable,
+    # then obtain from the file
+    if not HostnameCache.HOSTNAME:
+        with open(hostname_file) as fh:
+            HostnameCache.HOSTNAME = fh.readline()
+
+    # Return cached hostname
+    return HostnameCache.HOSTNAME
 
 def get_all_submodules(target_class):
     """Return all inheriting classes, recursively"""

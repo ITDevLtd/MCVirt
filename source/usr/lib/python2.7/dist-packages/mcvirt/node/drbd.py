@@ -73,7 +73,7 @@ class Drbd(PyroObject):
     def is_enabled(self, node=None):
         """Determine whether Drbd is enabled on the node or not"""
         cluster = self._get_registered_object('cluster')
-        if node is None or node == cluster.get_local_hostname():
+        if node is None or node == get_hostname():
             return self.get_config()['enabled']
 
         def get_remote_enabled(connection):

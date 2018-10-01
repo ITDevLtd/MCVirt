@@ -22,6 +22,7 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.argument_validator import ArgumentValidator
+from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (UnsuitableNodeException,
                                NodeAlreadyConfiguredInStorageBackend,
                                StorageBackendInUse,
@@ -59,7 +60,7 @@ class Base(PyroObject):
             cls.ensure_exists(location)
         except InvalidStorageConfiguration, exc:
             raise InvalidStorageConfiguration(
-                '%s on node %s' % (str(exc), cluster.get_local_hostname())
+                '%s on node %s' % (str(exc), get_hostname())
             )
         cls.check_permissions(libvirt_config, location)
 
@@ -218,7 +219,7 @@ class Base(PyroObject):
 
         # If adding local node to cluster
         if self._is_cluster_master:
-            if node_name == cluster.get_local_hostname():
+            if node_name == get_hostname():
 
                 # Ensure that the requested volume exists
                 storage_factory = self._get_registered_object('storage_factory')
@@ -370,8 +371,7 @@ class Base(PyroObject):
         """Return the location for a given node, default to local node"""
         # Default node to local node
         if node is None:
-            cluster = self._get_registered_object('cluster')
-            node = cluster.get_local_hostname()
+            node = get_hostname()
 
         # Raise exception if node is not configured for storage backend
         if node not in self.nodes:
@@ -390,8 +390,7 @@ class Base(PyroObject):
         a given node
         """
         if node is None:
-            cluster = self._get_registered_object('cluster')
-            node = cluster.get_local_hostname()
+            node = get_hostname()
 
         available = (node in self.nodes)
         if not available and raise_on_err:
@@ -554,10 +553,9 @@ class BaseVolume(PyroObject):
     def ensure_active(self):
         """Ensure that voljuem is active, otherwise, raise exception"""
         if not self.is_active():
-            cluster = self._get_registered_object('cluster')
             raise VolumeIsNotActiveException(
                 'Volume %s is not active on %s' %
-                (self.name, cluster.get_local_hostname())
+                (self.name, get_hostname())
             )
 
     def snapshot(self, destination_volume, size):

@@ -20,6 +20,7 @@ import os
 import shutil
 
 from mcvirt.utils import get_hostname
+from mcvirt.constants import DirectoryLocation
 from mcvirt.system import System
 from mcvirt.exceptions import (CACertificateNotFoundException, OpenSSLNotFoundException,
                                MustGenerateCertificateException)
@@ -78,6 +79,7 @@ class CertificateGenerator(PyroObject):
     @property
     def ssl_base_directory(self):
         """Return the base SSL directory for the node."""
+        # TODO: Use constant
         path = '/var/lib/mcvirt/%s/ssl' % get_hostname()
         if not os.path.exists(path):
             os.makedirs(path)
@@ -108,7 +110,7 @@ class CertificateGenerator(PyroObject):
     @property
     def ca_pub_file(self):
         """Return/generate the CA pub file"""
-        base_dir = '/etc/mcvirt' if self.is_local else None
+        base_dir = DirectoryLocation.OS_CONFIG_DIR if self.is_local else None
 
         path = self._get_certificate_path('cacert.pem',
                                           base_dir=base_dir)

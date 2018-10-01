@@ -25,6 +25,7 @@ class DirectoryLocation(object):
     """Provides directory/file path constants."""
 
     TEMPLATE_DIR = '/usr/lib/python2.7/dist-packages/mcvirt/templates'
+    OS_CONFIG_DIR = '/etc/mcvirt'
     BASE_STORAGE_DIR = '/var/lib/mcvirt'
     NODE_STORAGE_DIR = BASE_STORAGE_DIR + '/' + get_hostname()
     BASE_VM_STORAGE_DIR = NODE_STORAGE_DIR + '/vm'
