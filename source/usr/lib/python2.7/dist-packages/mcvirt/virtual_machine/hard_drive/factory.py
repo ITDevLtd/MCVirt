@@ -101,14 +101,13 @@ from mcvirt.virtual_machine.hard_drive.drbd import Drbd
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.utils import get_hostname
+from mcvirt.utils import get_hostname, get_all_submodules
 from mcvirt.rpc.expose_method import Expose
 
 
 class Factory(PyroObject):
     """Provides a factory for creating hard drive/hard drive config objects"""
 
-    STORAGE_TYPES = [Local, Drbd]
     DEFAULT_STORAGE_TYPE = 'Local'
     OBJECT_TYPE = 'hard disk'
     HARD_DRIVE_CLASS = Base
@@ -338,14 +337,14 @@ class Factory(PyroObject):
         available_storage_types = []
         storage_factory = self._get_registered_object('storage_factory')
         node_drbd = self._get_registered_object('node_drbd')
-        for storage_type in self.STORAGE_TYPES:
+        for storage_type in self.getStorageTypes():
             if storage_type.isAvailable(storage_factory, node_drbd):
                 available_storage_types.append(storage_type)
         return available_storage_types
 
     def getStorageTypes(self):
         """Returns the available storage types that MCVirt provides"""
-        return self.STORAGE_TYPES
+        return get_all_submodules(Base)
 
     def getClass(self, storage_type):
         """Obtains the hard drive class for a given storage type"""
