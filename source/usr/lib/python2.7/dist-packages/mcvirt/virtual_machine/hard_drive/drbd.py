@@ -338,8 +338,7 @@ class Drbd(Base):
 
         # Get remote nodes - can assume that this is just 1 since DRBD only support two nodes
         remote_nodes = self.vm_object._get_remote_nodes()
-        nodes = list(remote_nodes) + [
-            self._get_registered_object('cluster').get_local_hostname()]
+        nodes = list(remote_nodes) + [get_hostname()]
         if len(remote_nodes) != 1:
             raise InvalidNodesException('Only one remote node can be used')
 
@@ -489,7 +488,7 @@ class Drbd(Base):
         self._ensure_exists()
         cluster = self._get_registered_object('cluster')
         remote_nodes = [] if local_only else self.vm_object._get_remote_nodes()
-        all_nodes = ([cluster.get_local_hostname()]
+        all_nodes = ([get_hostname()]
                      if local_only else
                      self.vm_object.getAvailableNodes())
 

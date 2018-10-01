@@ -22,6 +22,7 @@ from mcvirt.exceptions import (LibvirtException, NetworkUtilizedException,
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
+from mcvirt.utils import get_hostname
 
 
 class Network(PyroObject):
@@ -127,14 +128,14 @@ class Network(PyroObject):
         """Determine whether network is available on a given node"""
         # Default to local node
         if node is None:
-            node = self._get_registered_object('cluster').get_local_hostname()
+            node = get_hostname()
         return node in self.nodes
 
     def ensure_available_on_node(self, node=None):
         """Ensure that network is available on a given node"""
         # Default to local node
         if node is None:
-            node = self._get_registered_object('cluster').get_local_hostname()
+            node = self._get_registered_object('cluster').get_hostname()
 
         # Check if it's available and raise an exception is it's not available
         if not self.check_available_on_node(node=node):

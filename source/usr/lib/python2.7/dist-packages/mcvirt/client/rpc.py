@@ -22,7 +22,7 @@ import Pyro4
 
 import mcvirt.exceptions  # Import necessary for Pyro # noqa
 from mcvirt.exceptions import AuthenticationError
-from mcvirt.utils import get_hostname
+from mcvirt.utils import get_network_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
@@ -39,7 +39,7 @@ class Connection(object):
                  host=None, ignore_cluster=False, cluster_master=None):
         """Store member variables for connecting"""
         # If the host is not provided, default to the local host
-        self.__host = host if host is not None else get_hostname()
+        self.__host = host if host is not None else get_network_hostname()
 
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket

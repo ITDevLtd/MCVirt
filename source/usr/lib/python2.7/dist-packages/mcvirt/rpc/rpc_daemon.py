@@ -42,7 +42,7 @@ from mcvirt.rpc.certificate_generator_factory import CertificateGeneratorFactory
 from mcvirt.node.libvirt_config import LibvirtConfig
 from mcvirt.node.ldap_factory import LdapFactory
 from mcvirt.libvirt_connector import LibvirtConnector
-from mcvirt.utils import get_hostname
+from mcvirt.utils import get_hostname, ensure_hostname_consistent
 from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.daemon_lock import DaemonLock
@@ -204,6 +204,11 @@ class RpcNSMixinDaemon(object):
 
     def __init__(self):
         """Store required object member variables and create MCVirt object"""
+        # Before doing ANYTHING, ensure that the hostname that MCVirt thinks the
+        # machine is (i.e. the hostname that the machine was already setup as)
+        # matches the current hostname of the machine
+        ensure_hostname_consistent()
+
         # Initialise Pyro4 with flag to showing that the daemon is being started
         Pyro4.current_context.STARTUP_PERIOD = True
 

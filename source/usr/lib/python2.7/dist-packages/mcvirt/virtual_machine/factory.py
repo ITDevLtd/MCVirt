@@ -304,7 +304,7 @@ class Factory(PyroObject):
             ArgumentValidator.validate_hostname(available_node)
 
         cluster_object = self._get_registered_object('cluster')
-        local_hostname = cluster_object.get_local_hostname()
+        local_hostname = get_hostname()
 
         if node and available_nodes and node not in available_nodes:
             raise InvalidNodesException('Node must be in available nodes')

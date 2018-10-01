@@ -18,7 +18,7 @@
 
 import Pyro4
 
-from mcvirt.utils import get_hostname
+from mcvirt.utils import get_hostname, ensure_hostname_consistent
 from mcvirt.rpc.ssl_socket import SSLSocket
 
 
@@ -27,6 +27,11 @@ class NameServer(object):
 
     def __init__(self):
         """Perform configuration of Pyro4"""
+        # Before doing ANYTHING, ensure that the hostname that MCVirt thinks the
+        # machine is (i.e. the hostname that the machine was already setup as)
+        # matches the current hostname of the machine
+        ensure_hostname_consistent()
+
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.THREADPOOL_ALLOW_QUEUE = True
         Pyro4.config.THREADPOOL_SIZE = 128

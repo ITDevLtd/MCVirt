@@ -18,6 +18,7 @@
 import Pyro4
 
 from mcvirt.rpc.lock import lock_log_and_call
+from mcvirt.utils import get_hostname
 
 
 class Expose(object):
@@ -87,8 +88,7 @@ class RunRemoteNodes(object):
                 return_val = {} if return_dict else None
 
                 # Determine if local node is present in list of nodes.
-                cluster = self._get_registered_object('cluster')
-                local_hostname = cluster.get_local_hostname()
+                local_hostname = get_hostname()
                 if local_hostname in nodes:
                     # If so, remove node from list, run the local callback first
                     # and capture the output

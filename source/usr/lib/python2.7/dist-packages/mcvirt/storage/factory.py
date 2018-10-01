@@ -29,7 +29,7 @@ from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNo
                                InvalidStorageConfiguration, InaccessibleNodeException,
                                NodeVersionMismatch, StorageBackendAlreadyExistsError)
 from mcvirt.argument_validator import ArgumentValidator
-from mcvirt.utils import convert_size_friendly, get_all_submodules
+from mcvirt.utils import convert_size_friendly, get_all_submodules, get_hostname
 
 
 class Factory(PyroObject):
@@ -95,8 +95,8 @@ class Factory(PyroObject):
             # Get the configuration for each of the nodes
             local_storage_config = local_storage_object.get_config()
             current_node_configs = {
-                cluster.get_local_hostname(): local_storage_config['nodes'][
-                    cluster.get_local_hostname()
+                get_hostname(): local_storage_config['nodes'][
+                    get_hostname()
                 ]
             }
         except StorageBackendDoesNotExist:

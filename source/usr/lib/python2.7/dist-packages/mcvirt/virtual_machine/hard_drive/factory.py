@@ -254,8 +254,8 @@ class Factory(PyroObject):
         # available nodes can only be 1 node, so calculate it
         if (storage_type == Local.__name__ and
                 not storage_backend.shared):
-            if self._get_registered_object('cluster').get_local_hostname() in nodes:
-                nodes = [self._get_registered_object('cluster').get_local_hostname()]
+            if get_hostname() in nodes:
+                nodes = [get_hostname()]
             else:
                 raise InvalidNodesException(
                     ('Non-shared local storage must be assigned to a '

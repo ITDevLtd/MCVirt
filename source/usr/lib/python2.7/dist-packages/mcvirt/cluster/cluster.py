@@ -91,7 +91,8 @@ class Cluster(PyroObject):
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.header(('Node', 'IP Address', 'Status'))
         # Add this node to the table
-        table.add_row((get_hostname(), self.get_cluster_ip_address(),
+        table.add_row((get_hostname(),
+                       self.get_cluster_ip_address(),
                        'Local'))
 
         # Add remote nodes
@@ -709,10 +710,6 @@ class Cluster(PyroObject):
         self.ensure_node_exists(node)
         return self.get_cluster_config()['nodes'][node]
 
-    def get_local_hostname(self):
-        """Return the hostname of the local node"""
-        return self.get_cluster_config()['node_name']
-
     @Expose()
     def get_nodes(self, return_all=False, include_local=False):
         """Return an array of node configurations"""
@@ -723,7 +720,7 @@ class Cluster(PyroObject):
                 if not node:
                     nodes.remove(node)
         if include_local:
-            nodes.append(self.get_local_hostname())
+            nodes.append(get_hostname())
         return nodes
 
     def run_remote_command(self, callback_method, nodes=None, args=[], kwargs={},
