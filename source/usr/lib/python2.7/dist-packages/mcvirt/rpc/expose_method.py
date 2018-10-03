@@ -101,11 +101,11 @@ class Function(object):
         # Stored list of nodes for command to be run on, if passed
         # and remove from kwargs
         if 'nodes' in kwargs:
-            self.nodes = kwargs['nodes']
+            nodes = kwargs['nodes']
             del kwargs['nodes']
         # Otherwise, just add the local node
         else:
-            self.nodes = [get_hostname()]
+            nodes = [get_hostname()]
 
         # If return_dict has been specified, obtain variable
         # and remove from kwargs
@@ -115,34 +115,61 @@ class Function(object):
             del kwargs['return_dict']
 
         # Setup status for command on each node
-        self.node_status = {
+        self.nodes = {
             node: {'complete': False,
-                   'return_val': None}
-            for node in self.nodes
+                   'return_val': None,
+                   'kwargs': dict(kwargs),
+                   'args': list(args)}
+            for node in nodes
         }
+        self.current_node = None
 
         # Store function and parameters
         self.function = function
         self.obj = obj
-        self.args = args
-        self.kwargs = kwargs
         self.locking = locking
         self.object_type = object_type
         self.instance_method = instance_method
         self.is_complete = False
 
+        # Register instance and functions with pyro
+        self.obj._register_object(self)
+        Pyro4.expose(self.add_undo_argument)
+        Pyro4.expose(self.complete)
+
     def run(self):
         """Run the function"""
-        # If the machine is the cluster master, run
-        # the fuction with the transaction abilities
-        if self.obj._is_cluster_master:
-            self._register_and_call()
+        # Pause the session timeout
+        self._pause_user_session()
 
-        # Otherwise, run the function normally,
-        # as only the cluster master deals with
-        # transactions
-        else:
-            self._call_function_local()
+        # Catch all exceptions to ensure that user
+        # session is always reset
+        try:
+            # If the local host is in the list of nodes
+            # run the function on the local node first
+            if get_hostname() in self.nodes:
+                # If the machine is the cluster master, run
+                # the fuction with the transaction abilities
+                if self.obj._is_cluster_master:
+                    self._register_and_call()
+
+                # Otherwise, run the function normally,
+                # as only the cluster master deals with
+                # transactions
+                else:
+                    self._call_function_local()
+
+        except:
+            # Reset user session after the command is
+            # complete
+            self._reset_user_session()
+
+            # Re-raise exception
+            raise
+
+        # Reset user session after the command is
+        # complete
+        self._reset_user_session()
 
         # Return the data from the function
         return self._get_response_data()
@@ -168,48 +195,64 @@ class Function(object):
 
     def _call_function_local(self):
         """Perform the actual command on the local node"""
+        # Set the current node to the local node
+        local_hostname = get_hostname()
+        self.current_node = local_hostname
+
         # If locking was defined, perform command with
         # log lock and call
         if self.locking:
-            self.node_status[get_hostname()]['return_val'] = \
+            # Create list of kwargs with local object
+            kwargs = dict(self.nodes[local_hostname]['kwargs'])
+            kwargs['_f'] = self
+            self.nodes[local_hostname]['return_val'] = \
                 lock_log_and_call(self.function,
-                                  [self.obj] + self.args,
-                                  self.kwargs,
+                                  [self.obj] + self.nodes[local_hostname]['args'],
+                                  kwargs,
                                   self.instance_method,
                                   self.object_type)
 
         # Otherwise run the command directly
         else:
-            self.node_status[get_hostname()]['return_val'] = \
-                self.function(self.obj, _f=self, *self.args, **self.kwargs)
+            self.nodes[local_hostname]['return_val'] = \
+                self.function(self.obj, _f=self, *self.nodes[local_hostname]['args'],
+                              **self.nodes[local_hostname]['kwargs'])
 
     def _call_function_remote(self, node):
         """Run the function on a remote node"""
+        # Set current node to remote node
+        self.current_node = node
+
         # Obtain the remote object
         remote_object = self.obj.get_remote_object(node=node)
 
+        # Create kwargs including local object
+        kwargs = dict(self.nodes[node]['kwargs'])
+        kwargs['_k'] = self
+
         # Run the method by obtaining the member attribute, based on the name of
         # the callback function from of the remote object
-        response = getattr(remote_object, self.function.__name__)(*self.args, **self.kwargs)
+        response = getattr(remote_object, self.function.__name__)(
+            *self.nodes[node]['args'], **kwargs)
 
         # Store output in response
-        self.node_status[node]['return_val'] = response
+        self.nodes[node]['return_val'] = response
 
     def _get_response_data(self):
         """Determine and return response data"""
         # Return dict of node -> output, if a dict response was
         # specified
         if self.return_dict:
-            return {node: self.node_status[node]['return_val']
-                    for node in self.nodes}
+            return {node: self.nodes[node]['return_val']
+                    for node in self.nodes.keys()}
 
         # Otherwise, default to returning data from local node
         elif get_hostname() in self.nodes:
-            return self.node_status[get_hostname()]['return_val']
+            return self.nodes[get_hostname()]['return_val']
 
         # Otherwise, return the response from the first found node.
-        elif self.node_status:
-            return self.node_status[self.node_status.keys()[0]]['return_val']
+        elif self.nodes:
+            return self.nodes[self.nodes.keys()[0]]['return_val']
 
         # Otherwise, if no node data, return None
         return None
@@ -218,7 +261,7 @@ class Function(object):
         """Add an additional keyword argument to be
         passed to the undo method, when it is run
         """
-        self.kwargs.update(kwargs)
+        self.nodes[self.current_node]['kwargs'].update(kwargs)
 
     def complete(self):
         """Mark the function as having completed
@@ -226,13 +269,31 @@ class Function(object):
         the function (or, if in one, the rest of the transaction),
         the undo method will be called
         """
-        self.is_complete = True
+        self.nodes[self.current_node]['complete'] = True
 
     def undo(self):
         """Execute the undo method for the function"""
         undo_function_name = 'undo__%s' % self.function.__name__
         if self.is_complete and hasattr(self.obj, undo_function_name):
             getattr(self.obj, undo_function_name)(*self.args, **self.kwargs)
+
+    def _pause_user_session(self):
+        """Pause the user session"""
+        # Determine if session ID is present in current context and the session object has
+        # been set
+        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
+            # Disable the expiration whilst the method runs
+            Expose.SESSION_OBJECT.USER_SESSIONS[
+                Expose.SESSION_OBJECT._get_session_id()
+            ].disable()
+
+    def _reset_user_session(self):
+        """Reset the user session"""
+        # Determine if session ID is present in current context and the session object has
+        # been set
+        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
+            # Renew session expiry
+            Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT._get_session_id()].renew()
 
 
 class Expose(object):
@@ -252,96 +313,14 @@ class Expose(object):
         """Run when object is created. The returned value is the method that is executed"""
         def inner(self_obj, *args, **kwargs):
             """Run when the wrapping method is called"""
-            # Determine if session ID is present in current context and the session object has
-            # been set
-            if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
-                # Disable the expiration whilst the method runs
-                Expose.SESSION_OBJECT.USER_SESSIONS[
-                    Expose.SESSION_OBJECT._get_session_id()
-                ].disable()
 
-            # Try-catch main method, to ensure that
-            # the session is always renewed (and re-enabled)
-            try:
+            # Create function object and run
+            function = Function(function=callback, obj=self_obj,
+                                args=args, kwargs=kwargs,
+                                locking=self.locking,
+                                object_type=self.object_type,
+                                instance_method=self.instance_method)
+            return function.run()
 
-                # Create function object and run
-                function = Function(function=callback, obj=self_obj,
-                                    args=args, kwargs=kwargs,
-                                    locking=self.locking,
-                                    object_type=self.object_type,
-                                    instance_method=self.instance_method)
-                return_value =  function.run()
-
-            except:
-                # Determine if session ID is present in current context and the session object has
-                # been set
-                if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
-                    # Renew session expiry
-                    Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT._get_session_id()].renew()
-
-                # Reraise exception
-                raise
-
-            # Determine if session ID is present in current context and the session object has
-            # been set
-            if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
-                # Renew session expiry
-                Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT._get_session_id()].renew()
-
-            return return_value
         # Expose the function
         return Pyro4.expose(inner)
-
-
-class RunRemoteNodes(object):
-    """Experimental decorator to allow running a set of commands on a remote node without
-       adding boiler plate code to execute the function on the remote nodes"""
-
-    def __call__(self, callback):
-        """Overriding method, which executes on remote command"""
-        def inner(self, *args, **kwargs):
-            """Run when the actual wrapping method is called"""
-            # Obtain the list of nodes from kwargs, if defined
-            if 'nodes' in kwargs:
-                nodes = list(kwargs['nodes'])
-                # Remove from arguments
-                del kwargs['nodes']
-
-
-                # Setup empty return value, incase localhost is not in the list
-                # of nodes
-                return_val = {} if return_dict else None
-
-                # Determine if local node is present in list of nodes.
-                local_hostname = get_hostname()
-                if local_hostname in nodes:
-                    # If so, remove node from list, run the local callback first
-                    # and capture the output
-                    nodes.remove(local_hostname)
-                    response = callback(self, *args, **kwargs)
-                    if return_dict:
-                        return_val[local_hostname] = response
-                    else:
-                        return_val = response
-
-                # Iterate over remote nodes, obtain the remote object
-                # and executing the function
-                for node in nodes:
-                    remote_object = self.get_remote_object(node=node)
-
-                    # Run the method by obtaining the member attribute, based on the name of
-                    # the callback function from of the remote object
-                    response = getattr(remote_object, callback.__name__)(*args, **kwargs)
-
-                    # Add output to return_val if return_dict was specified
-                    if return_dict:
-                        return_val[node] = response
-
-                # Return the returned value from the local callback
-                return return_val
-
-            # Otherwise, if ndoes not defined, call method as normal
-            else:
-                return callback(self, *args, **kwargs)
-
-        return inner
