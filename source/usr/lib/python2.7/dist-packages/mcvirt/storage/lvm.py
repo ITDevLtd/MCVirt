@@ -22,7 +22,7 @@ from mcvirt.exceptions import (InvalidStorageConfiguration,
                                ExternalStorageCommandErrorException,
                                MCVirtCommandException, VolumeDoesNotExistError,
                                VolumeAlreadyExistsError)
-from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.system import System
 from mcvirt.constants import DirectoryLocation
 from mcvirt.argument_validator import ArgumentValidator
@@ -71,8 +71,7 @@ class Lvm(Base):
         """The libvirt property for source"""
         return 'dev'
 
-    @Expose()
-    @RunRemoteNodes()
+    @Expose(remote_nodes=True)
     def get_free_space(self):
         """Return the free space in megabytes."""
         _, out, _ = System.runCommand(['vgs', self.get_location(),
@@ -98,9 +97,8 @@ class LvmVolume(BaseVolume):
         """Return the full path of a given logical volume"""
         return '/dev/' + self.storage_backend.get_location(node=node) + '/' + self.name
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def create(self, size):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def create(self, size, _f=None):
         """Create volume in storage backend"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -122,9 +120,8 @@ class LvmVolume(BaseVolume):
                 "Error whilst creating disk logical volume:\n" + str(exc)
             )
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def delete(self, ignore_non_existent=False):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def delete(self, ignore_non_existent=False, _f=None):
         """Delete volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -145,9 +142,8 @@ class LvmVolume(BaseVolume):
                 "Error whilst removing logical volume:\n" + str(exc)
             )
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def activate(self):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def activate(self, _f=None):
         """Activate volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -196,9 +192,8 @@ class LvmVolume(BaseVolume):
         """Deactivate volume"""
         raise NotImplementedError
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def resize(self, size, increase=True):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def resize(self, size, increase=True, _f=None):
         """Reszie volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -225,8 +220,7 @@ class LvmVolume(BaseVolume):
         """Determine whether logical volume exists"""
         return os.path.lexists(self.get_path())
 
-    @Expose()
-    @RunRemoteNodes()
+    @Expose(remote_nodes=True)
     def get_size(self):
         """Obtain the size of a logical volume"""
         self.ensure_exists()

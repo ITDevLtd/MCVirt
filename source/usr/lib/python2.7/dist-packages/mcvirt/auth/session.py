@@ -37,22 +37,35 @@ class SessionInfo(object):
         """Set member variables and expiry time if applicable"""
         self.username = username
 
+        # If the user session expires, set disabled
+        # to False and renew the session
         if user_class.EXPIRE_SESSION:
             self.disabled = False
             self.renew()
+
+        # Otherwise, set disabled as True, so
+        # that it never renews and expires
+        # to False so that it' always valid
         else:
             self.disabled = True
             self.expires = False
 
     def is_valid(self):
         """Return True if this session is valid"""
-        return (not self.expires or self.expires > time.time())
+        # Session is valid if expiry time is greater than
+        # the current time or expires has been disabled
+        return (self.expires is False or self.expires > time.time())
 
     def renew(self):
         """Renew this session by increasing the expiry time (if applicable)"""
+        # Reset the expiry time to current time + the default timeout duration
+        # only if the session timeout is not disabled
         self.expires = False if self.disabled else time.time() + SessionInfo.get_timeout()
 
     def disable(self):
+        """Disable session expiry complete. The session
+        cannot be re-enabled and will never expire
+        """
         self.expires = False
 
     @staticmethod

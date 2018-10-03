@@ -19,7 +19,7 @@
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.utils import get_hostname
@@ -433,8 +433,7 @@ class Base(PyroObject):
         node_object.annotate_object(remote_storage)
         return remote_storage
 
-    @Expose()
-    @RunRemoteNodes()
+    @Expose(remote_nodes=True)
     def get_free_space(self):
         """Return the amount of free spacae in the storage backend"""
         raise NotImplementedError
@@ -488,9 +487,8 @@ class BaseVolume(PyroObject):
         if not self.check_exists():
             raise VolumeDoesNotExistError('Volume (%s) does not exist' % self.name)
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def wipe(self):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def wipe(self, _f=None):
         """Wipe the volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -522,25 +520,22 @@ class BaseVolume(PyroObject):
         """Clone a volume to a new volume"""
         raise NotImplementedError
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def create(self, size):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def create(self, size, _f=None):
         """Create volume in storage backend"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
         raise NotImplementedError
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def delete(self, ignore_non_existent):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def delete(self, ignore_non_existent, _f=None):
         """Delete volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
         raise NotImplementedError
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def activate(self):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def activate(self, _f=None):
         """Activate volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -566,9 +561,8 @@ class BaseVolume(PyroObject):
         """Deactivate volume"""
         raise NotImplementedError
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def resize(self, size, increase):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def resize(self, size, increase, _f=None):
         """Reszie volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -578,8 +572,7 @@ class BaseVolume(PyroObject):
         """Determine whether volume exists"""
         raise NotImplementedError
 
-    @Expose()
-    @RunRemoteNodes()
+    @Expose(remote_nodes=True)
     def get_size(self):
         """Obtain the size of the volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
