@@ -158,12 +158,12 @@ class Function(PyroObject):
         self.support_callback = support_callback
 
         # Register instance and functions with pyro
-        self.obj._register_object(self)
+        self.obj._register_object(self, debug=False)
 
     def unregister(self, force=False):
         """De-register object after deletion"""
         if force or not Transaction.in_transaction():
-            self.unregister_object(self)
+            self.unregister_object(self, debug=False)
 
     @property
     def _undo_function_name(self):
