@@ -144,6 +144,9 @@ class Function(PyroObject):
         self.support_callback = support_callback
 
         # Register instance and functions with pyro
+        # @TODO This appears to never unregister,
+        # which will cause memory issues as objects
+        # never get destroyed.
         self.obj._register_object(self)
 
     def __del__(self):
