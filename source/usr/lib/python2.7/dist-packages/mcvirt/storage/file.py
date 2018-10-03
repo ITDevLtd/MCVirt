@@ -129,7 +129,7 @@ class FileVolume(BaseVolume):
         return self.storage_backend.get_location(node=node) + '/' + self.name
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def create(self, _f, size):
+    def create(self, size, _f=None):
         """Create volume in storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume does not already exist
@@ -147,7 +147,7 @@ class FileVolume(BaseVolume):
             )
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def delete(self, _f, ignore_non_existent=False):
+    def delete(self, ignore_non_existent=False, _f=None):
         """Delete volume"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Determine if logical volume exists before attempting to remove it
@@ -165,7 +165,7 @@ class FileVolume(BaseVolume):
             )
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def activate(self, _f):
+    def activate(self, _f=None):
         """Activate volume"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume exists
@@ -222,7 +222,7 @@ class FileVolume(BaseVolume):
         pass
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def resize(self, _f, size, increase=True):
+    def resize(self, size, increase=True, _f=None):
         """Reszie volume"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume exists

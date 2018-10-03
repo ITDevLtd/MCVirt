@@ -488,7 +488,7 @@ class BaseVolume(PyroObject):
             raise VolumeDoesNotExistError('Volume (%s) does not exist' % self.name)
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def wipe(self, _f):
+    def wipe(self, _f=None):
         """Wipe the volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -521,21 +521,21 @@ class BaseVolume(PyroObject):
         raise NotImplementedError
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def create(self, _f, size):
+    def create(self, size, _f=None):
         """Create volume in storage backend"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
         raise NotImplementedError
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def delete(self, _f, ignore_non_existent):
+    def delete(self, ignore_non_existent, _f=None):
         """Delete volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
         raise NotImplementedError
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def activate(self, _f):
+    def activate(self, _f=None):
         """Activate volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -562,7 +562,7 @@ class BaseVolume(PyroObject):
         raise NotImplementedError
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def resize(self, _f, size, increase):
+    def resize(self, size, increase, _f=None):
         """Reszie volume"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
