@@ -44,27 +44,41 @@ class Transaction(object):
 
         # Initialise empty list of functions
         self.functions = []
+        self.complete = False
 
         # Add the transaction to the static list of transactions
-        Transaction.transactions.append(self)
+        Transaction.transactions.insert(0, self)
 
     def finish_transaction(self):
         """Mark the transaction as having been completed"""
-        # Delete each of the function objects
-        for func in self.functions:
-            self.functions.remove(func)
-            del func
+        self.comlpete = True
+        # Only remove transaction if it is the last
+        # transaction in the stack
+        if Transaction.transactions.index(self) == 0:
+            Syslogger.logger().debug('End of transaction stack')
 
-        # Remove the transaction object from the global list
-        Transaction.transactions.remove(self)
+            # Tear down all transactions
+            for transaction in Transaction.transactions:
+                # Delete each of the function objects
+                for func in self.functions:
+                    self.functions.remove(func)
+                    func.unregister(force=True)
+                    del func
+
+            # Reset list of transactions
+            Transaction.transactions = []
 
     @classmethod
     def register_function(cls, function):
         """Register a function with the current transactions"""
         # Only register function if a transaction is in progress
         if cls.in_transaction():
-            # Append the function to the newest transaction
-            Transaction.transactions[-1].functions.append(function)
+            for transaction in Transaction.transactions:
+                # Append function to transaction, if it is
+                # not marked as complete
+                if not transaction.complete:
+                    # Append the function to the newest transaction
+                    transaction.functions.insert(0, function)
 
     @classmethod
     def function_failed(cls, function):
@@ -75,9 +89,9 @@ class Transaction(object):
         # If in a transaction
         if cls.in_transaction():
             # Iterate through transactions, removing each item
-            for transaction_ar in reversed(cls.transactions):
+            for transaction_ar in cls.transactions:
                 # Iteracte through each function in the transaction
-                for function in reversed(transaction_ar.functions):
+                for function in transaction_ar.functions:
 
                     # Undo the function
                     function.undo()
@@ -149,9 +163,10 @@ class Function(PyroObject):
         # never get destroyed.
         self.obj._register_object(self)
 
-    def __del__(self):
+    def unregister(self, force=False):
         """De-register object after deletion"""
-        self.unregister_object(self)
+        if force or not Transaction.in_transaction():
+            self.unregister_object(self)
 
     @property
     def _undo_function_name(self):
@@ -312,7 +327,8 @@ class Function(PyroObject):
 
     def undo(self):
         """Execute the undo method for the function"""
-
+        # If the local node is in the list of complete
+        # commands, then undo it first
         if (get_hostname() in self.nodes and
                 self.nodes[get_hostname()]['complete'] and
                 hasattr(self.obj, self._undo_function_name)):
@@ -387,7 +403,9 @@ class Expose(object):
                                 instance_method=self.instance_method,
                                 remote_nodes=self.remote_nodes,
                                 support_callback=self.support_callback)
-            return function.run() 
+            return_val = function.run()
+            function.unregister()
+            return return_val
 
         # Expose the function
         return Pyro4.expose(inner)
