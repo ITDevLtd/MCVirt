@@ -22,7 +22,7 @@ import Pyro4
 
 import mcvirt.exceptions  # Import necessary for Pyro # noqa
 from mcvirt.exceptions import AuthenticationError
-from mcvirt.utils import get_hostname
+from mcvirt.utils import get_network_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
@@ -39,7 +39,7 @@ class Connection(object):
                  host=None, ignore_cluster=False, cluster_master=None):
         """Store member variables for connecting"""
         # If the host is not provided, default to the local host
-        self.__host = host if host is not None else get_hostname()
+        self.__host = host if host is not None else get_network_hostname()
 
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
@@ -79,7 +79,9 @@ class Connection(object):
             raise mcvirt.exceptions.InaccessibleNodeException(
                 'MCVirt nameserver/daemon is not running on node %s' % self.__host
             )
-        except:
+        except Exception, exc:
+            Syslogger.logger().error('An unknown error occurred whilst connecting to daemon: %s' %
+                                     str(exc))
             raise mcvirt.exceptions.InaccessibleNodeException(
                 'An unknown error occurred whilst connecting to daemon'
             )
@@ -106,9 +108,9 @@ class Connection(object):
         auth_dict[Annotations.IGNORE_CLUSTER] = self.__ignore_cluster
         if 'ignore_cluster' in dir(Pyro4.current_context):
             auth_dict[Annotations.IGNORE_CLUSTER] |= Pyro4.current_context.ignore_cluster
-        auth_dict[Annotations.IGNORE_Drbd] = self.__ignore_drbd
+        auth_dict[Annotations.IGNORE_DRBD] = self.__ignore_drbd
         if 'ignore_drbd' in dir(Pyro4.current_context):
-            auth_dict[Annotations.IGNORE_Drbd] |= Pyro4.current_context.ignore_drbd
+            auth_dict[Annotations.IGNORE_DRBD] |= Pyro4.current_context.ignore_drbd
         return auth_dict
 
     def get_connection(self, object_name, password=None):
@@ -148,3 +150,8 @@ class Connection(object):
     def username(self):
         """Property for the username"""
         return self.__username
+
+    @property
+    def host(self):
+        """Return name of node"""
+        return self.__host

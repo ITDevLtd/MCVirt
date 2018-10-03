@@ -62,11 +62,12 @@ class PyroObject(object):
         else:
             return True
 
-    def _register_object(self, local_object):
+    def _register_object(self, local_object, debug=True):
         """Register an object with the pyro daemon"""
         if self._is_pyro_initialised:
             try:
-                Syslogger.logger().debug('Registering object (dynamic): %s' % local_object)
+                if debug:
+                    Syslogger.logger().debug('Registering object (dynamic): %s' % local_object)
             except:
                 pass
             self._pyroDaemon.register(local_object)
@@ -92,9 +93,16 @@ class PyroObject(object):
         else:
             return None
 
-    def unregister_object(self, obj=None):
+    def unregister_object(self, obj=None, debug=True):
         """Unregister object from the Pyro Daemon"""
         if self._is_pyro_initialised:
             if obj is None:
                 obj = self
+            try:
+                if debug:
+                    Syslogger.logger().debug('Unregistering object (dynamic): %s' % obj)
+            except:
+                pass
+
+            # Unregister object from pyro
             self._pyroDaemon.unregister(obj)

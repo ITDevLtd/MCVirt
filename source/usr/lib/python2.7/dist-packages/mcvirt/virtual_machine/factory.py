@@ -96,14 +96,21 @@ class Factory(PyroObject):
         """Returns a list of all VMs within the cluster or those registered on a specific node"""
         if node is not None:
             ArgumentValidator.validate_hostname(node)
+
         # If no node was defined, check the local configuration for all VMs
-        if (node is None):
+        if node is None:
             return MCVirtConfig().get_config()['virtual_machines']
+
         elif node == get_hostname():
+            # TODO - Why is this using libvirt?! Should use
+            #        VM objects (i.e. config file to determine)
+            #        and use a seperate function to get libvirt
+            #        registered VMs
             # Obtain array of all domains from libvirt
             all_domains = self._get_registered_object(
                 'libvirt_connector').get_connection().listAllDomains()
             return [vm.name() for vm in all_domains]
+
         else:
             # Return list of VMs registered on remote node
             cluster = self._get_registered_object('cluster')
@@ -116,8 +123,11 @@ class Factory(PyroObject):
     @Expose()
     def listVms(self, include_ram=False, include_cpu=False, include_disk=False):
         """Lists the VMs that are currently on the host"""
+        # Create base table
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
+
+        # Add headers
         headers = ['VM Name', 'State', 'Node']
         if include_ram:
             headers.append('RAM Allocation')
@@ -128,6 +138,7 @@ class Factory(PyroObject):
 
         table.header(tuple(headers))
 
+        # Iterate over VMs and add to list
         for vm_object in sorted(self.getAllVirtualMachines(), key=lambda vm: vm.name):
             vm_row = [vm_object.get_name(), vm_object._getPowerState().name,
                       vm_object.getNode() or 'Unregistered']
@@ -171,10 +182,69 @@ class Factory(PyroObject):
 
         return True
 
-    def check_graphics_driver(self, driver):
+    def ensure_graphics_driver_valid(self, driver):
         """Check that the provided graphics driver name is valid"""
         if driver not in [i.value for i in list(GraphicsDriver)]:
             raise InvalidGraphicsDriverException('Invalid graphics driver \'%s\'' % driver)
+
+    def _pre_create_checks(self, required_storage_size=None, networks=None,
+                           storage_type=None, nodes=None, storage_backend=None):
+        """Perform pre-creation checks on VM. Ensure that all networks exist,
+        storage backend is valid etc. As well as ensuring that the VM can be run
+        on the required nodes (or at least one node if not specified).
+        This is used to ensure that all requested options for a hypothetical VM is possible,
+        before a VM is created.
+        """
+        networks = [] if networks is None else networks
+
+        cluster = self._get_registered_object('cluster')
+
+        # Ensure all nodes are valid, if defined
+        if nodes:
+            for node in nodes:
+                cluster.ensure_node_exists(node, include_local=True)
+
+        # Determine if the list of nodes is a pre-defined list by the user, or
+        # list of all nodes
+        nodes_predefined = nodes is not None
+
+        # If nodes has not been defined, get a list of all
+        if not nodes:
+            nodes = cluster.get_nodes(return_all=True, include_local=True)
+
+        # If defined, ensure that all networks exist
+        if networks:
+            for network in networks:
+                network_factory = self._get_registered_object('network_factory')
+                network_factory.ensure_exists(network)
+
+                # Obtain network object
+                network = network_factory.get_network_by_name(network)
+
+                # Go through each of the nodes and determine if the network
+                # if available on the node
+                for node in nodes:
+                    # If the list was pre-defined by the user, the network
+                    # MUST be available to all nodes, otherwise.
+                    if nodes_predefined:
+                        network.ensure_available_on_node(node)
+
+                    # Otherwise, if the network is not available on the
+                    # node, remove the node from list of available nodes.
+                    elif not network.check_available_on_node(node):
+                        if node in nodes:
+                            nodes.remove(node)
+
+        if required_storage_size:
+            # Use the hard drive factory to determine whether the given
+            # storage requirements are possible, given the available nodes.
+            hard_drive_factory = self._get_registered_object('hard_drive_factory')
+            nodes, storage_type, storage_backend = hard_drive_factory.ensure_hdd_valid(
+                size=required_storage_size, storage_type=storage_type, nodes=nodes,
+                storage_backend=storage_backend, nodes_predefined=nodes_predefined
+            )
+
+        return nodes, storage_backend, storage_type
 
     @Expose(locking=True, instance_method=True)
     def create(self, *args, **kwargs):
@@ -182,15 +252,44 @@ class Factory(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
-    def _create(self, name, cpu_cores, memory_allocation, hard_drives=None,
-                network_interfaces=None, node=None, available_nodes=None, storage_type=None,
-                hard_drive_driver=None, graphics_driver=None, modification_flags=None):
+    def _create(self,
+                name, cpu_cores, memory_allocation,  # Basic details, name etc.
+                hard_drives=None,  # List of hard drive sizes to be created
+                network_interfaces=None,  # List of networks to create network interfaces
+                                          # to attach to
+                node=None,  # The node to initially register the VM on
+                available_nodes=None,  # List of nodes that the VM will be availble to.
+                                       # For DRBD, this will be the two nodes
+                                       # that DRBD is setup on. For other storage types,
+                                       # it will be the nodes that the VM 'MUST' be
+                                       # compatible with, i.e. storage backend must span
+                                       # across them and networks exist on all nodes.
+                storage_type=None,  # Storage type (string)
+                hard_drive_driver=None, graphics_driver=None, modification_flags=None,
+                storage_backend=None,   # Storage backend to be used. If not specified,
+                                        # will default to an available storage backend,
+                                        # if only 1 is avaiallbe.
+                is_static=None):  # Manually override whether the VM is marked as static
         """Create a VM and returns the virtual_machine object for it"""
+        # @TODO: Does this method need to do EVERYTHING?
+        #       Maybe it should create the BARE MINIMUM required for a VM
+        #       and leave it up to the parser to create everything else.
+        #       The benefit to doing it in one function is to be able to
+        #       validate that everything will work before-hand.
+
+        # Set iterative items to empty array if not specified.
+        # Can't set these to empty arrays by default, as if we attempt to append to them,
+        # it will alter the default array (since it will be a reference)!
         network_interfaces = [] if network_interfaces is None else network_interfaces
         hard_drives = [] if hard_drives is None else hard_drives
+        nodes_predefined = available_nodes is not None
         available_nodes = [] if available_nodes is None else available_nodes
         modification_flags = [] if modification_flags is None else modification_flags
 
+        if storage_backend:
+            storage_backend = self._convert_remote_object(storage_backend)
+
+        # Ensure name is valid, as well as other attributes
         self.checkName(name)
         ArgumentValidator.validate_positive_integer(cpu_cores)
         ArgumentValidator.validate_positive_integer(memory_allocation)
@@ -203,10 +302,38 @@ class Factory(PyroObject):
             ArgumentValidator.validate_hostname(node)
         for available_node in available_nodes:
             ArgumentValidator.validate_hostname(available_node)
+
+        cluster_object = self._get_registered_object('cluster')
+        local_hostname = get_hostname()
+
+        if node and available_nodes and node not in available_nodes:
+            raise InvalidNodesException('Node must be in available nodes')
+
+        total_storage_size = sum(hard_drives) if hard_drives else None
+        available_nodes, storage_backend, storage_type = self._pre_create_checks(
+            required_storage_size=total_storage_size,
+            networks=network_interfaces,
+            storage_type=storage_type,
+            nodes=available_nodes,
+            storage_backend=storage_backend
+        )
+
+        # If a node has not been specified, assume the local node
+        if node is None:
+            node = local_hostname
+
+        # Ensure that the local node is included in the list of available nodes
+        if self._is_cluster_master and local_hostname not in available_nodes:
+            raise InvalidNodesException('Local node must included in available nodes')
+
+        # Ensure storage_type is a valid type, if specified
+        hard_drive_factory = self._get_registered_object('hard_drive_factory')
         assert storage_type in [None] + [
             storage_type_itx.__name__ for storage_type_itx in self._get_registered_object(
-                'hard_drive_factory').STORAGE_TYPES
+                'hard_drive_factory').getStorageTypes()
         ]
+
+        # Obtain the hard drive driver enum from the name
         if hard_drive_driver is not None:
             HardDriveDriver[hard_drive_driver]
 
@@ -215,7 +342,7 @@ class Factory(PyroObject):
             graphics_driver = self.DEFAULT_GRAPHICS_DRIVER
 
         # Check the driver name is valid
-        self.check_graphics_driver(graphics_driver)
+        self.ensure_graphics_driver_valid(graphics_driver)
 
         # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
         # in this state
@@ -227,60 +354,15 @@ class Factory(PyroObject):
         if self.check_exists(name):
             raise VmAlreadyExistsException('Error: VM already exists')
 
-        # If a node has not been specified, assume the local node
-        if node is None:
-            node = get_hostname()
-
-        # If Drbd has been chosen as a storage type, ensure it is enabled on the node
-        node_drbd = self._get_registered_object('node_drbd')
-        if storage_type == 'Drbd' and not node_drbd.is_enabled():
-            raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
-
         # Create directory for VM on the local and remote nodes
-        if os_path_exists(VirtualMachine._get_vm_dir(name)):
+        if os_path_exists(VirtualMachine.get_vm_dir(name)):
             raise VmDirectoryAlreadyExistsException('Error: VM directory already exists')
 
-        # If available nodes has not been passed, assume the local machine is the only
-        # available node if local storage is being used. Use the machines in the cluster
-        # if Drbd is being used
-        cluster_object = self._get_registered_object('cluster')
-        all_nodes = cluster_object.get_nodes(return_all=True)
-        all_nodes.append(get_hostname())
-
-        if len(available_nodes) == 0:
-            if storage_type == 'Drbd':
-                # If the available nodes are not specified, use the
-                # nodes in the cluster
-                available_nodes = all_nodes
-            else:
-                # For local VMs, only use the local node as the available nodes
-                available_nodes = [get_hostname()]
-
-        # If there are more than the maximum number of Drbd machines in the cluster,
-        # add an option that forces the user to specify the nodes for the Drbd VM
-        # to be added to
-        if storage_type == 'Drbd' and len(available_nodes) != node_drbd.CLUSTER_SIZE:
-            raise InvalidNodesException('Exactly %i nodes must be specified'
-                                        % node_drbd.CLUSTER_SIZE)
-
-        for check_node in available_nodes:
-            if check_node not in all_nodes:
-                raise NodeDoesNotExistException('Node \'%s\' does not exist' % check_node)
-
-        if get_hostname() not in available_nodes and self._is_cluster_master:
+        if local_hostname not in available_nodes and self._is_cluster_master:
             raise InvalidNodesException('One of the nodes must be the local node')
 
-        # Check whether the hard drives can be created.
-        if self._is_cluster_master:
-            hard_drive_factory = self._get_registered_object('hard_drive_factory')
-            for hard_drive_size in hard_drives:
-                hard_drive_factory.ensure_hdd_valid(
-                    hard_drive_size, storage_type,
-                    [node_itx for node_itx in available_nodes if node_itx != get_hostname()]
-                )
-
         # Create directory for VM
-        makedirs(VirtualMachine._get_vm_dir(name))
+        makedirs(VirtualMachine.get_vm_dir(name))
 
         # Add VM to MCVirt configuration
         def updateMCVirtConfig(config):
@@ -291,19 +373,30 @@ class Factory(PyroObject):
             name)
 
         # Create VM configuration file
-        VirtualMachineConfig.create(name, available_nodes, cpu_cores, memory_allocation,
+        # This is hard coded method of determining is_static, as seen in hard drive object
+        # @TODO Refactor into method that's shared with is_static
+        config_nodes = (None
+                        if ((storage_backend and storage_backend.shared and
+                             storage_type == 'Local') or
+                            (is_static is not None and not is_static))
+                        else available_nodes)
+        VirtualMachineConfig.create(name, config_nodes, cpu_cores, memory_allocation,
                                     graphics_driver)
 
         # Add VM to remote nodes
         if self._is_cluster_master:
             def remote_command(remote_connection):
+                """Create VM on remote node"""
+                remote_storage_backend = storage_backend.get_remote_object(
+                    node_object=remote_connection) if storage_backend else None
                 virtual_machine_factory = remote_connection.get_connection(
                     'virtual_machine_factory'
                 )
                 virtual_machine_factory.create(
                     name=name, memory_allocation=memory_allocation, cpu_cores=cpu_cores,
                     node=node, available_nodes=available_nodes,
-                    modification_flags=modification_flags
+                    modification_flags=modification_flags,
+                    storage_backend=remote_storage_backend
                 )
             cluster_object.run_remote_command(callback_method=remote_command)
 
@@ -326,7 +419,9 @@ class Factory(PyroObject):
             hard_drive_factory = self._get_registered_object('hard_drive_factory')
             for hard_drive_size in hard_drives:
                 hard_drive_factory.create(vm_object=vm_object, size=hard_drive_size,
-                                          storage_type=storage_type, driver=hard_drive_driver)
+                                          storage_type=storage_type, driver=hard_drive_driver,
+                                          storage_backend=storage_backend,
+                                          nodes=available_nodes)
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML

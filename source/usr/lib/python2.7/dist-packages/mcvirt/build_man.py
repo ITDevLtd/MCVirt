@@ -194,6 +194,7 @@ class ManPageCreator(object):
         return '.SH NAME\n%s \\- %s\n' % (distribution.get_name(),
                                           distribution.get_description())
 
+
 if __name__ == '__main__':
     parser_obj = Parser()
     _parser = parser_obj.parser

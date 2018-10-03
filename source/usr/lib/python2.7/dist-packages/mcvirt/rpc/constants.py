@@ -28,5 +28,5 @@ class Annotations(object):
     CLUSTER_MASTER = 'CLMA'
     SESSION_ID = 'SEID'
     HAS_LOCK = 'HASL'
-    IGNORE_Drbd = 'IGDR'
+    IGNORE_DRBD = 'IGDR'
     IGNORE_CLUSTER = 'IGCL'

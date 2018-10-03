@@ -25,6 +25,7 @@ class DirectoryLocation(object):
     """Provides directory/file path constants."""
 
     TEMPLATE_DIR = '/usr/lib/python2.7/dist-packages/mcvirt/templates'
+    OS_CONFIG_DIR = '/etc/mcvirt'
     BASE_STORAGE_DIR = '/var/lib/mcvirt'
     NODE_STORAGE_DIR = BASE_STORAGE_DIR + '/' + get_hostname()
     BASE_VM_STORAGE_DIR = NODE_STORAGE_DIR + '/vm'
@@ -56,3 +57,11 @@ class AutoStartStates(Enum):
     NO_AUTOSTART = 0
     ON_BOOT = 1
     ON_POLL = 2
+
+
+# Name of the default storage backend, used during upgrade
+# from pre-v9.0.0 installations
+DEFAULT_STORAGE_NAME = 'default'
+
+# Name of the default network, which is created by libvirt
+DEFAULT_LIBVIRT_NETWORK_NAME = 'default'

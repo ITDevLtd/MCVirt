@@ -69,7 +69,7 @@ class DrbdTests(TestBase):
         # Obtain the Drbd raw volume for the VM and write random data to it
         for disk_object in test_vm_object.getHardDriveObjects():
             self.rpc.annotate_object(disk_object)
-            drbd_raw_suffix = disk_object.Drbd_RAW_SUFFIX
+            drbd_raw_suffix = disk_object.DRBD_RAW_SUFFIX
             raw_logical_volume_name = disk_object._getLogicalVolumeName(drbd_raw_suffix)
             raw_logical_volume_path = disk_object._getLogicalVolumePath(raw_logical_volume_name)
             System.runCommand(['dd', 'if=/dev/urandom',

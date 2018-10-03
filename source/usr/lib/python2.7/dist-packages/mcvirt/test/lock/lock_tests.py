@@ -20,9 +20,10 @@ import threading
 
 from mcvirt.test.test_base import TestBase
 from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.pyro_object import PyroObject
 
 
-class LockTests(TestBase):
+class LockTests(TestBase, PyroObject):
     """Provide unit tests for the functionality
     provided by the node subparser
     """

@@ -17,13 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
-
-
-from mcvirt.exceptions import LibvirtException, NetworkUtilizedException
+from mcvirt.exceptions import (LibvirtException, NetworkUtilizedException,
+                               NetworkNotAvailableOnNodeError)
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
+from mcvirt.utils import get_hostname
 
 
 class Network(PyroObject):
@@ -39,6 +38,13 @@ class Network(PyroObject):
         from mcvirt.mcvirt_config import MCVirtConfig
         mcvirt_config = MCVirtConfig().get_config()
         return mcvirt_config['networks']
+
+    @property
+    def nodes(self):
+        """Return the nodes that the network is available to"""
+        # Since networks are currently global, obtain all nodes
+        return self._get_registered_object('cluster').get_nodes(return_all=True,
+                                                                include_local=True)
 
     @Expose(locking=True)
     def delete(self):
@@ -117,3 +123,23 @@ class Network(PyroObject):
     def get_adapter(self):
         """Return the name of the physical bridge adapter for the network"""
         return Network.get_network_config()[self.get_name()]
+
+    def check_available_on_node(self, node=None):
+        """Determine whether network is available on a given node"""
+        # Default to local node
+        if node is None:
+            node = get_hostname()
+        return node in self.nodes
+
+    def ensure_available_on_node(self, node=None):
+        """Ensure that network is available on a given node"""
+        # Default to local node
+        if node is None:
+            node = self._get_registered_object('cluster').get_hostname()
+
+        # Check if it's available and raise an exception is it's not available
+        if not self.check_available_on_node(node=node):
+            raise NetworkNotAvailableOnNodeError(
+                'Network \'%s\' is not available on node \'%s\'' %
+                (self.get_name(), node)
+            )

@@ -28,7 +28,9 @@ from mcvirt.exceptions import (HardDriveDoesNotExistException,
                                ExternalStorageCommandErrorException,
                                MCVirtCommandException,
                                ResyncNotSupportedException,
-                               LogicalVolumeIsNotActiveException)
+                               LogicalVolumeIsNotActiveException,
+                               VolumeDoesNotExistError,
+                               VolumeAlreadyExistsError)
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
@@ -63,11 +65,14 @@ class Base(PyroObject):
     SNAPSHOT_SUFFIX = '_snapshot'
     SNAPSHOT_SIZE = '500M'
 
-    def __init__(self, vm_object, custom_volume_group=None, disk_id=None, driver=None):
+    # Cache mode - must be overidden
+    CACHE_MODE = None
+
+    def __init__(self, vm_object, storage_backend=None, disk_id=None, driver=None):
         """Set member variables"""
         self._disk_id = disk_id
         self._driver = driver
-        self._custom_volume_group = custom_volume_group
+        self._storage_backend = storage_backend
 
         self.vm_object = vm_object
 
@@ -79,29 +84,39 @@ class Base(PyroObject):
     @property
     def config_properties(self):
         """Return the disk object config items"""
-        return ['disk_id', 'driver', 'custom_volume_group']
+        return ['disk_id', 'driver', 'storage_backend']
+
+    @property
+    def storage_backend(self):
+        """Return storage backend.
+        When object is initalised from config, this is
+        set to a string of the storage backend name.
+        When the get_storage_backend is run, it is
+        converted to a storage backend object.
+        When the config is saved, the storage backend
+        is saved as a string, which returns the name of
+        the storage backend.
+        """
+        return self._storage_backend
+
+    @property
+    def libvirt_device_type(self):
+        """Return the libvirt device type of the storage backend"""
+        return self.get_storage_backend().libvirt_device_type
+
+    @property
+    def libvirt_source_parameter(self):
+        """Return the libvirt source parameter fro storage backend"""
+        return self.get_storage_backend().libvirt_source_parameter
 
     def __setattr__(self, name, value):
         """Override setattr to ensure that the value of
         a disk config item is written to, rather than the
-        property method
+        property method.
         """
         if name in self.config_properties:
             name = '_%s' % name
         return super(Base, self).__setattr__(name, value)
-
-    @property
-    def custom_volume_group(self):
-        """Return the custom volume group, if sepcified"""
-        return self._custom_volume_group
-
-    @property
-    def volume_group(self):
-        """Return the volume group for the storage, either custom or global"""
-        if self._custom_volume_group:
-            return self._custom_volume_group
-        else:
-            return MCVirtConfig().get_config()['vm_storage_vg']
 
     @property
     def disk_id(self):
@@ -144,6 +159,7 @@ class Base(PyroObject):
 
         remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
         remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
+
         remote_hard_drive_factory = remote_node.get_connection('hard_drive_factory')
 
         kwargs = {
@@ -152,8 +168,15 @@ class Base(PyroObject):
         }
         if not registered:
             kwargs['storage_type'] = self.get_type()
+
             for config in self.config_properties:
                 kwargs[config] = getattr(self, config)
+
+            remote_storage_factory = remote_node.get_connection('storage_factory')
+            remote_storage_backend = remote_storage_factory.get_object(
+                self.get_storage_backend().name
+            )
+            kwargs['storage_backend'] = remote_storage_backend
 
         hard_drive_object = remote_hard_drive_factory.getObject(**kwargs)
         remote_node.annotate_object(hard_drive_object)
@@ -170,7 +193,9 @@ class Base(PyroObject):
         disk_id = 0
         vm_config = self.vm_object.get_config_object().get_config()
         disks = vm_config['hard_disks']
-        while (not found_available_id):
+
+        # Increment disk ID until a free ID is found
+        while not found_available_id:
             disk_id += 1
             if not str(disk_id) in disks:
                 found_available_id = True
@@ -190,6 +215,16 @@ class Base(PyroObject):
                 'Disk %s for %s does not exist' %
                 (self.disk_id, self.vm_object.get_name()))
 
+    def is_static(self):
+        """Determine if storage is static and VM cannot be
+        migrated to any node in the cluster
+        """
+        # By default, this is just determined whether the storage is
+        # shared or not. Shared storage will allow mean storage is available
+        # to any node that supports it. Otherwise, the data is only on the node
+        # that the storage was created on.
+        return self.get_storage_backend().is_static()
+
     @Expose(locking=True)
     def resync(self, source_node=None, auto_determine=False):
         """Resync the volume"""
@@ -203,13 +238,13 @@ class Base(PyroObject):
     @Expose(locking=True)
     def delete(self):
         """Delete the logical volume for the disk"""
-        self._ensure_exists()
-
-        # Ensure that the user has permissions to add create storage
+        # Ensure that the user has permissions to add delete storage
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
         )
+
+        self._ensure_exists()
 
         cache_key = (self.vm_object.get_name(), self.disk_id, self.get_type())
 
@@ -230,19 +265,27 @@ class Base(PyroObject):
         # Unregister object and remove from factory cache
         hdd_factory = self._get_registered_object('hard_drive_factory')
         if cache_key in hdd_factory.CACHED_OBJECTS:
-            del(hdd_factory.CACHED_OBJECTS[cache_key])
+            del hdd_factory.CACHED_OBJECTS[cache_key]
         self.unregister_object()
 
-    def duplicate(self, destination_vm_object):
+    def duplicate(self, destination_vm_object, storage_backend=None):
         """Clone the hard drive and attach it to the new VM object"""
         self._ensure_exists()
 
+        if not storage_backend:
+            storage_backend = self.get_storage_backend()
+
         # Create new disk object, using the same type, size and disk_id
         new_disk_object = self.__class__(vm_object=destination_vm_object, disk_id=self.disk_id,
-                                         driver=self.driver)
+                                         driver=self.driver,
+                                         storage_backend=storage_backend)
+        # Register new disk object with pyro
         self._register_object(new_disk_object)
+
+        # Create new disk
         new_disk_object.create(self.getSize())
 
+        # Get path of source and new disks
         source_drbd_block_device = self._getDiskPath()
         destination_drbd_block_device = new_disk_object._getDiskPath()
 
@@ -263,6 +306,11 @@ class Base(PyroObject):
     def addToVirtualMachine(self, register=True):
         """Add the hard drive to the virtual machine,
            and performs the base function on all nodes in the cluster"""
+        # Ensure that the user has permissions to modify VM
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM,
+            self.vm_object
+        )
         # Update the libvirt domain XML configuration
         if self.vm_object.isRegisteredLocally():
             self._registerLibvirt()
@@ -300,7 +348,7 @@ class Base(PyroObject):
                 raise
 
     @staticmethod
-    def isAvailable(pyro_object):
+    def isAvailable(node, node_drbd):
         """Returns whether the storage type is available on the node"""
         raise NotImplementedError
 
@@ -308,6 +356,11 @@ class Base(PyroObject):
     def removeFromVirtualMachine(self, unregister=False, all_nodes=True):
         """Remove the hard drive from a VM configuration and perform all nodes
            in the cluster"""
+        # Ensure that the user has permissions to modify VM
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM,
+            self.vm_object
+        )
         # If the VM that the hard drive is attached to is registered on the local
         # node, remove the hard drive from the LibVirt configuration
         if unregister and self.vm_object.isRegisteredLocally():
@@ -372,56 +425,16 @@ class Base(PyroObject):
                 (self.vm_object.get_name(), self.get_type()))
 
     @Expose(locking=True)
-    def createLogicalVolume(self, *args, **kwargs):
-        """Provides an exposed method for _createLogicalVolume
+    def resize_volume(self, *args, **kwargs):
+        """Provides an exposed method for _resize_volume
            with permission checking"""
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
-        return self._createLogicalVolume(*args, **kwargs)
+        return self._resize_volume(*args, **kwargs)
 
-    def _createLogicalVolume(self, name, size, perform_on_nodes=False):
-        """Creates a logical volume on the node/cluster"""
-        volume_group = self.volume_group
-
-        # Create command list
-        command_args = ['/sbin/lvcreate', volume_group, '--name', name, '--size', '%sM' % size]
-        try:
-            # Create on local node
-            System.runCommand(command_args)
-
-            if perform_on_nodes and self._is_cluster_master:
-                def remoteCommand(node):
-                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
-                    remote_disk.createLogicalVolume(name=name, size=size)
-
-                cluster = self._get_registered_object('cluster')
-                cluster.run_remote_command(callback_method=remoteCommand,
-                                           nodes=self.vm_object._get_remote_nodes())
-
-        except MCVirtCommandException, e:
-            # Remove any logical volumes that had been created if one of them fails
-            self._removeLogicalVolume(
-                name,
-                ignore_non_existent=True,
-                perform_on_nodes=perform_on_nodes)
-            raise ExternalStorageCommandErrorException(
-                "Error whilst creating disk logical volume:\n" + str(e)
-            )
-
-    @Expose(locking=True)
-    def resize_logical_volume(self, *args, **kwargs):
-        """Provides an exposed method for _createLogicalVolume
-           with permission checking"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-
-        return self._resize_logical_volume(*args, **kwargs)
-
-    def _resize_logical_volume(self, name, size, perform_on_nodes=False):
+    def _resize_volume(self, volume, size, perform_on_nodes=False):
         """Creates a logical volume on the node/cluster"""
 
-        # Create command list
-        command_args = ['/sbin/lvresize', '--size', '%sM' % size,
-                        self._getLogicalVolumePath(name)]
         try:
             # Create on local node
             System.runCommand(command_args)
@@ -440,156 +453,23 @@ class Base(PyroObject):
                 "Error whilst resizing disk logical volume:\n" + str(e)
             )
 
-    @Expose(locking=True)
-    def removeLogicalVolume(self, *args, **kwargs):
-        """Provides an exposed method for _removeLogicalVolume
-           with permission checking"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-
-        return self._removeLogicalVolume(*args, **kwargs)
-
-    def _removeLogicalVolume(self, name, ignore_non_existent=False,
-                             perform_on_nodes=False):
-        """Removes a logical volume from the node/cluster"""
-        # Create command arguments
-        command_args = ['lvremove', '-f', self._getLogicalVolumePath(name)]
-        try:
-            # Determine if logical volume exists before attempting to remove it
-            if (not (ignore_non_existent and
-                     not self._checkLogicalVolumeExists(name))):
-                System.runCommand(command_args)
-
-            if perform_on_nodes and self._is_cluster_master:
-                def remoteCommand(node):
-                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
-                    remote_disk.removeLogicalVolume(
-                        name=name, ignore_non_existent=ignore_non_existent
-                    )
-
-                cluster = self._get_registered_object('cluster')
-                cluster.run_remote_command(callback_method=remoteCommand,
-                                           nodes=self.vm_object._get_remote_nodes())
-
-        except MCVirtCommandException, e:
-            raise ExternalStorageCommandErrorException(
-                "Error whilst removing disk logical volume:\n" + str(e)
-            )
-
-    def _get_logical_volume_size(self, name):
-        """Obtains the size of a logical volume"""
-        # Use 'lvs' to obtain the size of the disk
-        command_args = (
-            'lvs',
-            '--nosuffix',
-            '--noheadings',
-            '--units',
-            'm',
-            '--options',
-            'lv_size',
-            self._getLogicalVolumePath(name))
-        try:
-            _, command_output, _ = System.runCommand(command_args)
-        except MCVirtCommandException, e:
-            raise ExternalStorageCommandErrorException(
-                "Error whilst obtaining the size of the logical volume:\n" +
-                str(e))
-
-        lv_size = command_output.strip().split('.')[0]
-        return int(lv_size)
-
-    @Expose(locking=True)
-    def zeroLogicalVolume(self, *args, **kwargs):
-        """Provides an exposed method for _zeroLogicalVolume
-           with permission checking"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-
-        return self._zeroLogicalVolume(*args, **kwargs)
-
-    def _zeroLogicalVolume(self, name, size, perform_on_nodes=False):
-        """Blanks a logical volume by filling it with null data"""
-        # Obtain the path of the logical volume
-        lv_path = self._getLogicalVolumePath(name)
-
-        # Create command arguments
-        command_args = ['dd', 'if=/dev/zero', 'of=%s' % lv_path, 'bs=1M', 'count=%s' % size,
-                        'conv=fsync', 'oflag=direct']
-        try:
-            # Create logical volume on local node
-            System.runCommand(command_args)
-
-            if perform_on_nodes and self._is_cluster_master:
-                def remoteCommand(node):
-                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
-                    remote_disk.zeroLogicalVolume(name=name, size=size)
-
-                cluster = self._get_registered_object('cluster')
-                cluster.run_remote_command(callback_method=remoteCommand,
-                                           nodes=self.vm_object._get_remote_nodes())
-
-        except MCVirtCommandException, e:
-            raise ExternalStorageCommandErrorException(
-                "Error whilst zeroing logical volume:\n" + str(e)
-            )
-
-    def _ensureLogicalVolumeExists(self, name):
-        """Ensures that a logical volume exists, throwing an exception if it does not"""
-        if not self._checkLogicalVolumeExists(name):
-            raise LogicalVolumeDoesNotExistException(
-                'Logical volume %s does not exist on %s' %
-                (name, get_hostname()))
-
-    def _checkLogicalVolumeExists(self, name):
-        """Determines if a logical volume exists, returning 1 if present and 0 if not"""
-        return os.path.lexists(self._getLogicalVolumePath(name))
-
-    def _ensureLogicalVolumeActive(self, name):
-        """Ensures that a logical volume is active"""
-        if not self._checkLogicalVolumeActive(name):
-            raise LogicalVolumeIsNotActiveException(
-                'Logical volume %s is not active on %s' %
-                (name, get_hostname()))
-
-    def _checkLogicalVolumeActive(self, name):
-        """Checks that a logical volume is active"""
-        return os.path.exists(self._getLogicalVolumePath(name))
-
-    @Expose(locking=True)
-    def activateLogicalVolume(self, *args, **kwargs):
-        """Provides an exposed method for _activateLogicalVolume
-           with permission checking"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-
-        return self._activateLogicalVolume(*args, **kwargs)
-
-    def _activateLogicalVolume(self, name, perform_on_nodes=False):
+    def activate_volume(self, volume, perform_on_nodes=False):
         """Activates a logical volume on the node/cluster"""
         # Obtain logical volume path
-        lv_path = self._getLogicalVolumePath(name)
+        volume.activate()
 
-        # Create command arguments
-        command_args = ['lvchange', '-a', 'y', '--yes', lv_path]
-        try:
-            # Run on the local node
-            System.runCommand(command_args)
+        if perform_on_nodes and self._is_cluster_master:
+            def remoteCommand(node):
+                remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                remote_disk.activate_volume(volume=volume)
 
-            if perform_on_nodes and self._is_cluster_master:
-                def remoteCommand(node):
-                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
-                    remote_disk.activateLogicalVolume(name=name)
-
-                cluster = self._get_registered_object('cluster')
-                cluster.run_remote_command(callback_method=remoteCommand,
-                                           nodes=self.vm_object._get_remote_nodes())
-
-        except MCVirtCommandException, e:
-            raise ExternalStorageCommandErrorException(
-                "Error whilst activating logical volume:\n" + str(e)
-            )
+            cluster = self._get_registered_object('cluster')
+            cluster.run_remote_command(callback_method=remoteCommand,
+                                       nodes=self.vm_object._get_remote_nodes())
 
     @Expose(locking=True)
     def createBackupSnapshot(self):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""
-        self._ensure_exists()
         # Ensure the user has permission to delete snapshot backups
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
@@ -599,121 +479,119 @@ class Base(PyroObject):
         # Ensure VM is registered locally
         self.vm_object.ensureRegisteredLocally()
 
-        # Obtain logical volume names/paths
-        backup_volume_path = self._getLogicalVolumePath(
-            self._getBackupLogicalVolume())
-        snapshot_logical_volume = self._getBackupSnapshotLogicalVolume()
-
-        # Determine if logical volume already exists
-        if self._checkLogicalVolumeActive(snapshot_logical_volume):
-            raise BackupSnapshotAlreadyExistsException(
-                'The backup snapshot for \'%s\' already exists: %s' %
-                (backup_volume_path, snapshot_logical_volume)
-            )
-
         # Lock the VM
         self.vm_object._setLockState(LockStates.LOCKED)
 
+        source_volume = self.get_backup_source_volume()
+        backup_volume = self.get_backup_snapshot_volume()
+
         try:
-            System.runCommand(['lvcreate', '--snapshot', backup_volume_path,
-                               '--name', self._getBackupSnapshotLogicalVolume(),
-                               '--size', self.SNAPSHOT_SIZE])
-            return self._getLogicalVolumePath(snapshot_logical_volume)
-        except:
+            source_volume.snapshot_volume(backup_volume, self.SNAPSHOT_SIZE)
+        except VolumeAlreadyExistsError:
             self.vm_object._setLockState(LockStates.UNLOCKED)
+            raise BackupSnapshotAlreadyExistsException('Backup snapshot already exists')
+        except:
+            self.vm_object._setLockState(LockStates.UNLCoKED)
             raise
+
+        self.vm_object._setLockState(LockStates.UNLOCKED)
+        return backup_volume.get_path()
 
     @Expose(locking=True)
     def deleteBackupSnapshot(self):
         """Deletes the backup snapshot for the disk and unlocks the VM"""
-        self._ensure_exists()
         # Ensure the user has permission to delete snapshot backups
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
             self.vm_object
         )
 
-        # Ensure the snapshot logical volume exists
-        if not self._checkLogicalVolumeActive(self._getBackupSnapshotLogicalVolume()):
+        try:
+            self.get_backup_snapshot_volume().delete_volume()
+        except VolumeDoesNotExistError:
+            self.vm_object._setLockState(LockStates.UNLOCKED)
             raise BackupSnapshotDoesNotExistException(
-                'The backup snapshot for \'%s\' does not exist' %
-                self._getLogicalVolumePath(self._getBackupLogicalVolume())
+                'The backup snapshot does not exist'
             )
-
-        System.runCommand(['lvremove', '-f',
-                           self._getLogicalVolumePath(self._getBackupSnapshotLogicalVolume())])
 
         # Unlock the VM
         self.vm_object._setLockState(LockStates.UNLOCKED)
 
+    def get_backup_source_volume(self):
+        """Retrun the source volume for snapshotting for backeups"""
+        raise NotImplementedError
+
+    def get_backup_snapshot_volume(self):
+        """Return a volume object for the disk object"""
+        raise NotImplementedError
+
     @Expose(locking=True)
     def increaseSize(self, increase_size):
-        """Increases the size of a VM hard drive, given the size to increase the drive by"""
+        """Increase the size of a VM hard drive, given the size to increase the drive by"""
         raise NotImplementedError
 
     def _check_exists(self):
-        """Checks if the disk exists"""
+        """Check if the disk exists"""
         raise NotImplementedError
 
     def clone(self, destination_vm_object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
         raise NotImplementedError
 
-    def create(self):
-        """Creates a new disk image, attaches the disk to the VM and records the disk
+    def create(self, size):
+        """Create a new disk image, attaches the disk to the VM and records the disk
         in the VM configuration"""
         raise NotImplementedError
 
     def activateDisk(self):
-        """Activates the storage volume"""
+        """Activate the storage volume"""
         raise NotImplementedError
 
     def deactivateDisk(self):
-        """Deactivates the storage volume"""
+        """Deactivate the storage volume"""
         raise NotImplementedError
 
     def preMigrationChecks(self, destination_node):
-        """Determines if the disk is in a state to allow the attached VM
+        """Determine if the disk is in a state to allow the attached VM
            to be migrated to another node"""
         raise NotImplementedError
 
     def preOnlineMigration(self):
-        """Performs required tasks in order
+        """Perform required tasks in order
            for the underlying VM to perform an
            online migration"""
         raise NotImplementedError
 
     def postOnlineMigration(self):
-        """Performs post tasks after a VM
+        """Perform post tasks after a VM
            has performed an online migration"""
         raise NotImplementedError
 
     def getSize(self):
-        """Gets the size of the disk (in MB)"""
+        """Get the size of the disk (in MB)"""
         raise NotImplementedError
 
     def move(self, destination_node, source_node):
-        """Moves the storage to another node in the cluster"""
+        """Move the storage to another node in the cluster"""
+        raise NotImplementedError
+
+    def _removeStorage(self):
+        """Delete te underlying storage for the disk"""
         raise NotImplementedError
 
     def getDiskConfig(self):
-        """Returns the disk configuration for the hard drive"""
+        """Return the disk configuration for the hard drive"""
         vm_config = self.vm_object.get_config_object().get_config()
         if str(self.disk_id) in vm_config['hard_disks']:
             return vm_config['hard_disks'][str(self.disk_id)]
         else:
             return {}
 
-    def _getLogicalVolumePath(self, name):
-        """Returns the full path of a given logical volume"""
-        volume_group = self.volume_group
-        return '/dev/' + volume_group + '/' + name
-
     def _generateLibvirtXml(self):
-        """Creates a basic libvirt XML configuration for the connection to the disk"""
+        """Create a basic libvirt XML configuration for the connection to the disk"""
         # Create the base disk XML element
         device_xml = ET.Element('disk')
-        device_xml.set('type', 'block')
+        device_xml.set('type', self.libvirt_device_type)
         device_xml.set('device', 'disk')
 
         # Configure the interface driver to the disk
@@ -724,7 +602,7 @@ class Base(PyroObject):
 
         # Configure the source of the disk
         source_xml = ET.SubElement(device_xml, 'source')
-        source_xml.set('dev', self._getDiskPath())
+        source_xml.set(self.libvirt_source_parameter, self._getDiskPath())
 
         # Configure the target
         target_xml = ET.SubElement(device_xml, 'target')
@@ -734,7 +612,7 @@ class Base(PyroObject):
         return device_xml
 
     def _getLibvirtDriver(self):
-        """Returns the libvirt name of the driver for the disk"""
+        """Return the libvirt name of the driver for the disk"""
         return Driver[self.driver].value
 
     @Expose()
@@ -746,20 +624,38 @@ class Base(PyroObject):
         return self._getDiskPath()
 
     def _getDiskPath(self):
-        """Returns the path of the raw disk image"""
+        """Return the path of the raw disk image"""
         raise NotImplementedError
 
     def _getMCVirtConfig(self):
-        """Returns the MCVirt configuration for the hard drive object"""
+        """Return the MCVirt configuration for the hard drive object"""
         config = {
-            'driver': self.driver
+            'driver': self.driver,
+            'storage_backend': self.get_storage_backend().name
         }
         return config
 
     def _getBackupLogicalVolume(self):
-        """Returns the storage device for the backup"""
+        """Return the storage device for the backup"""
         raise NotImplementedError
 
     def _getBackupSnapshotLogicalVolume(self):
-        """Returns the logical volume name for the backup snapshot"""
+        """Return the logical volume name for the backup snapshot"""
         raise NotImplementedError
+
+    def get_storage_backend(self):
+        """Return the storage backend object for the hard drive object"""
+        if (not self._storage_backend or
+                isinstance(self._storage_backend, str) or
+                isinstance(self._storage_backend, unicode)):
+            storage_backend_name = (self._storage_backend
+                                    if isinstance(self._storage_backend, str) else
+                                    self.getDiskConfig()['storage_backend'])
+            self._storage_backend = self._get_registered_object(
+                'storage_factory'
+            ).get_object(storage_backend_name)
+        return self._storage_backend
+
+    def _get_volume(self, disk_name):
+        """Return a storage object within the storage backend"""
+        return self.get_storage_backend().get_volume(disk_name)

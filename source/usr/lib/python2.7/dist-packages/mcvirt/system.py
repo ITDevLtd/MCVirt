@@ -19,11 +19,16 @@ import getpass
 import subprocess
 import sys
 
-from mcvirt.exceptions import MCVirtCommandException, PasswordsDoNotMatchException
+from mcvirt.exceptions import (MCVirtCommandException,
+                               PasswordsDoNotMatchException,
+                               DDCommandError)
 from mcvirt.syslogger import Syslogger
 
 
 class System(object):
+
+    # Constant used to pass to perform_dd, which specifies will wipe the destination
+    WIPE = object()
 
     @staticmethod
     def runCommand(command_args, raise_exception_on_failure=True, cwd=None):
@@ -67,3 +72,31 @@ class System(object):
             raise PasswordsDoNotMatchException('The two passwords do not match')
 
         return new_password
+
+    @staticmethod
+    def is_running_systemd():
+        """Determine if machine is running systemd"""
+        exit_code, _, _ = System.runCommand(['pidof', 'systemd'], raise_exception_on_failure=False)
+        return exit_code == 0
+
+    @staticmethod
+    def perform_dd(source, destination, size):
+        """Perform a 'dd' system command to replicate storage
+           block-by-block"""
+        # If wipe is specified, zero the destination
+        if source is System.WIPE:
+            source = '/dev/zero'
+
+        # Compile command arguments
+        command_args = ['dd', 'if=%s' % source, 'of=%s' % destination,
+                        'bs=1M', 'conv=fsync', 'oflag=direct',
+                        'count=%s' % size]
+
+        try:
+            # Perform the dd command
+            System.runCommand(command_args)
+
+        except MCVirtCommandException, e:
+            raise DDCommandError(
+                "Error whilst running dd:\n" + str(e)
+            )

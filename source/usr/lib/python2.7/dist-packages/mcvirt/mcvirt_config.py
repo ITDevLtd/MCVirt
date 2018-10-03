@@ -18,7 +18,8 @@
 import os
 
 from mcvirt.config_file import ConfigFile
-from mcvirt.constants import DirectoryLocation
+from mcvirt.constants import DirectoryLocation, DEFAULT_STORAGE_NAME
+from mcvirt.utils import get_hostname
 
 
 class MCVirtConfig(ConfigFile):
@@ -74,10 +75,10 @@ class MCVirtConfig(ConfigFile):
                     'user': [],
                     'owner': [],
                 },
-                'vm_storage_vg': '',
                 'cluster':
                 {
                     'cluster_ip': '',
+                    'node_name': get_hostname(),
                     'nodes': {}
                 },
                 'virtual_machines': [],
@@ -114,7 +115,9 @@ class MCVirtConfig(ConfigFile):
                     'username_attribute': None
                 },
                 'session_timeout': 30,
-                'autostart_interval': 300
+                'autostart_interval': 300,
+                'storage_backends': {},
+                'default_storage_configured': True
             }
 
         # Write the configuration to disk
@@ -139,3 +142,24 @@ class MCVirtConfig(ConfigFile):
 
         if config['version'] < 8:
             config['autostart_interval'] = 300
+
+        if config['version'] < 11:
+            config['storage_backends'] = {}
+            # If the vm_storage_vg was configured, create a base
+            # configuration for the deafult storage backend
+            if config['vm_storage_vg']:
+                config['storage_backends'][DEFAULT_STORAGE_NAME] = {
+                    'type': 'Lvm',
+                    'location': None,
+                    'nodes': {
+                        get_hostname(): {
+                            'location': config['vm_storage_vg']
+                        }
+                    }
+                }
+                del config['vm_storage_vg']
+            # Mark the default storage as not being configured.
+            config['default_storage_configured'] = False
+
+            # Define the hostname of the local machine in the config file
+            config['cluster']['node_name'] = get_hostname()

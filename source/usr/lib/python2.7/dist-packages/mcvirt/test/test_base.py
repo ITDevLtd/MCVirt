@@ -161,4 +161,4 @@ class TestBase(unittest.TestCase):
                 vm_object.setLockState(LockStates.UNLOCKED.value)
 
             # Delete VM
-            vm_object.delete(True)
+            vm_object.delete()

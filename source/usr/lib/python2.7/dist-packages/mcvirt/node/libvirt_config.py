@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from Cheetah.Template import Template
 import os
+from Cheetah.Template import Template
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
@@ -30,6 +30,8 @@ from mcvirt.exceptions import LibvirtNotInstalledException
 class LibvirtConfig(PyroObject):
     """Provides configuration for libvirtd"""
 
+    LIBVIRT_USER = 'libvirt-qemu'
+    LIBVIRT_GROUP = 'kvm'
     CONFIG_FILE = '/etc/libvirt/libvirtd.conf'
     CONFIG_TEMPLATE = '/usr/lib/python2.7/dist-packages/mcvirt/templates/libvirtd.conf'
     DEFAULT_FILE = '/etc/default/%s'
@@ -69,10 +71,10 @@ libvirtd_opts=" --listen --verbose %s"
         with open(self.CONFIG_FILE, 'w') as fh:
             fh.write(config_content.respond())
 
-        if self.service_name == 'libvirt-bin':
-            default_config = self.DEFAULT_CONFIG % '-d '
-        else:
+        if System.is_running_systemd():
             default_config = self.DEFAULT_CONFIG % ''
+        else:
+            default_config = self.DEFAULT_CONFIG % '-d '
 
         with open(self.DEFAULT_FILE % self.service_name, 'w') as default_fh:
             default_fh.write(default_config)
@@ -100,3 +102,4 @@ libvirtd_opts=" --listen --verbose %s"
         """Force libvirt to reload it's configuration"""
         action = 'restart' if self.hard_restart else 'force-reload'
         System.runCommand(['service', self.service_name, action])
+        self.hard_restart = False
