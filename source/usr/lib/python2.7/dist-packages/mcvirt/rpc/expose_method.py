@@ -29,7 +29,7 @@ class Transaction(object):
     back.
     """
 
-    # Static list of current transactions
+    # LIFO Stack of running transactions
     transactions = []
 
     @classmethod
@@ -42,8 +42,10 @@ class Transaction(object):
         # Determine transaction ID.
         self._transaction_id = len(Transaction.transactions)
 
-        # Initialise empty list of functions
+        # Initialise LIFO stack of functions
         self.functions = []
+
+        # Initialise with an incomplete state
         self.complete = False
 
         # Add the transaction to the static list of transactions
@@ -283,7 +285,7 @@ class Function(PyroObject):
         function_name = self.function.__name__ if not undo else self._undo_function_name
 
         # If undo, if the remote node doesn't have an undo method, return
-        if not hasattr(remote_object, self._undo_function_name):
+        if undo and not hasattr(remote_object, self._undo_function_name):
             return
 
         # Run the method by obtaining the member attribute, based on the name of
