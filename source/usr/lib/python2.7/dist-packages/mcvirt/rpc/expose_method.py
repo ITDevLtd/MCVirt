@@ -313,6 +313,11 @@ class Function(PyroObject):
         if (get_hostname() in self.nodes and
                 self.nodes[get_hostname()]['complete'] and
                 hasattr(self.obj, self._undo_function_name)):
+            Syslogger.logger().debug('Undo %s %s %s %s' %
+                                     (get_hostname(),
+                                      self._undo_function_name,
+                                      str(self.nodes[get_hostname()]['args']),
+                                      str(self.nodes[get_hostname()]['kwargs'])))
             getattr(self.obj, self._undo_function_name)(
                 *self.nodes[get_hostname()]['args'],
                 **self.nodes[get_hostname()]['kwargs'])
@@ -324,6 +329,11 @@ class Function(PyroObject):
                 continue
 
             # Run the remote undo method
+            Syslogger.logger().debug('Undo %s %s %s %s' %
+                                     (node,
+                                      self._undo_function_name,
+                                      str(self.nodes[node]['args']),
+                                      str(self.nodes[node]['kwargs'])))
             self._call_function_remote(node=node, undo=True)
 
     def _pause_user_session(self):

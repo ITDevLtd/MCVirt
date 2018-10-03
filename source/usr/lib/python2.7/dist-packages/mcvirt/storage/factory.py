@@ -330,6 +330,8 @@ class Factory(PyroObject):
         # Check permissions
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
+        # Only perform checks and config manipulation on cluster master (so that it's
+        # only run once)
         if self._is_cluster_master:
             # Ensure storage backend does not already exist with same name
             if self.check_exists(name):
