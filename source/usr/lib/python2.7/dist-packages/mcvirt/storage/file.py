@@ -26,7 +26,7 @@ from mcvirt.exceptions import (InvalidStorageConfiguration,
                                DDCommandError, VolumeDoesNotExistError,
                                ExternalStorageCommandErrorException)
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.rpc.expose_method import Expose, RunRemoteNodes
+from mcvirt.rpc.expose_method import Expose
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.system import System
 
@@ -100,8 +100,7 @@ class File(Base):
         """The libvirt property for source"""
         return 'file'
 
-    @Expose()
-    @RunRemoteNodes()
+    @Expose(remote_nodes=True)
     def get_free_space(self):
         """Return the free space in megabytes."""
         # Obtain statvfs object
@@ -129,9 +128,8 @@ class FileVolume(BaseVolume):
         """Return the full path of a given volume"""
         return self.storage_backend.get_location(node=node) + '/' + self.name
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def create(self, size):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def create(self, _f, size):
         """Create volume in storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume does not already exist
@@ -148,9 +146,8 @@ class FileVolume(BaseVolume):
                 "Error whilst creating disk logical volume:\n" + str(exc)
             )
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def delete(self, ignore_non_existent=False):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def delete(self, _f, ignore_non_existent=False):
         """Delete volume"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Determine if logical volume exists before attempting to remove it
@@ -167,9 +164,8 @@ class FileVolume(BaseVolume):
                 "Error whilst removing logical volume:\n" + str(exc)
             )
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def activate(self):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def activate(self, _f):
         """Activate volume"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume exists
@@ -225,9 +221,8 @@ class FileVolume(BaseVolume):
         # There is nothing to do to deactivate
         pass
 
-    @Expose(locking=True)
-    @RunRemoteNodes()
-    def resize(self, size, increase=True):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def resize(self, _f, size, increase=True):
         """Reszie volume"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume exists
@@ -240,8 +235,7 @@ class FileVolume(BaseVolume):
         """Determine whether logical volume exists"""
         return os.path.exists(self.get_path())
 
-    @Expose()
-    @RunRemoteNodes()
+    @Expose(remote_nodes=True)
     def get_size(self):
         """Obtain the size of a logical volume"""
         self.ensure_exists()
