@@ -191,6 +191,10 @@ class Function(PyroObject):
             if get_hostname() in self.nodes:
                 self._call_function_local()
 
+                # Mark local node as having complete, incase
+                # method doesn't do os
+                self.complete()
+
             # Iterate over the rest of the nodes and
             # call the remote command
             for node in self.nodes:
@@ -200,6 +204,10 @@ class Function(PyroObject):
 
                 # Call the remote node
                 self._call_function_remote(node)
+
+                # Mark fucntion as having complete, if not already performed
+                # by method
+                self.complete()
 
         except:
             # Also try-catch the tear-down
