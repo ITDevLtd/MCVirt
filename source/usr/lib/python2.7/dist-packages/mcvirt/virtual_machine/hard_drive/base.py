@@ -424,35 +424,6 @@ class Base(PyroObject):
                 updateStorageTypeConfig, 'Updated storage type for \'%s\' to \'%s\'' %
                 (self.vm_object.get_name(), self.get_type()))
 
-    @Expose(locking=True)
-    def resize_volume(self, *args, **kwargs):
-        """Provides an exposed method for _resize_volume
-           with permission checking"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-
-        return self._resize_volume(*args, **kwargs)
-
-    def _resize_volume(self, volume, size, perform_on_nodes=False):
-        """Creates a logical volume on the node/cluster"""
-
-        try:
-            # Create on local node
-            System.runCommand(command_args)
-
-            if perform_on_nodes and self._is_cluster_master:
-                def remoteCommand(node):
-                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
-                    remote_disk.resize_logical_volume(name=name, size=size)
-
-                cluster = self._get_registered_object('cluster')
-                cluster.run_remote_command(callback_method=remoteCommand,
-                                           nodes=self.vm_object._get_remote_nodes())
-
-        except MCVirtCommandException, e:
-            raise ExternalStorageCommandErrorException(
-                "Error whilst resizing disk logical volume:\n" + str(e)
-            )
-
     def activate_volume(self, volume, perform_on_nodes=False):
         """Activates a logical volume on the node/cluster"""
         # Obtain logical volume path
