@@ -51,7 +51,7 @@ class Transaction(object):
         # Add the transaction to the static list of transactions
         Transaction.transactions.insert(0, self)
 
-    def finish_transaction(self):
+    def finish(self):
         """Mark the transaction as having been completed"""
         self.comlpete = True
         # Only remove transaction if it is the last
@@ -100,7 +100,7 @@ class Transaction(object):
 
                 # Mark the transaction as complete, removing
                 # it from global list and all functions
-                transaction_ar.finish_transaction()
+                transaction_ar.finish()
         else:
             # Otherwise, undo single function
             function.undo()

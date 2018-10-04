@@ -32,7 +32,7 @@ from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException,
                                MCVirtTypeError)
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.expose_method import Expose, Transaction
 from mcvirt.utils import get_hostname
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.virtual_machine.hard_drive.base import Driver as HardDriveDriver
@@ -361,17 +361,6 @@ class Factory(PyroObject):
         if local_hostname not in available_nodes and self._is_cluster_master:
             raise InvalidNodesException('One of the nodes must be the local node')
 
-        # Create directory for VM
-        makedirs(VirtualMachine.get_vm_dir(name))
-
-        # Add VM to MCVirt configuration
-        def updateMCVirtConfig(config):
-            config['virtual_machines'].append(name)
-        MCVirtConfig().update_config(
-            updateMCVirtConfig,
-            'Adding new VM \'%s\' to global MCVirt configuration' %
-            name)
-
         # Create VM configuration file
         # This is hard coded method of determining is_static, as seen in hard drive object
         # @TODO Refactor into method that's shared with is_static
@@ -380,29 +369,14 @@ class Factory(PyroObject):
                              storage_type == 'Local') or
                             (is_static is not None and not is_static))
                         else available_nodes)
-        VirtualMachineConfig.create(name, config_nodes, cpu_cores, memory_allocation,
-                                    graphics_driver)
 
-        # Add VM to remote nodes
-        if self._is_cluster_master:
-            def remote_command(remote_connection):
-                """Create VM on remote node"""
-                remote_storage_backend = storage_backend.get_remote_object(
-                    node_object=remote_connection) if storage_backend else None
-                virtual_machine_factory = remote_connection.get_connection(
-                    'virtual_machine_factory'
-                )
-                virtual_machine_factory.create(
-                    name=name, memory_allocation=memory_allocation, cpu_cores=cpu_cores,
-                    node=node, available_nodes=available_nodes,
-                    modification_flags=modification_flags,
-                    storage_backend=remote_storage_backend
-                )
-            cluster_object.run_remote_command(callback_method=remote_command)
+        # Start transaction
+        t = Transaction()
 
-        # Obtain an object for the new VM, to use to create disks/network interfaces
-        vm_object = self.getVirtualMachineByName(name)
-        vm_object.get_config_object().gitAdd('Created VM \'%s\'' % vm_object.get_name())
+        vm_object = self.create_config(
+            name, config_nodes, cpu_cores, memory_allocation, graphics_driver,
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
 
         if node == get_hostname():
             # Register VM with LibVirt. If MCVirt has not been initialised on this node,
@@ -435,4 +409,34 @@ class Factory(PyroObject):
             # Add modification flags
             vm_object._update_modification_flags(add_flags=modification_flags)
 
+        t.finish()
+
         return vm_object
+
+    @Expose(remote_nodes=True)
+    def create_config(self, name, config_nodes, cpu_cores, memory_allocation,
+                      graphics_driver):
+        """Create required VM configs"""
+        # Create directory for VM
+        makedirs(VirtualMachine.get_vm_dir(name))
+
+        # Add VM to MCVirt configuration
+        def update_mcvirt_config(config):
+            """Add VM to global MCVirt config"""
+            config['virtual_machines'].append(name)
+        MCVirtConfig().update_config(
+            update_mcvirt_config,
+            'Adding new VM \'%s\' to global MCVirt configuration' %
+            name)
+
+        VirtualMachineConfig.create(name, config_nodes, cpu_cores, memory_allocation,
+                                    graphics_driver)
+
+        # Obtain an object for the new VM, to use to create disks/network interfaces
+        vm_object = self.getVirtualMachineByName(name)
+        vm_object.get_config_object().gitAdd('Created VM \'%s\'' % vm_object.get_name())
+        return vm_object
+
+    def undo__create_config(self, name, *args, **kwargs):
+        """Remove any directories or configs that were created for VM"""
+        pass
