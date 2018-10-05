@@ -148,19 +148,18 @@ class Base(PyroObject):
             'virtual_machine_factory').getVirtualMachineByName(vm_name)
 
     def get_remote_object(self,
-                          node_name=None,     # The name of the remote node to connect to
-                          remote_node=None,   # Otherwise, pass a remote node connection
-                          registered=True,  # If the hard drive can be setup
-                          return_node=False):
+                          node=None,     # The name of the remote node to connect to
+                          node_object=None,   # Otherwise, pass a remote node connection
+                          registered=True):  # If the hard drive can be setup
         """Obtain an instance of the current hard drive object on a remote node"""
         cluster = self._get_registered_object('cluster')
-        if remote_node is None:
-            remote_node = cluster.get_remote_node(node_name)
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
 
-        remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
+        remote_vm_factory = node_object.get_connection('virtual_machine_factory')
         remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
 
-        remote_hard_drive_factory = remote_node.get_connection('hard_drive_factory')
+        remote_hard_drive_factory = node_object.get_connection('hard_drive_factory')
 
         kwargs = {
             'vm_object': remote_vm,
@@ -172,18 +171,15 @@ class Base(PyroObject):
             for config in self.config_properties:
                 kwargs[config] = getattr(self, config)
 
-            remote_storage_factory = remote_node.get_connection('storage_factory')
+            remote_storage_factory = node_object.get_connection('storage_factory')
             remote_storage_backend = remote_storage_factory.get_object(
                 self.get_storage_backend().name
             )
             kwargs['storage_backend'] = remote_storage_backend
 
         hard_drive_object = remote_hard_drive_factory.getObject(**kwargs)
-        remote_node.annotate_object(hard_drive_object)
-        if return_node:
-            return hard_drive_object, remote_node
-        else:
-            return hard_drive_object
+        node_object.annotate_object(hard_drive_object)
+        return hard_drive_object
 
     def _get_available_id(self):
         """Obtain the next available ID for the VM hard drive, by scanning the IDs
@@ -335,14 +331,14 @@ class Base(PyroObject):
             cluster = self._get_registered_object('cluster')
             try:
                 for node in cluster.get_nodes():
-                    remote_disk_object = self.get_remote_object(node, registered=False)
+                    remote_disk_object = self.get_remote_object(node=node, registered=False)
                     remote_disk_object.addToVirtualMachine()
                     successful_nodes.append(node)
             except Exception:
-                # If the hard drive fails to be added to a node, remove it from all successful nodes
-                # and remove from the local node
+                # If the hard drive fails to be added to a node, remove it from all successful
+                # nodes and remove from the local node
                 for node in successful_nodes:
-                    self.get_remote_object(node).removeFromVirtualMachine()
+                    self.get_remote_object(node=node).removeFromVirtualMachine()
 
                 self.removeFromVirtualMachine(unregister=register, all_nodes=False)
                 raise
@@ -378,7 +374,7 @@ class Base(PyroObject):
         if self._is_cluster_master and all_nodes:
             cluster = self._get_registered_object('cluster')
             for node in cluster.get_nodes():
-                remote_disk_object = self.get_remote_object(node)
+                remote_disk_object = self.get_remote_object(node=node)
                 remote_disk_object.removeFromVirtualMachine()
 
     def _unregisterLibvirt(self):
@@ -431,7 +427,7 @@ class Base(PyroObject):
 
         if perform_on_nodes and self._is_cluster_master:
             def remoteCommand(node):
-                remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                remote_disk = self.get_remote_object(node_object=node, registered=False)
                 remote_disk.activate_volume(volume=volume)
 
             cluster = self._get_registered_object('cluster')
