@@ -119,8 +119,12 @@ class Function(PyroObject):
                                 #                wrapper to execute the method on
                                 #                remote nodes, otherwise it is passed
                                 #                to the function
-                 support_callback):  # Determines whether the method support the _f
+                 support_callback,  # Determines whether the method support the _f
                                     # callback class
+                 undo_method,  # Override the name of the undo method
+                 remote_method,   # Override the name of the method that is run on
+                                  # remote nodes
+                 remote_undo_method):  # Override the undo method for remote nodes
         """Store the original function, instance and arguments
         as member variables for the function call and undo method
         """
@@ -151,6 +155,7 @@ class Function(PyroObject):
         self.current_node = None
 
         # Store function and parameters
+        self.undo_method = undo_method
         self.function = function
         self.obj = obj
         self.locking = locking
@@ -158,6 +163,8 @@ class Function(PyroObject):
         self.instance_method = instance_method
         self.is_complete = False
         self.support_callback = support_callback
+        self.remote_method = remote_method
+        self.remote_undo_method = remote_undo_method
 
         # Register instance and functions with pyro
         self.obj._register_object(self, debug=False)
@@ -170,6 +177,17 @@ class Function(PyroObject):
     @property
     def _undo_function_name(self):
         """Return the name of the undo function"""
+        # If running on a remote node and a remote undo method
+        # is defined, return that
+        if self.current_node != get_hostname() and self.remote_undo_method:
+            return self.remote_undo_method
+
+        # Otherwise, if a custom undo method is defined (for all nodes)
+        # return that
+        if self.undo_method:
+            return self.undo_method
+
+        # Otherwise, return default undo name for method
         return 'undo__%s' % self.function.__name__
 
     def run(self):
@@ -282,7 +300,12 @@ class Function(PyroObject):
 
         # Determine function name, depending on whether performing
         # undo
-        function_name = self.function.__name__ if not undo else self._undo_function_name
+        if undo:
+            function_name = self._undo_function_name
+        elif self.remote_method:
+            function_name = self.remote_method
+        else:
+            function_name = self.function.__name__
 
         # If undo, if the remote node doesn't have an undo method, return
         if undo and not hasattr(remote_object, self._undo_function_name):
@@ -390,13 +413,22 @@ class Expose(object):
 
     def __init__(self, locking=False, object_type=None,
                  instance_method=None, remote_nodes=False,
-                 support_callback=False):
+                 support_callback=False,
+                 undo_method=None,
+                 expose=True,  # Determine whether the method is actually
+                               # exposed to pyro
+                 remote_method=None,
+                 remote_undo_method=None):
         """Setup variables passed in via decorator as member variables"""
         self.locking = locking
         self.object_type = object_type
         self.instance_method = instance_method
         self.remote_nodes = remote_nodes
         self.support_callback = support_callback
+        self.undo_method = undo_method
+        self.expose = expose
+        self.remote_method = remote_method
+        self.remote_undo_method = remote_undo_method
 
     def __call__(self, callback):
         """Run when object is created. The returned value is the method that is executed"""
@@ -409,10 +441,16 @@ class Expose(object):
                                 object_type=self.object_type,
                                 instance_method=self.instance_method,
                                 remote_nodes=self.remote_nodes,
-                                support_callback=self.support_callback)
+                                support_callback=self.support_callback,
+                                undo_method=self.undo_method,
+                                remote_method=self.remote_method,
+                                remote_undo_method=self.remote_undo_method)
             return_val = function.run()
             function.unregister()
             return return_val
 
         # Expose the function
-        return Pyro4.expose(inner)
+        if self.expose:
+            return Pyro4.expose(inner)
+        else:
+            return inner
