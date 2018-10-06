@@ -400,6 +400,7 @@ class Drbd(Base):
 
         t.finish()
 
+    @Expose()
     def removeStorage(self, *args, **kwargs):
         """Exposed method for _removeStorage"""
         self._get_registered_object('auth').assert_user_type('ClusterUser')
@@ -1033,11 +1034,15 @@ class Drbd(Base):
         # Attempt to remove all related configuration/volume groups on source node, except
         # raw logical volume, as this would be useful in case of any failures during the rest of
         # the method.
-        try:
-            src_hdd_object = self.get_remote_object(node=source_node)
+        cluster = self._get_registered_object('cluster')
+        source_node_object = cluster.get_remote_node(node=source_node)
+        dest_node_object = cluster.get_remote_node(node=destination_node)
+
+        if source_node_object:
+            src_hdd_object = self.get_remote_object(node_object=source_node_object)
             src_hdd_object.removeStorage(local_only=True, remove_raw=False)
 
-        except InaccessibleNodeException:
+        else:
             Syslogger.logger().warning(('Could not connect to remote node \'%s\' - '
                                         'storage and DRBD configuration will '
                                         'still be present on node') % source_node)
@@ -1049,11 +1054,12 @@ class Drbd(Base):
         disk_size = self.getSize()
 
         # Create disk object for destination node
-        dest_hdd_object = self.get_remote_object(node_object=destination_node,
+        dest_hdd_object = self.get_remote_object(node_object=dest_node_object,
                                                  registered=False)
 
         # Create the storage on the destination node
         dest_raw_volume = dest_hdd_object.get_raw_volume()
+        dest_node_object.annotate_object(dest_raw_volume)
         dest_raw_volume.create(disk_size)
 
         # Activate and zero raw volume
@@ -1062,6 +1068,7 @@ class Drbd(Base):
 
         # Create meta volume for destination, calculate size and create
         dest_meta_volume = dest_hdd_object.get_meta_volume()
+        dest_node_object.annotate_object(dest_meta_volume)
         meta_volume_size = self._calculateMetaDataSize()
         dest_meta_volume.create(meta_volume_size)
 
@@ -1089,11 +1096,12 @@ class Drbd(Base):
         self._drbdOverwritePeer()
 
         # Remove the raw logic volume from the source node
-        try:
-            src_hdd_object = self.get_remote_object(node=source_node)
-            src_hdd_object.get_raw_volume().delete()
-
-        except:
+        if source_node_object:
+            src_hdd_object = self.get_remote_object(node_object=source_node_object)
+            src_raw_volume = src_hdd_object.get_raw_volume()
+            source_node_object.annotate_object(src_raw_volume)
+            src_raw_volume.delete()
+        else:
             # Except all exceptions, as if the initial node connection at the start of the
             # method failed, this one, if the connection succeeds, will fail as the logical volume
             # will still be in use by DRBD

@@ -168,6 +168,7 @@ class Factory(PyroObject):
         # backends for this node.
         # @TODO IF a storage type has been specified, which does not support DBRD, then
         # we can assume that Local storage is used.
+        from mcvirt.syslogger import Syslogger
         available_storage_types = self._get_available_storage_types()
         cluster = self._get_registered_object('cluster')
         if storage_type:
@@ -222,7 +223,7 @@ class Factory(PyroObject):
             for node in nodes:
                 if nodes_predefined:
                     storage_backend.available_on_node(node=node, raise_on_err=True)
-                elif storage_backend.available_on_node(node=node, raise_on_err=False):
+                elif not storage_backend.available_on_node(node=node, raise_on_err=False):
                     nodes.remove(node)
 
         # Otherwise, if storage backend has not been defined, ensure that
@@ -254,12 +255,13 @@ class Factory(PyroObject):
         # available nodes can only be 1 node, so calculate it
         if (storage_type == Local.__name__ and
                 not storage_backend.shared):
-            if get_hostname() in nodes:
-                nodes = [get_hostname()]
-            else:
-                raise InvalidNodesException(
-                    ('Non-shared local storage must be assigned to a '
-                     'single node and local not is not available'))
+            if len(nodes) != 1:
+                if nodes_predefined or get_hostname() not in nodes:
+                    raise InvalidNodesException(
+                        ('Non-shared local storage must be assigned to a '
+                         'single node and local not is not available'))
+                else:
+                    nodes = [get_hostname()]
 
         # Ensure that there is free space on all nodes
         free_space = storage_backend.get_free_space(nodes=nodes, return_dict=True)
