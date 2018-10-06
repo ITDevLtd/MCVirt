@@ -366,37 +366,16 @@ class Drbd(Base):
         meta_volume.wipe(nodes=nodes)
 
         # Generate Drbd resource configuration
-        self._generateDrbdConfig()
-        progress = Drbd.CREATE_PROGRESS.CREATE_DRBD_CONFIG
-
-        cluster = self._get_registered_object('cluster')
-
-        def remoteCommand(node):
-            remote_disk = self.get_remote_object(node_object=node, registered=False)
-            remote_disk.generateDrbdConfig()
-        cluster.run_remote_command(callback_method=remoteCommand,
-                                   nodes=remote_nodes)
-        progress = Drbd.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R
+        self._generateDrbdConfig(
+            nodes=nodes, get_remote_object_kwargs={'registered': False})
 
         # Setup meta data on Drbd volume
-        self._initialiseMetaData()
-
-        def remoteCommand(node):
-            remote_disk = self.get_remote_object(node_object=node, registered=False)
-            remote_disk.initialiseMetaData()
-        cluster.run_remote_command(callback_method=remoteCommand,
-                                   nodes=remote_nodes)
+        self._initialiseMetaData(
+            nodes=nodes, get_remote_object_kwargs={'registered': False})
 
         # Bring up Drbd resource
-        self._drbdUp()
-        progress = Drbd.CREATE_PROGRESS.DRBD_UP
-
-        def remoteCommand(node):
-            remote_disk = self.get_remote_object(node_object=node, registered=False)
-            remote_disk.drbdUp()
-        cluster.run_remote_command(callback_method=remoteCommand,
-                                   nodes=remote_nodes)
-        progress = Drbd.CREATE_PROGRESS.DRBD_UP_R
+        self._drbdUp(
+            nodes=nodes, get_remote_object_kwargs={'registered': False})
 
         # Wait for 5 seconds to let Drbd initialise
         # TODO: Monitor Drbd status instead.
@@ -404,75 +383,19 @@ class Drbd(Base):
 
         # Add to virtual machine
         self._sync_state = True
-        self.addToVirtualMachine()
-        progress = Drbd.CREATE_PROGRESS.ADD_TO_VM
+        self.addToVirtualMachine(
+            nodes=nodes, get_remote_object_kwargs={'registered': False})
 
         # Overwrite data on peer
         self._drbdOverwritePeer()
 
         # Ensure the Drbd resource is connected
-        self._drbdConnect()
-        progress = Drbd.CREATE_PROGRESS.DRBD_CONNECT
-
-        def remoteCommand(node):
-            remote_disk = self.get_remote_object(node_object=node, registered=False)
-            remote_disk.drbdConnect()
-        cluster.run_remote_command(callback_method=remoteCommand,
-                                   nodes=remote_nodes)
-        progress = Drbd.CREATE_PROGRESS.DRBD_CONNECT_R
+        self._drbdConnect(nodes=nodes)
 
         # Mark volume as primary on local node
         self._drbdSetPrimary()
 
-        def remoteCommand(node):
-            remote_disk = self.get_remote_object(node_object=node, registered=False)
-            remote_disk.drbdSetSecondary()
-        cluster.run_remote_command(callback_method=remoteCommand,
-                                   nodes=remote_nodes)
-
-        except Exception:
-            cluster = self._get_registered_object('cluster')
-            # If the creation fails, tear down based on the progress of the creation
-            if progress.value >= Drbd.CREATE_PROGRESS.DRBD_CONNECT_R.value:
-                def remoteCommand(node):
-                    remote_disk = self.get_remote_object(node_object=node, registered=False)
-                    remote_disk.drbdDisconnect()
-                cluster.run_remote_command(callback_method=remoteCommand,
-                                           nodes=remote_nodes)
-
-            if progress.value >= Drbd.CREATE_PROGRESS.DRBD_CONNECT.value:
-                self._drbdDisconnect()
-
-            if progress.value >= Drbd.CREATE_PROGRESS.ADD_TO_VM.value:
-                self.removeFromVirtualMachine()
-
-            if progress.value >= Drbd.CREATE_PROGRESS.DRBD_UP_R.value:
-                def remoteCommand(node):
-                    remote_disk = self.get_remote_object(node_object=node, registered=False)
-                    remote_disk.drbdDown()
-                cluster.run_remote_command(callback_method=remoteCommand,
-                                           nodes=remote_nodes)
-
-            if progress.value >= Drbd.CREATE_PROGRESS.DRBD_UP.value:
-                self._drbdDown()
-
-            if progress.value >= Drbd.CREATE_PROGRESS.CREATE_DRBD_CONFIG_R.value:
-                def remoteCommand(node):
-                    remote_disk = self.get_remote_object(node_object=node, registered=False)
-                    remote_disk.removeDrbdConfig()
-                cluster.run_remote_command(callback_method=remoteCommand,
-                                           nodes=remote_nodes)
-
-            if progress.value >= Drbd.CREATE_PROGRESS.CREATE_DRBD_CONFIG.value:
-                self._removeDrbdConfig()
-
-            if progress.value >= Drbd.CREATE_PROGRESS.CREATE_META_LV.value:
-                meta_volume.delete(nodes=nodes)
-
-            if progress.value >= Drbd.CREATE_PROGRESS.CREATE_RAW_LV.value:
-                raw_volume.delete(nodes=nodes)
-
-            raise
+        self.drbdSetSecondary(nodes=remote_nodes)
 
         t.finish()
 
@@ -526,6 +449,8 @@ class Drbd(Base):
 
         return self._initialiseMetaData(*args, **kwargs)
 
+    @Expose(expose=False, remote_method='initialiseMetaData',
+            remote_nodes=True)
     def _initialiseMetaData(self):
         """Performs an initialisation of the meta data, using drbdadm"""
         System.runCommand([NodeDrbd.DrbdADM, 'create-md', self.resource_name])
@@ -633,6 +558,8 @@ class Drbd(Base):
 
         return self._drbdUp(*args, **kwargs)
 
+    @Expose(expose=False, remote_method='drbdUp', undo_method='_drbdDown',
+            remote_undo_method='drbdDown', remote_nodes=True)
     def _drbdUp(self):
         """Performs a Drbd 'up' on the hard drive Drbd resource"""
         System.runCommand([NodeDrbd.DrbdADM, 'up', self.resource_name])
@@ -662,6 +589,9 @@ class Drbd(Base):
 
         return self._drbdConnect(*args, **kwargs)
 
+    @Expose(locking=True, expose=False, remote_nodes=True,
+            remote_method='drbdConnect', undo_method='_drbdDisconnect',
+            remote_undo_method='drbdDisconnect')
     def _drbdConnect(self):
         """Performs a Drbd 'connect' on the hard drive Drbd resource"""
         if self._drbdGetConnectionState() not in Drbd.DRBD_STATES['CONNECTION']['CONNECTED']:
@@ -762,7 +692,7 @@ class Drbd(Base):
         # Set Drbd resource to primary
         System.runCommand([NodeDrbd.DrbdADM, 'primary', self.resource_name])
 
-    @Expose(locking=True)
+    @Expose(locking=True, remote_nodes=True)
     def drbdSetSecondary(self, *args, **kwargs):
         """Provides an exposed method for _drbdSetSecondary
            with permission checking"""
@@ -1250,7 +1180,8 @@ class Drbd(Base):
 
     @Expose(expose=False, remote_method='generateDrbdConfig',
             undo_method='_removeDrbdConfig',
-            remote_undo_method='removeDrbdConfig')
+            remote_undo_method='removeDrbdConfig',
+            remote_nodes=True)
     def _generateDrbdConfig(self):
         """Generates the Drbd resource configuration"""
         # Create configuration for use with the template

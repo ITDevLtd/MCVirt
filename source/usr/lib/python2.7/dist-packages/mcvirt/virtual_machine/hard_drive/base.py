@@ -39,6 +39,7 @@ from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.constants import LockStates
+from mcvirt.syslogger import Syslogger
 
 
 class Driver(Enum):
@@ -232,7 +233,7 @@ class Base(PyroObject):
         return self.__class__.__name__
 
     @Expose(locking=True)
-    def delete(self):
+    def delete(self, local_only=False):
         """Delete the logical volume for the disk"""
         # Ensure that the user has permissions to add delete storage
         self._get_registered_object('auth').assert_permission(
@@ -247,16 +248,17 @@ class Base(PyroObject):
         self.vm_object.ensureUnlocked()
         self.vm_object.ensure_stopped()
 
-        if self.vm_object.isRegisteredLocally():
-            # Remove from LibVirt, if registered, so that libvirt doesn't
-            # hold the device open when the storage is removed
-            self._unregisterLibvirt()
-
         # Remove backing storage
-        self._removeStorage()
+        self._removeStorage(local_only=local_only)
+
+        if local_only:
+            nodes = [get_hostname()]
+        else:
+            cluster = self._get_registered_object('cluster')
+            nodes = cluster.get_nodes(include_local=True)
 
         # Remove the hard drive from the MCVirt VM configuration
-        self.removeFromVirtualMachine(unregister=False)
+        self.removeFromVirtualMachine(nodes=nodes)
 
         # Unregister object and remove from factory cache
         hdd_factory = self._get_registered_object('hard_drive_factory')
@@ -298,8 +300,8 @@ class Base(PyroObject):
 
         return new_disk_object
 
-    @Expose(locking=True)
-    def addToVirtualMachine(self, register=True):
+    @Expose(locking=True, remote_nodes=True, undo_method='removeFromVirtualMachine')
+    def addToVirtualMachine(self):
         """Add the hard drive to the virtual machine,
            and performs the base function on all nodes in the cluster"""
         # Ensure that the user has permissions to modify VM
@@ -323,33 +325,13 @@ class Base(PyroObject):
                                 (self.disk_id, self.vm_object.get_name())
         )
 
-        # If the node cluster is initialised, update all remote node configurations
-        if self._is_cluster_master:
-
-            # Create list of nodes that the hard drive was successfully added to
-            successful_nodes = []
-            cluster = self._get_registered_object('cluster')
-            try:
-                for node in cluster.get_nodes():
-                    remote_disk_object = self.get_remote_object(node=node, registered=False)
-                    remote_disk_object.addToVirtualMachine()
-                    successful_nodes.append(node)
-            except Exception:
-                # If the hard drive fails to be added to a node, remove it from all successful
-                # nodes and remove from the local node
-                for node in successful_nodes:
-                    self.get_remote_object(node=node).removeFromVirtualMachine()
-
-                self.removeFromVirtualMachine(unregister=register, all_nodes=False)
-                raise
-
     @staticmethod
     def isAvailable(node, node_drbd):
         """Returns whether the storage type is available on the node"""
         raise NotImplementedError
 
-    @Expose(locking=True)
-    def removeFromVirtualMachine(self, unregister=False, all_nodes=True):
+    @Expose(locking=True, remote_nodes=True)
+    def removeFromVirtualMachine(self):
         """Remove the hard drive from a VM configuration and perform all nodes
            in the cluster"""
         # Ensure that the user has permissions to modify VM
@@ -359,7 +341,7 @@ class Base(PyroObject):
         )
         # If the VM that the hard drive is attached to is registered on the local
         # node, remove the hard drive from the LibVirt configuration
-        if unregister and self.vm_object.isRegisteredLocally():
+        if self.vm_object.isRegisteredLocally():
             self._unregisterLibvirt()
 
         # Update VM config file
@@ -369,13 +351,6 @@ class Base(PyroObject):
         self.vm_object.get_config_object().update_config(
             removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %
             (self.disk_id, self.vm_object.get_name()))
-
-        # If the cluster is initialised, run on all nodes that the VM is available on
-        if self._is_cluster_master and all_nodes:
-            cluster = self._get_registered_object('cluster')
-            for node in cluster.get_nodes():
-                remote_disk_object = self.get_remote_object(node=node)
-                remote_disk_object.removeFromVirtualMachine()
 
     def _unregisterLibvirt(self):
         """Removes the hard drive from the LibVirt configuration for the VM"""
@@ -542,7 +517,7 @@ class Base(PyroObject):
         """Move the storage to another node in the cluster"""
         raise NotImplementedError
 
-    def _removeStorage(self):
+    def _removeStorage(self, local_only=False, remove_raw=True):
         """Delete te underlying storage for the disk"""
         raise NotImplementedError
 

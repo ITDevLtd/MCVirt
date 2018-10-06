@@ -93,7 +93,7 @@ class Local(Base):
         can be performed on the disk"""
         return self._get_data_volume().check_exists()
 
-    def _removeStorage(self):
+    def _removeStorage(self, local_only=False, remove_raw=True):
         """Removes the backing logical volume"""
         self._get_data_volume().delete()
 

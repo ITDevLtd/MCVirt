@@ -32,15 +32,23 @@ class Transaction(object):
     # LIFO Stack of running transactions
     transactions = []
 
+    # Determine if currently undo-ing
+    undo_state = False
+
     @classmethod
     def in_transaction(cls):
         """Determine if a transaction is currently in progress"""
         return len(cls.transactions) > 0
 
+    @property
+    def id(self):
+        """Return the ID of the transaction"""
+        return self._id
+
     def __init__(self):
         """Setup member variables and register transaction"""
         # Determine transaction ID.
-        self._transaction_id = len(Transaction.transactions)
+        self._id = len(Transaction.transactions)
 
         # Initialise LIFO stack of functions
         self.functions = []
@@ -48,15 +56,20 @@ class Transaction(object):
         # Initialise with an incomplete state
         self.complete = False
 
-        # Add the transaction to the static list of transactions
-        Transaction.transactions.insert(0, self)
+        # Only register transacstion is not in an undo-state
+        Syslogger.logger().debug(Transaction.undo_state)
+        if not Transaction.undo_state:
+            # Add the transaction to the static list of transactions
+            Transaction.transactions.insert(0, self)
+        Syslogger.logger().debug(Transaction.transactions)
 
-    def finish_transaction(self):
+    def finish(self):
         """Mark the transaction as having been completed"""
         self.comlpete = True
         # Only remove transaction if it is the last
         # transaction in the stack
-        if Transaction.transactions.index(self) == 0:
+        Syslogger.logger().debug(Transaction.transactions)
+        if self.id == Transaction.transactions[-1].id:
             Syslogger.logger().debug('End of transaction stack')
 
             # Tear down all transactions
@@ -74,7 +87,7 @@ class Transaction(object):
     def register_function(cls, function):
         """Register a function with the current transactions"""
         # Only register function if a transaction is in progress
-        if cls.in_transaction():
+        if cls.in_transaction() and not Transaction.undo_state:
             for transaction in Transaction.transactions:
                 # Append function to transaction, if it is
                 # not marked as complete
@@ -88,22 +101,34 @@ class Transaction(object):
         the undo method on all previous functions on each of the
         transactions
         """
-        # If in a transaction
-        if cls.in_transaction():
-            # Iterate through transactions, removing each item
+        Transaction.undo_state = True
+        try:
+            # If in a transaction
+            if cls.in_transaction():
+                # Iterate through transactions, removing each item
+                for transaction_ar in cls.transactions:
+                    # Iteracte through each function in the transaction
+                    for function in transaction_ar.functions:
+
+                        # Undo the function
+                        function.undo()
+
+                    # Mark the transaction as complete, removing
+                    # it from global list and all functions
+                    transaction_ar.finish()
+            else:
+                # Otherwise, undo single function
+                function.undo()
+        except:
+            # If exception is thrown, remove any remaining
+            # transactions and reset undo_state
             for transaction_ar in cls.transactions:
-                # Iteracte through each function in the transaction
-                for function in transaction_ar.functions:
-
-                    # Undo the function
-                    function.undo()
-
                 # Mark the transaction as complete, removing
                 # it from global list and all functions
-                transaction_ar.finish_transaction()
-        else:
-            # Otherwise, undo single function
-            function.undo()
+                transaction_ar.finish()
+
+            # Reset undo state flag
+            Transaction.undo_state = False
 
 
 class Function(PyroObject):
@@ -136,6 +161,17 @@ class Function(PyroObject):
         # Otherwise, just add the local node
         else:
             nodes = [get_hostname()]
+
+        # If get_remote_object_kwargs was passed to function call
+        # extract to use for get_remote_object call.
+        # Optional dict of kwargs to pass to
+        # get_remote_object method, whilst running
+        # on a remote node
+        if 'get_remote_object_kwargs' in kwargs:
+            self.get_remote_object_kwargs = kwargs['get_remote_object_kwargs']
+            del kwargs['get_remote_object_kwargs']
+        else:
+            self.get_remote_object_kwargs = {}
 
         # If return_dict has been specified, obtain variable
         # and remove from kwargs
@@ -296,7 +332,7 @@ class Function(PyroObject):
         self.current_node = node
 
         # Obtain the remote object
-        remote_object = self.obj.get_remote_object(node=node)
+        remote_object = self.obj.get_remote_object(node=node, **self.get_remote_object_kwargs)
 
         # Determine function name, depending on whether performing
         # undo
@@ -362,6 +398,11 @@ class Function(PyroObject):
         if (get_hostname() in self.nodes and
                 self.nodes[get_hostname()]['complete'] and
                 hasattr(self.obj, self._undo_function_name)):
+
+            # Set current node
+            local_hostname = get_hostname()
+            self.current_node = local_hostname
+
             Syslogger.logger().debug('Undo %s %s %s %s' %
                                      (get_hostname(),
                                       self._undo_function_name,
@@ -380,7 +421,7 @@ class Function(PyroObject):
             # Run the remote undo method
             Syslogger.logger().debug('Undo %s %s %s %s' %
                                      (node,
-                                      self._undo_function_name,
+                                      self.function.__name__,
                                       str(self.nodes[node]['args']),
                                       str(self.nodes[node]['kwargs'])))
             self._call_function_remote(node=node, undo=True)
