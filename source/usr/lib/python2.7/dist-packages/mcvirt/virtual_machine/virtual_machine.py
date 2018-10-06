@@ -99,21 +99,24 @@ class VirtualMachine(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(update_remote_node)
 
-    def get_remote_object(self, include_node=False, set_cluster_master=False):
+    def get_remote_object(self, node=None, node_object=None, include_node=False, set_cluster_master=False):
         """Return a instance of the virtual machine object
         on the machine that the VM is registered
         """
-        if self.isRegisteredLocally():
+        # MUST check node parameter first first in both of these cases. As IF the
+        # get_remote_object has been called when VM does not exist locally and a node
+        # is specified, this will not check the local config file. Used whilst
+        # deleting a VM
+        if not node and self.isRegisteredLocally():
             return self
-        elif self.isRegisteredRemotely():
-            cluster = self._get_registered_object('cluster')
-            remote_node = cluster.get_remote_node(self.getNode(),
-                                                  set_cluster_master=set_cluster_master)
-            remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
+        elif node or self.isRegisteredRemotely():
+            if not node_object:
+                cluster = self._get_registered_object('cluster')
+                node_object = cluster.get_remote_node(node or self.getNode(),
+                                                      set_cluster_master=set_cluster_master)
+            remote_vm_factory = node_object.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
-            remote_node.annotate_object(remote_vm)
-            if include_node:
-                return remote_vm, remote_node
+            node_object.annotate_object(remote_vm)
             return remote_vm
         else:
             raise VmNotRegistered('The VM is not registered on a node')
@@ -516,12 +519,15 @@ class VirtualMachine(PyroObject):
             for disk_object in self.getHardDriveObjects():
                 disk_object.delete()
 
-        # 'Undefine' object from LibVirt
+        nodes = self._get_registered_object('cluster').get_nodes(include_local=True)
+        self.delete_config(nodes=nodes, keep_config=keep_config)
+
+    @Expose(locking=True, remote_nodes=True)
+    def delete_config(self, keep_config):
+        """Remove the VM config from the disk and MCVirt config"""
+        # Unregister VM
         if self.isRegisteredLocally():
-            try:
-                self._getLibvirtDomainObject().undefine()
-            except:
-                raise LibvirtException('Failed to delete VM from libvirt')
+            self.unregister()
 
         # If VM is a clone of another VM, remove it from the configuration
         # of the parent
@@ -551,18 +557,9 @@ class VirtualMachine(PyroObject):
             'Removed VM \'%s\' from global MCVirt config' %
             self.name)
 
-        if self._is_cluster_master and not local_only:
-            def remote_command(remote_object):
-                vm_factory = remote_object.get_connection('virtual_machine_factory')
-                remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-                remote_object.annotate_object(remote_vm)
-                remote_vm.delete(keep_disks=keep_disks, keep_config=keep_config)
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_command)
-
         vm_factory = self._get_registered_object('virtual_machine_factory')
         if self.get_name() in vm_factory.CACHED_OBJECTS:
-            del(vm_factory.CACHED_OBJECTS[self.get_name()])
+            del vm_factory.CACHED_OBJECTS[self.get_name()]
         self.unregister_object()
 
     @Expose()
@@ -1414,7 +1411,7 @@ class VirtualMachine(PyroObject):
 
         self.apply_cpu_flags()
 
-    @Expose(locking=True)
+    @Expose(locking=True, remote_nodes=True)
     def unregister(self):
         """Public method for permforming VM unregister"""
         self._get_registered_object('auth').assert_permission(
