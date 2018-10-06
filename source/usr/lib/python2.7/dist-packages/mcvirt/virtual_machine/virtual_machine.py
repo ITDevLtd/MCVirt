@@ -519,7 +519,10 @@ class VirtualMachine(PyroObject):
             for disk_object in self.getHardDriveObjects():
                 disk_object.delete()
 
-        nodes = self._get_registered_object('cluster').get_nodes(include_local=True)
+        if local_only or not self._is_cluster_master:
+            nodes = [get_hostname()]
+        else:
+            nodes = self._get_registered_object('cluster').get_nodes(include_local=True)
         self.delete_config(nodes=nodes, keep_config=keep_config)
 
     @Expose(locking=True, remote_nodes=True)
