@@ -128,6 +128,11 @@ class Transaction(object):
             # Reset undo state flag
             Transaction.undo_state = False
 
+            # Re-raise exception in undo
+            raise
+        # Reset undo state flag
+        Transaction.undo_state = False
+
 
 class Function(PyroObject):
     """Provide an interface for a function call, storing

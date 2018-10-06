@@ -384,7 +384,8 @@ class Drbd(Base):
         # Add to virtual machine
         self._sync_state = True
         self.addToVirtualMachine(
-            nodes=nodes, get_remote_object_kwargs={'registered': False})
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True),
+            get_remote_object_kwargs={'registered': False})
 
         # Overwrite data on peer
         self._drbdOverwritePeer()

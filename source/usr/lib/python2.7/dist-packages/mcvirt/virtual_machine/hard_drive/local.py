@@ -112,7 +112,9 @@ class Local(Base):
         # Clone original volume to new volume
         self._get_data_volume().clone(new_disk._get_data_volume())
 
-        new_disk.addToVirtualMachine()
+        new_disk.addToVirtualMachine(
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True),
+            get_remote_object_kwargs={'registered': False})
         return new_disk
 
     def create(self, size):
@@ -121,7 +123,9 @@ class Local(Base):
         self._get_data_volume().create(size)
 
         # Attach to VM and create disk object
-        self.addToVirtualMachine()
+        self.addToVirtualMachine(
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True),
+            get_remote_object_kwargs={'registered': False})
 
     def activateDisk(self):
         """Starts the disk logical volume"""
