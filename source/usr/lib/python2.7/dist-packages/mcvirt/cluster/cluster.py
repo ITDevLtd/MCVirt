@@ -469,7 +469,7 @@ class Cluster(PyroObject):
 
             # Add each of the disks to the VM
             for hard_disk in vm_object.getHardDriveObjects():
-                remote_hard_drive_object = hard_disk.get_remote_object(remote_node=remote_object,
+                remote_hard_drive_object = hard_disk.get_remote_object(node_object=remote_object,
                                                                        registered=False)
                 remote_hard_drive_object.addToVirtualMachine()
 
@@ -556,9 +556,8 @@ class Cluster(PyroObject):
         # remote node
         network_factory = self._get_registered_object('network_factory')
         for local_network in network_factory.get_all_network_objects():
-            if not remote_network_factory.interface_exists(local_network.get_adapter()):
-                raise RemoteObjectConflict('Network interface %s does not exist on remote node' %
-                                           local_network.get_adapter())
+            remote_network_factory.pre_check_network(local_network.get_name(),
+                                                     local_network.get_adapter())
 
         # Determine if there are any VMs on the remote node
         remote_virtual_machine_factory = remote_connection.get_connection(
@@ -607,10 +606,11 @@ class Cluster(PyroObject):
         all_nodes.remove(node_name_to_remove)
 
         def remove_vm(remote_connection, vm_name):
-            remote_vm_factory = remote_connection.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.getVirtualMachineByName(vm_name)
-            remote_connection.annotate_object(remote_vm)
-            remote_vm.delete(local_only=True)
+            if remote_connection is not None:
+                remote_vm_factory = remote_connection.get_connection('virtual_machine_factory')
+                remote_vm = remote_vm_factory.getVirtualMachineByName(vm_name)
+                remote_connection.annotate_object(remote_vm)
+                remote_vm.delete(local_only=True)
 
         # Remove any VMs that are only present on the remote node
         node_to_remove_con = self.get_remote_node(node_name_to_remove)

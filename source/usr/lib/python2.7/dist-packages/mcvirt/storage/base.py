@@ -170,7 +170,7 @@ class Base(PyroObject):
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
-        return MCVirtConfig().get_config()['storage_backends'][self.name]
+        return self._get_registered_object('storage_factory').get_config()[self.name]
 
     @Expose(locking=True)
     def set_location(self, new_location, node=None):

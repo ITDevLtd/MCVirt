@@ -49,18 +49,19 @@ class Factory(PyroObject):
 
     def v9_release_upgrade(self):
         """As part of the version 9.0.0 release. The configuration
-           update cannot be performed whilst the cluster is down
-           (i.e. during startup).
-           During start up, an initial configuration change to implement
-           the default storage backend (as an upgrade from the 'vm_storage_vg'
-           configuration) is created with just the local node specified.
-           Once the node is started, this function is called, which determines
-           if the rest of the cluster is active (so will make any changes on the
-           final node to be started with >=v9.0.0 running). It will then
-           look at the rest of the cluster to determine if the same volume group
-           is used on a majority of the cluster (to determine if a default VG is
-           appropriate for the storage) and then re-configure the 'default' storage
-           backend on all nodes in the cluster."""
+        update cannot be performed whilst the cluster is down
+        (i.e. during startup).
+        During start up, an initial configuration change to implement
+        the default storage backend (as an upgrade from the 'vm_storage_vg'
+        configuration) is created with just the local node specified.
+        Once the node is started, this function is called, which determines
+        if the rest of the cluster is active (so will make any changes on the
+        final node to be started with >=v9.0.0 running). It will then
+        look at the rest of the cluster to determine if the same volume group
+        is used on a majority of the cluster (to determine if a default VG is
+        appropriate for the storage) and then re-configure the 'default' storage
+        backend on all nodes in the cluster.
+        """
 
         # Determine if storage has already been configured
         if MCVirtConfig().get_config()['default_storage_configured']:

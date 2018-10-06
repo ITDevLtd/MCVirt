@@ -519,7 +519,10 @@ class VirtualMachine(PyroObject):
             for disk_object in self.getHardDriveObjects():
                 disk_object.delete()
 
-        nodes = self._get_registered_object('cluster').get_nodes(include_local=True)
+        if local_only or not self._is_cluster_master:
+            nodes = [get_hostname()]
+        else:
+            nodes = self._get_registered_object('cluster').get_nodes(include_local=True)
         self.delete_config(nodes=nodes, keep_config=keep_config)
 
     @Expose(locking=True, remote_nodes=True)
@@ -1258,7 +1261,7 @@ class VirtualMachine(PyroObject):
         if destination_node == source_node:
             raise UnsuitableNodeException('Source node and destination node must' +
                                           ' be different nodes')
-        if not cluster_instance.check_node_exists(source_node):
+        if not cluster_instance.check_node_exists(source_node, include_local=True):
             raise UnsuitableNodeException('Source node does not exist: %s' % source_node)
         if not cluster_instance.check_node_exists(destination_node):
             raise UnsuitableNodeException('Destination node does not exist')
@@ -1275,6 +1278,22 @@ class VirtualMachine(PyroObject):
              source_node == get_hostname())):
             raise UnsuitableNodeException('Drbd-backed VMs must be moved on the node' +
                                           ' that will remain attached to the VM')
+        elif self.getStorageType() == 'Local':
+            raise UnsuitableNodeException('Local-based storage VMs cannot be moved')
+
+        # Ensure that the destination node will support the volume
+        storage_backend = None
+        total_hdd_size = 0
+        for disk_object in self.getHardDriveObjects():
+            storage_backend = disk_object.get_storage_backend()
+            total_hdd_size += disk_object.getSize()
+        # Force check for 'Local' storage, as we're only specifying one node,
+        # as otherwise the check will ensure that there is the additional space
+        # on the remaining node.
+        self._get_registered_object('hard_drive_factory').ensure_hdd_valid(
+            size=total_hdd_size, storage_type='Local',
+            nodes=[destination_node], storage_backend=storage_backend,
+            nodes_predefined=True)
 
         # Remove the destination node from the list of available nodes for the VM and
         # add the remote node as an available node

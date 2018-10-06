@@ -199,7 +199,7 @@ class LvmVolume(BaseVolume):
 
     def deactivate(self):
         """Deactivate volume"""
-        raise NotImplementedError
+        return
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def resize(self, size, increase=True, _f=None):
