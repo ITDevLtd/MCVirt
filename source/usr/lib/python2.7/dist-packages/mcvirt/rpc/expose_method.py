@@ -57,18 +57,16 @@ class Transaction(object):
         self.complete = False
 
         # Only register transacstion is not in an undo-state
-        Syslogger.logger().debug(Transaction.undo_state)
         if not Transaction.undo_state:
             # Add the transaction to the static list of transactions
             Transaction.transactions.insert(0, self)
-        Syslogger.logger().debug(Transaction.transactions)
+            Syslogger.logger().debug('Starting new transaction')
 
     def finish(self):
         """Mark the transaction as having been completed"""
         self.comlpete = True
         # Only remove transaction if it is the last
         # transaction in the stack
-        Syslogger.logger().debug(Transaction.transactions)
         if self.id == Transaction.transactions[-1].id:
             Syslogger.logger().debug('End of transaction stack')
 
