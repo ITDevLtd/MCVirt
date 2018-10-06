@@ -519,16 +519,16 @@ class VirtualMachine(PyroObject):
             for disk_object in self.getHardDriveObjects():
                 disk_object.delete()
 
-        # Unregister VM
-        if self.isRegisteredLocally():
-            self.unregister()
-
         nodes = self._get_registered_object('cluster').get_nodes(include_local=True)
         self.delete_config(nodes=nodes, keep_config=keep_config)
 
     @Expose(locking=True, remote_nodes=True)
     def delete_config(self, keep_config):
         """Remove the VM config from the disk and MCVirt config"""
+        # Unregister VM
+        if self.isRegisteredLocally():
+            self.unregister()
+
         # If VM is a clone of another VM, remove it from the configuration
         # of the parent
         if self.getCloneParent():
