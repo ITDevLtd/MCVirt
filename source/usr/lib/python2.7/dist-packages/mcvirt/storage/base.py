@@ -273,7 +273,7 @@ class Base(PyroObject):
     def ensure_can_remove_node(self, node_name):
         """Ensure that a node can be removed from a storage backend"""
         # Ensure that node is already part of storage backend
-        if self.available_on_node(node_name, raise_on_err=True):
+        if not self.available_on_node(node_name, raise_on_err=False):
             raise NodeNotConfiguredInStorageBackend(
                 'Node is not configured for storage backend')
 
