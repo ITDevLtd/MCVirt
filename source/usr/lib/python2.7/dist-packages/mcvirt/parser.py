@@ -740,13 +740,6 @@ class Parser(object):
             help='Modify configurations relating to the local node',
             parents=[self.parent_parser]
         )
-        self.node_cluster_config = self.node_parser.add_argument_group(
-            'Storage', 'Configure the node-specific storage configurations'
-        )
-        self.node_cluster_config.add_argument('--set-vm-vg', dest='volume_group',
-                                              metavar='VM Volume Group',
-                                              help=('Sets the local volume group used for Virtual'
-                                                    ' machine HDD logical volumes'))
 
         self.node_watchdog_parser = self.node_parser.add_argument_group(
             'Watchdog', 'Update configurations for watchdogs'
@@ -1395,10 +1388,6 @@ class Parser(object):
         elif action == 'node':
             node = rpc.get_connection('node')
             ldap = rpc.get_connection('ldap_factory')
-            if args.volume_group:
-                node.set_storage_volume_group(args.volume_group)
-                self.print_status('Successfully set VM storage volume group to %s' %
-                                  args.volume_group)
 
             if args.ip_address:
                 node.set_cluster_ip_address(args.ip_address)
