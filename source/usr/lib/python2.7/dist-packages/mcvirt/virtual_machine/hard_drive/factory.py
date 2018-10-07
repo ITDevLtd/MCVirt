@@ -168,7 +168,6 @@ class Factory(PyroObject):
         # backends for this node.
         # @TODO IF a storage type has been specified, which does not support DBRD, then
         # we can assume that Local storage is used.
-        from mcvirt.syslogger import Syslogger
         available_storage_types = self._get_available_storage_types()
         cluster = self._get_registered_object('cluster')
         if storage_type:
@@ -195,7 +194,10 @@ class Factory(PyroObject):
                 # If DRBD is not enabled on the node, remove it from the list
                 # of nodes
                 if not node_drbd.is_enabled(node=node):
-                    nodes.delete(node)
+                    if nodes_predefined:
+                        raise InvalidNodesException('DRBD is not enabled on node %s' % node)
+                    else:
+                        nodes.delete(node)
 
             # If number of nodes is less than or greater than 2, raise exceptions, as
             # DRBD requires exactly 2 nodes
@@ -241,7 +243,8 @@ class Factory(PyroObject):
                 raise UnknownStorageBackendException('Storage backend must be specified')
             elif len(available_storage_backends) == 1:
                 storage_backend = available_storage_backends[0]
-                nodes = storage_backend.nodes
+                if not nodes_predefined:
+                    nodes = storage_backend.nodes
             else:
                 raise UnknownStorageBackendException('There are no available storage backends')
 
