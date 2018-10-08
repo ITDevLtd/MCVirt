@@ -21,6 +21,7 @@ import threading
 from mcvirt.client.rpc import Connection
 from mcvirt.parser import Parser
 from mcvirt.constants import PowerStates, LockStates
+from mcvirt.utils import get_hostname
 
 
 def skip_drbd(required):
@@ -125,12 +126,26 @@ class TestBase(unittest.TestCase):
 
     def create_vm(self, vm_name, storage_type):
         """Create a test VM, annotate object and ensure it exists"""
+        all_nodes = self.rpc.get_connection('cluster').get_nodes(include_local=True)
+        available_nodes = self.rpc.get_connection('cluster').get_nodes(include_local=False)
+
+        # If the number of nodes in the cluster does not match the
+        # specific storage type, use the local host and add remote nodes
+        # as necessary
+        if len(all_nodes) > 2 and storage_type == 'Drbd':
+            available_nodes = [get_hostname(), available_nodes[0]]
+        elif len(all_nodes) > 1 and storage_type == 'Local':
+            available_nodes = [get_hostname()]
+        else:
+            available_nodes = all_nodes
+
         vm_object = self.vm_factory.create(self.test_vms[vm_name]['name'],
                                            self.test_vms[vm_name]['cpu_count'],
                                            self.test_vms[vm_name]['memory_allocation'],
                                            self.test_vms[vm_name]['disk_size'],
                                            self.test_vms[vm_name]['networks'],
-                                           storage_type=storage_type)
+                                           storage_type=storage_type,
+                                           available_nodes=available_nodes)
         self.rpc.annotate_object(vm_object)
         self.assertTrue(self.vm_factory.check_exists(self.test_vms[vm_name]['name']))
         return vm_object
