@@ -74,7 +74,6 @@ class Factory(PyroObject):
         except libvirtError:
             pass
 
-
     @Expose()
     def interface_exists(self, interface):
         """Public method for to determine if an interface exists"""

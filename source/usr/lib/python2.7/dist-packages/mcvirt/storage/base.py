@@ -65,7 +65,6 @@ class Base(PyroObject):
         date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
         return 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
 
-
     @classmethod
     def node_pre_check(cls, cluster, libvirt_config, location):
         """Ensure volume group exists on node"""
