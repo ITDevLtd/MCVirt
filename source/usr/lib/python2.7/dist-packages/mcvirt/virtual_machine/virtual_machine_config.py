@@ -137,9 +137,10 @@ class VirtualMachineConfig(ConfigFile):
 
         if self._getVersion() < 12:
             for disk_id in config['hard_disks']:
-                # Generate ID for storage backend
-                name_checksum = hashlib.sha512(
-                    config['hard_disks'][disk_id]['storage_backend']).hexdigest()
-                date_checksum = hashlib.sha512('0').hexdigest()
-                storage_id = 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
-                config['hard_disks'][disk_id]['storage_backend'] = storage_id
+                if 'storage_backend' in config['hard_disks'][disk_id]:
+                    # Generate ID for storage backend
+                    name_checksum = hashlib.sha512(
+                        config['hard_disks'][disk_id]['storage_backend']).hexdigest()
+                    date_checksum = hashlib.sha512('0').hexdigest()
+                    storage_id = 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
+                    config['hard_disks'][disk_id]['storage_backend'] = storage_id
