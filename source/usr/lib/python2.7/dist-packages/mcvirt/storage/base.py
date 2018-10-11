@@ -265,6 +265,13 @@ class Base(PyroObject):
         mcvirt_config = self._get_registered_object('mcvirt_config')()
         mcvirt_config.update_config(update_mcvirt_config, reason)
 
+    def ensure_available(self):
+        """Ensure that the storage backend is currently available on the node"""
+        if not self.check_exists():
+            raise StorageBackendNotAvailableOnNode(
+                'Storage backend %s is not currently avaialble on node: %s' % (
+                    self.name, get_hostname()))
+
     def is_static(self):
         """Determine if the storage backend implies that
         nodes are static"""

@@ -207,6 +207,7 @@ class Base(PyroObject):
 
     def _ensure_exists(self):
         """Ensure the disk exists on the local node"""
+        self.get_storage_backend().ensure_available()
         if not self._check_exists():
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
