@@ -335,7 +335,7 @@ class Factory(PyroObject):
         # only run once)
         if self._is_cluster_master:
             # Ensure storage backend does not already exist with same name
-            if self.check_name_exists(name):
+            if self.get_id_by_name(name):
                 raise StorageBackendAlreadyExistsError('Storage backend already exists: %s' % name)
 
             # Ensure that nodes are valid

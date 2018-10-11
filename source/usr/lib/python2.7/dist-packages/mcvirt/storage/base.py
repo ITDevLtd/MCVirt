@@ -56,7 +56,7 @@ class Base(PyroObject):
         for node in config['nodes']:
             cluster.ensure_node_exists(node, include_local=True)
 
-    @staticmethod
+    @classmethod
     def generate_id(cls, name):
         """Generate ID for storage backend"""
         # Generate sha sum of name and sha sum of
