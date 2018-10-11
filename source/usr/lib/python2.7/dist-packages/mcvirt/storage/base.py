@@ -17,6 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import hashlib
+import datetime
+
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
@@ -53,6 +56,16 @@ class Base(PyroObject):
         for node in config['nodes']:
             cluster.ensure_node_exists(node, include_local=True)
 
+    @staticmethod
+    def generate_id(cls, name):
+        """Generate ID for storage backend"""
+        # Generate sha sum of name and sha sum of
+        # current datetime
+        name_checksum = hashlib.sha512(name).hexdigest()
+        date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
+        return 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
+
+
     @classmethod
     def node_pre_check(cls, cluster, libvirt_config, location):
         """Ensure volume group exists on node"""
@@ -81,20 +94,25 @@ class Base(PyroObject):
         """
         raise NotImplementedError
 
-    def __init__(self, name):
+    def __init__(self, id_):
         """Setup member variables"""
-        self._name = name
+        self._id = id_
 
     def __eq__(self, comp):
         """Allow for comparison of storage objects baesd on name"""
         # Ensure class and name of object match
         if ('__class__' in dir(comp) and
                 comp.__class__ == self.__class__ and
-                'name' in dir(comp) and comp.name == self.name):
+                '_id' in dir(comp) and comp.name == self._id):
             return True
 
         # Otherwise return false
         return False
+
+    @property
+    def id_(self):
+        """Return the ID of the storage backend"""
+        return self._id
 
     @property
     def _volume_class(self):
@@ -104,7 +122,7 @@ class Base(PyroObject):
     @property
     def name(self):
         """Return name of storage backend"""
-        return self._name
+        return self.get_config()['name']
 
     @property
     def shared(self):
@@ -141,7 +159,7 @@ class Base(PyroObject):
         # Remove VM from MCVirt configuration
         def update_mcvirt_config(config):
             """Remove object from mcvirt config"""
-            del config['storage_backends'][self.name]
+            del config['storage_backends'][self._id]
         MCVirtConfig().update_config(
             update_mcvirt_config,
             'Removed storage backend \'%s\' from global MCVirt config' %
@@ -159,9 +177,9 @@ class Base(PyroObject):
 
         # Remove cached pyro object
         storage_factory = self._get_registered_object('storage_factory')
-        if self.name in storage_factory.CACHED_OBJECTS:
+        if self._id in storage_factory.CACHED_OBJECTS:
             self.unregister_object()
-            del storage_factory.CACHED_OBJECTS[self.name]
+            del storage_factory.CACHED_OBJECTS[self._id]
 
     @Expose()
     def get_config(self):
@@ -170,7 +188,7 @@ class Base(PyroObject):
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
-        return self._get_registered_object('storage_factory').get_config()[self.name]
+        return self._get_registered_object('storage_factory').get_config()[self._id]
 
     @Expose(locking=True)
     def set_location(self, new_location, node=None):
@@ -260,7 +278,7 @@ class Base(PyroObject):
             callback(
                 config[
                     self._get_registered_object('storage_factory').STORAGE_CONFIG_KEY
-                ][self.name]
+                ][self.id_]
             )
         mcvirt_config = self._get_registered_object('mcvirt_config')()
         mcvirt_config.update_config(update_mcvirt_config, reason)
@@ -436,7 +454,7 @@ class Base(PyroObject):
             node_object = cluster.get_remote_node(node)
 
         remote_storage_factory = node_object.get_connection('storage_factory')
-        remote_storage = remote_storage_factory.get_object(self.name)
+        remote_storage = remote_storage_factory.get_object(self._id)
         node_object.annotate_object(remote_storage)
         return remote_storage
 

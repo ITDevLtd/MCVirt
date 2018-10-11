@@ -22,7 +22,7 @@ from mcvirt.storage.file import File
 from mcvirt.storage.base import Base
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.constants import DEFAULT_STORAGE_NAME
+from mcvirt.constants import DEFAULT_STORAGE_NAME, DEFAULT_STORAGE_ID
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNotExist,
@@ -91,7 +91,7 @@ class Factory(PyroObject):
         # Attempt to obtain local instance of default storage. Ignore if there is no 'default'
         # storage backend because 'vm_storage_vg' was never set.
         try:
-            local_storage_object = self.get_object(DEFAULT_STORAGE_NAME)
+            local_storage_object = self.get_object_by_name(DEFAULT_STORAGE_NAME)
 
             # Get the configuration for each of the nodes
             local_storage_config = local_storage_object.get_config()
@@ -109,7 +109,7 @@ class Factory(PyroObject):
             storage_factory = connection.get_connection('storage_factory')
             # Get the remote node's storage object
             try:
-                default_object = storage_factory.get_object(DEFAULT_STORAGE_NAME)
+                default_object = storage_factory.get_object(DEFAULT_STORAGE_ID)
             except StorageBackendDoesNotExist:
                 return
             connection.annotate_object(default_object)
@@ -146,7 +146,7 @@ class Factory(PyroObject):
         self.set_default_v9_release_config(storage_config)
 
         # Obtain the default storage backend
-        storage_backend = self.get_object(DEFAULT_STORAGE_NAME)
+        storage_backend = self.get_object(DEFAULT_STORAGE_ID)
 
         # Go through each of the VMs to update config for new storage backends
         for virtual_machine in (self._get_registered_object(
@@ -179,7 +179,7 @@ class Factory(PyroObject):
 
                         while True:
                             # Determine if the name is free, if so break
-                            if not self.check_exists(custom_storage_backend_name):
+                            if not self.get_id_by_name(custom_storage_backend_name):
                                 break
 
                             # Otherwise, update name and increment iterator
@@ -215,7 +215,7 @@ class Factory(PyroObject):
                     custom_storage_backend = storage_backend
 
                 # Update disk config, adding the parameter for storage_backend
-                new_storage_config[disk_id] = custom_storage_backend.name
+                new_storage_config[disk_id] = custom_storage_backend.id_
 
             # Update the VM config on the local and remote nodes
             virtual_machine.set_v9_release_config(new_storage_config)
@@ -230,12 +230,12 @@ class Factory(PyroObject):
             """Update config for default storage"""
             if config:
                 # Update config for default storage
-                mcvirt_config[Factory.STORAGE_CONFIG_KEY][DEFAULT_STORAGE_NAME] = config
+                mcvirt_config[Factory.STORAGE_CONFIG_KEY][DEFAULT_STORAGE_ID] = config
 
             # If config is None and default storage backend exists in config, remove it.
             elif (config is None and
-                    DEFAULT_STORAGE_NAME in mcvirt_config[Factory.STORAGE_CONFIG_KEY]):
-                del mcvirt_config[Factory.STORAGE_CONFIG_KEY][DEFAULT_STORAGE_NAME]
+                    DEFAULT_STORAGE_ID in mcvirt_config[Factory.STORAGE_CONFIG_KEY]):
+                del mcvirt_config[Factory.STORAGE_CONFIG_KEY][DEFAULT_STORAGE_ID]
 
             # Mark default config as having been configured
             mcvirt_config['default_storage_configured'] = True
@@ -261,10 +261,10 @@ class Factory(PyroObject):
         storage_objects = []
         cluster = self._get_registered_object('cluster')
 
-        for storage_name in self.get_config().keys():
+        for storage_id in self.get_config().keys():
 
             # Obtain storage object
-            storage_object = self.get_object(storage_name)
+            storage_object = self.get_object(storage_id)
 
             # Check if storage backend is global or not
             if global_ is not None and storage_object.is_global != global_:
@@ -325,7 +325,7 @@ class Factory(PyroObject):
         )
 
     @Expose(locking=True)
-    def create(self, name, storage_type, location, shared=False,
+    def create(self, name, storage_type, location, shared=False, id_=None,
                node_config={}):
         """Create storage backend"""
         # Check permissions
@@ -335,7 +335,7 @@ class Factory(PyroObject):
         # only run once)
         if self._is_cluster_master:
             # Ensure storage backend does not already exist with same name
-            if self.check_exists(name):
+            if self.check_name_exists(name):
                 raise StorageBackendAlreadyExistsError('Storage backend already exists: %s' % name)
 
             # Ensure that nodes are valid
@@ -356,6 +356,9 @@ class Factory(PyroObject):
                                                    'some nodes do not have an override set'))
 
             storage_class = self.get_class(storage_type)
+
+            # Generate ID for the storage backend
+            id_ = storage_class.generate_id(name)
 
             # Ensure name is valid
             ArgumentValidator.validate_storage_name(name)
@@ -379,7 +382,8 @@ class Factory(PyroObject):
                 }
 
         # Create config
-        config = {'type': storage_type,
+        config = {'name': name,
+                  'type': storage_type,
                   'shared': shared,
                   'nodes': node_config,
                   'location': location}
@@ -413,7 +417,7 @@ class Factory(PyroObject):
         # Add new storage backend to MCVirt config
         def update_config(mcvirt_config):
             """Update MCVirt config"""
-            mcvirt_config['storage_backends'][name] = config
+            mcvirt_config['storage_backends'][id_] = config
         MCVirtConfig().update_config(update_config, 'Add storage backend %s' % name)
 
         if self._is_cluster_master:
@@ -422,11 +426,11 @@ class Factory(PyroObject):
                 storage_factory = remote_connection.get_connection('storage_factory')
                 storage_factory.create(name=name, storage_type=storage_type,
                                        location=location, shared=shared,
-                                       node_config=node_config)
+                                       node_config=node_config, id_=id_)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_create)
 
-        return self.get_object(name)
+        return self.get_object(id_)
 
     @Expose()
     def list(self):
@@ -469,31 +473,50 @@ class Factory(PyroObject):
         """Return the configs for storage backends"""
         return MCVirtConfig().get_config()[Factory.STORAGE_CONFIG_KEY]
 
-    def check_exists(self, name):
-        """Determine if a storage backend exists"""
-        return name in self.get_config().keys()
+    def get_id_by_name(self, name):
+        """Determine the ID of a storage backend by name"""
+        config = self.get_config()
+
+        # Check each
+        for id_ in config:
+            if config[id_]['name'] == name:
+                return id_
+
+        # Return False if it does not exist
+        return False
+
+    def check_exists(self, id_):
+        """Determine if a storage backend exists by ID"""
+        return id_ in self.get_config().keys()
 
     @Expose()
-    def get_object(self, name):
-        """Return the storage object for a given disk"""
+    def get_object(self, id_):
+        """Return a storage backend object"""
         # Get config for storage backend
         storage_backends_config = self.get_config()
 
         # Ensure exists and config is valid
-        if (name not in storage_backends_config.keys() or
-                'type' not in storage_backends_config[name]):
-            raise StorageBackendDoesNotExist('Storage backend does not exist: %s' % name)
+        if not self.check_exists(id_):
+            raise StorageBackendDoesNotExist('Storage backend does not exist: %s' % id_)
 
         # Obtain storage type from config
-        storage_type = storage_backends_config[name]['type']
+        storage_type = storage_backends_config[id_]['type']
 
         # Create required storage object, based on type
-        if name not in Factory.CACHED_OBJECTS:
-            storage_object = self.get_class(storage_type)(name)
+        if id_ not in Factory.CACHED_OBJECTS:
+            storage_object = self.get_class(storage_type)(id_)
             self._register_object(storage_object)
-            Factory.CACHED_OBJECTS[name] = storage_object
+            Factory.CACHED_OBJECTS[id_] = storage_object
 
-        return Factory.CACHED_OBJECTS[name]
+        return Factory.CACHED_OBJECTS[id_]
+
+    @Expose()
+    def get_object_by_name(self, name):
+        """Return a storage object by name"""
+        object_id = self.get_id_by_name(name)
+        if not object_id:
+            raise StorageBackendDoesNotExist('Storage backend does not exist: %s' % name)
+        return self.get_object(object_id)
 
     def get_storage_types(self):
         """Return the available storage types that MCVirt provides"""

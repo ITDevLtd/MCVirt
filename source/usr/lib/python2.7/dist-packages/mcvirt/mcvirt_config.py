@@ -16,9 +16,10 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os
+import hashlib
 
 from mcvirt.config_file import ConfigFile
-from mcvirt.constants import DirectoryLocation, DEFAULT_STORAGE_NAME
+from mcvirt.constants import DirectoryLocation, DEFAULT_STORAGE_NAME, DEFAULT_STORAGE_ID
 from mcvirt.utils import get_hostname
 
 
@@ -148,7 +149,8 @@ class MCVirtConfig(ConfigFile):
             # If the vm_storage_vg was configured, create a base
             # configuration for the deafult storage backend
             if config['vm_storage_vg']:
-                config['storage_backends'][DEFAULT_STORAGE_NAME] = {
+                config['storage_backends'][DEFAULT_STORAGE_ID] = {
+                    'name': DEFAULT_STORAGE_NAME,
                     'type': 'Lvm',
                     'location': None,
                     'nodes': {
@@ -163,3 +165,22 @@ class MCVirtConfig(ConfigFile):
 
             # Define the hostname of the local machine in the config file
             config['cluster']['node_name'] = get_hostname()
+
+        # Only update storage backend config, if they already exist,
+        # otherwise, the v9 upgrade will take care of it
+        elif config['version'] < 12:
+            new_storage_config = {}
+            for storage_name in config['storage_backends'].keys():
+                # Obtain config for storage backend and append name to config
+                storage_config = config['storage_backends'][storage_name]
+                storage_config['name'] = storage_name
+
+                # Generate ID for storage backend
+                name_checksum = hashlib.sha512(storage_name).hexdigest()
+                date_checksum = hashlib.sha512('0').hexdigest()
+                storage_id = 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
+
+                # Add config back to main config, keyed with ID and remove original
+                # config
+                new_storage_config[storage_id] = storage_config
+            config['storage_backends'] = new_storage_config
