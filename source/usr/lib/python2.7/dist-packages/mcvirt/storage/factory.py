@@ -24,7 +24,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.constants import DEFAULT_STORAGE_NAME, DEFAULT_STORAGE_ID
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.expose_method import Expose, Transaction
 from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNotExist,
                                InvalidStorageConfiguration, InaccessibleNodeException,
                                NodeVersionMismatch, StorageBackendAlreadyExistsError)
@@ -253,13 +253,22 @@ class Factory(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(update_remote_config)
 
+    def get_remote_object(self,
+                          node=None,     # The name of the remote node to connect to
+                          node_object=None):   # Otherwise, pass a remote node connection
+        """Obtain an instance of the current storage backend object on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
+
+        return node_object.get_connection('storage_factory')
+
     @Expose()
     def get_all(self, available_on_local_node=None, nodes=[], drbd=None,
                 storage_type=None, shared=None, nodes_predefined=False,
                 global_=None, default_location=None):
         """Return all storage backends, with optional filtering"""
         storage_objects = []
-        cluster = self._get_registered_object('cluster')
 
         for storage_id in self.get_config().keys():
 
@@ -331,55 +340,54 @@ class Factory(PyroObject):
         # Check permissions
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
-        # Only perform checks and config manipulation on cluster master (so that it's
-        # only run once)
-        if self._is_cluster_master:
-            # Ensure storage backend does not already exist with same name
-            if self.get_id_by_name(name):
-                raise StorageBackendAlreadyExistsError('Storage backend already exists: %s' % name)
+        # Ensure storage backend does not already exist with same name
+        if self.get_id_by_name(name):
+            raise StorageBackendAlreadyExistsError('Storage backend already exists: %s' % name)
 
-            # Ensure that nodes are valid
+        t = Transaction()
+
+        # Ensure that nodes are valid
+        cluster = self._get_registered_object('cluster')
+
+        for node in node_config:
+            cluster.ensure_node_exists(node, include_local=True)
+
+        # Ensure that either:
+        # a default location is defined
+        # all nodes provide an override location
+        if (not location and
+                (None in [node_config[node]['location']
+                          if 'location' in node_config[node] else None
+                          for node in node_config] or
+                 not node_config)):
+            raise InvalidStorageConfiguration(('A default location has not been set and '
+                                               'some nodes do not have an override set'))
+
+        storage_class = self.get_class(storage_type)
+
+        # Generate ID for the storage backend
+        id_ = storage_class.generate_id(name)
+
+        # Ensure name is valid
+        ArgumentValidator.validate_storage_name(name)
+
+        # Get all locations and verify that the names are valid
+        # @TODO - Refactor this to be more readable
+        for location_itx in [] if not location else [location] + \
+                [node_config[node]['location']
+                 if 'location' in node_config[node]
+                 else None
+                 for node in node_config]:
+            if location_itx is not None:
+                storage_class.validate_location_name(location_itx)
+
+        # If no nodes have been specified, get all nodes in cluster
+        if not node_config:
             cluster = self._get_registered_object('cluster')
-
-            for node in node_config:
-                cluster.ensure_node_exists(node, include_local=True)
-
-            # Ensure that either:
-            # a default location is defined
-            # all nodes provide an override location
-            if (not location and
-                    (None in [node_config[node]['location']
-                              if 'location' in node_config[node] else None
-                              for node in node_config] or
-                     not node_config)):
-                raise InvalidStorageConfiguration(('A default location has not been set and '
-                                                   'some nodes do not have an override set'))
-
-            storage_class = self.get_class(storage_type)
-
-            # Generate ID for the storage backend
-            id_ = storage_class.generate_id(name)
-
-            # Ensure name is valid
-            ArgumentValidator.validate_storage_name(name)
-
-            # Get all locations and verify that the names are valid
-            # @TODO - Refactor this to be more readable
-            for location_itx in [] if not location else [location] + \
-                    [node_config[node]['location']
-                     if 'location' in node_config[node]
-                     else None
-                     for node in node_config]:
-                if location_itx is not None:
-                    storage_class.validate_location_name(location_itx)
-
-            # If no nodes have been specified, get all nodes in cluster
-            if not node_config:
-                cluster = self._get_registered_object('cluster')
-                node_config = {
-                    node: {'location': None}
-                    for node in cluster.get_nodes(return_all=True, include_local=True)
-                }
+            node_config = {
+                node: {'location': None}
+                for node in cluster.get_nodes(return_all=True, include_local=True)
+            }
 
         # Create config
         config = {'name': name,
@@ -388,49 +396,50 @@ class Factory(PyroObject):
                   'nodes': node_config,
                   'location': location}
 
-        if self._is_cluster_master:
-            # Ensure that config requirements and system requirements
-            # are as expected for the type of storage backend
-            # Only required on cluster master, as this checks all nodes in the cluster
-            self.validate_config(
-                storage_type=storage_type,
-                config=config
-            )
+        # Ensure that config requirements and system requirements
+        # are as expected for the type of storage backend
+        # Only required on cluster master, as this checks all nodes in the cluster
+        self.validate_config(
+            storage_type=storage_type,
+            config=config
+        )
 
-            # Ensure pre-requisites for storage backend pass on each node
-            for node in node_config:
-                node_location = (node_config[node]['location']
-                                 if 'location' in node_config[node] and
-                                 node_config[node]['location'] is not None else location)
+        # Ensure pre-requisites for storage backend pass on each node
+        for node in node_config:
+            node_location = (node_config[node]['location']
+                             if 'location' in node_config[node] and
+                             node_config[node]['location'] is not None else location)
 
-                if node == get_hostname():
-                    self.node_pre_check(location=node_location, storage_type=storage_type)
-                else:
-                    # If node is a remote node, run the command remotely
-                    def remote_command(connection):
-                        """Perform remote node_pre_check command"""
-                        storage_factory = connection.get_connection('storage_factory')
-                        storage_factory.node_pre_check(location=node_location,
-                                                       storage_type=storage_type)
-                    cluster.run_remote_command(remote_command, node=node)
+            self.node_pre_check(location=node_location, storage_type=storage_type,
+                                nodes=[node])
 
+        self.create_config(id_, config, nodes=cluster.get_nodes(include_local=True))
+
+        storage_object = self.get_object(id_)
+
+        # Create ID volume
+        storage_object.create_id_volume()
+
+        t.finish()
+
+        return storage_object
+
+    @Expose(remote_nodes=True)
+    def create_config(self, id_, config):
+        """Create config for the storage backend"""
         # Add new storage backend to MCVirt config
         def update_config(mcvirt_config):
             """Update MCVirt config"""
             mcvirt_config['storage_backends'][id_] = config
-        MCVirtConfig().update_config(update_config, 'Add storage backend %s' % name)
+        MCVirtConfig().update_config(update_config, 'Add storage backend %s' % config['name'])
 
-        if self._is_cluster_master:
-            def remote_create(remote_connection):
-                """Perform remote creation command"""
-                storage_factory = remote_connection.get_connection('storage_factory')
-                storage_factory.create(name=name, storage_type=storage_type,
-                                       location=location, shared=shared,
-                                       node_config=node_config, id_=id_)
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_create)
-
-        return self.get_object(id_)
+    @Expose()
+    def undo__create_config(self, id_, config):
+        """Undo the create config"""
+        def update_config(mcvirt_config):
+            """Update MCVirt config"""
+            del mcvirt_config['storage_backends'][id_]
+        MCVirtConfig().update_config(update_config, 'Remove storage backend %s' % config['name'])
 
     @Expose()
     def list(self):
@@ -459,7 +468,7 @@ class Factory(PyroObject):
             ))
         return table.draw()
 
-    @Expose()
+    @Expose(remote_nodes=True)
     def node_pre_check(self, location, storage_type):
         """Ensure node is suitable for storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
