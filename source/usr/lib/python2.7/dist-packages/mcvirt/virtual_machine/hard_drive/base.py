@@ -174,7 +174,7 @@ class Base(PyroObject):
 
             remote_storage_factory = node_object.get_connection('storage_factory')
             remote_storage_backend = remote_storage_factory.get_object(
-                self.get_storage_backend().name
+                self.get_storage_backend().id_
             )
             kwargs['storage_backend'] = remote_storage_backend
 
@@ -207,6 +207,7 @@ class Base(PyroObject):
 
     def _ensure_exists(self):
         """Ensure the disk exists on the local node"""
+        self.get_storage_backend().ensure_available()
         if not self._check_exists():
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
@@ -573,7 +574,7 @@ class Base(PyroObject):
         """Return the MCVirt configuration for the hard drive object"""
         config = {
             'driver': self.driver,
-            'storage_backend': self.get_storage_backend().name
+            'storage_backend': self.get_storage_backend().id_
         }
         return config
 
@@ -590,12 +591,12 @@ class Base(PyroObject):
         if (not self._storage_backend or
                 isinstance(self._storage_backend, str) or
                 isinstance(self._storage_backend, unicode)):
-            storage_backend_name = (self._storage_backend
-                                    if isinstance(self._storage_backend, str) else
-                                    self.getDiskConfig()['storage_backend'])
+            storage_backend_id = (self._storage_backend
+                                  if isinstance(self._storage_backend, str) else
+                                  self.getDiskConfig()['storage_backend'])
             self._storage_backend = self._get_registered_object(
                 'storage_factory'
-            ).get_object(storage_backend_name)
+            ).get_object(storage_backend_id)
         return self._storage_backend
 
     def _get_volume(self, disk_name):

@@ -302,6 +302,7 @@ class Drbd(Base):
 
     def activateDisk(self):
         """Ensure that the disk is ready to be used by a VM on the local node"""
+        self.get_storage_backend().ensure_available()
         self._ensure_exists()
 
         # Ensure that meta and data volumes are active

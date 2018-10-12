@@ -1105,7 +1105,7 @@ class Parser(object):
         elif action == 'create':
             if args.storage_backend:
                 storage_factory = rpc.get_connection('storage_factory')
-                storage_backend = storage_factory.get_object(args.storage_backend)
+                storage_backend = storage_factory.get_object_by_name(args.storage_backend)
                 rpc.annotate_object(storage_backend)
             else:
                 storage_backend = None
@@ -1468,7 +1468,7 @@ class Parser(object):
                                        shared=args.shared,
                                        location=location)
             elif args.storage_action == 'delete':
-                storage_backend = storage_factory.get_object(args.Name)
+                storage_backend = storage_factory.get_object_by_name(args.Name)
                 rpc.annotate_object(storage_backend)
                 storage_backend.delete()
 
@@ -1476,7 +1476,7 @@ class Parser(object):
                 self.print_status(storage_factory.list())
 
             elif args.storage_action == 'add-node':
-                storage_backend = storage_factory.get_object(args.Name)
+                storage_backend = storage_factory.get_object_by_name(args.Name)
                 rpc.annotate_object(storage_backend)
 
                 # Check lenght of each node config, to ensure it's not too long
@@ -1492,7 +1492,7 @@ class Parser(object):
                         custom_location=(node[1] if len(node) == 2 else None))
 
             elif args.storage_action == 'remove-node':
-                storage_backend = storage_factory.get_object(args.Name)
+                storage_backend = storage_factory.get_object_by_name(args.Name)
                 rpc.annotate_object(storage_backend)
 
                 for node in args.nodes:

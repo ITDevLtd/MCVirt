@@ -16,10 +16,12 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os
+import hashlib
 
 from mcvirt.exceptions import ConfigFileCouldNotBeFoundException
 from mcvirt.config_file import ConfigFile
 from mcvirt.constants import AutoStartStates
+from mcvirt.utils import get_hostname
 
 
 class VirtualMachineConfig(ConfigFile):
@@ -92,9 +94,8 @@ class VirtualMachineConfig(ConfigFile):
 
             # Set the current node and available nodes to the local machine, as the VM
             # will be local
-            from mcvirt.cluster.cluster import Cluster
-            config['node'] = Cluster.getHostname()
-            config['available_nodes'] = [Cluster.getHostname()]
+            config['node'] = get_hostname()
+            config['available_nodes'] = [get_hostname()]
 
             # Obtain details about the VM and add to configuration file
             vm_libvirt_config = self.vm_object.getLibvirtConfig()
@@ -132,4 +133,14 @@ class VirtualMachineConfig(ConfigFile):
         if self._getVersion() < 10:
             if 'volume_group' in config:
                 config['custom_volume_group'] = config['volume_group']
-                del(config['volume_group'])
+                del config['volume_group']
+
+        if self._getVersion() < 12:
+            for disk_id in config['hard_disks']:
+                if 'storage_backend' in config['hard_disks'][disk_id]:
+                    # Generate ID for storage backend
+                    name_checksum = hashlib.sha512(
+                        config['hard_disks'][disk_id]['storage_backend']).hexdigest()
+                    date_checksum = hashlib.sha512('0').hexdigest()
+                    storage_id = 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
+                    config['hard_disks'][disk_id]['storage_backend'] = storage_id

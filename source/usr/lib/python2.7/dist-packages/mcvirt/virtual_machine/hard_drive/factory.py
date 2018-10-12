@@ -169,7 +169,6 @@ class Factory(PyroObject):
         # @TODO IF a storage type has been specified, which does not support DBRD, then
         # we can assume that Local storage is used.
         available_storage_types = self._get_available_storage_types()
-        cluster = self._get_registered_object('cluster')
         if storage_type:
             if (storage_type not in
                     [available_storage.__name__ for available_storage in available_storage_types]):

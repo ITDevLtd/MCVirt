@@ -99,7 +99,8 @@ class VirtualMachine(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(update_remote_node)
 
-    def get_remote_object(self, node=None, node_object=None, include_node=False, set_cluster_master=False):
+    def get_remote_object(self, node=None, node_object=None, include_node=False,
+                          set_cluster_master=False):
         """Return a instance of the virtual machine object
         on the machine that the VM is registered
         """
