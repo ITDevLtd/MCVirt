@@ -228,10 +228,15 @@ class MCVirtConfig(ConfigFile):
                         'CLONE_VM',
                         'DELETE_CLONE',
                         'DUPLICATE_VM',
-                        'TEST_OWNER_PERMISSION'
+                        'TEST_OWNER_PERMISSION',
+                        'MANAGE_GROUP_MEMBERS'
                     ],
                     'users': list(config['permissions']['owner'])
                 }
             }
             config['groups'] = group_config
             del config['permissions']
+
+            # Add user global overrides to user configs
+            for user in config['users']:
+                config['users'][user]['global_permissions'] = {}

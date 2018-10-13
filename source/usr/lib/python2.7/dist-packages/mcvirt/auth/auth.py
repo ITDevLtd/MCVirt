@@ -123,27 +123,8 @@ class Auth(PyroObject):
             user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
 
         # Check the users permissions and determine if the permission is present
-        if permission_enum in user.get_permissions(virtual_machine=vm_object):
+        if permission_enum in user_object.get_permissions(virtual_machine=vm_object):
             return True
-
-        return False
-
-    def check_permission_in_config(self, permission_config, user, permission_enum):
-        """Read permissions config and determines if a user has a given permission."""
-        # Ititerate through the permission groups on the VM
-        for (permission_group, users) in permission_config.items():
-
-            # Check that the group, defined in the VM, is defined in this class
-            if permission_group not in PERMISSION_GROUPS.keys():
-                raise InvalidPermissionGroupException(
-                    'Permissions group, %s, does not exist' % permission_group
-                )
-
-            # Check if user is part of the group and the group contains
-            # the required permission
-            if ((user in users) and
-                    (permission_enum in PERMISSION_GROUPS[permission_group])):
-                return True
 
         return False
 
@@ -238,133 +219,6 @@ class Auth(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
-    @Expose(locking=True)
-    def add_user_permission_group(self, permission_group, user_object,
-                                  vm_object=None, ignore_duplicate=False):
-        """Add a user to a permissions group on a VM object."""
-        assert permission_group in PERMISSION_GROUPS.keys()
-        assert isinstance(self._convert_remote_object(user_object),
-                          self._get_registered_object('user_factory').USER_CLASS)
-        if vm_object:
-            assert isinstance(self._convert_remote_object(vm_object),
-                              self._get_registered_object(
-                                  'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
-        ArgumentValidator.validate_boolean(ignore_duplicate)
-
-        # Check if user running script is able to add users to permission group
-        if not (self.is_superuser() or
-                (vm_object and self.assert_permission(PERMISSIONS.MANAGE_VM_USERS,
-                                                      vm_object) and
-                 permission_group == 'user')):
-            raise InsufficientPermissionsException('VM owners cannot add manager other owners')
-
-        user_object = self._convert_remote_object(user_object)
-        username = user_object.get_username()
-
-        # Check if user is already in the group
-        if vm_object:
-            vm_object = self._convert_remote_object(vm_object)
-            config_object = vm_object.get_config_object()
-        else:
-            config_object = MCVirtConfig()
-
-        if username not in self.get_users_in_permission_group(permission_group, vm_object):
-
-            # Add user to permission configuration for VM
-            def add_user_to_config(config):
-                config['permissions'][permission_group].append(username)
-
-            config_object.update_config(add_user_to_config, 'Added user \'%s\' to group \'%s\'' %
-                                                            (username, permission_group))
-
-            if self._is_cluster_master:
-                def add_remote_user_to_group(connection):
-                    remote_user_factory = connection.get_connection('user_factory')
-                    remote_user = remote_user_factory.get_user_by_username(
-                        user_object.get_username()
-                    )
-                    connection.annotate_object(remote_user)
-                    remote_auth = connection.get_connection('auth')
-                    if vm_object:
-                        remote_vm_factory = connection.get_connection('virtual_machine_factory')
-                        remote_vm = remote_vm_factory.getVirtualMachineByName(
-                            vm_object.get_name()
-                        )
-                    else:
-                        remote_vm = None
-
-                    remote_auth.add_user_permission_group(permission_group, remote_user,
-                                                          remote_vm, ignore_duplicate)
-                cluster_object = self._get_registered_object('cluster')
-                cluster_object.run_remote_command(add_remote_user_to_group)
-
-        elif not ignore_duplicate:
-            raise DuplicatePermissionException(
-                'User \'%s\' already in group \'%s\'' % (username, permission_group)
-            )
-
-    @Expose(locking=True)
-    def delete_user_permission_group(self, permission_group, user_object, vm_object=None):
-        """Remove user from a permissions group on a VM object."""
-        assert permission_group in PERMISSION_GROUPS.keys()
-        assert isinstance(self._convert_remote_object(user_object),
-                          self._get_registered_object('user_factory').USER_CLASS)
-        if vm_object:
-            assert isinstance(self._convert_remote_object(vm_object),
-                              self._get_registered_object(
-                                  'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
-        # Check if user running script is able to remove users to permission group
-        if not (self.is_superuser() or
-                (self.assert_permission(PERMISSIONS.MANAGE_VM_USERS, vm_object) and
-                 permission_group == 'user') and vm_object):
-            raise InsufficientPermissionsException('Does not have required permission')
-
-        user_object = self._convert_remote_object(user_object)
-        username = user_object.get_username()
-
-        # Check if user exists in the group
-        if username not in self.get_users_in_permission_group(permission_group, vm_object):
-            raise UserNotPresentInGroup('User \'%s\' not in group \'%s\'' %
-                                        (username, permission_group))
-
-        if vm_object:
-            vm_object = self._convert_remote_object(vm_object)
-            config_object = vm_object.get_config_object()
-        else:
-            config_object = MCVirtConfig()
-
-        # Remove user from permission configuration for VM
-        def remove_user_from_group(config):
-            config['permissions'][permission_group].remove(username)
-
-        config_object.update_config(remove_user_from_group,
-                                    'Removed user \'%s\' from group \'%s\'' %
-                                    (username, permission_group))
-
-        if self._is_cluster_master:
-            def add_remote_user_to_group(connection):
-                remote_user_factory = connection.get_connection('user_factory')
-                remote_user = remote_user_factory.get_user_by_username(
-                    user_object.get_username()
-                )
-                connection.annotate_object(remote_user)
-                remote_auth = connection.get_connection('auth')
-                if vm_object:
-                    remote_vm_factory = connection.get_connection('virtual_machine_factory')
-                    remote_vm = remote_vm_factory.getVirtualMachineByName(
-                        vm_object.get_name()
-                    )
-                else:
-                    remote_vm = None
-
-                remote_auth.delete_user_permission_group(permission_group, remote_user, remote_vm)
-            cluster_object = self._get_registered_object('cluster')
-            cluster_object.run_remote_command(add_remote_user_to_group)
-
-    def get_permission_groups(self):
-        """Return list of user groups."""
-        return PERMISSION_GROUPS.keys()
-
     def copy_permissions(self, source_vm, dest_vm):
         """Copy the permissions from a given VM to this VM.
         This functionality is used whilst cloning a VM
@@ -379,25 +233,6 @@ class Auth(PyroObject):
         dest_vm.get_config_object().update_config(add_user_to_group,
                                                   'Copied permission from \'%s\' to \'%s\'' %
                                                   (source_vm.get_name(), dest_vm.get_name()))
-
-    @Expose()
-    def get_users_in_permission_group(self, permission_group, vm_object=None):
-        """Obtain a list of users in a given group, either in the global permissions or
-        for a specific VM.
-        """
-        if vm_object:
-            vm_object = self._convert_remote_object(vm_object)
-            permission_config = vm_object.get_config_object().getPermissionConfig()
-        else:
-            mcvirt_config = MCVirtConfig()
-            permission_config = mcvirt_config.getPermissionConfig()
-
-        if permission_group in permission_config.keys():
-            return permission_config[permission_group]
-        else:
-            raise InvalidPermissionGroupException(
-                'Permission group \'%s\' does not exist' % permission_group
-            )
 
 
 class ElevatePermission(object):

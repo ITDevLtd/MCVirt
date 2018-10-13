@@ -404,14 +404,16 @@ class Cluster(PyroObject):
 
         # Iterate over the permission groups, adding all of the members to the group
         # on the remote node
-        for group in auth_instance.get_permission_groups():
-            users = auth_instance.get_users_in_permission_group(group)
+        group_factory = self._get_registered_object('group_factory')
+        remote_group_factory = remote_object.get_connection('group_factory')
+        for group in group_factory.get_all():
+            users = group.get_users()
             for user in users:
                 user_object = remote_user_factory.get_user_by_username(user)
-                remote_object.annotate_object(user_object)
-                if (user_object.get_username() not in
+                remote_object.annotate_object(user)
+                if (user.get_username() not in
                         remote_auth_instance.get_users_in_permission_group(group)):
-                    remote_auth_instance.add_user_permission_group(group, user_object)
+                    remote_auth_instance.add_user_permission_group(group, user)
 
     def sync_storage_backends(self, remote_object, location_overrides):
         """Duplicate the storage backend objects to the new node"""

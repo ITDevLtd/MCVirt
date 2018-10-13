@@ -27,6 +27,7 @@ from mcvirt.exceptions import (GropuInUseError,
                                UserNotPresentInGroup)
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.argument_validator import ArgumentValidator
 
 
 class Group(PyroObject):
@@ -66,22 +67,24 @@ class Group(PyroObject):
         """Return name of storage backend"""
         return self.get_config()['name']
 
-    def get_users(self, virtual_machine=None):
-        """Get users in the group"""
-        config = self.get_vm_config(virtual_machine=virtual_machine) \
-            if virtual_machine else \
-            self.get_config()
-        return config['users']
-
     @Expose(locking=True)
-    def add_user(self, user, virtual_machine=None):
+    def add_user(self, user, virtual_machine=None, ignore_duplicate=False):
         """Add uesr to group"""
-        # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS,
+        assert isinstance(self._convert_remote_object(user),
+                          self._get_registered_object('user_factory').USER_CLASS)
+        if virtual_machine:
+            assert isinstance(self._convert_remote_object(virtual_machine),
+                              self._get_registered_object(
+                                  'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
+        ArgumentValidator.validate_boolean(ignore_duplicate)
+
+        # Check if user running script is able to add users to permission group
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUP_MEMBERS,
                                                               vm_object=virtual_machine)
 
         # Ensure that the user is not already in the group
-        if user.get_username() in self.get_users(virtual_machine=virtual_machine):
+        if (user.get_username() in self.get_users(virtual_machine=virtual_machine) and
+                not ignore_duplicate):
             raise DuplicatePermissionException('User %s already in group %s' %
                                                (user.get_username(), self.name))
 

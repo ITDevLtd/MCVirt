@@ -30,4 +30,5 @@ PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY
                                    'TEST_OWNER_PERMISSION', 'TEST_USER_PERMISSION',
                                    'SUPERUSER', 'MANAGE_NODE', 'SET_SYNC_STATE',
                                    'MANAGE_ISO', 'MANAGE_STORAGE_BACKEND',
-                                   'MANAGE_STORAGE_VOLUME', 'MANAGE_GROUPS'])
+                                   'MANAGE_STORAGE_VOLUME', 'MANAGE_GROUPS',
+                                   'MANAGE_GROUP_MEMBERS'])

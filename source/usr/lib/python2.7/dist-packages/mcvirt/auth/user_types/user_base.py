@@ -55,6 +55,17 @@ class UserBase(PyroObject):
                 users.append(username)
         return users
 
+    def __eq__(self, comp):
+        """Allow for comparison of user objects"""
+        # Ensure class and name of object match
+        if ('__class__' in dir(comp) and
+                comp.__class__ == self.__class__ and
+                'get_username' in dir(comp) and comp.get_username() == self.get_username()):
+            return True
+
+        # Otherwise return false
+        return False
+
     @Expose()
     def is_superuser(self):
         """Determine if the user is a superuser of MCVirt."""
@@ -173,14 +184,28 @@ class UserBase(PyroObject):
         # Get the list of hard coded permission for the user type
         permissions = list(self.PERMISSIONS)
 
+        # Add additional user global permissions
+        permissions += [PERMISSIONS[permission]
+                        for permission in self._get_config()['global_permissions']]
+
         # Obtain list of permissions assigned by groups that the
         # user is a member of
         group_factory = self._get_registered_object('group_factory')
         for group in group_factory.get_all():
             if (group.is_user_member(user=self) or
-                    group.is_user_member(user=self, virtual_machine=virtual_machine)):
+                    (virtual_machine and
+                     group.is_user_member(user=self, virtual_machine=virtual_machine))):
                 permissions += group.get_permissions()
 
+        if virtual_machine:
+            # Get VM user permission overrides and add permissions
+            vm_permission_overrides = virtual_machine.get_config_object(). \
+                getPermissionConfig()['users']
+            if self.get_username() in vm_permission_overrides:
+                permissions += [PERMISSIONS[permission]
+                                for permission in vm_permission_overrides[self.get_username()]]
+
+        return permissions
 
     @Expose(locking=True)
     def delete(self):
