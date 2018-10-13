@@ -382,7 +382,7 @@ class Function(PyroObject):
         args = list(args)
         kwargs = dict(kwargs)
         for itx, arg in enumerate(args):
-            if isinstance(arg, PyroObject) and val.convert_to_remote_object_in_args:
+            if isinstance(arg, PyroObject) and arg.convert_to_remote_object_in_args:
                 remote_object = arg.get_remote_object(node=node)
                 args[itx] = remote_object
 
