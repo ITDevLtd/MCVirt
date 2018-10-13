@@ -146,7 +146,9 @@ class Group(PyroObject):
             """Update VM config"""
             # Add group config to VM if it doesn't exist
             if self.id_ not in config['permissions']['groups']:
-                config['permissions']['groups'][self.id_] = self.get_config()
+                config['permissions']['groups'][self.id_] = self.get_vm_config(
+                    virtual_machine=virtual_machine)
+
             config['permissions']['groups'][self.id_]['users'].append(user.get_username())
         virtual_machine.get_config_object().update_config(
             update_config, 'Add user %s to group %s' %
@@ -207,7 +209,8 @@ class Group(PyroObject):
             """Update VM config"""
             # Add group config to VM if it doesn't exist
             if self.id_ not in config['permissions']['groups']:
-                config['permissions']['groups'][self.id_] = self.get_config()
+                config['permissions']['groups'][self.id_] = self.get_vm_config(
+                    virtual_machine=virtual_machine)
 
             config['permissions']['groups'][self.id_]['users'].remove(user.get_username())
         virtual_machine.get_config_object().update_config(
