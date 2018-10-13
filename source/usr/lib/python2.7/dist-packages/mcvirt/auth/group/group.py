@@ -231,7 +231,7 @@ class Group(PyroObject):
 
         # Determine if storage backend if used by VMs
         if self.in_use():
-            raise GropuInUseError('Storage backend cannot be removed as it is used by VMs')
+            raise GropuInUseError('Storage backend cannot be removed as it contains users')
 
         # Remove VM from MCVirt configuration
         cluster = self._get_registered_object('cluster')

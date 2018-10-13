@@ -28,6 +28,7 @@ from mcvirt.system import System
 from mcvirt.constants import LockStates
 from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.storage.factory import Factory as StorageFactory
+from mcvirt.parser_modules.group_parser import GroupParser
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -51,21 +52,22 @@ class Parser(object):
         self.verbose = verbose
         self.parent_parser = ThrowingArgumentParser(add_help=False)
 
-        self.parent_parser.add_argument('--username', '-U', dest='username',
+        self.global_option = self.parent_parser.add_argument_group('Global optional arguments')
+        self.global_option.add_argument('--username', '-U', dest='username',
                                         help='MCVirt username')
-        self.parent_parser.add_argument('--password', dest='password',
+        self.global_option.add_argument('--password', dest='password',
                                         help='MCVirt password')
-        self.parent_parser.add_argument('--cache-credentials', dest='cache_credentials',
+        self.global_option.add_argument('--cache-credentials', dest='cache_credentials',
                                         action='store_true',
                                         help=('Store the session ID, so it can be used for '
                                               'multiple MCVirt calls.'))
-        self.parent_parser.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
+        self.global_option.add_argument('--ignore-failed-nodes', dest='ignore_failed_nodes',
                                         help='Ignores nodes that are inaccessible',
                                         action='store_true')
-        self.parent_parser.add_argument('--accept-failed-nodes-warning',
+        self.global_option.add_argument('--accept-failed-nodes-warning',
                                         dest='accept_failed_nodes_warning',
                                         help=argparse.SUPPRESS, action='store_true')
-        self.parent_parser.add_argument('--ignore-drbd', dest='ignore_drbd',
+        self.global_option.add_argument('--ignore-drbd', dest='ignore_drbd',
                                         help='Ignores Drbd state', action='store_true')
 
         argparser_description = "\nMCVirt - Managed Consistent Virtualisation\n\n" + \
@@ -394,21 +396,25 @@ class Parser(object):
             dest='add_user',
             metavar='Add user to user group',
             type=str,
-            help='Adds a given user to a VM, allowing them to perform basic functions.'
+            help=('DEPRECATED (will be removed in v10.0.0): '
+                  'Adds a given user to a VM, allowing them to perform basic functions.')
         )
         self.permission_parser.add_argument(
             '--delete-user',
             dest='delete_user',
             metavar='Remove user from user group',
             type=str,
-            help='Removes a given user from a VM. This prevents them to perform basic functions.'
+            help=('DEPRECATED (will be removed in v10.0.0): '
+                  'Removes a given user from a VM. This prevents '
+                  'them to perform basic functions.')
         )
         self.permission_parser.add_argument(
             '--add-owner',
             dest='add_owner',
             metavar='Add user to owner group',
             type=str,
-            help=('Adds a given user as an owner to a VM, '
+            help=('DEPRECATED (will be removed in v10.0.0): '
+                  'Adds a given user as an owner to a VM, '
                   'allowing them to perform basic functions and manager users.')
         )
         self.permission_parser.add_argument(
@@ -416,7 +422,8 @@ class Parser(object):
             dest='delete_owner',
             metavar='Remove user from owner group',
             type=str,
-            help=('Removes a given owner from a VM. '
+            help=('DEPRECATED (will be removed in v10.0.0): '
+                  'Removes a given owner from a VM. '
                   'This prevents them to perform basic functions and manager users.')
         )
         self.permission_parser.add_argument(
@@ -441,6 +448,8 @@ class Parser(object):
                                                   type=str, help='Name of VM', nargs='?')
         self.permission_target_group.add_argument('--global', dest='global', action='store_true',
                                                   help='Set a global MCVirt permission')
+
+        GroupParser(self.subparsers, self.parent_parser)
 
         # Create subparser for network-related commands
         self.network_parser = self.subparsers.add_parser(
@@ -1045,6 +1054,12 @@ class Parser(object):
 
         if args.ignore_drbd:
             rpc.ignore_drbd()
+
+        # If a custom parser function has been defined, used this and exit
+        # instead of running through (old) main parser workflow
+        if 'func' in dir(args):
+            args.func(args=args, rpc=rpc, print_status=self.print_status)
+            return
 
         # Perform functions on the VM based on the action passed to the script
         if action == 'start':
