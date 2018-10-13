@@ -44,8 +44,10 @@ class LdapUser(UserBase):
 
     def _get_config(self):
         """Return the config hash for the current user"""
+        # @TODO: Do we not store information about LDAP users?
         return {
-            'user_type': self.__class__.__name__
+            'user_type': self.__class__.__name__,
+            'global_permissions': []
         }
 
     def get_user_type(self):
