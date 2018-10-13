@@ -116,8 +116,9 @@ class AuthTests(TestBase):
         group = self.group_factory.get_object_by_name('user')
         self.rpc.annotate_object(group)
         self.assertFalse(
-            self.test_user.get_username() in
-            group.get_users(virtual_machine=test_vm_object if (not global_permission) else None)
+            self.test_user in
+            group.get_users_remote(
+                virtual_machine=test_vm_object if (not global_permission) else None)
         )
 
         # Assert that the test user cannot start the test VM
@@ -131,7 +132,7 @@ class AuthTests(TestBase):
 
         # Ensure user is available in group
         self.assertTrue(
-            self.test_user.get_username() in group.get_users(
+            self.test_user in group.get_users_remote(
                 test_vm_object if (not global_permission) else None)
         )
 
@@ -156,7 +157,7 @@ class AuthTests(TestBase):
 
         # Assert that user is no longer part of the group
         self.assertFalse(
-            self.test_user.get_username() in group.get_users(
+            self.test_user in group.get_users_remote(
                 test_vm_object if (not global_permission) else None)
         )
 
