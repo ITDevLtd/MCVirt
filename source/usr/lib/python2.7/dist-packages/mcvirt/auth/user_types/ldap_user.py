@@ -74,13 +74,13 @@ class LdapUser(UserBase):
 
     def _get_password_salt(self):
         """Return the user's salt"""
-        raise NotImplemented
+        raise NotImplementedError
 
     def _set_password(self, new_password):
         """Set the password for the current user"""
-        raise NotImplemented
+        raise NotImplementedError
 
     @Expose(locking=True)
     def delete(self):
         """Delete the current user from MCVirt config"""
-        raise NotImplemented
+        raise NotImplementedError
