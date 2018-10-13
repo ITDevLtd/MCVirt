@@ -350,14 +350,39 @@ class Function(PyroObject):
         if undo and not hasattr(remote_object, self._undo_function_name):
             return
 
+        # Convert local object in args and kwargs
+        args, kwargs = self._convert_local_object(node,
+                                                  self.nodes[node]['args'],
+                                                  self._get_kwargs())
+
         # Run the method by obtaining the member attribute, based on the name of
         # the callback function from of the remote object
         response = getattr(remote_object, function_name)(
-            *self.nodes[node]['args'], **self._get_kwargs())
+            *args, **kwargs)
 
         # Store output in response
         if not undo:
             self.nodes[node]['return_val'] = response
+
+    def _convert_local_object(self, node, args, kwargs):
+        """Convert any local objects in args and kwargs to
+        get remote objects
+        """
+        # @TODO: Inspect lists and dicts within each argumnet
+        # Create new list of args and kwargs
+        args = list(args)
+        kwargs = dict(kwargs)
+        for itx, arg in enumerate(args):
+            if isinstance(arg, PyroObject):
+                remote_object = arg.get_remote_object(node=node)
+                args[itx] = remote_object
+
+        for key, val in kwargs:
+            if isinstance(val, PyroObject):
+                remote_object = val.get_remote_object(node=node)
+                kwargs[key] = remote_object
+
+        return args, kwargs
 
     def _get_response_data(self):
         """Determine and return response data"""
