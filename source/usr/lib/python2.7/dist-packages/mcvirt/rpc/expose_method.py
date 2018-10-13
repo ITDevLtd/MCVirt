@@ -208,6 +208,15 @@ class Function(PyroObject):
         # Register instance and functions with pyro
         self.obj._register_object(self, debug=False)
 
+    @property
+    def convert_to_remote_object_in_args(self):
+        """This object is registered with daemon in init and all required
+        methods are exposed and does not have a get_remote_object method.
+        As such, mark as not to be converted to a remote object when
+        passed in an argument.
+        """
+        return False
+
     def unregister(self, force=False):
         """De-register object after deletion"""
         if force or not Transaction.in_transaction():
@@ -373,12 +382,12 @@ class Function(PyroObject):
         args = list(args)
         kwargs = dict(kwargs)
         for itx, arg in enumerate(args):
-            if isinstance(arg, PyroObject):
+            if isinstance(arg, PyroObject) and val.convert_to_remote_object_in_args:
                 remote_object = arg.get_remote_object(node=node)
                 args[itx] = remote_object
 
-        for key, val in kwargs:
-            if isinstance(val, PyroObject):
+        for key, val in kwargs.iteritems():
+            if isinstance(val, PyroObject) and val.convert_to_remote_object_in_args:
                 remote_object = val.get_remote_object(node=node)
                 kwargs[key] = remote_object
 

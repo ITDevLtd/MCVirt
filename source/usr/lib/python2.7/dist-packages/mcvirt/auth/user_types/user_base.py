@@ -224,9 +224,6 @@ class UserBase(PyroObject):
                 permissions += [PERMISSIONS[permission]
                                 for permission in vm_permission_overrides[self.get_username()]]
 
-        from mcvirt.syslogger import Syslogger
-        Syslogger.logger().debug(virtual_machine)
-
         return permissions
 
     @Expose(locking=True)
