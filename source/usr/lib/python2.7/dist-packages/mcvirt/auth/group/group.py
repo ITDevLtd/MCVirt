@@ -304,3 +304,15 @@ class Group(PyroObject):
     def is_user_member(self, user, virtual_machine=None):
         """Determe if user is a member of the group"""
         return user in self.get_users(virtual_machine=virtual_machine)
+
+    def add_permission(self, permission):
+        """Add a permission to the group"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
+        pass
+
+    @Expose()
+    def remove_permission(self, permission):
+        """Remove a permission from the group"""
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
+        permission_enum = PERMISSIONS[permission]
+        

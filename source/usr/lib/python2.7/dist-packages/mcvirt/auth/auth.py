@@ -19,6 +19,7 @@
 
 import os
 import Pyro4
+from texttable import Texttable
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsException,
@@ -28,7 +29,7 @@ from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsExc
 from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.auth.permissions import PERMISSIONS, PERMISSION_DESCRIPTIONS
 from mcvirt.argument_validator import ArgumentValidator
 
 
@@ -236,6 +237,25 @@ class Auth(PyroObject):
         dest_vm.get_config_object().update_config(add_user_to_group,
                                                   'Copied permission from \'%s\' to \'%s\'' %
                                                   (source_vm.get_name(), dest_vm.get_name()))
+
+    @Expose()
+    def list_permissions(self):
+        """Create a tabular view of permissions and permission descriptions"""
+        # Create table and add headers
+        table = Texttable()
+        table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        table.header(('Permission', 'Description'))
+
+        # Set column alignment and widths
+        table.set_cols_width((25, 90))
+        table.set_cols_align(('l', 'l'))
+
+        for permission in sorted(PERMISSION_DESCRIPTIONS.keys()):
+            table.add_row((
+                permission,
+                PERMISSION_DESCRIPTIONS[permission]
+            ))
+        return table.draw()
 
 
 class ElevatePermission(object):

@@ -93,7 +93,8 @@ class MCVirtConfig(ConfigFile):
                             'CLONE_VM',
                             'DELETE_CLONE',
                             'DUPLICATE_VM',
-                            'TEST_OWNER_PERMISSION'
+                            'TEST_OWNER_PERMISSION',
+                            'MANAGE_GROUP_MEMBERS'
                         ],
                         'users': []
                     }

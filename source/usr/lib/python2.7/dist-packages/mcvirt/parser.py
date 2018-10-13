@@ -391,6 +391,7 @@ class Parser(object):
             help='Update user permissions',
             parents=[self.parent_parser]
         )
+
         self.permission_parser.add_argument(
             '--add-user',
             dest='add_user',
@@ -448,6 +449,13 @@ class Parser(object):
                                                   type=str, help='Name of VM', nargs='?')
         self.permission_target_group.add_argument('--global', dest='global', action='store_true',
                                                   help='Set a global MCVirt permission')
+
+        self.permission_target_group.add_argument(
+            '--list',
+            dest='list',
+            action='store_true',
+            help='List available permissions'
+        )
 
         GroupParser(self.subparsers, self.parent_parser)
 
@@ -1261,6 +1269,13 @@ class Parser(object):
                 self.print_status('Modification flags set to: %s' % (flags_str or 'None'))
 
         elif action == 'permission':
+            auth_object = rpc.get_connection('auth')
+            rpc.annotate_object(auth_object)
+
+            if args.list:
+                self.print_status(auth_object.list_permissions())
+                return
+
             if (args.add_superuser or args.delete_superuser) and args.vm_name:
                 raise ArgumentParserException('Superuser groups are global-only roles')
 
@@ -1273,8 +1288,6 @@ class Parser(object):
                 vm_object = None
                 permission_destination_string = 'global role'
 
-            auth_object = rpc.get_connection('auth')
-            rpc.annotate_object(auth_object)
             user_factory = rpc.get_connection('user_factory')
             rpc.annotate_object(user_factory)
 
