@@ -168,6 +168,20 @@ class UserBase(PyroObject):
         random.seed(os.urandom(1024))
         return ''.join(random.choice(characers) for i in range(length))
 
+    def get_permissions(self, virtual_machine=None):
+        """Obtain the list of permissions that the user has"""
+        # Get the list of hard coded permission for the user type
+        permissions = list(self.PERMISSIONS)
+
+        # Obtain list of permissions assigned by groups that the
+        # user is a member of
+        group_factory = self._get_registered_object('group_factory')
+        for group in group_factory.get_all():
+            if (group.is_user_member(user=self) or
+                    group.is_user_member(user=self, virtual_machine=virtual_machine)):
+                permissions += group.get_permissions()
+
+
     @Expose(locking=True)
     def delete(self):
         """Delete the current user from MCVirt config"""
@@ -179,29 +193,25 @@ class UserBase(PyroObject):
         # Remove any global/VM-specific permissions
         if self.get_username() in auth_object.get_superusers():
             auth_object.delete_superuser(self)
-
+        group_factory = self._get_registered_object('group_factory')
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
         for virtual_machine in [None] + virtual_machine_factory.getAllVirtualMachines():
-            for permission_group in auth_object.get_permission_groups():
-                if (self.get_username() in auth_object.get_users_in_permission_group(
-                        permission_group, vm_object=virtual_machine)):
-                    auth_object.delete_user_permission_group(
-                        permission_group, self, vm_object=virtual_machine
-                    )
+            for group in group_factory.get_all():
+                if self.get_username() in group.get_users(virtual_machine=virtual_machine):
+                    group.remove_user(user=self, virtual_machine=virtual_machine)
 
+        cluster = self._get_registered_object('cluster')
+        # If the user is distributed, remove from all nodes
+        nodes = cluster.get_nodes(include_local=True) if self.DISTRIBUTED else None
+        self.remove_user_config(nodes=nodes)
+
+    @Expose(locking=True, remote_nodes=True)
+    def remove_user_config(self):
+        """Remove user from MCVirt config"""
         def update_config(config):
+            """Update config"""
             del config['users'][self.get_username()]
         MCVirtConfig().update_config(update_config, 'Deleted user \'%s\'' % self.get_username())
-
-        if self.DISTRIBUTED and self._is_cluster_master:
-            def remote_command(node_connection):
-                remote_user_factory = node_connection.get_connection('user_factory')
-                remote_user = remote_user_factory.get_user_by_username(self.get_username())
-                node_connection.annotate_object(remote_user)
-                remote_user.delete()
-
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_command)
 
         # Unregister and remove cached object
         if self.get_username() in self._get_registered_object('user_factory').CACHED_OBJECTS:

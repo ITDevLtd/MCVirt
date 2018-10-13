@@ -31,6 +31,7 @@ from mcvirt.node.network.factory import Factory as NetworkFactory
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.auth.factory import Factory as UserFactory
 from mcvirt.auth.session import Session
+from mcvirt.auth.group.factory import Factory as GroupFactory
 from mcvirt.cluster.cluster import Cluster
 from mcvirt.virtual_machine.network_adapter.factory import Factory as NetworkAdapterFactory
 from mcvirt.logger import Logger
@@ -301,6 +302,7 @@ class RpcNSMixinDaemon(object):
             [IsoFactory(), 'iso_factory'],
             [Auth(), 'auth'],
             [UserFactory(), 'user_factory'],
+            [GroupFactory(), 'group_factory'],
             [Cluster(), 'cluster'],
             [NodeDrbd(), 'node_drbd'],
             [NetworkAdapterFactory(), 'network_adapter_factory'],

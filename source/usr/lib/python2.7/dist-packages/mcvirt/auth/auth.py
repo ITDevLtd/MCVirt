@@ -122,29 +122,9 @@ class Auth(PyroObject):
         if user_object is None:
             user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
 
-        # Determine if the type of user has the permissions
-        if permission_enum in user_object.PERMISSIONS:
+        # Check the users permissions and determine if the permission is present
+        if permission_enum in user.get_permissions(virtual_machine=vm_object):
             return True
-
-        # Check the global permissions configuration to determine
-        # if the user has been granted the permission
-        mcvirt_config = MCVirtConfig()
-        mcvirt_permissions = mcvirt_config.getPermissionConfig()
-        if self.check_permission_in_config(mcvirt_permissions, user_object.get_username(),
-                                           permission_enum):
-            return True
-
-        # If a vm_object has been passed, check the VM
-        # configuration file for the required permissions
-        if vm_object:
-            vm_config_object = vm_object.get_config_object()
-            vm_config = vm_config_object.getPermissionConfig()
-
-            # Determine if the user has been granted the required permissions
-            # in the VM configuration file
-            if (self.check_permission_in_config(vm_config, user_object.get_username(),
-                                                permission_enum)):
-                return True
 
         return False
 

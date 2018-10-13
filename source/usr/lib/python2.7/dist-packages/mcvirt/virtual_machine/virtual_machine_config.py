@@ -20,7 +20,9 @@ import hashlib
 
 from mcvirt.exceptions import ConfigFileCouldNotBeFoundException
 from mcvirt.config_file import ConfigFile
-from mcvirt.constants import AutoStartStates
+from mcvirt.constants import (AutoStartStates,
+                              DEFAULT_USER_GROUP_ID,
+                              DEFAULT_OWNER_GROUP_ID)
 from mcvirt.utils import get_hostname
 
 
@@ -57,8 +59,8 @@ class VirtualMachineConfig(ConfigFile):
                 'version': VirtualMachineConfig.CURRENT_VERSION,
                 'permissions':
                 {
-                    'user': [],
-                    'owner': [],
+                    'users': {},
+                    'groups': {},
                 },
                 'hard_disks': {},
                 'storage_type': None,
@@ -144,3 +146,18 @@ class VirtualMachineConfig(ConfigFile):
                     date_checksum = hashlib.sha512('0').hexdigest()
                     storage_id = 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
                     config['hard_disks'][disk_id]['storage_backend'] = storage_id
+
+        if self._getVersion() < 13:
+            users = list(config['permissions']['user'])
+            owners = list(config['permissions']['owner'])
+            config['permissions'] = {
+                'groups': {
+                    DEFAULT_USER_GROUP_ID: {
+                        'users': users
+                    },
+                    DEFAULT_OWNER_GROUP_ID: {
+                        'users': owners
+                    }
+                },
+                'users': {}
+            }

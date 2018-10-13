@@ -19,7 +19,9 @@ import os
 import hashlib
 
 from mcvirt.config_file import ConfigFile
-from mcvirt.constants import DirectoryLocation, DEFAULT_STORAGE_NAME, DEFAULT_STORAGE_ID
+from mcvirt.constants import (DirectoryLocation,
+                              DEFAULT_STORAGE_NAME, DEFAULT_STORAGE_ID,
+                              DEFAULT_USER_GROUP_ID, DEFAULT_OWNER_GROUP_ID)
 from mcvirt.utils import get_hostname
 
 
@@ -70,11 +72,31 @@ class MCVirtConfig(ConfigFile):
         json_data = \
             {
                 'version': self.CURRENT_VERSION,
-                'superusers': ["mjc"],
-                'permissions':
+                'superusers': ['mjc'],
+                'groups':
                 {
-                    'user': [],
-                    'owner': [],
+                    DEFAULT_USER_GROUP_ID: {
+                        'name': 'user',
+                        'permissions': [
+                            'CHANGE_VM_POWER_STATE',
+                            'VIEW_VNC_CONSOLE',
+                            'TEST_USER_PERMISSION'
+                        ],
+                        'users': []
+                    },
+                    DEFAULT_OWNER_GROUP_ID: {
+                        'name': 'owner',
+                        'permissions': [
+                            'CHANGE_VM_POWER_STATE',
+                            'MANAGE_VM_USERS',
+                            'VIEW_VNC_CONSOLE',
+                            'CLONE_VM',
+                            'DELETE_CLONE',
+                            'DUPLICATE_VM',
+                            'TEST_OWNER_PERMISSION'
+                        ],
+                        'users': []
+                    }
                 },
                 'cluster':
                 {
@@ -184,3 +206,32 @@ class MCVirtConfig(ConfigFile):
                 # config
                 new_storage_config[storage_id] = storage_config
             config['storage_backends'] = new_storage_config
+
+        if config['version'] < 13:
+            # Replace the permissions config with group objects
+            group_config = {
+                DEFAULT_USER_GROUP_ID: {
+                    'name': 'user',
+                    'permissions': [
+                        'CHANGE_VM_POWER_STATE',
+                        'VIEW_VNC_CONSOLE',
+                        'TEST_USER_PERMISSION'
+                    ],
+                    'users': list(config['permissions']['user'])
+                },
+                DEFAULT_OWNER_GROUP_ID: {
+                    'name': 'owner',
+                    'permissions': [
+                        'CHANGE_VM_POWER_STATE',
+                        'MANAGE_VM_USERS',
+                        'VIEW_VNC_CONSOLE',
+                        'CLONE_VM',
+                        'DELETE_CLONE',
+                        'DUPLICATE_VM',
+                        'TEST_OWNER_PERMISSION'
+                    ],
+                    'users': list(config['permissions']['owner'])
+                }
+            }
+            config['groups'] = group_config
+            del config['permissions']
