@@ -39,7 +39,7 @@ class Factory(PyroObject):
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
-        """Obtain an instance of the current storage backend object on a remote node"""
+        """Obtain an instance of the group factory on a remote node"""
         cluster = self._get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
@@ -87,6 +87,10 @@ class Factory(PyroObject):
     @Expose(remote_nodes=True)
     def create_config(self, id_, config):
         """Create config for the storage backend"""
+        # Check permissions
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+
         # Add new storage backend to MCVirt config
         def update_config(mcvirt_config):
             """Update MCVirt config"""
@@ -96,6 +100,10 @@ class Factory(PyroObject):
     @Expose()
     def undo__create_config(self, id_, config):
         """Undo the create config"""
+        # Check permissions
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+
         def update_config(mcvirt_config):
             """Update MCVirt config"""
             del mcvirt_config[self.GROUP_CONFIG_KEY][id_]
@@ -167,3 +175,14 @@ class Factory(PyroObject):
         if not object_id:
             raise GroupDoesNotExistError('Group does not exist: %s' % name)
         return self.get_object(object_id)
+
+    @Expose()
+    def set_config(self, group_config):
+        """Add a user config to the local node."""
+        # Ensure this is being run as a Cluster User
+        self._get_registered_object('auth').check_user_type('ClusterUser')
+
+        def update_config(config):
+            """Set group config"""
+            config['groups'] = group_config
+        MCVirtConfig().update_config(update_config, 'Updating groups')

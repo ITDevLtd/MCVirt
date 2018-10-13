@@ -126,6 +126,17 @@ class VirtualMachine(PyroObject):
         """Return the configuration object for the VM"""
         return VirtualMachineConfig(self)
 
+    @Expose(locking=True)
+    def set_permission_config(self, config):
+        """Set the permission config for the VM"""
+        # Check permissions
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        def update_vm_config(config):
+            """Update the VM config"""
+            config['permissions'] = config
+        self.get_config_object().update_config(update_vm_config, 'Sync permissions')
+
     @Expose()
     def get_name(self):
         """Return the name of the VM"""
@@ -470,13 +481,10 @@ class VirtualMachine(PyroObject):
 
         # Get information about the permissions for the VM
         table.add_row(('-- Group --', '-- Users --'))
-        for permission_group in self._get_registered_object('auth').get_permission_groups():
-            users = self._get_registered_object('auth').get_users_in_permission_group(
-                permission_group,
-                self
-            )
-            users_string = ','.join(sorted(users))
-            table.add_row((permission_group, users_string))
+        for group in self._get_registered_object('group_factory').get_all():
+            users = group.get_users(virtual_machine=self)
+            users_string = ','.join(sorted([user.get_username() for user in users]))
+            table.add_row((group.name, users_string))
         return table.draw() + "\n" + warnings
 
     @Expose(locking=True)

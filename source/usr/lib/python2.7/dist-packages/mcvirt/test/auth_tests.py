@@ -60,6 +60,7 @@ class AuthTests(TestBase):
 
         self.auth = self.rpc.get_connection('auth')
         self.user_factory = self.rpc.get_connection('user_factory')
+        self.group_factory = self.rpc.get_connection('group_factory')
         self.test_user = self.create_test_user(self.TEST_USERNAME, self.TEST_PASSWORD)
 
     def tearDown(self):
@@ -76,6 +77,7 @@ class AuthTests(TestBase):
         self.test_user.delete()
         self.test_user = None
         self.user_factory = None
+        self.group_factory = None
         self.auth = None
 
         super(AuthTests, self).tearDown()
@@ -111,9 +113,11 @@ class AuthTests(TestBase):
         permission_string = '--global' if global_permission else test_vm_object.get_name()
 
         # Ensure user is not in 'user' group
+        group = self.group_factory.get_object_by_name('user')
+        self.rpc.annotate_object(group)
         self.assertFalse(
             self.test_user.get_username() in
-            self.auth.get_users_in_permission_group('user', test_vm_object)
+            group.get_users(virtual_machine=test_vm_object if (not global_permission) else None)
         )
 
         # Assert that the test user cannot start the test VM
@@ -125,10 +129,10 @@ class AuthTests(TestBase):
         self.parser.parse_arguments('permission --add-user %s %s' % (self.test_user.get_username(),
                                                                      permission_string))
 
-        # Ensure VM exists
+        # Ensure user is available in group
         self.assertTrue(
-            self.test_user.get_username() in self.auth.get_users_in_permission_group(
-                'user', test_vm_object if (not global_permission) else None)
+            self.test_user.get_username() in group.get_users(
+                test_vm_object if (not global_permission) else None)
         )
 
         # Ensure that user can now start the VM
@@ -152,8 +156,8 @@ class AuthTests(TestBase):
 
         # Assert that user is no longer part of the group
         self.assertFalse(
-            self.test_user.get_username() in self.auth.get_users_in_permission_group(
-                'user', test_vm_object if (not global_permission) else None)
+            self.test_user.get_username() in group.get_users(
+                test_vm_object if (not global_permission) else None)
         )
 
         # Assert that the test user cannot stop the test VM

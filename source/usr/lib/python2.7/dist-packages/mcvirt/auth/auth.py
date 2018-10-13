@@ -28,7 +28,7 @@ from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsExc
 from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.auth.permissions import PERMISSIONS, PERMISSION_GROUPS
+from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.argument_validator import ArgumentValidator
 
 
@@ -121,6 +121,9 @@ class Auth(PyroObject):
 
         if user_object is None:
             user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
+
+        if vm_object:
+            self._convert_remote_object(vm_object)
 
         # Check the users permissions and determine if the permission is present
         if permission_enum in user_object.get_permissions(virtual_machine=vm_object):

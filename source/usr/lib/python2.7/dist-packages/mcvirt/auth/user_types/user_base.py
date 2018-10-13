@@ -66,6 +66,23 @@ class UserBase(PyroObject):
         # Otherwise return false
         return False
 
+    def get_remote_object(self,
+                          node=None,     # The name of the remote node to connect to
+                          node_object=None):   # Otherwise, pass a remote node connection
+        """Obtain an instance of the user object on a remote node"""
+        if not self.DISTRIBUTED:
+            raise InvalidUserTypeException('Cannot get remote object of non-distributed user')
+
+        cluster = self._get_registered_object('cluster')
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
+
+        remote_user_factory = node_object.get_connection('user_factory')
+        remote_user = remote_user_factory.get_user_by_username(self.get_username())
+        node_object.annotate_object(remote_user)
+
+        return remote_user
+
     @Expose()
     def is_superuser(self):
         """Determine if the user is a superuser of MCVirt."""
@@ -198,12 +215,17 @@ class UserBase(PyroObject):
                 permissions += group.get_permissions()
 
         if virtual_machine:
+            virtual_machine = self._convert_remote_object(virtual_machine)
+
             # Get VM user permission overrides and add permissions
             vm_permission_overrides = virtual_machine.get_config_object(). \
                 getPermissionConfig()['users']
             if self.get_username() in vm_permission_overrides:
                 permissions += [PERMISSIONS[permission]
                                 for permission in vm_permission_overrides[self.get_username()]]
+
+        from mcvirt.syslogger import Syslogger
+        Syslogger.logger().debug(virtual_machine)
 
         return permissions
 

@@ -402,18 +402,11 @@ class Cluster(PyroObject):
             if not remote_user_object.is_superuser():
                 remote_auth_instance.add_superuser(remote_user_object)
 
-        # Iterate over the permission groups, adding all of the members to the group
-        # on the remote node
         group_factory = self._get_registered_object('group_factory')
         remote_group_factory = remote_object.get_connection('group_factory')
-        for group in group_factory.get_all():
-            users = group.get_users()
-            for user in users:
-                user_object = remote_user_factory.get_user_by_username(user)
-                remote_object.annotate_object(user)
-                if (user.get_username() not in
-                        remote_auth_instance.get_users_in_permission_group(group)):
-                    remote_auth_instance.add_user_permission_group(group, user)
+
+        # Sync group configuration
+        remote_group_factory.set_config(group_factory.get_config())
 
     def sync_storage_backends(self, remote_object, location_overrides):
         """Duplicate the storage backend objects to the new node"""
@@ -491,16 +484,8 @@ class Cluster(PyroObject):
                                                       mac_address=network_adapter.getMacAddress())
 
             # Sync permissions to VM on remote node
-            auth_instance = self._get_registered_object('auth')
-            remote_auth_instance = remote_object.get_connection('auth')
-            remote_user_factory = remote_object.get_connection('user_factory')
-            for group in auth_instance.get_permission_groups():
-                users = auth_instance.get_users_in_permission_group(group, vm_object)
-                for user in users:
-                    user_object = remote_user_factory.get_user_by_username(user)
-                    remote_object.annotate_object(user_object)
-                    remote_auth_instance.add_user_permission_group(group, user_object,
-                                                                   remote_virtual_machine_object)
+            remote_virtual_machine_object.setPermissionConfig(
+                vm_object.get_config_object().getPermissionConfig())
 
             # Set the VM node
             remote_virtual_machine_object.setNodeRemote(vm_object.getNode())
