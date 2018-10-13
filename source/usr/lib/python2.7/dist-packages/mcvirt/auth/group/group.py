@@ -127,7 +127,7 @@ class Group(PyroObject):
 
         def update_config(config):
             """Update config"""
-            config['groups'][self._id]['users'].append(user.get_username())
+            config['groups'][self.id_]['users'].append(user.get_username())
         MCVirtConfig().update_config(update_config, 'Add user %s to group %s' %
                                      (user.get_username(), self.name))
 
@@ -144,7 +144,10 @@ class Group(PyroObject):
 
         def update_config(config):
             """Update VM config"""
-            config['permissions']['groups'][self._id]['users'].append(user.get_username())
+            # Add group config to VM if it doesn't exist
+            if self.id_ not in config['permissions']['groups']:
+                config['permissions']['groups'][self.id_] = self.get_config()
+            config['permissions']['groups'][self.id_]['users'].append(user.get_username())
         virtual_machine.get_config_object().update_config(
             update_config, 'Add user %s to group %s' %
             (user.get_username(), self.name))
@@ -185,7 +188,7 @@ class Group(PyroObject):
 
         def update_config(config):
             """Update config"""
-            config['groups'][self._id]['users'].remove(user.get_username())
+            config['groups'][self.id_]['users'].remove(user.get_username())
         MCVirtConfig().update_config(update_config, 'Add user %s from group %s' %
                                      (user.get_username(), self.name))
 
@@ -202,7 +205,11 @@ class Group(PyroObject):
 
         def update_config(config):
             """Update VM config"""
-            config['permissions']['groups'][self._id]['users'].remove(user.get_username())
+            # Add group config to VM if it doesn't exist
+            if self.id_ not in config['permissions']['groups']:
+                config['permissions']['groups'][self.id_] = self.get_config()
+
+            config['permissions']['groups'][self.id_]['users'].remove(user.get_username())
         virtual_machine.get_config_object().update_config(
             update_config, 'Remove user %s from group %s' %
             (user.get_username(), self.name))
@@ -239,7 +246,7 @@ class Group(PyroObject):
 
         def update_mcvirt_config(config):
             """Remove object from mcvirt config"""
-            del config['groups'][self._id]
+            del config['groups'][self.id_]
         MCVirtConfig().update_config(
             update_mcvirt_config,
             'Removed storage backend \'%s\' from global MCVirt config' %
@@ -248,13 +255,13 @@ class Group(PyroObject):
 
         # Remove cached pyro object
         storage_factory = self._get_registered_object('group_factory')
-        if self._id in storage_factory.CACHED_OBJECTS:
+        if self.id_ in storage_factory.CACHED_OBJECTS:
             self.unregister_object()
-            del storage_factory.CACHED_OBJECTS[self._id]
+            del storage_factory.CACHED_OBJECTS[self.id_]
 
     def get_config(self):
         """Get config for storage backend"""
-        return self._get_registered_object('group_factory').get_config()[self._id]
+        return self._get_registered_object('group_factory').get_config()[self.id_]
 
     def get_vm_config(self, virtual_machine):
         """Return the configuration for the group in a VM"""
@@ -272,6 +279,14 @@ class Group(PyroObject):
         """Return permissions assigned to the group"""
         return [PERMISSIONS[permission] for permission in self.get_config()['permissions']]
 
+    @Expose()
+    def get_users_remote(self, *args, **kwargs):
+        """Old style method for exposing the get_users method.
+        Difficult to use other methods, since get_users is used to determine permissions
+        """
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
+        return self.get_users(*args, **kwargs)
+
     def get_users(self, virtual_machine=None):
         """Return the users assigned to the group, either global or a VM"""
         user_factory = self._get_registered_object('user_factory')
@@ -279,6 +294,7 @@ class Group(PyroObject):
             return [user_factory.get_user_by_username(username)
                     for username in self.get_config()['users']]
         else:
+            virtual_machine = self._convert_remote_object(virtual_machine)
             return [user_factory.get_user_by_username(user)
                     for user in self.get_vm_config(virtual_machine)['users']]
 
