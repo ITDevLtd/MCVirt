@@ -103,7 +103,7 @@ class Base(PyroObject):
         # Ensure class and name of object match
         if ('__class__' in dir(comp) and
                 comp.__class__ == self.__class__ and
-                '_id' in dir(comp) and comp.name == self._id):
+                'id_' in dir(comp) and comp.id_ == self.id_):
             return True
 
         # Otherwise return false
