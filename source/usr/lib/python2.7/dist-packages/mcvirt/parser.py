@@ -18,7 +18,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import argparse
-import binascii
 import os
 
 from mcvirt.exceptions import (ArgumentParserException, DrbdVolumeNotInSyncException,
@@ -26,8 +25,13 @@ from mcvirt.exceptions import (ArgumentParserException, DrbdVolumeNotInSyncExcep
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
-from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.storage.factory import Factory as StorageFactory
+from mcvirt.parser_modules.start_parser import StartParser
+from mcvirt.parser_modules.stop_parser import StopParser
+from mcvirt.parser_modules.reset_parser import ResetParser
+from mcvirt.parser_modules.shutdown_parser import ShutdownParser
+from mcvirt.parser_modules.clear_method_lock_parser import ClearMethodLockParser
+from mcvirt.parser_modules.iso_parser import IsoParser
 from mcvirt.parser_modules.group_parser import GroupParser
 from mcvirt.parser_modules.user_parser import UserParser
 
@@ -83,70 +87,22 @@ class Parser(object):
                                                      help='Action to perform')
 
         # Add arguments for starting a VM
-        self.start_parser = self.subparsers.add_parser('start', help='Start VM',
-                                                       parents=[self.parent_parser])
-        self.start_parser.add_argument('--iso', metavar='ISO Name', type=str,
-                                       help='Path of ISO to attach to VM', default=None)
-        self.start_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
-                                       help='Names of VMs')
+        StartParser(self.subparsers, self.parent_parser)
 
         # Add arguments for stopping a VM
-        self.stop_parser = self.subparsers.add_parser('stop', help='Stop VM',
-                                                      parents=[self.parent_parser])
-        self.stop_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
-                                      help='Names of VMs')
+        StopParser(self.subparsers, self.parent_parser)
 
         # Add arguments for resetting a VM
-        self.reset_parser = self.subparsers.add_parser('reset', help='Reset VM',
-                                                       parents=[self.parent_parser])
-        self.reset_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
-                                       help='Names of VM')
+        ResetParser(self.subparsers, self.parent_parser)
 
         # Add arguments for shutting down a VM
-        self.shutdown_parser = self.subparsers.add_parser('shutdown', help='Shutdown VM',
-                                                          parents=[self.parent_parser])
-        self.shutdown_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
-                                          help='Names of VMs')
+        ShutdownParser(self.subparsers, self.parent_parser)
 
         # Add arguments for fixing deadlock on a vm
-        self.method_lock_parser = self.subparsers.add_parser(
-            'clear-method-lock',
-            help='Resolve the lock of a call to a method on the MCVirt daemon.',
-            parents=[self.parent_parser]
-        )
+        ClearMethodLockParser(self.subparsers, self.parent_parser)
 
         # Add arguments for ISO functions
-        self.iso_parser = self.subparsers.add_parser('iso', help='ISO managment',
-                                                     parents=[self.parent_parser])
-
-        self.iso_subparser = self.iso_parser.add_subparsers(dest='iso_action',
-                                                            help='ISO action to perform',
-                                                            metavar='Action')
-
-        self.delete_iso_subparser = self.iso_subparser.add_parser('delete', help='Delete an ISO',
-                                                                  parents=[self.parent_parser])
-        self.delete_iso_subparser.add_argument('delete_path', metavar='NAME', type=str,
-                                               help='ISO to delete')
-
-        self.list_iso_subparser = self.iso_subparser.add_parser('list', help='List available ISOs',
-                                                                parents=[self.parent_parser])
-
-        self.add_iso_subparser = self.iso_subparser.add_parser('add', help='Add an ISO',
-                                                               parents=[self.parent_parser])
-        self.add_iso_subparser.add_argument('iso_name', metavar='ISO', type=str,
-                                            help='Path/URL of ISO to add')
-
-        self.add_iso_methods = self.add_iso_subparser.add_mutually_exclusive_group(required=True)
-        self.add_iso_methods.add_argument('--from-path', dest='add_path', action='store_true',
-                                          help='Copy an ISO to ISO directory')
-        self.add_iso_methods.add_argument('--from-url', dest='add_url', action='store_true',
-                                          help='Download and add an ISO')
-
-        for parser in [self.iso_parser, self.delete_iso_subparser, self.list_iso_subparser,
-                       self.add_iso_subparser]:
-            parser.add_argument('--node', dest='iso_node',
-                                help='Specify the node to perform the action on',
-                                metavar='Node', default=None)
+        IsoParser(self.subparsers, self.parent_parser)
 
         # Add arguments for managing users
         UserParser(self.subparsers, self.parent_parser)
@@ -1010,62 +966,6 @@ class Parser(object):
             args.func(args=args, p_=self)
             return
 
-        # Perform functions on the VM based on the action passed to the script
-        if action == 'start':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            for vm_name in args.vm_names:
-                try:
-                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
-                    self.rpc.annotate_object(vm_object)
-                    vm_object.start(iso_name=args.iso)
-                    self.print_status('Successfully started VM %s' % vm_name)
-                except Exception:
-                    self.print_status('Error while starting VM %s' % vm_name)
-                    raise
-
-        elif action == 'stop':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            for vm_name in args.vm_names:
-                try:
-                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
-                    self.rpc.annotate_object(vm_object)
-                    vm_object.stop()
-                    self.print_status('Successfully stopped VM %s' % vm_name)
-                except Exception:
-                    self.print_status('Error while stopping VM %s:' % vm_name)
-                    raise
-
-        elif action == 'reset':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            for vm_name in args.vm_names:
-                try:
-                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
-                    self.rpc.annotate_object(vm_object)
-                    vm_object.reset()
-                    self.print_status('Successfully reset VM %s' % vm_name)
-                except Exception:
-                    self.print_status('Error while resetting VM %s' % vm_name)
-                    raise
-
-        elif action == 'shutdown':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            for vm_name in args.vm_names:
-                try:
-                    vm_object = vm_factory.getVirtualMachineByName(vm_name)
-                    self.rpc.annotate_object(vm_object)
-                    vm_object.shutdown()
-                    self.print_status('Successfully shutting down VM %s' % vm_name)
-                except Exception:
-                    self.print_status('Error while initiating shutdown of VM %s:' % vm_name)
-                    raise
-
-        elif action == 'clear-method-lock':
-            node = self.rpc.get_connection('node')
-            if node.clear_method_lock():
-                self.print_status('Successfully cleared method lock')
-            else:
-                self.print_status('method lock already cleared')
-
         elif action == 'create':
             if args.storage_backend:
                 storage_factory = self.rpc.get_connection('storage_factory')
@@ -1566,37 +1466,3 @@ class Parser(object):
             self.print_status(vm_factory.listVms(include_cpu=args.include_cpu,
                                                  include_ram=args.include_ram,
                                                  include_disk=args.include_disk))
-
-        elif action == 'iso':
-            iso_factory = self.rpc.get_connection('iso_factory')
-            if args.iso_action == 'list':
-                self.print_status(iso_factory.get_iso_list(node=args.iso_node))
-
-            if args.iso_action == 'add' and args.add_path:
-                if args.iso_node:
-                    raise ArgumentParserException('Cannot add to remote node from local path')
-                iso_writer = iso_factory.add_iso_from_stream(args.iso_name)
-                self.rpc.annotate_object(iso_writer)
-                with open(args.iso_name, 'rb') as iso_fh:
-                    while True:
-                        data_chunk = iso_fh.read(1024)
-                        if data_chunk:
-                            data_chunk = binascii.hexlify(data_chunk)
-                            iso_writer.write_data(data_chunk)
-                        else:
-                            break
-                iso_object = iso_writer.write_end()
-                self.rpc.annotate_object(iso_object)
-                self.print_status('Successfully added ISO: %s' % iso_object.get_name())
-
-            if args.iso_action == 'add' and args.add_url:
-                iso_name = iso_factory.add_from_url(args.iso_name, node=args.iso_node)
-                self.print_status('Successfully added ISO: %s' % iso_name)
-
-            if args.iso_action == 'delete':
-                if args.iso_node:
-                    raise ArgumentParserException('Cannot remove ISO from remote node')
-                iso_object = iso_factory.get_iso_by_name(args.delete_path)
-                self.rpc.annotate_object(iso_object)
-                iso_object.delete()
-                self.print_status('Successfully removed iso: %s' % args.delete_path)
