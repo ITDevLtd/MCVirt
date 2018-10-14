@@ -17,9 +17,10 @@
 # You should have received a copy of the GNU General Public License
 
 import re
-from mcvirt.exceptions import MCVirtTypeError
+from mcvirt.exceptions import MCVirtTypeError, InvalidPermissionError
 from mcvirt.constants import (DEFAULT_LIBVIRT_NETWORK_NAME,
                               DEFAULT_STORAGE_NAME)
+from mcvirt.auth.permissions import PERMISSIONS
 
 
 class ArgumentValidator(object):
@@ -176,3 +177,11 @@ class ArgumentValidator(object):
                 raise MCVirtTypeError(exception_message)
         except (ValueError, TypeError):
             raise MCVirtTypeError(exception_message)
+
+    @staticmethod
+    def validate_permission(permission):
+        """Ensure that a permission is valid"""
+        try:
+            PERMISSIONS[permission]
+        except KeyError:
+            raise InvalidPermissionError('Permission is not valid')

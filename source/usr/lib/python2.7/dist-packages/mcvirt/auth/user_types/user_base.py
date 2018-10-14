@@ -22,11 +22,11 @@ import random
 import string
 from binascii import hexlify
 from pbkdf2 import crypt
-import Pyro4
 
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import UserDoesNotExistException, InvalidUserTypeException
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
 
@@ -196,6 +196,48 @@ class UserBase(PyroObject):
         random.seed(os.urandom(1024))
         return ''.join(random.choice(characers) for i in range(length))
 
+    @Expose()
+    def add_permission(self, permission):
+        """Add permissoin to the user"""
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        raise InvalidUserTypeException(
+            'Cannot modify individual permissions for this type of user')
+
+    @Expose()
+    def remove_permission(self, permission):
+        """Add permissoin to the user"""
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        raise InvalidUserTypeException(
+            'Cannot modify individual permissions for this type of user')
+
+    def get_groups(self, global_=True, virtual_machine=None, all_virtual_machines=False):
+        """Get groups that the user is part of"""
+        group_factory = self._get_registered_object('group_factory')
+
+        # Create list of virtual machines, whether VM passed or all_virtual_machines
+        # specified
+        if virtual_machine:
+            virtual_machines = [self._convert_remote_object(virtual_machine)]
+        elif all_virtual_machines:
+            virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+            virtual_machines = virtual_machine_factory.getAllVirtualMachines()
+        else:
+            virtual_machines = []
+
+        groups = []
+        # Iterate through groups, looking for members
+        for group in group_factory.get_all():
+            if global_ and group.is_user_member(user=self):
+                groups.append(group)
+            else:
+                for vm_object in virtual_machines:
+                    if group.is_user_member(user=self, virtual_machine=vm_object):
+                        groups.append(group)
+
+        return groups
+
     def get_permissions(self, virtual_machine=None):
         """Obtain the list of permissions that the user has"""
         # Get the list of hard coded permission for the user type
@@ -207,17 +249,15 @@ class UserBase(PyroObject):
 
         # Obtain list of permissions assigned by groups that the
         # user is a member of
-        group_factory = self._get_registered_object('group_factory')
-        for group in group_factory.get_all():
-            if (group.is_user_member(user=self) or
-                    (virtual_machine and
-                     group.is_user_member(user=self, virtual_machine=virtual_machine))):
-                permissions += group.get_permissions()
+        user_groups = self.get_groups(global_=True, virtual_machine=virtual_machine,
+                                      all_virtual_machines=False)
+        for group in user_groups:
+            permissions += group.get_permissions()
 
+        # Get permission overrides for virtual machine
         if virtual_machine:
-            virtual_machine = self._convert_remote_object(virtual_machine)
-
             # Get VM user permission overrides and add permissions
+            virtual_machine = self._convert_remote_object(virtual_machine)
             vm_permission_overrides = virtual_machine.get_config_object(). \
                 getPermissionConfig()['users']
             if self.get_username() in vm_permission_overrides:

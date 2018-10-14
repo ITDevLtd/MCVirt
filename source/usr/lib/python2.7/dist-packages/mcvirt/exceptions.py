@@ -793,6 +793,36 @@ class GropuInUseError(MCVirtException):
     pass
 
 
+class GroupAlreadyContainsPermissionError(MCVirtException):
+    """Group already contains permission"""
+
+    pass
+
+
+class GroupDoesNotContainPermissionError(MCVirtException):
+    """Group does not contain permission"""
+
+    pass
+
+
+class InvalidPermissionError(MCVirtTypeError):
+    """An invalid permission was passed"""
+
+    pass
+
+
+class UserAlreadyHasPermissionError(MCVirtException):
+    """User already has permission"""
+
+    pass
+
+
+class UserDoesNotHavePermissionError(MCVirtException):
+    """User does not have permission"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)

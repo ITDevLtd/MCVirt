@@ -93,7 +93,8 @@ class MCVirtConfig(ConfigFile):
                             'CLONE_VM',
                             'DELETE_CLONE',
                             'DUPLICATE_VM',
-                            'TEST_OWNER_PERMISSION'
+                            'TEST_OWNER_PERMISSION',
+                            'MANAGE_GROUP_MEMBERS'
                         ],
                         'users': []
                     }
@@ -239,4 +240,4 @@ class MCVirtConfig(ConfigFile):
 
             # Add user global overrides to user configs
             for user in config['users']:
-                config['users'][user]['global_permissions'] = {}
+                config['users'][user]['global_permissions'] = []
