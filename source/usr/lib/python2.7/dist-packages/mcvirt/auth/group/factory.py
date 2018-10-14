@@ -118,7 +118,7 @@ class Factory(PyroObject):
 
         # Create table and add headers
         table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        table.set_deco(Texttable.HEADER | Texttable.VLINES | Texttable.HLINES)
         table.header(('Name', 'Permissions', 'Global users'))
 
         # Set column alignment and widths
@@ -128,8 +128,8 @@ class Factory(PyroObject):
         for group in self.get_all():
             table.add_row((
                 group.name,
-                ', '.join(group.get_permissions()),
-                ', '.join(group.get_users(vm=None))
+                ', '.join([str(perm) for perm in group.get_permissions()]),
+                ', '.join([user.get_username() for user in group.get_users(virtual_machine=None)])
             ))
         return table.draw()
 

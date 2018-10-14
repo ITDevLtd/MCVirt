@@ -37,12 +37,26 @@ class GroupParser(object):
             help='Action to perform'
         )
 
+        self.register_list()
         self.register_create()
         self.register_delete()
         self.register_add_permission()
         self.register_remove_permission()
         self.register_add_user()
         self.register_remove_user()
+
+    def register_list(self):
+        """Register parser for listing group"""
+        self.create_parser = self.sub_parsers.add_parser(
+            'list',
+            help='List the groups',
+            parents=[self.parent_parser])
+        self.create_parser.set_defaults(func=self.handle_list)
+
+    def handle_list(self, args, rpc, print_status):
+        """Perform list of groups"""
+        group_factory = rpc.get_connection('group_factory')
+        print_status(group_factory.list())
 
     def register_create(self):
         """Register parser for creating group"""
@@ -60,7 +74,7 @@ class GroupParser(object):
         print_status('Created group \'%s\'' % args.name)
 
     def register_delete(self):
-        """Register parser for creating group"""
+        """Register parser for deleting group"""
         self.delete_parser = self.sub_parsers.add_parser(
             'delete',
             help='Delete a permission group',
@@ -69,7 +83,7 @@ class GroupParser(object):
         self.delete_parser.add_argument(dest='name', metavar='Group Name')
 
     def handle_delete(self, args, rpc, print_status):
-        """Perform creation of group"""
+        """Perform deletionn of group"""
         group_factory = rpc.get_connection('group_factory')
         group = group_factory.get_object_by_name(args.name)
         rpc.annotate_object(group)
