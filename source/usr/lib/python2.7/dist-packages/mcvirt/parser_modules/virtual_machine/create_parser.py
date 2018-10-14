@@ -29,6 +29,7 @@ class CreateParser(object):
         self.create_parser = self.parent_subparser.add_parser(
             'create', help='Create VM',
             parents=[self.parent_parser])
+        self.create_parser.set_defaults(func=self.handle_create)
 
         # Add arguments for creating a VM
         self.create_parser.add_argument('--memory', dest='memory', metavar='Memory',
