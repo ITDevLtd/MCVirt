@@ -37,6 +37,8 @@ from mcvirt.parser_modules.iso_parser import IsoParser
 from mcvirt.parser_modules.virtual_machine.register_parser import RegisterParser
 from mcvirt.parser_modules.virtual_machine.unregister_parser import UnregisterParser
 from mcvirt.parser_modules.virtual_machine.update_parser import UpdateParser
+from mcvirt.parser_modules.permission_parser import PermissionParser
+from mcvirt.parser_modules.network_parser import NetworkParser
 from mcvirt.parser_modules.group_parser import GroupParser
 from mcvirt.parser_modules.user_parser import UserParser
 
@@ -124,115 +126,12 @@ class Parser(object):
         # Get arguments for updating a VM
         UpdateParser(self.subparsers, self.parent_parser)
 
-        # Get arguments for making permission changes to a VM
-        self.permission_parser = self.subparsers.add_parser(
-            'permission',
-            help='Update user permissions',
-            parents=[self.parent_parser]
-        )
-
-        self.permission_parser.add_argument(
-            '--add-user',
-            dest='add_user',
-            metavar='Add user to user group',
-            type=str,
-            help=('DEPRECATED (will be removed in v10.0.0): '
-                  'Adds a given user to a VM, allowing them to perform basic functions.')
-        )
-        self.permission_parser.add_argument(
-            '--delete-user',
-            dest='delete_user',
-            metavar='Remove user from user group',
-            type=str,
-            help=('DEPRECATED (will be removed in v10.0.0): '
-                  'Removes a given user from a VM. This prevents '
-                  'them to perform basic functions.')
-        )
-        self.permission_parser.add_argument(
-            '--add-owner',
-            dest='add_owner',
-            metavar='Add user to owner group',
-            type=str,
-            help=('DEPRECATED (will be removed in v10.0.0): '
-                  'Adds a given user as an owner to a VM, '
-                  'allowing them to perform basic functions and manager users.')
-        )
-        self.permission_parser.add_argument(
-            '--delete-owner',
-            dest='delete_owner',
-            metavar='Remove user from owner group',
-            type=str,
-            help=('DEPRECATED (will be removed in v10.0.0): '
-                  'Removes a given owner from a VM. '
-                  'This prevents them to perform basic functions and manager users.')
-        )
-        self.permission_parser.add_argument(
-            '--add-superuser',
-            dest='add_superuser',
-            metavar='Add user to superuser group',
-            type=str,
-            help=('Adds a given user to the global superuser role. '
-                  'This allows the user to completely manage the MCVirt node/cluster')
-        )
-        self.permission_parser.add_argument(
-            '--delete-superuser',
-            dest='delete_superuser',
-            metavar='Removes user from the superuser group',
-            type=str,
-            help='Removes a given user from the superuser group'
-        )
-        self.permission_target_group = self.permission_parser.add_mutually_exclusive_group(
-            required=True
-        )
-        self.permission_target_group.add_argument('vm_name', metavar='VM Name',
-                                                  type=str, help='Name of VM', nargs='?')
-        self.permission_target_group.add_argument('--global', dest='global', action='store_true',
-                                                  help='Set a global MCVirt permission')
-
-        self.permission_target_group.add_argument(
-            '--list',
-            dest='list',
-            action='store_true',
-            help='List available permissions'
-        )
+        PermissionParser(self.subparsers, self.parent_parser)
 
         GroupParser(self.subparsers, self.parent_parser)
 
         # Create subparser for network-related commands
-        self.network_parser = self.subparsers.add_parser(
-            'network',
-            help='Manage the virtual networks on the MCVirt host',
-            parents=[self.parent_parser]
-        )
-        self.network_subparser = self.network_parser.add_subparsers(
-            dest='network_action',
-            metavar='Action',
-            help='Action to perform on the network'
-        )
-        self.network_create_parser = self.network_subparser.add_parser(
-            'create',
-            help='Create a network on the MCVirt host',
-            parents=[self.parent_parser]
-        )
-        self.network_create_parser.add_argument(
-            '--interface',
-            dest='interface',
-            metavar='Interface',
-            type=str,
-            required=True,
-            help='Physical interface on the system to bridge to the virtual network'
-        )
-        self.network_create_parser.add_argument('network', metavar='Network Name', type=str,
-                                                help='Name of the virtual network to be created')
-        self.network_delete_parser = self.network_subparser.add_parser(
-            'delete',
-            help='Delete a network on the MCVirt host',
-            parents=[self.parent_parser]
-        )
-        self.network_delete_parser.add_argument('network', metavar='Network Name', type=str,
-                                                help='Name of the virtual network to be removed')
-        self.network_subparser.add_parser('list', help='List the networks on the node',
-                                          parents=[self.parent_parser])
+        NetworkParser(self.subparsers, self.parent_parser)
 
         # Get arguments for getting VM information
         self.info_parser = self.subparsers.add_parser('info', help='View VM information',
@@ -808,94 +707,6 @@ class Parser(object):
             args.func(args=args, p_=self)
             return
 
-        elif action == 'permission':
-            auth_object = self.rpc.get_connection('auth')
-            self.rpc.annotate_object(auth_object)
-
-            if args.list:
-                self.print_status(auth_object.list_permissions())
-                return
-
-            if (args.add_superuser or args.delete_superuser) and args.vm_name:
-                raise ArgumentParserException('Superuser groups are global-only roles')
-
-            if args.vm_name:
-                vm_factory = self.rpc.get_connection('virtual_machine_factory')
-                vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-                self.rpc.annotate_object(vm_object)
-                permission_destination_string = 'role on VM %s' % vm_object.get_name()
-            else:
-                vm_object = None
-                permission_destination_string = 'global role'
-
-            user_factory = self.rpc.get_connection('user_factory')
-            self.rpc.annotate_object(user_factory)
-
-            if args.add_user:
-                user_object = user_factory.get_user_by_username(args.add_user)
-                self.rpc.annotate_object(user_object)
-                group_factory = self.rpc.get_connection('group_factory')
-                group = group_factory.get_object_by_name('user')
-                self.rpc.annotate_object(group)
-                group.add_user(
-                    user=user_object,
-                    virtual_machine=vm_object)
-                self.print_status(
-                    'Successfully added \'%s\' to \'user\' %s' %
-                    (args.add_user, permission_destination_string))
-
-            if args.delete_user:
-                user_object = user_factory.get_user_by_username(args.delete_user)
-                self.rpc.annotate_object(user_object)
-                group_factory = self.rpc.get_connection('group_factory')
-                group = group_factory.get_object_by_name('user')
-                self.rpc.annotate_object(group)
-                group.remove_user(
-                    user=user_object,
-                    virtual_machine=vm_object)
-                self.print_status(
-                    'Successfully removed \'%s\' from \'user\' %s' %
-                    (args.delete_user, permission_destination_string))
-
-            if args.add_owner:
-                user_object = user_factory.get_user_by_username(args.add_owner)
-                self.rpc.annotate_object(user_object)
-                group_factory = self.rpc.get_connection('group_factory')
-                group = group_factory.get_object_by_name('owner')
-                self.rpc.annotate_object(group)
-                group.add_user(
-                    user=user_object,
-                    virtual_machine=vm_object)
-                self.print_status(
-                    'Successfully added \'%s\' to \'owner\' %s' %
-                    (args.add_owner, permission_destination_string))
-
-            if args.delete_owner:
-                user_object = user_factory.get_user_by_username(args.delete_owner)
-                self.rpc.annotate_object(user_object)
-                group_factory = self.rpc.get_connection('group_factory')
-                group = group_factory.get_object_by_name('owner')
-                self.rpc.annotate_object(group)
-                group.remove_user(
-                    user=user_object,
-                    virtual_machine=vm_object)
-                self.print_status(
-                    'Successfully removed \'%s\' from \'owner\' %s' %
-                    (args.delete_owner, permission_destination_string))
-
-            if args.add_superuser:
-                user_object = user_factory.get_user_by_username(args.add_superuser)
-                self.rpc.annotate_object(user_object)
-                auth_object.add_superuser(user_object=user_object)
-                self.print_status('Successfully added %s to the global superuser group' %
-                                  args.add_superuser)
-            if args.delete_superuser:
-                user_object = user_factory.get_user_by_username(args.delete_superuser)
-                self.rpc.annotate_object(user_object)
-                auth_object.delete_superuser(user_object=user_object)
-                self.print_status('Successfully removed %s from the global superuser group ' %
-                                  args.delete_superuser)
-
         elif action == 'info':
             if not args.vm_name and (args.vnc_port or args.node):
                 self.parser.error('Must provide a VM Name')
@@ -912,17 +723,6 @@ class Parser(object):
             else:
                 cluster_object = self.rpc.get_connection('cluster')
                 self.print_status(cluster_object.print_info())
-
-        elif action == 'network':
-            network_factory = self.rpc.get_connection('network_factory')
-            if args.network_action == 'create':
-                network_factory.create(args.network, physical_interface=args.interface)
-            elif args.network_action == 'delete':
-                network_object = network_factory.get_network_by_name(args.network)
-                self.rpc.annotate_object(network_object)
-                network_object.delete()
-            elif args.network_action == 'list':
-                self.print_status(network_factory.get_network_list_table())
 
         elif action == 'migrate':
             vm_factory = self.rpc.get_connection('virtual_machine_factory')
