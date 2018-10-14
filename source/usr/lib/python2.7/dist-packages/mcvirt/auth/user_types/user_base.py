@@ -246,8 +246,10 @@ class UserBase(PyroObject):
 
         cluster = self._get_registered_object('cluster')
         # If the user is distributed, remove from all nodes
-        nodes = cluster.get_nodes(include_local=True) if self.DISTRIBUTED else None
-        self.remove_user_config(nodes=nodes)
+        remove_kwargs = {}
+        if self.DISTRIBUTED:
+            remove_kwargs['nodes'] = cluster.get_nodes(include_local=True)
+        self.remove_user_config(**remove_kwargs)
 
     @Expose(locking=True, remote_nodes=True)
     def remove_user_config(self):
