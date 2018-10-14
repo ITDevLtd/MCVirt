@@ -30,9 +30,9 @@ class ResetParser(object):
         self.reset_parser = self.parent_subparser.add_parser(
             'reset', help='Reset VM',
             parents=[self.parent_parser])
+        self.reset_parser.set_defaults(func=self.handle_reset)
         self.reset_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
                                        help='Names of VMs')
-        self.reset_parser.set_defaults(func=self.handle_reset)
 
     def handle_reset(self, p_, args):
         """Handle reset"""

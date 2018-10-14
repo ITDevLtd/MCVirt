@@ -30,9 +30,9 @@ class ShutdownParser(object):
         self.shutdown_parser = self.parent_subparser.add_parser(
             'shutdown', help='Shutdown VM',
             parents=[self.parent_parser])
+        self.shutdown_parser.set_defaults(func=self.handle_shutdown)
         self.shutdown_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
                                           help='Names of VMs')
-        self.shutdown_parser.set_defaults(func=self.handle_shutdown)
 
     def handle_shutdown(self, p_, args):
         """Handle shutdown"""
