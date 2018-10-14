@@ -37,10 +37,16 @@ from mcvirt.parser_modules.iso_parser import IsoParser
 from mcvirt.parser_modules.virtual_machine.register_parser import RegisterParser
 from mcvirt.parser_modules.virtual_machine.unregister_parser import UnregisterParser
 from mcvirt.parser_modules.virtual_machine.update_parser import UpdateParser
+from mcvirt.parser_modules.virtual_machine.migrate_parser import MigrateParser
+from mcvirt.parser_modules.virtual_machine.info_parser import InfoParser
 from mcvirt.parser_modules.permission_parser import PermissionParser
 from mcvirt.parser_modules.network_parser import NetworkParser
 from mcvirt.parser_modules.group_parser import GroupParser
 from mcvirt.parser_modules.user_parser import UserParser
+from mcvirt.parser_modules.virtual_machine.list_parser import ListParser
+from mcvirt.parser_modules.virtual_machine.duplicate_parser import DuplicateParser
+from mcvirt.parser_modules.virtual_machine.clone_parser import CloneParser
+from mcvirt.parser_modules.virtual_machine.move_parser import MoveParser
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -134,106 +140,22 @@ class Parser(object):
         NetworkParser(self.subparsers, self.parent_parser)
 
         # Get arguments for getting VM information
-        self.info_parser = self.subparsers.add_parser('info', help='View VM information',
-                                                      parents=[self.parent_parser])
-        self.info_mutually_exclusive_group = self.info_parser.add_mutually_exclusive_group(
-            required=False
-        )
-        self.info_mutually_exclusive_group.add_argument(
-            '--vnc-port',
-            dest='vnc_port',
-            help='Displays the port that VNC is being hosted from',
-            action='store_true'
-        )
-        self.info_mutually_exclusive_group.add_argument(
-            '--node',
-            dest='node',
-            help='Displays which node that the VM is currently registered on',
-            action='store_true'
-        )
-        self.info_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM',
-                                      nargs='?', default=None)
+        InfoParser(self.subparsers, self.parent_parser)
 
         # Get arguments for listing VMs
-        self.list_parser = self.subparsers.add_parser('list', help='List VMs present on host',
-                                                      parents=[self.parent_parser])
-        self.list_parser.add_argument('--cpu', dest='include_cpu', help='Include CPU column',
-                                      action='store_true')
-        self.list_parser.add_argument('--memory', '--ram', dest='include_ram',
-                                      help='Include RAM column', action='store_true')
-        self.list_parser.add_argument('--disk-size', '--hdd', dest='include_disk',
-                                      help='Include HDD column', action='store_true')
+        ListParser(self.subparsers, self.parent_parser)
 
         # Get arguments for cloning a VM
-        self.clone_parser = self.subparsers.add_parser('clone', help='Clone a VM',
-                                                       parents=[self.parent_parser])
-        self.clone_parser.add_argument('--template', dest='template', type=str,
-                                       required=True, metavar='Parent VM',
-                                       help='The name of the VM to clone from')
-        self.clone_parser.add_argument('--retain-mac-address',
-                                       help='Retain MAC address from clones',
-                                       dest='retain_mac', action='store_true')
-        self.clone_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        CloneParser(self.subparsers, self.parent_parser)
 
         # Get arguments for cloning a VM
-        self.duplicate_parser = self.subparsers.add_parser('duplicate',
-                                                           help='Duplicate a VM',
-                                                           parents=[self.parent_parser])
-        self.duplicate_parser.add_argument('--template', dest='template', metavar='Parent VM',
-                                           type=str, required=True,
-                                           help='The name of the VM to duplicate')
-        self.duplicate_parser.add_argument('--retain-mac-address',
-                                           help='Retain MAC address from clones',
-                                           dest='retain_mac', action='store_true')
-        self.duplicate_parser.add_argument('vm_name', metavar='VM Name', type=str,
-                                           help='Name of duplicate VM')
+        DuplicateParser(self.subparsers, self.parent_parser)
 
         # Get arguments for migrating a VM
-        self.migrate_parser = self.subparsers.add_parser(
-            'migrate',
-            help='Perform migrations of virtual machines',
-            parents=[self.parent_parser]
-        )
-        self.migrate_parser.add_argument(
-            '--node',
-            dest='destination_node',
-            metavar='Destination Node',
-            type=str,
-            required=True,
-            help='The name of the destination node for the VM to be migrated to'
-        )
-        self.migrate_parser.add_argument(
-            '--online',
-            dest='online_migration',
-            help='Perform an online-migration',
-            action='store_true'
-        )
-        self.migrate_parser.add_argument(
-            '--start-after-migration',
-            dest='start_after_migration',
-            help='Causes the VM to be booted after the migration',
-            action='store_true'
-        )
-        self.migrate_parser.add_argument(
-            '--wait-for-shutdown',
-            dest='wait_for_shutdown',
-            help='Waits for the VM to shutdown before performing the migration',
-            action='store_true'
-        )
-        self.migrate_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        MigrateParser(self.subparsers, self.parent_parser)
 
         # Create sub-parser for moving VMs
-        self.move_parser = self.subparsers.add_parser('move', help=('Move a VM and related storage'
-                                                                    ' to another node'),
-                                                      parents=[self.parent_parser])
-        self.move_parser.add_argument('--source-node', dest='source_node',
-                                      help="The node that the VM will be moved from.\n" +
-                                      'For Drbd VMs, the source node must not be' +
-                                      " the local node.\nFor Local VMs, the node" +
-                                      " must be the local node, but may be omitted.")
-        self.move_parser.add_argument('--destination-node', dest='destination_node',
-                                      help='The node that the VM will be moved to')
-        self.move_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
+        MoveParser(self.subparsers, self.parent_parser)
 
         # Create sub-parser for cluster-related commands
         self.cluster_parser = self.subparsers.add_parser(
@@ -707,45 +629,6 @@ class Parser(object):
             args.func(args=args, p_=self)
             return
 
-        elif action == 'info':
-            if not args.vm_name and (args.vnc_port or args.node):
-                self.parser.error('Must provide a VM Name')
-            if args.vm_name:
-                vm_factory = self.rpc.get_connection('virtual_machine_factory')
-                vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-                self.rpc.annotate_object(vm_object)
-                if args.vnc_port:
-                    self.print_status(vm_object.getVncPort())
-                elif args.node:
-                    self.print_status(vm_object.getNode())
-                else:
-                    self.print_status(vm_object.getInfo())
-            else:
-                cluster_object = self.rpc.get_connection('cluster')
-                self.print_status(cluster_object.print_info())
-
-        elif action == 'migrate':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            self.rpc.annotate_object(vm_object)
-            if args.online_migration:
-                vm_object.onlineMigrate(args.destination_node)
-            else:
-                vm_object.offlineMigrate(
-                    args.destination_node,
-                    wait_for_vm_shutdown=args.wait_for_shutdown,
-                    start_after_migration=args.start_after_migration
-                )
-            self.print_status('Successfully migrated \'%s\' to %s' %
-                              (vm_object.get_name(), args.destination_node))
-
-        elif action == 'move':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            self.rpc.annotate_object(vm_object)
-            vm_object.move(destination_node=args.destination_node,
-                           source_node=args.source_node)
-
         elif action == 'cluster':
             cluster_object = self.rpc.get_connection('cluster')
             if args.cluster_action == 'get-connect-string':
@@ -947,21 +830,3 @@ class Parser(object):
                 vm_object.setLockState(LockStates.UNLOCKED.value)
             if args.check_lock:
                 self.print_status(LockStates(vm_object.getLockState()).name)
-
-        elif action == 'clone':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.template)
-            self.rpc.annotate_object(vm_object)
-            vm_object.clone(args.vm_name, retain_mac=args.retain_mac)
-
-        elif action == 'duplicate':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.template)
-            self.rpc.annotate_object(vm_object)
-            vm_object.duplicate(args.vm_name, retain_mac=args.retain_mac)
-
-        elif action == 'list':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            self.print_status(vm_factory.listVms(include_cpu=args.include_cpu,
-                                                 include_ram=args.include_ram,
-                                                 include_disk=args.include_disk))
