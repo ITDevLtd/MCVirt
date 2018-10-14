@@ -89,6 +89,7 @@ class Factory(PyroObject):
         user_config['password'] = hashed_password
         user_config['salt'] = salt
         user_config['user_type'] = user_type.__name__
+        user_config['global_permissions'] = {}
 
         def update_config(config):
             config['users'][username] = user_config

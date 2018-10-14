@@ -66,3 +66,6 @@ DEFAULT_STORAGE_ID = 'sb-1625cdb75d25d9f6-31bca02094eb78126a517b20'
 
 # Name of the default network, which is created by libvirt
 DEFAULT_LIBVIRT_NETWORK_NAME = 'default'
+
+DEFAULT_USER_GROUP_ID = 'gp-b14361404c078ffd54-31bca02094eb78126a517b'
+DEFAULT_OWNER_GROUP_ID = 'gp-ef31a4aef108265dca-31bca02094eb78126a517b'

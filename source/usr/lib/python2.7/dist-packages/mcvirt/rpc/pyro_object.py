@@ -33,6 +33,14 @@ class PyroObject(object):
         pass
 
     @property
+    def convert_to_remote_object_in_args(self):
+        """Whether the expose method (or transaction object) converts
+        the object to a remote object if has been passed into a
+        method of an exposed object to run on remote nodes
+        """
+        return True
+
+    @property
     def _is_pyro_initialised(self):
         """Determine if object is registered with the Pyro deamon"""
         return ('_pyroDaemon' in self.__dict__.keys())

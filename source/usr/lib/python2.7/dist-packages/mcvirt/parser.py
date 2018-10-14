@@ -1266,10 +1266,12 @@ class Parser(object):
             if args.add_user:
                 user_object = user_factory.get_user_by_username(args.add_user)
                 rpc.annotate_object(user_object)
-                auth_object.add_user_permission_group(
-                    permission_group='user',
-                    user_object=user_object,
-                    vm_object=vm_object)
+                group_factory = rpc.get_connection('group_factory')
+                group = group_factory.get_object_by_name('user')
+                rpc.annotate_object(group)
+                group.add_user(
+                    user=user_object,
+                    virtual_machine=vm_object)
                 self.print_status(
                     'Successfully added \'%s\' to \'user\' %s' %
                     (args.add_user, permission_destination_string))
@@ -1277,10 +1279,12 @@ class Parser(object):
             if args.delete_user:
                 user_object = user_factory.get_user_by_username(args.delete_user)
                 rpc.annotate_object(user_object)
-                auth_object.delete_user_permission_group(
-                    permission_group='user',
-                    user_object=user_object,
-                    vm_object=vm_object)
+                group_factory = rpc.get_connection('group_factory')
+                group = group_factory.get_object_by_name('user')
+                rpc.annotate_object(group)
+                group.remove_user(
+                    user=user_object,
+                    virtual_machine=vm_object)
                 self.print_status(
                     'Successfully removed \'%s\' from \'user\' %s' %
                     (args.delete_user, permission_destination_string))
@@ -1288,10 +1292,12 @@ class Parser(object):
             if args.add_owner:
                 user_object = user_factory.get_user_by_username(args.add_owner)
                 rpc.annotate_object(user_object)
-                auth_object.add_user_permission_group(
-                    permission_group='owner',
-                    user_object=user_object,
-                    vm_object=vm_object)
+                group_factory = rpc.get_connection('group_factory')
+                group = group_factory.get_object_by_name('owner')
+                rpc.annotate_object(group)
+                group.add_user(
+                    user=user_object,
+                    virtual_machine=vm_object)
                 self.print_status(
                     'Successfully added \'%s\' to \'owner\' %s' %
                     (args.add_owner, permission_destination_string))
@@ -1299,10 +1305,12 @@ class Parser(object):
             if args.delete_owner:
                 user_object = user_factory.get_user_by_username(args.delete_owner)
                 rpc.annotate_object(user_object)
-                auth_object.delete_user_permission_group(
-                    permission_group='owner',
-                    user_object=user_object,
-                    vm_object=vm_object)
+                group_factory = rpc.get_connection('group_factory')
+                group = group_factory.get_object_by_name('owner')
+                rpc.annotate_object(group)
+                group.remove_user(
+                    user=user_object,
+                    virtual_machine=vm_object)
                 self.print_status(
                     'Successfully removed \'%s\' from \'owner\' %s' %
                     (args.delete_owner, permission_destination_string))

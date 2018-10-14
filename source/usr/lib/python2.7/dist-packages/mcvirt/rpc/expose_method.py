@@ -208,6 +208,15 @@ class Function(PyroObject):
         # Register instance and functions with pyro
         self.obj._register_object(self, debug=False)
 
+    @property
+    def convert_to_remote_object_in_args(self):
+        """This object is registered with daemon in init and all required
+        methods are exposed and does not have a get_remote_object method.
+        As such, mark as not to be converted to a remote object when
+        passed in an argument.
+        """
+        return False
+
     def unregister(self, force=False):
         """De-register object after deletion"""
         if force or not Transaction.in_transaction():
@@ -350,14 +359,39 @@ class Function(PyroObject):
         if undo and not hasattr(remote_object, self._undo_function_name):
             return
 
+        # Convert local object in args and kwargs
+        args, kwargs = self._convert_local_object(node,
+                                                  self.nodes[node]['args'],
+                                                  self._get_kwargs())
+
         # Run the method by obtaining the member attribute, based on the name of
         # the callback function from of the remote object
         response = getattr(remote_object, function_name)(
-            *self.nodes[node]['args'], **self._get_kwargs())
+            *args, **kwargs)
 
         # Store output in response
         if not undo:
             self.nodes[node]['return_val'] = response
+
+    def _convert_local_object(self, node, args, kwargs):
+        """Convert any local objects in args and kwargs to
+        get remote objects
+        """
+        # @TODO: Inspect lists and dicts within each argumnet
+        # Create new list of args and kwargs
+        args = list(args)
+        kwargs = dict(kwargs)
+        for itx, arg in enumerate(args):
+            if isinstance(arg, PyroObject) and arg.convert_to_remote_object_in_args:
+                remote_object = arg.get_remote_object(node=node)
+                args[itx] = remote_object
+
+        for key, val in kwargs.iteritems():
+            if isinstance(val, PyroObject) and val.convert_to_remote_object_in_args:
+                remote_object = val.get_remote_object(node=node)
+                kwargs[key] = remote_object
+
+        return args, kwargs
 
     def _get_response_data(self):
         """Determine and return response data"""

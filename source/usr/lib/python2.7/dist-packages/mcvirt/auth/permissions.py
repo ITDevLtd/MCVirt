@@ -30,25 +30,5 @@ PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY
                                    'TEST_OWNER_PERMISSION', 'TEST_USER_PERMISSION',
                                    'SUPERUSER', 'MANAGE_NODE', 'SET_SYNC_STATE',
                                    'MANAGE_ISO', 'MANAGE_STORAGE_BACKEND',
-                                   'MANAGE_STORAGE_VOLUME'])
-
-# Set the permissions for the permissions groups
-PERMISSION_GROUPS = \
-    {
-        'user':
-        [
-            PERMISSIONS.CHANGE_VM_POWER_STATE,
-            PERMISSIONS.VIEW_VNC_CONSOLE,
-            PERMISSIONS.TEST_USER_PERMISSION
-        ],
-        'owner':
-        [
-            PERMISSIONS.CHANGE_VM_POWER_STATE,
-            PERMISSIONS.MANAGE_VM_USERS,
-            PERMISSIONS.VIEW_VNC_CONSOLE,
-            PERMISSIONS.CLONE_VM,
-            PERMISSIONS.DELETE_CLONE,
-            PERMISSIONS.DUPLICATE_VM,
-            PERMISSIONS.TEST_OWNER_PERMISSION
-        ]
-    }
+                                   'MANAGE_STORAGE_VOLUME', 'MANAGE_GROUPS',
+                                   'MANAGE_GROUP_MEMBERS'])
