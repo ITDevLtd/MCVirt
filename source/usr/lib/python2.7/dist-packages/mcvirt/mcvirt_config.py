@@ -240,4 +240,4 @@ class MCVirtConfig(ConfigFile):
 
             # Add user global overrides to user configs
             for user in config['users']:
-                config['users'][user]['global_permissions'] = {}
+                config['users'][user]['global_permissions'] = []
