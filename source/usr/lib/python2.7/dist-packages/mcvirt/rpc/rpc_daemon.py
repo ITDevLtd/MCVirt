@@ -68,8 +68,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
         # Store MCVirt instance
         self.registered_factories = {}
 
-    def validateHandshake(self, conn, data):  # Override name of upstream method # noqa
-        """Perform authentication on new connections"""
+    def handshake__set_defaults(self):
+        """Reset/set Pyro context defaults"""
         # Reset session_id for current context
         Pyro4.current_context.STARTUP_PERIOD = False
         Pyro4.current_context.INTERNAL_REQUEST = False
@@ -78,121 +78,133 @@ class BaseRpcDaemon(Pyro4.Daemon):
         Pyro4.current_context.proxy_user = None
         Pyro4.current_context.has_lock = False
         Pyro4.current_context.cluster_master = True
+        Pyro4.current_context.PERMISSION_ASSERTED = False
 
+    def handshake__authenticate_user(self, data):
+        """Authenticate user with either password or session ID"""
         # Check and store username from connection
         if Annotations.USERNAME not in data:
             raise Pyro4.errors.SecurityError('Username and password or Session must be passed')
         username = str(data[Annotations.USERNAME])
 
-        # If a password has been provided
+        session_instance = self.registered_factories['mcvirt_session']
+
+        session_id = None
+        if Annotations.PASSWORD in data:
+            # Store the password and perform authentication check
+            password = str(data[Annotations.PASSWORD])
+            session_id = session_instance.authenticate_user(username=username,
+                                                            password=password)
+
+        elif Annotations.SESSION_ID in data:
+            passed_session_id = str(data[Annotations.SESSION_ID])
+            if session_instance.authenticate_session(username=username,
+                                                     session=passed_session_id):
+                session_id = passed_session_id
+
+        if not session_id:
+            self.handshake__raise_exception()
+
+        # Set username and session ID in context
+        Pyro4.current_context.username = username
+        Pyro4.current_context.session_id = session_id
+
+        return username, session_id
+
+    def handshake__set_proxy_user(self, data, user_object):
+        """Is specified and allowed, set proxy user"""
+        if user_object.allow_proxy_user and Annotations.PROXY_USER in data:
+            Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
+
+    def handshake__set_cluster_master(self, data, user_object):
+        """SEt cluster master status in context"""
+        # If the user is a cluster/connection user, treat this connection
+        # as a cluster client (the command as been executed on a remote node)
+        # unless specified otherwise
+        if user_object.CLUSTER_USER:
+            if Annotations.CLUSTER_MASTER in data:
+                Pyro4.current_context.cluster_master = data[Annotations.CLUSTER_MASTER]
+            else:
+                Pyro4.current_context.cluster_master = False
+        else:
+            Pyro4.current_context.cluster_master = True
+
+    def handshake__set_has_lock(self, data, user_object):
+        """Set has lock in context"""
+        if user_object.CLUSTER_USER and Annotations.HAS_LOCK in data:
+            Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
+        else:
+            Pyro4.current_context.has_lock = False
+
+    def handshake__set_ignore_cluster(self, data, user_object):
+        """Set ignore cluster in context"""
+        auth = self.registered_factories['auth']
+        if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER,
+                                  user_object=user_object) and
+                Annotations.IGNORE_CLUSTER in data):
+            Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_CLUSTER]
+        else:
+            Pyro4.current_context.ignore_cluster = False
+
+    def handshake__set_ignore_drbd(self, data, user_object):
+        """Set ignore drbd in context"""
+        auth = self.registered_factories['auth']
+        if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
+                                  user_object=user_object) and
+                Annotations.IGNORE_DRBD in data):
+            Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
+        else:
+            Pyro4.current_context.ignore_drbd = False
+
+    def handshake__check_cluster_version(self):
+        """Perform node version check on cluster"""
+        if Pyro4.current_context.cluster_master:
+            self.registered_factories['cluster'].check_node_versions()
+        Pyro4.current_context.PERMISSION_ASSERTED = False
+
+    def handshake__raise_exception(self):
+        """Raise standard exception for all authentication errors"""
+        raise AuthenticationError('Invalid username/password/session')
+
+    def validateHandshake(self, conn, data):  # Override name of upstream method # noqa
+        """Perform authentication on new connections"""
+        self.handshake__set_defaults()
+
+        # Attempt to perform authentication sequence
         try:
-            # @TODO - Re-factor as the logic below is duplicated for SESSION_ID in data clause
-            if Annotations.PASSWORD in data:
-                # Store the password and perform authentication check
-                password = str(data[Annotations.PASSWORD])
-                session_instance = self.registered_factories['mcvirt_session']
-                session_id = session_instance.authenticate_user(username=username,
-                                                                password=password)
-                if session_id:
-                    Pyro4.current_context.username = username
-                    Pyro4.current_context.session_id = session_id
+            # Authenticate user and obtain username and session id
+            username, session_id = self.handshake__authenticate_user(data)
 
-                    # If the authenticated user can specify a proxy user, and a proxy user
-                    # has been specified, set this in the current context
-                    user_object = session_instance.get_current_user_object()
-                    if user_object.allow_proxy_user and Annotations.PROXY_USER in data:
-                        Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
+            # Determine if user can provide alternative users
+            session_instance = self.registered_factories['mcvirt_session']
+            user_object = session_instance.get_current_user_object()
 
-                    # If the user is a cluster/connection user, treat this connection
-                    # as a cluster client (the command as been executed on a remote node)
-                    # unless specified otherwise
-                    auth = self.registered_factories['auth']
-                    if user_object.CLUSTER_USER:
-                        if Annotations.CLUSTER_MASTER in data:
-                            Pyro4.current_context.cluster_master = data[Annotations.CLUSTER_MASTER]
-                        else:
-                            Pyro4.current_context.cluster_master = False
-                    else:
-                        Pyro4.current_context.cluster_master = True
+            # Set proxy user
+            self.handshake__set_proxy_user(data, user_object)
 
-                    if user_object.CLUSTER_USER and Annotations.HAS_LOCK in data:
-                        Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
-                    else:
-                        Pyro4.current_context.has_lock = False
+            # Set cluster master
+            self.handshake__set_cluster_master(data, user_object)
 
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER,
-                                              user_object=user_object) and
-                            Annotations.IGNORE_CLUSTER in data):
-                        Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_CLUSTER]
-                    else:
-                        Pyro4.current_context.ignore_cluster = False
+            # Set has lock
+            self.handshake__set_has_lock(data, user_object)
 
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
-                                              user_object=user_object) and
-                            Annotations.IGNORE_DRBD in data):
-                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
-                    else:
-                        Pyro4.current_context.ignore_drbd = False
-                    if Pyro4.current_context.cluster_master:
-                        self.registered_factories['cluster'].check_node_versions()
-                    Pyro4.current_context.PERMISSION_ASSERTED = False
-                    return session_id
+            # Set ignore cluster and DRBD
+            self.handshake__set_ignore_cluster(data, user_object)
+            self.handshake__set_ignore_drbd(data, user_object)
 
-            # If a session id has been passed, store it and check the
-            # session_id/username against active sessions
-            elif Annotations.SESSION_ID in data:
-                session_id = str(data[Annotations.SESSION_ID])
-                session_instance = self.registered_factories['mcvirt_session']
-                if session_instance.authenticate_session(username=username, session=session_id):
-                    Pyro4.current_context.username = username
-                    Pyro4.current_context.session_id = session_id
+            # Perform node version check
+            self.handshake__check_cluster_version()
 
-                    # Determine if user can provide alternative users
-                    user_object = session_instance.get_current_user_object()
-                    if user_object.allow_proxy_user and Annotations.PROXY_USER in data:
-                        Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
+            # Return the session id
+            return session_id
 
-                    # If the user is a cluster/connection user, treat this connection
-                    # as a cluster client (the command as been executed on a remote node)
-                    # unless specified otherwise
-                    auth = self.registered_factories['auth']
-                    if user_object.CLUSTER_USER:
-                        if Annotations.CLUSTER_MASTER in data:
-                            Pyro4.current_context.cluster_master = data[Annotations.CLUSTER_MASTER]
-                        else:
-                            Pyro4.current_context.cluster_master = False
-                    else:
-                        Pyro4.current_context.cluster_master = True
-
-                    if user_object.CLUSTER_USER and Annotations.HAS_LOCK in data:
-                        Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
-                    else:
-                        Pyro4.current_context.has_lock = False
-
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER,
-                                              user_object=user_object) and
-                            Annotations.IGNORE_CLUSTER in data):
-                        Pyro4.current_context.ignore_cluster = data[Annotations.IGNORE_CLUSTER]
-                    else:
-                        Pyro4.current_context.ignore_cluster = False
-
-                    if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
-                                              user_object=user_object) and
-                            Annotations.IGNORE_DRBD in data):
-                        Pyro4.current_context.ignore_drbd = data[Annotations.IGNORE_DRBD]
-                    else:
-                        Pyro4.current_context.ignore_drbd = False
-
-                    if Pyro4.current_context.cluster_master:
-                        self.registered_factories['cluster'].check_node_versions()
-                    Pyro4.current_context.PERMISSION_ASSERTED = False
-                    return session_id
-        except Pyro4.errors.SecurityError:
-            raise
+        except Pyro4.errors.SecurityError, e:
+            Syslogger.logger().exception('SecurityError during authentication: %s' % str(e))
+            self.handshake__raise_exception()
         except Exception, e:
             Syslogger.logger().exception('Error during authentication: %s' % str(e))
         # If no valid authentication was provided, raise an error
-        raise AuthenticationError('Invalid username/password/session')
+        self.handshake__raise_exception()
 
 
 class RpcNSMixinDaemon(object):
