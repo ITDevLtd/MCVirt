@@ -22,18 +22,18 @@ class StartParser(object):
     """Handle VM start parser"""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for shutting down VMs"""
+        """Create subparser for starting VMs"""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
         # Add arguments for starting a VM
         self.start_parser = self.parent_subparser.add_parser(
             'start', help='Start VM', parents=[self.parent_parser])
+        self.start_parser.set_defaults(func=self.handle_start)
         self.start_parser.add_argument('--iso', metavar='ISO Name', type=str,
                                        help='Path of ISO to attach to VM', default=None)
         self.start_parser.add_argument('vm_names', nargs='*', metavar='VM Names', type=str,
                                        help='Names of VMs')
-        self.start_parser.set_defaults(func=self.handle_start)
 
     def handle_start(self, p_, args):
         """Handle start"""

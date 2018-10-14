@@ -26,12 +26,17 @@ from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
 from mcvirt.storage.factory import Factory as StorageFactory
-from mcvirt.parser_modules.start_parser import StartParser
-from mcvirt.parser_modules.stop_parser import StopParser
-from mcvirt.parser_modules.reset_parser import ResetParser
-from mcvirt.parser_modules.shutdown_parser import ShutdownParser
+from mcvirt.parser_modules.virtual_machine.start_parser import StartParser
+from mcvirt.parser_modules.virtual_machine.stop_parser import StopParser
+from mcvirt.parser_modules.virtual_machine.reset_parser import ResetParser
+from mcvirt.parser_modules.virtual_machine.shutdown_parser import ShutdownParser
+from mcvirt.parser_modules.virtual_machine.create_parser import CreateParser
+from mcvirt.parser_modules.virtual_machine.delete_parser import DeleteParser
 from mcvirt.parser_modules.clear_method_lock_parser import ClearMethodLockParser
 from mcvirt.parser_modules.iso_parser import IsoParser
+from mcvirt.parser_modules.virtual_machine.register_parser import RegisterParser
+from mcvirt.parser_modules.virtual_machine.unregister_parser import UnregisterParser
+from mcvirt.parser_modules.virtual_machine.update_parser import UpdateParser
 from mcvirt.parser_modules.group_parser import GroupParser
 from mcvirt.parser_modules.user_parser import UserParser
 
@@ -108,179 +113,16 @@ class Parser(object):
         UserParser(self.subparsers, self.parent_parser)
 
         # Add arguments for creating a VM
-        self.create_parser = self.subparsers.add_parser('create', help='Create VM',
-                                                        parents=[self.parent_parser])
-        self.create_parser.add_argument('--memory', dest='memory', metavar='Memory',
-                                        required=True, type=int,
-                                        help='Amount of memory to allocate to the VM (MiB)')
-        self.create_parser.add_argument('--disk-size', dest='disk_size', metavar='Disk Size',
-                                        type=int, default=None,
-                                        help='Size of disk to be created for the VM (MB)')
-        self.create_parser.add_argument(
-            '--cpu-count', dest='cpu_count', metavar='CPU Count',
-            help='Number of virtual CPU cores to be allocated to the VM',
-            type=int, required=True
-        )
-        self.create_parser.add_argument(
-            '--network', dest='networks', metavar='Network Connection',
-            type=str, action='append',
-            help='Name of networks to connect VM to (each network has a separate NIC)'
-        )
-        self.create_parser.add_argument('--nodes', dest='nodes', action='append',
-                                        help=('Specify the nodes that the VM will be'
-                                              ' hosted on, if a Drbd storage-type'
-                                              ' is specified'),
-                                        default=None)
-
-        self.create_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
-        # Determine if machine is configured to use DRBD
-        # @TODO: Update to use List of storage options from Hard drive factory
-        self.create_parser.add_argument('--storage-type', dest='storage_type',
-                                        metavar='Storage backing type',
-                                        type=str, default=None, choices=['Local', 'Drbd'])
-        self.create_parser.add_argument('--storage-backend', dest='storage_backend',
-                                        metavar='STorage Backend',
-                                        type=str, default=None)
-        # @TODO: Add choices for hard drive driver
-        self.create_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
-                                        dest='hard_disk_driver', type=str,
-                                        help='Driver for hard disk',
-                                        default=None)
-        # @TODO: Add choices for graphics driver
-        self.create_parser.add_argument('--graphics-driver', dest='graphics_driver',
-                                        metavar='Graphics Driver', type=str,
-                                        help='Driver for graphics', default=None)
-        # @TODO: Add choices for modifciation flags
-        self.create_parser.add_argument('--modification-flag', help='Add VM modification flag',
-                                        dest='modification_flags', action='append')
+        CreateParser(self.subparsers, self.parent_parser)
 
         # Get arguments for deleting a VM
-        self.delete_parser = self.subparsers.add_parser('delete', help='Delete VM',
-                                                        parents=[self.parent_parser])
+        DeleteParser(self.subparsers, self.parent_parser)
 
-        # This argument is deprecated, this is now default functionality, replaced
-        # with --keep-data and --keep-config
-        self.delete_parser.add_argument('--delete-data', dest='delete_data', action='store_true',
-                                        help=argparse.SUPPRESS)
-        self.delete_parser.add_argument('--keep-config', dest='keep_config', action='store_true',
-                                        help=('Keeps the VM configuration directory\n'
-                                              'Note: A new VM cannot be created with '
-                                              'the same name until this directory '
-                                              'is removed'))
-        self.delete_parser.add_argument('--keep-disks', dest='keep_disks', action='store_true',
-                                        help=('Keeps the VM hard drives '
-                                              '(files on disk or logical volume)\n'
-                                              'Note: A new VM cannot be created with '
-                                              'the same name until this directory '
-                                              'is removed'))
-        self.delete_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
-
-        # Get arguments for registering a VM
-        self.register_parser = self.subparsers.add_parser('register',
-                                                          help=('Registers a VM on'
-                                                                ' the local node'),
-                                                          parents=[self.parent_parser])
-        self.register_parser.add_argument('vm_name', metavar='VM Name', type=str,
-                                          help='Name of VM')
-
-        # Get arguments for unregistering a VM
-        self.unregister_parser = self.subparsers.add_parser('unregister',
-                                                            help=('Unregisters a VM from'
-                                                                  ' the local node'),
-                                                            parents=[self.parent_parser])
-        self.unregister_parser.add_argument('vm_name', metavar='VM Name', type=str,
-                                            help='Name of VM')
+        RegisterParser(self.subparsers, self.parent_parser)
+        UnregisterParser(self.subparsers, self.parent_parser)
 
         # Get arguments for updating a VM
-        self.update_parser = self.subparsers.add_parser('update', help='Update VM Configuration',
-                                                        parents=[self.parent_parser])
-        self.update_parser.add_argument('--memory', dest='memory', metavar='Memory', type=int,
-                                        help='Amount of memory to allocate to the VM (MiB)')
-        self.update_parser.add_argument(
-            '--cpu-count', dest='cpu_count', metavar='CPU Count', type=int,
-            help='Number of virtual CPU cores to be allocated to the VM'
-        )
-        self.update_parser.add_argument(
-            '--add-network',
-            dest='add_network',
-            metavar='Add Network',
-            type=str,
-            help='Adds a NIC to the VM, connected to the given network'
-        )
-        self.update_parser.add_argument(
-            '--remove-network',
-            dest='remove_network',
-            metavar='Remove Network',
-            type=str,
-            help='Removes a NIC from VM with the given MAC-address (e.g. \'00:00:00:00:00:00)\''
-        )
-        self.update_parser.add_argument(
-            '--change-network',
-            dest='change_network',
-            metavar='MAC address of network interface',
-            type=str,
-            help=("Change the network for a NIC given the MAC-address (e.g. 00:00:00:00:00:00)\n" +
-                  "To be used with --new-network")
-        )
-        self.update_parser.add_argument(
-            '--new-network',
-            dest='new_network',
-            metavar='New Network',
-            type=str,
-            help=("Specify the network for the NIC\n" +
-                  "To be used with --change-network")
-        )
-        self.update_parser.add_argument('--add-disk', dest='add_disk', metavar='Add Disk',
-                                        type=int, help='Add disk to the VM (size in MB)')
-        self.update_parser.add_argument('--delete-disk', dest='delete_disk', metavar='Disk ID',
-                                        type=int, help='Remove a hard drive from a VM')
-        self.update_parser.add_argument('--storage-type', dest='storage_type',
-                                        metavar='Storage backing type', type=str,
-                                        default=None, choices=['Local', 'Drbd'])
-        self.update_parser.add_argument('--hdd-driver', metavar='Hard Drive Driver',
-                                        dest='hard_disk_driver', type=str,
-                                        help='Driver for hard disk',
-                                        default=None)
-        self.update_parser.add_argument('--graphics-driver', metavar='Graphics Driver',
-                                        dest='graphics_driver', type=str,
-                                        help='Driver for graphics',
-                                        default=None)
-        self.update_parser.add_argument('--increase-disk', dest='increase_disk',
-                                        metavar='Increase Disk', type=int,
-                                        help='Increases VM disk by provided amount (MB)')
-        self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
-                                        help='The ID of the disk to be increased by')
-        self.update_parser.add_argument('--attach-iso', '--iso', dest='iso', metavar='ISO Name',
-                                        type=str, default=None, nargs='?',
-                                        help=('Attach an ISO to a running VM.'
-                                              ' Specify without value to detach ISO.'))
-        self.update_parser.add_argument('--attach-usb-device', dest='attach_usb_device',
-                                        metavar='bus,device', help=('Specify bus/device for USB '
-                                                                    'device to connect, e.g. 5,2'),
-                                        type=str, default=None)
-        self.update_parser.add_argument('--detach-usb-device', dest='detach_usb_device',
-                                        metavar='bus,device', help=('Specify bus/device for USB '
-                                                                    'device to detach, e.g. 5,2'),
-                                        type=str, default=None)
-        self.vm_autostart_mutual_group = self.update_parser.add_mutually_exclusive_group(
-            required=False
-        )
-        self.vm_autostart_mutual_group.add_argument('--autostart-on-boot', action='store_true',
-                                                    dest='autostart_boot',
-                                                    help=('Update VM to automatically '
-                                                          'start on boot'))
-        self.vm_autostart_mutual_group.add_argument('--autostart-on-poll', action='store_true',
-                                                    dest='autostart_poll',
-                                                    help=('Update VM to automatically start on '
-                                                          'autostart watchdog poll'))
-        self.vm_autostart_mutual_group.add_argument('--autostart-disable', action='store_true',
-                                                    dest='autostart_disable',
-                                                    help='Disable autostart of VM')
-        self.update_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
-        self.update_parser.add_argument('--add-flag', help='Add VM modification flag',
-                                        dest='add_flags', action='append')
-        self.update_parser.add_argument('--remove-flag', help='Remove VM modification flag',
-                                        dest='remove_flags', action='append')
+        UpdateParser(self.subparsers, self.parent_parser)
 
         # Get arguments for making permission changes to a VM
         self.permission_parser = self.subparsers.add_parser(
@@ -965,149 +807,6 @@ class Parser(object):
         if 'func' in dir(args):
             args.func(args=args, p_=self)
             return
-
-        elif action == 'create':
-            if args.storage_backend:
-                storage_factory = self.rpc.get_connection('storage_factory')
-                storage_backend = storage_factory.get_object_by_name(args.storage_backend)
-                self.rpc.annotate_object(storage_backend)
-            else:
-                storage_backend = None
-            storage_type = args.storage_type or None
-
-            # Convert memory allocation from MiB to KiB
-            memory_allocation = int(args.memory) * 1024
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            hard_disks = [args.disk_size] if args.disk_size is not None else []
-            mod_flags = args.modification_flags or []
-            vm_object = vm_factory.create(
-                name=args.vm_name,
-                cpu_cores=args.cpu_count,
-                memory_allocation=memory_allocation,
-                hard_drives=hard_disks,
-                network_interfaces=args.networks,
-                storage_type=storage_type,
-                hard_drive_driver=args.hard_disk_driver,
-                graphics_driver=args.graphics_driver,
-                available_nodes=args.nodes,
-                modification_flags=mod_flags,
-                storage_backend=storage_backend)
-
-        elif action == 'delete':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            self.rpc.annotate_object(vm_object)
-            vm_object.delete(keep_disks=args.keep_disks,
-                             keep_config=args.keep_config)
-
-        elif action == 'register':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            self.rpc.annotate_object(vm_object)
-            vm_object.register()
-
-        elif action == 'unregister':
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            self.rpc.annotate_object(vm_object)
-            vm_object.unregister()
-
-        elif action == 'update':
-            if bool(args.change_network) != bool(args.new_network):
-                raise ArgumentParserException('--new-network must be used with --change-network')
-            vm_factory = self.rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-            self.rpc.annotate_object(vm_object)
-
-            if args.memory:
-                old_ram_allocation_kib = vm_object.getRAM()
-                old_ram_allocation = int(old_ram_allocation_kib) / 1024
-                new_ram_allocation = int(args.memory) * 1024
-                vm_object.updateRAM(new_ram_allocation, old_value=old_ram_allocation_kib)
-                self.print_status(
-                    'RAM allocation will be changed from %sMiB to %sMiB.' %
-                    (old_ram_allocation, args.memory)
-                )
-
-            if args.cpu_count:
-                old_cpu_count = vm_object.getCPU()
-                vm_object.updateCPU(args.cpu_count, old_value=old_cpu_count)
-                self.print_status(
-                    'Number of virtual cores will be changed from %s to %s.' %
-                    (old_cpu_count, args.cpu_count)
-                )
-
-            if args.remove_network:
-                network_adapter_factory = self.rpc.get_connection('network_adapter_factory')
-                network_adapter_object = network_adapter_factory.getNetworkAdapterByMacAdress(
-                    vm_object, args.remove_network
-                )
-                self.rpc.annotate_object(network_adapter_object)
-                network_adapter_object.delete()
-
-            if args.add_network:
-                network_factory = self.rpc.get_connection('network_factory')
-                network_adapter_factory = self.rpc.get_connection('network_adapter_factory')
-                network_object = network_factory.get_network_by_name(args.add_network)
-                self.rpc.annotate_object(network_object)
-                network_adapter_factory.create(vm_object, network_object)
-
-            if args.change_network:
-                network_adapter_factory = self.rpc.get_connection('network_adapter_factory')
-                network_adapter_object = network_adapter_factory.getNetworkAdapterByMacAdress(
-                    vm_object, args.change_network
-                )
-                self.rpc.annotate_object(network_adapter_object)
-                network_factory = self.rpc.get_connection('network_factory')
-                network_object = network_factory.get_network_by_name(args.new_network)
-                self.rpc.annotate_object(network_object)
-                network_adapter_object.change_network(network_object)
-
-            if args.add_disk:
-                hard_drive_factory = self.rpc.get_connection('hard_drive_factory')
-                hard_drive_factory.create(vm_object, size=args.add_disk,
-                                          storage_type=args.storage_type,
-                                          driver=args.hard_disk_driver)
-            if args.delete_disk:
-                hard_drive_factory = self.rpc.get_connection('hard_drive_factory')
-                hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
-                self.rpc.annotate_object(hard_drive_object)
-                hard_drive_object.increaseSize(args.delete())
-
-            if args.increase_disk and args.disk_id:
-                hard_drive_factory = self.rpc.get_connection('hard_drive_factory')
-                hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
-                self.rpc.annotate_object(hard_drive_object)
-                hard_drive_object.increaseSize(args.increase_disk)
-
-            if args.iso or args.iso is None:
-                vm_object.update_iso(args.iso)
-
-            if args.graphics_driver:
-                vm_object.update_graphics_driver(args.graphics_driver)
-
-            if args.autostart_boot:
-                vm_object.set_autostart_state('ON_BOOT')
-            elif args.autostart_poll:
-                vm_object.set_autostart_state('ON_POLL')
-            else:
-                vm_object.set_autostart_state('NO_AUTOSTART')
-
-            if args.attach_usb_device:
-                usb_device = vm_object.get_usb_device(*args.attach_usb_device.split(','))
-                self.rpc.annotate_object(usb_device)
-                usb_device.attach()
-            if args.detach_usb_device:
-                usb_device = vm_object.get_usb_device(*args.detach_usb_device.split(','))
-                self.rpc.annotate_object(usb_device)
-                usb_device.detach()
-
-            if args.add_flags or args.remove_flags:
-                add_flags = args.add_flags or []
-                remove_flags = args.remove_flags or []
-                vm_object.update_modification_flags(add_flags=add_flags, remove_flags=remove_flags)
-                flags_str = ", ".join(vm_object.get_modification_flags())
-                self.print_status('Modification flags set to: %s' % (flags_str or 'None'))
 
         elif action == 'permission':
             auth_object = self.rpc.get_connection('auth')
