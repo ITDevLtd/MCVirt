@@ -24,7 +24,9 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.exceptions import (GropuInUseError,
                                DuplicatePermissionException,
-                               UserNotPresentInGroup)
+                               UserNotPresentInGroup,
+                               GroupAlreadyContainsPermissionError,
+                               GroupDoesNotContainPermissionError)
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.argument_validator import ArgumentValidator
@@ -305,14 +307,58 @@ class Group(PyroObject):
         """Determe if user is a member of the group"""
         return user in self.get_users(virtual_machine=virtual_machine)
 
+    @Expose(locking=True)
     def add_permission(self, permission):
         """Add a permission to the group"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
-        pass
 
-    @Expose()
+        # Check that permission is valid
+        ArgumentValidator.validate_permission(permission)
+
+        permission_enum = PERMISSIONS[permission]
+        if permission_enum in self.get_permissions():
+            raise GroupAlreadyContainsPermissionError(
+                'Group \'%s\' already contains permission \'%s\'' %
+                (self.name, permission))
+
+        cluster = self._get_registered_object('cluster')
+        self.add_permission_to_config(permission, nodes=cluster.get_nodes(include_local=True))
+
+    @Expose(locking=True, remote_nodes=True, undo_method='remove_permission_from_config')
+    def add_permission_to_config(self, permission):
+        """Add permission from group config"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser', allow_indirect=True)
+
+        def update_config(config):
+            """Update group config"""
+            config['groups'][self.id_]['permissions'].append(permission)
+        MCVirtConfig().update_config(
+            update_config,
+            'Remove permission \'%s\' from group \'%s\'' % (permission, self.name))
+
+    @Expose(locking=True)
     def remove_permission(self, permission):
         """Remove a permission from the group"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
+
+        ArgumentValidator.validate_permission(permission)
         permission_enum = PERMISSIONS[permission]
-        
+
+        if permission_enum not in self.get_permissions():
+            raise GroupDoesNotContainPermissionError(
+                'Group \'%s\' does not contain permission \'%s\'' %
+                (self.name, permission))
+
+        cluster = self._get_registered_object('cluster')
+        self.remove_permission_from_config(permission, nodes=cluster.get_nodes(include_local=True))
+
+    @Expose(locking=True, remote_nodes=True, undo_method='add_permission_to_config')
+    def remove_permission_from_config(self, permission):
+        """Remove permission from group config"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser', allow_indirect=True)
+
+        def update_config(config):
+            """Update group config"""
+            config['groups'][self.id_]['permissions'].remove(permission)
+        MCVirtConfig().update_config(update_config, 'Remove permission \'%s\' from group \'%s\'' %
+                                     (permission, self.name))

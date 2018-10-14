@@ -39,6 +39,8 @@ class GroupParser(object):
 
         self.register_create()
         self.register_delete()
+        self.register_add_permission()
+        self.register_remove_permission()
         self.register_add_user()
         self.register_remove_user()
 
@@ -74,8 +76,54 @@ class GroupParser(object):
         group.delete()
         print_status('Deleted group \'%s\'' % args.name)
 
+    def register_add_permission(self):
+        """Register parser for adding permission to group"""
+        self.add_user_parser = self.sub_parsers.add_parser(
+            'add-permission',
+            help='Add a permission to a group',
+            parents=[self.parent_parser])
+        self.add_user_parser.set_defaults(func=self.handle_add_permission)
+        self.add_user_parser.add_argument(dest='name', metavar='Group Name')
+        self.add_user_parser.add_argument(dest='permissions', nargs='+', metavar='Usernames',
+                                          help=('List of permissions to add to group '
+                                                '(see mcvirt permission --list)'))
+
+    def handle_add_permission(self, args, rpc, print_status):
+        """Perform addition of permission to group"""
+        group_factory = rpc.get_connection('group_factory')
+        group = group_factory.get_object_by_name(args.name)
+        rpc.annotate_object(group)
+
+        for permission in args.permissions:
+            permission = permission.upper()
+            group.add_permission(permission)
+            print_status('Added \'%s\' to group \'%s\'' % (permission, args.name))
+
+    def register_remove_permission(self):
+        """Register parser for removing permission from group"""
+        self.remove_user_parser = self.sub_parsers.add_parser(
+            'remove-permission',
+            help='Remove a permission from a group',
+            parents=[self.parent_parser])
+        self.remove_user_parser.set_defaults(func=self.handle_remove_permission)
+        self.remove_user_parser.add_argument(dest='name', metavar='Group Name')
+        self.remove_user_parser.add_argument(dest='permissions', nargs='+', metavar='Permissions',
+                                             help=('List of permissions to remove from group '
+                                                   '(see mcvirt permission --list)'))
+
+    def handle_remove_permission(self, args, rpc, print_status):
+        """Perform removal of permission from group"""
+        group_factory = rpc.get_connection('group_factory')
+        group = group_factory.get_object_by_name(args.name)
+        rpc.annotate_object(group)
+
+        for permission in args.permissions:
+            permission = permission.upper()
+            group.remove_permission(permission)
+            print_status('Removed \'%s\' to group \'%s\'' % (permission, args.name))
+
     def register_add_user(self):
-        """Register parser for creating group"""
+        """Register parser for adding user to group"""
         self.add_user_parser = self.sub_parsers.add_parser(
             'add-user',
             help='Add a user to a permission group',
@@ -90,7 +138,7 @@ class GroupParser(object):
                                           help='List of users to add to group')
 
     def handle_add_user(self, args, rpc, print_status):
-        """Perform creation of group"""
+        """Perform adding of user to group"""
         group_factory = rpc.get_connection('group_factory')
         group = group_factory.get_object_by_name(args.name)
         rpc.annotate_object(group)
@@ -110,7 +158,7 @@ class GroupParser(object):
             print_status('Added \'%s\' to group \'%s\'' % (username, args.name))
 
     def register_remove_user(self):
-        """Register parser for creating group"""
+        """Register parser for removing user from group"""
         self.remove_user_parser = self.sub_parsers.add_parser(
             'remove-user',
             help='Remove a user from a permission group',
@@ -119,13 +167,13 @@ class GroupParser(object):
         self.remove_user_parser.add_argument(dest='name', metavar='Group Name')
         self.remove_user_parser.add_argument('--virtual-machine', metavar='Virtual Machine Name',
                                              dest='virtual_machine', required=False,
-                                             help=('Optional virtual machine that the group access '
-                                                   'was restricted to.'))
+                                             help=('Optional virtual machine that the group '
+                                                   'access was restricted to.'))
         self.remove_user_parser.add_argument(dest='usernames', nargs='+', metavar='Usernames',
                                              help='List of users to remove from group')
 
     def handle_remove_user(self, args, rpc, print_status):
-        """Perform creation of group"""
+        """Perform removal of user from group"""
         group_factory = rpc.get_connection('group_factory')
         group = group_factory.get_object_by_name(args.name)
         rpc.annotate_object(group)
