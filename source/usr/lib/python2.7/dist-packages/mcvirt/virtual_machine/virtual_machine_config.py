@@ -57,6 +57,7 @@ class VirtualMachineConfig(ConfigFile):
         json_data = \
             {
                 'version': VirtualMachineConfig.CURRENT_VERSION,
+                'applied_version': VirtualMachineConfig.CURRENT_VERSION,
                 'permissions':
                 {
                     'users': {},
@@ -161,3 +162,9 @@ class VirtualMachineConfig(ConfigFile):
                 },
                 'users': {}
             }
+
+        if self._getVersion() < 14:
+            # Create attribute that shows the
+            # version of the VM applied to libvirt.
+            # i.e. needs registering
+            config['applied_version'] = 13
