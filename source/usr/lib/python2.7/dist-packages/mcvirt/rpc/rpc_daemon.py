@@ -51,6 +51,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.thread.auto_start_watchdog import AutoStartWatchdog
+from mcvirt.thead.watchdog import WatchdogManager
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -325,20 +326,21 @@ class RpcNSMixinDaemon(object):
             [LibvirtConfig(), 'libvirt_config'],
             [LibvirtConnector(), 'libvirt_connector'],
             [LdapFactory(), 'ldap_factory'],
-            [MCVirtConfig, 'mcvirt_config']
+            [MCVirtConfig, 'mcvirt_config'],
+            [Session(), 'mcvirt_session'],
+            [WatchdogManager(), 'watchdog_manager'],
+            [AutoStartWatchdog(), 'autostart_watchdog']
         ]
         for factory_object, name in registration_factories:
             self.register(factory_object, objectId=name, force=True)
 
-        # Create an MCVirt session
-        session_object = Session()
-        self.register(session_object, objectId='mcvirt_session', force=True)
-        Expose.SESSION_OBJECT = session_object
+        Expose.SESSION_OBJECT = RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session']
 
-        # Create autostart watchdog object
-        autostart_watchdog = AutoStartWatchdog()
-        self.timer_objects.append(autostart_watchdog)
-        self.register(autostart_watchdog, objectId='autostart_watchdog', force=True)
+        # Register timer objects that need cancelling during shutdown
+        self.timer_objects.append(
+            RpcNSMixinDaemon.DAEMON.registered_factories['watchdog_manager'])
+        self.timer_objects.append(
+            RpcNSMixinDaemon.DAEMON.registered_factories['autostart_watchdog'])
 
     def obtain_connection(self):
         """Attempt to obtain a connection to the name server."""
