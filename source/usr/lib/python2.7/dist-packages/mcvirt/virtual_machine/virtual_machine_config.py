@@ -76,7 +76,14 @@ class VirtualMachineConfig(ConfigFile):
                 'graphics_driver': graphics_driver,
                 'modifications': [],
                 'autostart': AutoStartStates.NO_AUTOSTART.value,
-                'uuid': None
+                'uuid': None,
+                'watchdog': {
+                    'enabled': False,
+                    'interval': None,
+                    'reset_fail_count': None,
+                    'connection_timeout': None,
+                    'boot_wait': None
+                }
             }
 
         # Write the configuration to disk
@@ -168,3 +175,12 @@ class VirtualMachineConfig(ConfigFile):
             # version of the VM applied to libvirt.
             # i.e. needs registering
             config['applied_version'] = 13
+            # Create watchdog config, specifying default to disable
+            # and no overrides from global config
+            config['watchdog'] = {
+                'enabled': False,
+                'interval': None,
+                'reset_fail_count': None,
+                'connection_timeout': None,
+                'boot_wait': None
+            }

@@ -141,7 +141,14 @@ class MCVirtConfig(ConfigFile):
                 'session_timeout': 30,
                 'autostart_interval': 300,
                 'storage_backends': {},
-                'default_storage_configured': True
+                'default_storage_configured': True,
+                'watchdog': {
+                    'enabled': False,
+                    'interval': None,
+                    'reset_fail_count': None,
+                    'connection_timeout': None,
+                    'boot_wait': None
+                }
             }
 
         # Write the configuration to disk
@@ -241,3 +248,16 @@ class MCVirtConfig(ConfigFile):
             # Add user global overrides to user configs
             for user in config['users']:
                 config['users'][user]['global_permissions'] = []
+
+        if config['version'] < 14:
+            # Create default configuration for watchdog
+            config['watchdog'] = {
+                # Check every 30 seconds
+                'interval': 30,
+                # 3 failures results in a reset
+                'reset_fail_count': 3,
+                # 5 seconds for read timeout on connection
+                'connection_timeout': 5,
+                # Wait indefinitly for boot
+                'boot_wait': 0
+            }
