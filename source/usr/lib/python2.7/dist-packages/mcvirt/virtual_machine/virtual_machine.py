@@ -65,11 +65,25 @@ class VirtualMachine(PyroObject):
         self.name = name
         self.disk_drive_object = None
 
+        # Take the oportunity to update libvirt config
+        self.check_config_update()
+
         # Check that the domain exists
         if not virtual_machine_factory.check_exists(self.name):
             raise VirtualMachineDoesNotExistException(
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
+
+    def __eq__(self, comp):
+        """Allow for comparison of VM objects"""
+        # Ensure class and name of object match
+        if ('__class__' in dir(comp) and
+                comp.__class__ == self.__class__ and
+                'get_name' in dir(comp) and comp.get_name() == self.get_name()):
+            return True
+
+        # Otherwise return false
+        return False
 
     @Expose()
     def set_v9_release_config(self, config):
@@ -98,6 +112,24 @@ class VirtualMachine(PyroObject):
                 virtual_machine.set_v9_release_config(config)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(update_remote_node)
+
+    def check_config_update(self):
+        """Determine if config updates need to be performed to libvirt"""
+        config = self.get_config_object().get_config()
+        # Determine if applied config is older than the config version and
+        # VM is registered locally
+        if (config['applied_version'] < config['version'] and
+                self.isRegisteredLocally() and
+                self.is_stopped()):
+            # If so, unregister and re-register VM with libvirt
+            self._unregister()
+            self._register()
+
+            # Update VM config with new applied version
+            def update_config(config):
+                """Update applied version with config version"""
+                config['applied_version'] = config['version']
+            self.get_config_object().update_config(update_config, 'Update applied version')
 
     def get_remote_object(self, node=None, node_object=None, include_node=False,
                           set_cluster_master=False):
@@ -215,6 +247,9 @@ class VirtualMachine(PyroObject):
         elif not self._cluster_disabled and self.isRegisteredRemotely():
             remote_vm = self.get_remote_object()
             remote_vm.stop()
+
+            # Take the oportunity to update libvirt config
+            self.check_config_update()
         else:
             raise VmRegisteredElsewhereException(
                 'VM registered elsewhere and cluster is not initialised'
@@ -280,6 +315,9 @@ class VirtualMachine(PyroObject):
             # Determine if VM is stopped
             if self._getPowerState() is PowerStates.RUNNING:
                 raise VmAlreadyStartedException('The VM is already running')
+
+            # Take the oportunity to update libvirt config
+            self.check_config_update()
 
             for disk_object in self.getHardDriveObjects():
                 disk_object.activateDisk()
