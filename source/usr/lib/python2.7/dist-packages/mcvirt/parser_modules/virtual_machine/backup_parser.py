@@ -45,7 +45,7 @@ class BackupParser(object):
             help='Create a snapshot of the specified disk',
             parents=[self.parent_parser]
         )
-        self.create_snapshot_parser.set_default(func=self.handle_create_snapshot)
+        self.create_snapshot_parser.set_defaults(func=self.handle_create_snapshot)
         self.create_snapshot_parser.add_argument(
             '--disk-id', dest='disk_id', metavar='Disk Id', type=int, required=True,
             help='The ID of the disk to manage the backup snapshot of'
@@ -68,7 +68,7 @@ class BackupParser(object):
             help='Delete the snapshot of the specified disk',
             parents=[self.parent_parser]
         )
-        self.delete_snapshot_parser.set_default(func=self.handle_delete_snapshot)
+        self.delete_snapshot_parser.set_defaults(func=self.handle_delete_snapshot)
         self.delete_snapshot_parser.add_argument(
             '--disk-id', dest='disk_id', metavar='Disk Id', type=int, required=True,
             help='The ID of the disk to manage the backup snapshot of'
