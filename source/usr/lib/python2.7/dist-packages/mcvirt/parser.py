@@ -25,7 +25,6 @@ from mcvirt.exceptions import (ArgumentParserException, DrbdVolumeNotInSyncExcep
 from mcvirt.client.rpc import Connection
 from mcvirt.system import System
 from mcvirt.constants import LockStates
-from mcvirt.storage.factory import Factory as StorageFactory
 from mcvirt.parser_modules.virtual_machine.start_parser import StartParser
 from mcvirt.parser_modules.virtual_machine.stop_parser import StopParser
 from mcvirt.parser_modules.virtual_machine.reset_parser import ResetParser
@@ -47,6 +46,8 @@ from mcvirt.parser_modules.virtual_machine.list_parser import ListParser
 from mcvirt.parser_modules.virtual_machine.duplicate_parser import DuplicateParser
 from mcvirt.parser_modules.virtual_machine.clone_parser import CloneParser
 from mcvirt.parser_modules.virtual_machine.move_parser import MoveParser
+from mcvirt.parser_modules.cluster_parser import ClusterParser
+from mcvirt.parser_modules.storage_parser import StorageParser
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -158,158 +159,9 @@ class Parser(object):
         MoveParser(self.subparsers, self.parent_parser)
 
         # Create sub-parser for cluster-related commands
-        self.cluster_parser = self.subparsers.add_parser(
-            'cluster',
-            help='Manage an MCVirt cluster and the connected nodes',
-            parents=[self.parent_parser]
-        )
-        self.cluster_subparser = self.cluster_parser.add_subparsers(
-            dest='cluster_action',
-            metavar='Action',
-            help='Action to perform on the cluster'
-        )
-        self.connection_string_subparser = self.cluster_subparser.add_parser(
-            'get-connect-string',
-            help='Generates a connection string to add the node to a cluster',
-            parents=[self.parent_parser]
-        )
-        self.node_add_parser = self.cluster_subparser.add_parser(
-            'add-node',
-            help='Adds a node to the MCVirt cluster',
-            parents=[self.parent_parser])
-        self.node_add_parser.add_argument(
-            '--connect-string',
-            dest='connect_string',
-            metavar='node',
-            type=str,
-            required=True,
-            help='Connect string from the target node')
-        self.node_remove_parser = self.cluster_subparser.add_parser(
-            'remove-node',
-            help='Removes a node to the MCVirt cluster',
-            parents=[self.parent_parser]
-        )
-        self.node_remove_parser.add_argument(
-            '--node',
-            dest='node',
-            metavar='node',
-            type=str,
-            required=True,
-            help='Hostname of the remote node to remove from the cluster')
+        ClusterParser(self.subparsers, self.parent_parser)
 
-        self.storage_parser = self.subparsers.add_parser(
-            'storage',
-            help='Create, modify and delete storage backends',
-            parents=[self.parent_parser]
-        )
-        self.storage_subparsers = self.storage_parser.add_subparsers(
-            dest='storage_action', metavar='Storage Action',
-            help='Action to perform'
-        )
-        self.storage_list_parser = self.storage_subparsers.add_parser(
-            'list',
-            help='List storage backends',
-            parents=[self.parent_parser])
-        self.storage_create_parser = self.storage_subparsers.add_parser(
-            'create',
-            help='Create storage backend',
-            parents=[self.parent_parser])
-        self.storage_create_parser.add_argument('Name',
-                                                help='Name of new storage backend')
-        self.storage_create_parser.add_argument(
-            '--type',
-            dest='storage_type',
-            help='Type of backend storage',
-            required=True,
-            choices=[t.__name__ for t in StorageFactory().get_storage_types()]
-        )
-        self.storage_create_parser.add_argument(
-            '--volume-group-name',
-            dest='volume_group_name',
-            required=False,
-            help=("Name of default volume group for backend storage for nodes \n"
-                  '(Required for LVM storage, unless all nodes contain volume group overides)')
-        )
-        self.storage_create_parser.add_argument(
-            '--path',
-            dest='path',
-            required=False,
-            help=("Name of default path for backend storage for nodes \n"
-                  '(Required for File storage, unless all nodes contain path overides)')
-        )
-        self.storage_create_parser.add_argument(
-            '--shared',
-            dest='shared',
-            required=False,
-            action='store_true',
-            default=False,
-            help=('Marks the storage as being shared '
-                  'across nodes in the cluster.')
-        )
-        self.storage_create_parser.add_argument(
-            '--node',
-            dest='nodes',
-            required=False,
-            nargs='+',
-            action='append',
-            default=[],
-            help=('Specifies the nodes that this will '
-                  "be available to.\n"
-                  'Specify once for each node, e.g. '
-                  "--node node1 --node node2.\n"
-                  'Specify an additional parameter '
-                  'to override the path or volume '
-                  'group for the node, e.g. '
-                  '--node <Node name> '
-                  '<Overriden Volume Group/Path> '
-                  '--node <Node Name>...')
-        )
-        self.storage_delete_parser = self.storage_subparsers.add_parser(
-            'delete',
-            help='Delete storage backend',
-            parents=[self.parent_parser])
-        self.storage_delete_parser.add_argument('Name',
-                                                help='Name of storage backend')
-
-        self.storage_add_node_parser = self.storage_subparsers.add_parser(
-            'add-node',
-            help='Add node to storage backend',
-            parents=[self.parent_parser])
-        self.storage_add_node_parser.add_argument('Name',
-                                                  help='Name of storage backend')
-        self.storage_add_node_parser.add_argument(
-            '--node',
-            dest='nodes',
-            required=True,
-            nargs='+',
-            action='append',
-            default=[],
-            help=('Specifies the node(s) that this will '
-                  "be added to the storage backend.\n"
-                  'Specify once for each node, e.g. '
-                  "--node node1 --node node2.\n"
-                  'Specify an additional parameter '
-                  'to override the path or volume '
-                  'group for the node, e.g. '
-                  '--node <Node name> '
-                  '<Overriden Volume Group/Path> '
-                  '--node <Node Name>...')
-        )
-
-        self.storage_remove_node_parser = self.storage_subparsers.add_parser(
-            'remove-node',
-            help='Add node to storage backend',
-            parents=[self.parent_parser])
-        self.storage_remove_node_parser.add_argument('Name',
-                                                     help='Name of storage backend')
-        self.storage_remove_node_parser.add_argument(
-            '--node',
-            dest='nodes',
-            required=True,
-            action='append',
-            default=[],
-            help='Specifies the node(s) that will be removed from the storage backend'
-        )
+        StorageParser(self.subparsers, self.parent_parser)
 
         # Create subparser for commands relating to the local node configuration
         self.node_parser = self.subparsers.add_parser(
@@ -629,21 +481,6 @@ class Parser(object):
             args.func(args=args, p_=self)
             return
 
-        elif action == 'cluster':
-            cluster_object = self.rpc.get_connection('cluster')
-            if args.cluster_action == 'get-connect-string':
-                self.print_status(cluster_object.get_connection_string())
-            if args.cluster_action == 'add-node':
-                if args.connect_string:
-                    connect_string = args.connect_string
-                else:
-                    connect_string = System.getUserInput('Enter Connect String: ')
-                cluster_object.add_node(connect_string)
-                self.print_status('Successfully added node')
-            if args.cluster_action == 'remove-node':
-                cluster_object.remove_node(args.node)
-                self.print_status('Successfully removed node %s' % args.node)
-
         elif action == 'node':
             node = self.rpc.get_connection('node')
             ldap = self.rpc.get_connection('ldap_factory')
@@ -699,63 +536,6 @@ class Parser(object):
 
             if len(ldap_args):
                 ldap.set_config(**ldap_args)
-
-        elif action == 'storage':
-            storage_factory = self.rpc.get_connection('storage_factory')
-            if args.storage_action == 'create':
-                location = None
-                if args.storage_type == 'Lvm' and args.volume_group_name:
-                    location = args.volume_group_name
-                elif args.storage_type == 'File' and args.path:
-                    location = args.path
-
-                # Check length of each node config, to ensure it's not too long
-                invalid_nodes = [True if len(n) > 2 else None for n in args.nodes]
-                if True in invalid_nodes:
-                    raise ArgumentParserException(('--node must only be provided with '
-                                                   'node name and optional storage config '
-                                                   'override'))
-
-                # Split nodes argument into nodes and storage location overrides
-                node_config = {
-                    node[0]: {'location': node[1] if len(node) == 2 else None}
-                    for node in args.nodes
-                }
-                storage_factory.create(name=args.Name,
-                                       storage_type=args.storage_type,
-                                       node_config=node_config,
-                                       shared=args.shared,
-                                       location=location)
-            elif args.storage_action == 'delete':
-                storage_backend = storage_factory.get_object_by_name(args.Name)
-                self.rpc.annotate_object(storage_backend)
-                storage_backend.delete()
-
-            elif args.storage_action == 'list':
-                self.print_status(storage_factory.list())
-
-            elif args.storage_action == 'add-node':
-                storage_backend = storage_factory.get_object_by_name(args.Name)
-                self.rpc.annotate_object(storage_backend)
-
-                # Check lenght of each node config, to ensure it's not too long
-                invalid_nodes = [True if len(n) > 2 else None for n in args.nodes]
-                if True in invalid_nodes:
-                    raise ArgumentParserException(('--node must only be provided with '
-                                                   'node name and optional storage config '
-                                                   'override'))
-
-                for node in args.nodes:
-                    storage_backend.add_node(
-                        node_name=node[0],
-                        custom_location=(node[1] if len(node) == 2 else None))
-
-            elif args.storage_action == 'remove-node':
-                storage_backend = storage_factory.get_object_by_name(args.Name)
-                self.rpc.annotate_object(storage_backend)
-
-                for node in args.nodes:
-                    storage_backend.remove_node(node_name=node)
 
         elif action == 'verify':
             vm_factory = self.rpc.get_connection('virtual_machine_factory')
