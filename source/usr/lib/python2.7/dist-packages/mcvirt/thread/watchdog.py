@@ -80,11 +80,12 @@ class Watchdog(RepeatTimer):
 
     def set_state(self, new_state):
         """Set state"""
-        Syslogger.logger().debug(
-            'State for (%s) changed from %s to %s' %
-            (self.virtual_machine.get_name(),
-             self.state, new_state))
-        self.state = new_state
+        if self.state != new_state:
+            Syslogger.logger().debug(
+                'State for (%s) changed from %s to %s' %
+                (self.virtual_machine.get_name(),
+                 self.state, new_state))
+            self.state = new_state
 
     @property
     def interval(self):
@@ -122,6 +123,9 @@ class Watchdog(RepeatTimer):
             self.set_state(WATCHDOG_STATES.FAILING)
 
             if self.fail_count >= self.virtual_machine.get_watchdog_reset_fail_count():
+                # Reset fail count
+                self.fail_count = 0
+
                 self.set_state(WATCHDOG_STATES.FAILED)
                 Syslogger.logger().error(
                     'Watchdog for VM failed. Starting reset: %s' %
@@ -130,7 +134,7 @@ class Watchdog(RepeatTimer):
                 # Reset VM
                 self.virtual_machine.reset()
 
-                # Reset states
+                # Reset WATCHDOG_STATES
                 self.set_state(WATCHDOG_STATES.STARTUP)
 
 
