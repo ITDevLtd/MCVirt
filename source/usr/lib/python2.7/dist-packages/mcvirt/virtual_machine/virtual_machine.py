@@ -1654,11 +1654,40 @@ class VirtualMachine(PyroObject):
 
     def get_agent_timeout(self):
         """Obtain agent timeout from config"""
-        timeout = self.get_config_object().get_config()['watchdog']['connection_timeout']
+        timeout = self.get_config_object().get_config()['agent']['connection_timeout']
         if timeout is None:
-            timeout = MCVirtConfig().get_config()['watchdog']['connection_timeout']
+            timeout = MCVirtConfig().get_config()['agent']['connection_timeout']
 
         return timeout
+
+    def is_watchdog_enabled(self):
+        """Obtain watchdog interval from config"""
+        return self.get_config_object().get_config()['watchdog']['enabled']
+
+    def get_watchdog_interval(self):
+        """Obtain watchdog interval from config"""
+        interval = self.get_config_object().get_config()['watchdog']['interval']
+        if interval is None:
+            interval = MCVirtConfig().get_config()['watchdog']['interval']
+
+        return interval
+
+    def get_watchdog_boot_wait(self):
+        """Obtain watchdog interval from config"""
+        boot_wait = self.get_config_object().get_config()['watchdog']['boot_wait']
+        if boot_wait is None:
+            boot_wait = MCVirtConfig().get_config()['watchdog']['boot_wait']
+
+        return boot_wait
+
+    def get_watchdog_reset_fail_count(self):
+        """Obtain watchdog interval from config"""
+        reset_fail_count = self.get_config_object().get_config()['watchdog'][
+            'reset_fail_count']
+        if reset_fail_count is None:
+            reset_fail_count = MCVirtConfig().get_config()['watchdog']['reset_fail_count']
+
+        return reset_fail_count
 
     def ensureUnlocked(self):
         """Ensures that the VM is in an unlocked state"""

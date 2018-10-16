@@ -77,11 +77,13 @@ class VirtualMachineConfig(ConfigFile):
                 'modifications': [],
                 'autostart': AutoStartStates.NO_AUTOSTART.value,
                 'uuid': None,
+                'agent': {
+                    'connection_timeout': None
+                },
                 'watchdog': {
                     'enabled': False,
                     'interval': None,
                     'reset_fail_count': None,
-                    'connection_timeout': None,
                     'boot_wait': None
                 }
             }
@@ -177,10 +179,12 @@ class VirtualMachineConfig(ConfigFile):
             config['applied_version'] = 13
             # Create watchdog config, specifying default to disable
             # and no overrides from global config
+            config['agent'] = {
+                'connection_timeout': None
+            }
             config['watchdog'] = {
                 'enabled': False,
                 'interval': None,
                 'reset_fail_count': None,
-                'connection_timeout': None,
                 'boot_wait': None
             }

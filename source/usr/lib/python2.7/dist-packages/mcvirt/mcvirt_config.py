@@ -142,12 +142,17 @@ class MCVirtConfig(ConfigFile):
                 'autostart_interval': 300,
                 'storage_backends': {},
                 'default_storage_configured': True,
+                'agent': {
+                    # Allow 10 second connection timeout
+                    'connection_timeout': 10
+                },
                 'watchdog': {
-                    'enabled': False,
-                    'interval': None,
-                    'reset_fail_count': None,
-                    'connection_timeout': None,
-                    'boot_wait': None
+                    # Default to 60 second watchdog interval
+                    'interval': 60,
+                    # By default, reset VM after 3 failed checks
+                    'reset_fail_count': 3,
+                    # By default, wait indefinitly for VM to boot
+                    'boot_wait': 0
                 }
             }
 
@@ -253,11 +258,13 @@ class MCVirtConfig(ConfigFile):
             # Create default configuration for watchdog
             config['watchdog'] = {
                 # Check every 30 seconds
-                'interval': 30,
+                'interval': 60,
                 # 3 failures results in a reset
                 'reset_fail_count': 3,
-                # 5 seconds for read timeout on connection
-                'connection_timeout': 5,
                 # Wait indefinitly for boot
                 'boot_wait': 0
+            }
+            config['agent'] = {
+                # 10 seconds for read timeout on connection
+                'connection_timeout': 10,
             }
