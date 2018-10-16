@@ -1637,6 +1637,29 @@ class VirtualMachine(PyroObject):
         else:
             return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
 
+    def get_host_agent_path(self):
+        """Obtain the path of the serial interface for the VM on the host"""
+        if self._getPowerState() is not PowerStates.RUNNING:
+            raise VmAlreadyStoppedException('The VM is not running')
+        domain_xml = ET.fromstring(
+            self._getLibvirtDomainObject().XMLDesc(
+                libvirt.VIR_DOMAIN_XML_SECURE
+            )
+        )
+
+        if domain_xml.find('./devices/serial/target[@port=""]/../source') is None:
+            raise VncNotEnabledException('VNC is not enabled on the VM')
+        else:
+            return domain_xml.find('./devices/serial/target[@port=""]/../source').get('path')
+
+    def get_agent_timeout(self):
+        """Obtain agent timeout from config"""
+        timeout = self.get_config_object().get_config()['watchdog']['connection_timeout']
+        if timeout is None:
+            timeout = MCVirtConfig().get_config()['watchdog']['connection_timeout']
+
+        return timeout
+
     def ensureUnlocked(self):
         """Ensures that the VM is in an unlocked state"""
         if self._getLockState() is LockStates.LOCKED:

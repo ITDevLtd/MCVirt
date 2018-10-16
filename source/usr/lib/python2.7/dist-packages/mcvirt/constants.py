@@ -59,6 +59,13 @@ class AutoStartStates(Enum):
     ON_POLL = 2
 
 
+class AgentSerialConfig(object):
+    """Provide static config for agent serial config"""
+
+    # Baud rate
+    BAUD_RATE = 115200
+
+
 # Name of the default storage backend, used during upgrade
 # from pre-v9.0.0 installations
 DEFAULT_STORAGE_NAME = 'default'

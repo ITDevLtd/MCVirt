@@ -22,6 +22,7 @@ from serial import Serial
 
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.exceptions import TimoutExceededSerialLockError
+from mcvirt.constants import AgentSerialConfig
 
 
 class AgentConnection(PyroObject):
@@ -52,17 +53,49 @@ class AgentConnection(PyroObject):
 
     def wait_lock(self, callback):
         """Wait for lock"""
+        # @TODO Replace with 'with' statement
+        # Get lock and condition object
         lock, cond = self.get_lock_condition()
         with cond:
+            # Get current time
             current_time = start_time = time.time()
+
+            # Whilst timeout has not been exceeded...
             while current_time < start_time + self.LOCK_TIMEOUT:
+                # Attempt to aquire lock
                 if lock.acquire(False):
-                    return callback()
+                    # Attempt to run callback method and capture output
+                    conn = None
+                    try:
+                        # Obtain serial connection and
+                        # pass to callback
+                        conn = self.get_serial_connection()
+                        resp = callback(conn)
+                        conn.close()
+                    except:
+                        # Release lock and re-raise exception
+                        try:
+                            conn.close()
+                        except:
+                            pass
+                        lock.release()
+                        raise
+                    # Release lock and return value
+                    conn.close()
+                    lock.release()
+                    return resp
                 else:
                     cond.wait(self.LOCK_TIMEOUT - current_time + start_time)
                     current_time = time.time()
-        raise TimoutExceededSerialLockError('Timeout exceeded whilst waiting for serial lock')
+
+        # If function has not run, raise exception as tieout has been
+        # exceeded
+        raise TimoutExceededSerialLockError(
+            'Timeout exceeded whilst waiting for serial lock')
 
     def get_serial_connection(self):
         """Obtain serial connection object"""
-        pass
+        serial_port = self.virtual_machine.get_host_agent_path()
+        timeout = self.virtual_machine.get_agent_timeout()
+        return Serial(port=serial_port, baudrate=AgentSerialConfig.BAUD_RATE,
+                      timeout=timeout)
