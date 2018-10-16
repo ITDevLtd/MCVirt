@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
 from enum import Enum
 
 from mcvirt.thread.repeat_timer import RepeatTimer
@@ -58,6 +57,11 @@ class WatchdogManager(PyroObject):
         wd = Watchdog(virtual_machine)
         wd.initialise()
         self.watchdogs[virtual_machine.get_name()] = wd
+
+    def cancel(self):
+        """Stop all threads"""
+        for wd in self.watchdogs.values():
+            wd.cancel()
 
 
 class Watchdog(RepeatTimer):
