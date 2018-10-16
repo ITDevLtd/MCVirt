@@ -823,7 +823,7 @@ class UserDoesNotHavePermissionError(MCVirtException):
     pass
 
 
-class TimoutExceededSerialLockError(MCVirtException):
+class TimeoutExceededSerialLockError(MCVirtException):
     """Timeout exceeded whilst waiting for serial lock"""
 
     pass

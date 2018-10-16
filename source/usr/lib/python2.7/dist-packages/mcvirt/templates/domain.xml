@@ -23,7 +23,8 @@
     </controller>
     <input type='mouse' bus='ps2'/>
     <serial type='pty'>
-      <target port='31'/>
+      <target port='0'/>
+      <alias name='serialAgent'/>
     </serial>
     <video>
       <model type='vmvga' vram='16384' heads='1'/>

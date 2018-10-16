@@ -83,6 +83,7 @@ class Factory(PyroObject):
         if vm_name not in Factory.CACHED_OBJECTS:
             vm_object = VirtualMachine(self, vm_name)
             self._register_object(vm_object)
+            vm_object.initialise()
             Factory.CACHED_OBJECTS[vm_name] = vm_object
         return Factory.CACHED_OBJECTS[vm_name]
 

@@ -38,6 +38,7 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                InvalidModificationFlagException, MCVirtTypeError,
                                UsbDeviceAttachedToVirtualMachine)
 from mcvirt.syslogger import Syslogger
+from mcvirt.virtual_machine.agent_connection import AgentConnection
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.usb_device import UsbDevice
@@ -65,14 +66,16 @@ class VirtualMachine(PyroObject):
         self.name = name
         self.disk_drive_object = None
 
-        # Take the oportunity to update libvirt config
-        self.check_config_update()
-
         # Check that the domain exists
         if not virtual_machine_factory.check_exists(self.name):
             raise VirtualMachineDoesNotExistException(
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
+
+    def initialise(self):
+        """Run after object is registered with pyro"""
+        # Take the oportunity to update libvirt config
+        self.check_config_update()
 
     def __eq__(self, comp):
         """Allow for comparison of VM objects"""
@@ -120,7 +123,7 @@ class VirtualMachine(PyroObject):
         # VM is registered locally
         if (config['applied_version'] < config['version'] and
                 self.isRegisteredLocally() and
-                self.is_stopped()):
+                self.is_stopped):
             # If so, unregister and re-register VM with libvirt
             self._unregister()
             self._register()
@@ -1637,6 +1640,10 @@ class VirtualMachine(PyroObject):
         else:
             return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
 
+    def get_agent_connection(self):
+        """Obtain an agent connection object"""
+        return AgentConnection(self)
+
     def get_host_agent_path(self):
         """Obtain the path of the serial interface for the VM on the host"""
         if self._getPowerState() is not PowerStates.RUNNING:
@@ -1647,10 +1654,12 @@ class VirtualMachine(PyroObject):
             )
         )
 
-        if domain_xml.find('./devices/serial/target[@port=""]/../source') is None:
+        if domain_xml.find(
+                './devices/serial/alias[@name="serialAgent"]/../source') is None:
             raise VncNotEnabledException('VNC is not enabled on the VM')
         else:
-            return domain_xml.find('./devices/serial/target[@port=""]/../source').get('path')
+            return domain_xml.find(
+                './devices/serial/alias[@name="serialAgent"]/../source').get('path')
 
     def get_agent_timeout(self):
         """Obtain agent timeout from config"""

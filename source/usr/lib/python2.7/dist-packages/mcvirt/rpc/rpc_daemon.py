@@ -51,7 +51,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.thread.auto_start_watchdog import AutoStartWatchdog
-from mcvirt.thead.watchdog import WatchdogManager
+from mcvirt.thread.watchdog import WatchdogManager
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -289,7 +289,7 @@ class RpcNSMixinDaemon(object):
         for timer in self.timer_objects:
             Syslogger.logger().info('Shutting down timer: %s' % timer)
             try:
-                timer.timer.cancel()
+                timer.cancel()
             except:
                 pass
         RpcNSMixinDaemon.DAEMON.shutdown()

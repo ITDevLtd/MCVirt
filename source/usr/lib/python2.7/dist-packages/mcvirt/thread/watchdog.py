@@ -16,13 +16,13 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from enum import Enum
+import Pyro4
 
 from mcvirt.thread.repeat_timer import RepeatTimer
-from mcvirt.constants import AutoStartStates
-from mcvirt.rpc.expose_method import Expose
-from mcvirt.argument_validator import ArgumentValidator
-from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.syslogger import Syslogger
+from mcvirt.utils import get_hostname
+from mcvirt.exceptions import TimeoutExceededSerialLockError
 
 
 WATCHDOG_STATES = Enum('WATCHDOG_STATES',
@@ -46,10 +46,14 @@ class WatchdogManager(PyroObject):
     def initialise(self):
         """Detect running VMs on local node and create watchdog daemon"""
         # Check all VMs
-        for vm in self._get_registered_object('virtual_machine_factory').getAllVirtualMachines():
-
-            # If VM is registered locally and is running, create watchdog and register
-            if vm.isRegisteredLocally() and vm.is_running():
+        for vm in self._get_registered_object(
+                'virtual_machine_factory').getAllVirtualMachines(node=get_hostname()):
+            # If VM is registered locally, is running and watchdog is
+            # enabled, create watchdog and register
+            if (vm.isRegisteredLocally() and
+                    vm.is_running and
+                    vm.is_watchdog_enabled()):
+                Syslogger.logger().debug('Registering watchdog for: %s' % vm.get_name())
                 self.register_virtual_machine(vm)
 
     def register_virtual_machine(self, virtual_machine):
@@ -61,7 +65,8 @@ class WatchdogManager(PyroObject):
     def cancel(self):
         """Stop all threads"""
         for wd in self.watchdogs.values():
-            wd.cancel()
+            wd.repeat = False
+            wd.timer.cancel()
 
 
 class Watchdog(RepeatTimer):
@@ -70,52 +75,65 @@ class Watchdog(RepeatTimer):
         """Store virtual machine and initialise state"""
         self.virtual_machine = virtual_machine
         self.state = WATCHDOG_STATES.INITIALISING
+        self.fail_count = 0
         super(Watchdog, self).__init__(*args, **kwargs)
+
+    def set_state(self, new_state):
+        """Set state"""
+        Syslogger.logger().debug(
+            'State for (%s) changed from %s to %s' %
+            (self.virtual_machine.get_name(),
+             self.state, new_state))
+        self.state = new_state
 
     @property
     def interval(self):
         """Return the timer interval"""
         return self.virtual_machine.get_watchdog_interval()
 
-    @Expose()
-    def get_autostart_interval(self):
-        """Return the autostart interval for the node"""
-        return self._get_registered_object('mcvirt_config')().get_config()['autostart_interval']
-
-    @Expose(locking=True)
-    def set_autostart_interval(self, interval_time):
-        """Update the autostart interval for the node"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
-        ArgumentValidator.validate_integer(interval_time)
-        interval_time = int(interval_time)
-
-        def update_config(config):
-            config['autostart_interval'] = interval_time
-        self._get_registered_object('mcvirt_config')().update_config(update_config,
-                                                                     'Update autostart interval')
-
-        if self._is_cluster_master:
-
-            def remote_update(node):
-                autostart_watchdog = node.get_connection('autostart_watchdog')
-                autostart_watchdog.set_autostart_interval(interval_time)
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_update)
-
-        # If the timer has been set to 0, disable the timer
-        if interval_time == 0:
-            self.repeat = False
-            self.timer.cancel()
-            self.timer = None
-        else:
-            # Otherwise update the running timer
-            if self.timer is None:
-                self.repeat = True
-                self.repeat_run()
-
     def run(self):
-        """Perform ON_POLL autostart"""
+        """Perform watchdog check"""
+        Syslogger.logger().debug('Watchdog checking: %s' %
+                                 self.virtual_machine.get_name())
         Pyro4.current_context.INTERNAL_REQUEST = True
-        vm_factory = self._get_registered_object('virtual_machine_factory')
-        vm_factory.autostart(AutoStartStates.ON_POLL)
+
+        if self.state in [WATCHDOG_STATES.ACTIVE, WATCHDOG_STATES.FAILING]:
+            self.set_state(WATCHDOG_STATES.WAITING_RESP)
+
+        agent_conn = self.virtual_machine.get_agent_connection()
+
+        resp = None
+        def ping_agent(conn):
+            """Send request to agent and ensure it responds"""
+            conn.send('ping\n')
+            resp = conn.readline().strip()
+
+        try:
+            agent_conn.wait_lock(ping_agent)
+        except TimeoutExceededSerialLockError:
+            pass
+
+        # If response is valid, reset counter and state
+        if resp == 'pong':
+            self.fail_count = 0
+            self.set_state(WATCHDOG_STATES.ACTIVE)
+        else:
+            self.fail_count += 1
+            self.set_state(WATCHDOG_STATES.FAILING)
+
+            if self.fail_count >= self.virtual_machine.get_watchdog_reset_fail_count():
+                self.set_state(WATCHDOG_STATES.FAILED)
+                Syslogger.logger().error(
+                    'Watchdog for VM failed. Starting reset: %s' %
+                    self.virtual_machine.get_name())
+
+                # Reset VM
+                self.virtual_machine.reset()
+
+                # Reset states
+                self.set_state(WATCHDOG_STATES.STARTUP)
+
+
         Pyro4.current_context.INTERNAL_REQUEST = False
+        Syslogger.logger().debug('Watchdog complete: %s' %
+                                 self.virtual_machine.get_name())

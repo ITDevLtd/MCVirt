@@ -21,7 +21,7 @@ from threading import Lock, Condition
 from serial import Serial
 
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.exceptions import TimoutExceededSerialLockError
+from mcvirt.exceptions import TimeoutExceededSerialLockError
 from mcvirt.constants import AgentSerialConfig
 
 
@@ -90,12 +90,18 @@ class AgentConnection(PyroObject):
 
         # If function has not run, raise exception as tieout has been
         # exceeded
-        raise TimoutExceededSerialLockError(
+        raise TimeoutExceededSerialLockError(
             'Timeout exceeded whilst waiting for serial lock')
 
     def get_serial_connection(self):
         """Obtain serial connection object"""
         serial_port = self.virtual_machine.get_host_agent_path()
         timeout = self.virtual_machine.get_agent_timeout()
-        return Serial(port=serial_port, baudrate=AgentSerialConfig.BAUD_RATE,
-                      timeout=timeout)
+        serial_obj = Serial(port=serial_port,
+                            baudrate=AgentSerialConfig.BAUD_RATE,
+                            timeout=timeout)
+
+        # Clear buffers and return serial object
+        serial_obj.reset_input_buffer()
+        serial_obj.reset_output_buffer()
+        return serial_obj
