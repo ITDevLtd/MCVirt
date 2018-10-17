@@ -169,7 +169,6 @@ class Factory(PyroObject):
         # @TODO IF a storage type has been specified, which does not support DBRD, then
         # we can assume that Local storage is used.
         available_storage_types = self._get_available_storage_types()
-        cluster = self._get_registered_object('cluster')
         if storage_type:
             if (storage_type not in
                     [available_storage.__name__ for available_storage in available_storage_types]):
@@ -194,7 +193,10 @@ class Factory(PyroObject):
                 # If DRBD is not enabled on the node, remove it from the list
                 # of nodes
                 if not node_drbd.is_enabled(node=node):
-                    nodes.delete(node)
+                    if nodes_predefined:
+                        raise InvalidNodesException('DRBD is not enabled on node %s' % node)
+                    else:
+                        nodes.delete(node)
 
             # If number of nodes is less than or greater than 2, raise exceptions, as
             # DRBD requires exactly 2 nodes
@@ -222,7 +224,7 @@ class Factory(PyroObject):
             for node in nodes:
                 if nodes_predefined:
                     storage_backend.available_on_node(node=node, raise_on_err=True)
-                elif storage_backend.available_on_node(node=node, raise_on_err=False):
+                elif not storage_backend.available_on_node(node=node, raise_on_err=False):
                     nodes.remove(node)
 
         # Otherwise, if storage backend has not been defined, ensure that
@@ -240,7 +242,8 @@ class Factory(PyroObject):
                 raise UnknownStorageBackendException('Storage backend must be specified')
             elif len(available_storage_backends) == 1:
                 storage_backend = available_storage_backends[0]
-                nodes = storage_backend.nodes
+                if not nodes_predefined:
+                    nodes = storage_backend.nodes
             else:
                 raise UnknownStorageBackendException('There are no available storage backends')
 
@@ -254,12 +257,13 @@ class Factory(PyroObject):
         # available nodes can only be 1 node, so calculate it
         if (storage_type == Local.__name__ and
                 not storage_backend.shared):
-            if get_hostname() in nodes:
-                nodes = [get_hostname()]
-            else:
-                raise InvalidNodesException(
-                    ('Non-shared local storage must be assigned to a '
-                     'single node and local not is not available'))
+            if len(nodes) != 1:
+                if nodes_predefined or get_hostname() not in nodes:
+                    raise InvalidNodesException(
+                        ('Non-shared local storage must be assigned to a '
+                         'single node and local not is not available'))
+                else:
+                    nodes = [get_hostname()]
 
         # Ensure that there is free space on all nodes
         free_space = storage_backend.get_free_space(nodes=nodes, return_dict=True)

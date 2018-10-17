@@ -17,6 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import hashlib
+import datetime
+
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
@@ -34,7 +37,8 @@ from mcvirt.exceptions import (UnsuitableNodeException,
                                CannotUnshareInUseStorageBackendError,
                                NodeUsedByStaticVirtualMachine,
                                NodeNotConfiguredInStorageBackend,
-                               CannotRemoveNodeFromGlobalStorageBackend)
+                               CannotRemoveNodeFromGlobalStorageBackend,
+                               ExternalStorageCommandErrorException)
 from mcvirt.system import System
 
 
@@ -52,6 +56,15 @@ class Base(PyroObject):
         # Ensure that all nodes specified are valid
         for node in config['nodes']:
             cluster.ensure_node_exists(node, include_local=True)
+
+    @classmethod
+    def generate_id(cls, name):
+        """Generate ID for storage backend"""
+        # Generate sha sum of name and sha sum of
+        # current datetime
+        name_checksum = hashlib.sha512(name).hexdigest()
+        date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
+        return 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
 
     @classmethod
     def node_pre_check(cls, cluster, libvirt_config, location):
@@ -81,20 +94,25 @@ class Base(PyroObject):
         """
         raise NotImplementedError
 
-    def __init__(self, name):
+    def __init__(self, id_):
         """Setup member variables"""
-        self._name = name
+        self._id = id_
 
     def __eq__(self, comp):
         """Allow for comparison of storage objects baesd on name"""
         # Ensure class and name of object match
         if ('__class__' in dir(comp) and
                 comp.__class__ == self.__class__ and
-                'name' in dir(comp) and comp.name == self.name):
+                'id_' in dir(comp) and comp.id_ == self.id_):
             return True
 
         # Otherwise return false
         return False
+
+    @property
+    def id_(self):
+        """Return the ID of the storage backend"""
+        return self._id
 
     @property
     def _volume_class(self):
@@ -104,7 +122,7 @@ class Base(PyroObject):
     @property
     def name(self):
         """Return name of storage backend"""
-        return self._name
+        return self.get_config()['name']
 
     @property
     def shared(self):
@@ -128,6 +146,55 @@ class Base(PyroObject):
         # @TODO Implement once global feature is present
         return False
 
+    @property
+    def _id_volume_name(self):
+        """Return the name of the identification volume"""
+        return self.id_
+
+    def create_id_volume(self):
+        """Create identification volume on the storage backend"""
+        # Obtain volume object for ID volume
+        volume = self.get_volume(self._id_volume_name)
+
+        # If the storage backend is shared, then only needs to be created on
+        # a single node (prefer local host if in list of nodes). If not shared,
+        # ID volume will be created on all nodes
+        nodes = ([get_hostname()]
+                 if get_hostname() in self.nodes else
+                 [self.nodes[0]]) if self.shared else self.nodes
+
+        try:
+            # Create ID volume
+            volume.create(size=1, nodes=nodes)
+        except ExternalStorageCommandErrorException:
+            raise ExternalStorageCommandErrorException(
+                ('An error occured whilst adding storage backend: Either the storage '
+                 'backend has no free space (at least 1MB required) or '
+                 'shared storage is being used, but has not been specified'))
+
+        try:
+            # Ensure that ID volume exists on all nodes
+            volume.ensure_exists(nodes=self.nodes)
+        except VolumeDoesNotExistError:
+            raise ExternalStorageCommandErrorException(
+                ('An error ocurred whilst verifying the storage backend: '
+                 'A shared storage has been specified, but it is not'))
+
+    def delete_id_volume(self):
+        """Delete the ID volume for the storage backend"""
+        # Obtain volume object for ID volume
+        volume = self.get_volume(self._id_volume_name)
+
+        # If the storage backend is shared, then only needs to be created on
+        # a single node (prefer local host if in list of nodes). If not shared,
+        # ID volume will be created on all nodes
+        nodes = ([get_hostname()]
+                 if get_hostname() in self.nodes else
+                 [self.nodes[0]]) if self.shared else self.nodes
+
+        # Create ID volume
+        volume.delete(nodes=nodes)
+
     @Expose(locking=True)
     def delete(self):
         """Shared function to remove storage"""
@@ -138,30 +205,29 @@ class Base(PyroObject):
         if self.in_use():
             raise StorageBackendInUse('Storage backend cannot be removed as it is used by VMs')
 
+        self.delete_id_volume()
+
+        # Remove VM from MCVirt configuration
+        cluster = self._get_registered_object('cluster')
+        self.remove_config(nodes=cluster.get_nodes(include_local=True))
+
+    @Expose(remote_nodes=True)
+    def remove_config(self):
         # Remove VM from MCVirt configuration
         def update_mcvirt_config(config):
             """Remove object from mcvirt config"""
-            del config['storage_backends'][self.name]
+            del config['storage_backends'][self._id]
         MCVirtConfig().update_config(
             update_mcvirt_config,
             'Removed storage backend \'%s\' from global MCVirt config' %
             self.name
         )
 
-        # Remove from remote machines in cluster
-        if self._is_cluster_master:
-            def remote_command(remote_object):
-                """Delete backend storage from remote nodes"""
-                remote_storage_backend = self.get_remote_object(node_object=remote_object)
-                remote_storage_backend.delete()
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_command)
-
         # Remove cached pyro object
         storage_factory = self._get_registered_object('storage_factory')
-        if self.name in storage_factory.CACHED_OBJECTS:
+        if self._id in storage_factory.CACHED_OBJECTS:
             self.unregister_object()
-            del storage_factory.CACHED_OBJECTS[self.name]
+            del storage_factory.CACHED_OBJECTS[self._id]
 
     @Expose()
     def get_config(self):
@@ -170,7 +236,7 @@ class Base(PyroObject):
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
-        return MCVirtConfig().get_config()['storage_backends'][self.name]
+        return self._get_registered_object('storage_factory').get_config()[self._id]
 
     @Expose(locking=True)
     def set_location(self, new_location, node=None):
@@ -260,10 +326,19 @@ class Base(PyroObject):
             callback(
                 config[
                     self._get_registered_object('storage_factory').STORAGE_CONFIG_KEY
-                ][self.name]
+                ][self.id_]
             )
         mcvirt_config = self._get_registered_object('mcvirt_config')()
         mcvirt_config.update_config(update_mcvirt_config, reason)
+
+    def ensure_available(self):
+        """Ensure that the storage backend is currently available on the node"""
+        volume = self.get_volume(self._id_volume_name)
+
+        if (not self.check_exists()) or not volume.check_exists():
+            raise StorageBackendNotAvailableOnNode(
+                'Storage backend %s is not currently avaialble on node: %s' % (
+                    self.name, get_hostname()))
 
     def is_static(self):
         """Determine if the storage backend implies that
@@ -273,7 +348,7 @@ class Base(PyroObject):
     def ensure_can_remove_node(self, node_name):
         """Ensure that a node can be removed from a storage backend"""
         # Ensure that node is already part of storage backend
-        if self.available_on_node(node_name, raise_on_err=True):
+        if not self.available_on_node(node_name, raise_on_err=False):
             raise NodeNotConfiguredInStorageBackend(
                 'Node is not configured for storage backend')
 
@@ -429,7 +504,7 @@ class Base(PyroObject):
             node_object = cluster.get_remote_node(node)
 
         remote_storage_factory = node_object.get_connection('storage_factory')
-        remote_storage = remote_storage_factory.get_object(self.name)
+        remote_storage = remote_storage_factory.get_object(self._id)
         node_object.annotate_object(remote_storage)
         return remote_storage
 
@@ -482,6 +557,7 @@ class BaseVolume(PyroObject):
         # Return remote_volume
         return remote_volume
 
+    @Expose(remote_nodes=True)
     def ensure_exists(self):
         """Ensure that the volume exists"""
         if not self.check_exists():
@@ -526,6 +602,10 @@ class BaseVolume(PyroObject):
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
         raise NotImplementedError
+
+    def undo__create(self, size, _f=None):
+        """Remove volume"""
+        self.delete(ignore_non_existent=False)
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def delete(self, ignore_non_existent, _f=None):

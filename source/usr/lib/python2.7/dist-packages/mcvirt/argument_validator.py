@@ -17,9 +17,10 @@
 # You should have received a copy of the GNU General Public License
 
 import re
-from mcvirt.exceptions import MCVirtTypeError
+from mcvirt.exceptions import MCVirtTypeError, InvalidPermissionError
 from mcvirt.constants import (DEFAULT_LIBVIRT_NETWORK_NAME,
                               DEFAULT_STORAGE_NAME)
+from mcvirt.auth.permissions import PERMISSIONS
 
 
 class ArgumentValidator(object):
@@ -158,3 +159,29 @@ class ArgumentValidator(object):
         """Validate a fileename"""
         if not re.compile("^[^/\0]+$").match(file_name):
             raise MCVirtTypeError('%s is not a valid filename' % file_name)
+
+    @staticmethod
+    def validate_group_name(group_name):
+        """Validate a group name"""
+        exception_message = ('Group name must only use alpha-numeric characters and dashes,'
+                             ' be 64 characters or less in length'
+                             ' and start with an alpha-numeric character')
+
+        try:
+            if len(group_name) > 64 or not len(group_name):
+                raise MCVirtTypeError(exception_message)
+            disallowed = re.compile(r"[^A-Z\d-]", re.IGNORECASE)
+            if disallowed.search(group_name):
+                raise MCVirtTypeError(exception_message)
+            if group_name.startswith('-') or group_name.endswith('-'):
+                raise MCVirtTypeError(exception_message)
+        except (ValueError, TypeError):
+            raise MCVirtTypeError(exception_message)
+
+    @staticmethod
+    def validate_permission(permission):
+        """Ensure that a permission is valid"""
+        try:
+            PERMISSIONS[permission]
+        except KeyError:
+            raise InvalidPermissionError('Permission is not valid')

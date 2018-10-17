@@ -26,9 +26,11 @@ LOG_FILE="/var/log/${APP}-startup.log"
 if [ "z$APP" == "zmcvirtd" ]
 then
     CERT_FILE="/var/lib/mcvirt/$HOSTNAME/ssl/$HOSTNAME/clientcert.pem"
+    DH_FILE=""
 elif [ "z$APP" == "zmcvirt-ns" ]
 then
     CERT_FILE="/var/lib/mcvirt/$HOSTNAME/ssl/$HOSTNAME/servercert.pem"
+    DH_FILE="/var/lib/mcvirt/$HOSTNAME/ssl/$HOSTNAME/dh_params"
 else
     echo 'Must specify app'
     exit 2
@@ -56,7 +58,7 @@ check_daemon_running() {
     return 0
 }
 
-for i in {1..180}
+for i in {1..300}
 do
     if check_daemon_running
     then
@@ -66,15 +68,18 @@ do
 
     if [ -f "$CERT_FILE" ]
     then
-        if [ "z$APP" == "zmcvirtd" ]
+        if [ "$DH_FILE" == "" ] || [ -f "$DH_FILE" ]
         then
-            exit 0
-        else
-            # Check to ensure nameserver is listening on port
-            /usr/bin/lsof -Pan -p $PID -i | grep :9090 >/dev/null 2>&1
-            if [ "$?" == "0" ]
+            if [ "z$APP" == "zmcvirtd" ]
             then
                 exit 0
+            else
+                # Check to ensure nameserver is listening on port
+                /usr/bin/lsof -Pan -p $PID -i | grep :9090 >/dev/null 2>&1
+                if [ "$?" == "0" ]
+                then
+                    exit 0
+                fi
             fi
         fi
     fi

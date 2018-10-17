@@ -30,25 +30,35 @@ PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY
                                    'TEST_OWNER_PERMISSION', 'TEST_USER_PERMISSION',
                                    'SUPERUSER', 'MANAGE_NODE', 'SET_SYNC_STATE',
                                    'MANAGE_ISO', 'MANAGE_STORAGE_BACKEND',
-                                   'MANAGE_STORAGE_VOLUME'])
+                                   'MANAGE_STORAGE_VOLUME', 'MANAGE_GROUPS',
+                                   'MANAGE_GROUP_MEMBERS'])
 
-# Set the permissions for the permissions groups
-PERMISSION_GROUPS = \
-    {
-        'user':
-        [
-            PERMISSIONS.CHANGE_VM_POWER_STATE,
-            PERMISSIONS.VIEW_VNC_CONSOLE,
-            PERMISSIONS.TEST_USER_PERMISSION
-        ],
-        'owner':
-        [
-            PERMISSIONS.CHANGE_VM_POWER_STATE,
-            PERMISSIONS.MANAGE_VM_USERS,
-            PERMISSIONS.VIEW_VNC_CONSOLE,
-            PERMISSIONS.CLONE_VM,
-            PERMISSIONS.DELETE_CLONE,
-            PERMISSIONS.DUPLICATE_VM,
-            PERMISSIONS.TEST_OWNER_PERMISSION
-        ]
-    }
+PERMISSION_DESCRIPTIONS = {
+    'CHANGE_VM_POWER_STATE': ('Power on, power off, reset and shutdown (ACPI) '
+                              'virtual machine'),
+    'CREATE_VM': ('Create a virtual machine and required resources '
+                  '(network interface, hard drive etc.)'),
+    'MODIFY_VM': ('Modify attributes of a virtual machine '
+                  '(e.g. Memory/CPU allocation, CPU flags etc.)'),
+    'MANAGE_VM_USERS': 'Add/remove users from a permission group for a specific virtual machine',
+    'VIEW_VNC_CONSOLE': 'Obtain VNC port and tunnel VNC connections (in later versions)',
+    'CLONE_VM': 'Clone a virtual machine to a new virtual macine',
+    'DELETE_CLONE': ('Delete a virtual machine, which was created '
+                     'via cloning another virtual machine'),
+    'MANAGE_HOST_NETWORKS': 'Create/delete host networks that are mapped to the virtual machine',
+    'MANAGE_CLUSTER': 'Add/remove nodes from the cluster',
+    'MANAGE_DRBD': 'Enable DRBD functionality in the cluster',
+    'CAN_IGNORE_DRBD': 'Ignore DRBD whilst performing virtual machine operations',
+    'MIGRATE_VM': 'Perform both online and offline virtual machine migrations between hosts',
+    'DUPLICATE_VM': 'Duplicate a virtual machine to a new virtual machine',
+    'SET_VM_LOCK': 'Manually lock and unlock virtual machines to stop other operations on it',
+    'BACKUP_VM': 'Create a backup of virtual machine hard drives',
+    'CAN_IGNORE_CLUSTER': 'Perform other operations whilst ignoring failing nodes',
+    'MOVE_VM': 'Move a virtual machine between non-shared storage',
+    'MANAGE_USERS': 'Create/delete users',
+    'MANAGE_NODE': 'Modify node-specific configurations, such as IP address',
+    'MANGAE_ISO': 'Upload and delete ISOs from hosts',
+    'MANAGE_STORAGE_BACKEND': 'Create/delete storage backends',
+    'MANAGE_GROUPS': 'Create, delete and modify permissions groups',
+    'MANAGE_GROUP_MEMBERS': 'Add/remove users from permission groups'
+}

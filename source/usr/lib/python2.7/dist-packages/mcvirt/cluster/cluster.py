@@ -402,16 +402,11 @@ class Cluster(PyroObject):
             if not remote_user_object.is_superuser():
                 remote_auth_instance.add_superuser(remote_user_object)
 
-        # Iterate over the permission groups, adding all of the members to the group
-        # on the remote node
-        for group in auth_instance.get_permission_groups():
-            users = auth_instance.get_users_in_permission_group(group)
-            for user in users:
-                user_object = remote_user_factory.get_user_by_username(user)
-                remote_object.annotate_object(user_object)
-                if (user_object.get_username() not in
-                        remote_auth_instance.get_users_in_permission_group(group)):
-                    remote_auth_instance.add_user_permission_group(group, user_object)
+        group_factory = self._get_registered_object('group_factory')
+        remote_group_factory = remote_object.get_connection('group_factory')
+
+        # Sync group configuration
+        remote_group_factory.set_config(group_factory.get_config())
 
     def sync_storage_backends(self, remote_object, location_overrides):
         """Duplicate the storage backend objects to the new node"""
@@ -469,7 +464,7 @@ class Cluster(PyroObject):
 
             # Add each of the disks to the VM
             for hard_disk in vm_object.getHardDriveObjects():
-                remote_hard_drive_object = hard_disk.get_remote_object(remote_node=remote_object,
+                remote_hard_drive_object = hard_disk.get_remote_object(node_object=remote_object,
                                                                        registered=False)
                 remote_hard_drive_object.addToVirtualMachine()
 
@@ -489,16 +484,8 @@ class Cluster(PyroObject):
                                                       mac_address=network_adapter.getMacAddress())
 
             # Sync permissions to VM on remote node
-            auth_instance = self._get_registered_object('auth')
-            remote_auth_instance = remote_object.get_connection('auth')
-            remote_user_factory = remote_object.get_connection('user_factory')
-            for group in auth_instance.get_permission_groups():
-                users = auth_instance.get_users_in_permission_group(group, vm_object)
-                for user in users:
-                    user_object = remote_user_factory.get_user_by_username(user)
-                    remote_object.annotate_object(user_object)
-                    remote_auth_instance.add_user_permission_group(group, user_object,
-                                                                   remote_virtual_machine_object)
+            remote_virtual_machine_object.setPermissionConfig(
+                vm_object.get_config_object().getPermissionConfig())
 
             # Set the VM node
             remote_virtual_machine_object.setNodeRemote(vm_object.getNode())
@@ -556,9 +543,8 @@ class Cluster(PyroObject):
         # remote node
         network_factory = self._get_registered_object('network_factory')
         for local_network in network_factory.get_all_network_objects():
-            if not remote_network_factory.interface_exists(local_network.get_adapter()):
-                raise RemoteObjectConflict('Network interface %s does not exist on remote node' %
-                                           local_network.get_adapter())
+            remote_network_factory.pre_check_network(local_network.get_name(),
+                                                     local_network.get_adapter())
 
         # Determine if there are any VMs on the remote node
         remote_virtual_machine_factory = remote_connection.get_connection(
@@ -607,10 +593,11 @@ class Cluster(PyroObject):
         all_nodes.remove(node_name_to_remove)
 
         def remove_vm(remote_connection, vm_name):
-            remote_vm_factory = remote_connection.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.getVirtualMachineByName(vm_name)
-            remote_connection.annotate_object(remote_vm)
-            remote_vm.delete(local_only=True)
+            if remote_connection is not None:
+                remote_vm_factory = remote_connection.get_connection('virtual_machine_factory')
+                remote_vm = remote_vm_factory.getVirtualMachineByName(vm_name)
+                remote_connection.annotate_object(remote_vm)
+                remote_vm.delete(local_only=True)
 
         # Remove any VMs that are only present on the remote node
         node_to_remove_con = self.get_remote_node(node_name_to_remove)

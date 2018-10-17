@@ -120,6 +120,11 @@ class LvmVolume(BaseVolume):
                 "Error whilst creating disk logical volume:\n" + str(exc)
             )
 
+    @Expose(locking=True, remote_nodes=True)
+    def undo__create(self, *args, **kwargs):
+        """Undo function for create"""
+        self.delete(ignore_non_existent=False)
+
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def delete(self, ignore_non_existent=False, _f=None):
         """Delete volume"""
@@ -179,6 +184,10 @@ class LvmVolume(BaseVolume):
                 "Error whilst snapshotting disk:\n" + str(exc)
             )
 
+    def undo__snapshot(self, destination_volume, *args, **kwargs):
+        """Undo snapshot created"""
+        destination_volume.delete()
+
     def clone(self, destination_volume):
         """Clone a volume to a new volume"""
         try:
@@ -190,7 +199,7 @@ class LvmVolume(BaseVolume):
 
     def deactivate(self):
         """Deactivate volume"""
-        raise NotImplementedError
+        return
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def resize(self, size, increase=True, _f=None):
@@ -199,6 +208,9 @@ class LvmVolume(BaseVolume):
                                                              allow_indirect=True)
         # Ensure volume exists
         self.ensure_exists()
+
+        # Get size of current disk, to be able to roll back to current size
+        _f.add_undo_argument(original_size=self.get_size())
 
         # If increasing disk size, prepend with plus (+)
         if increase:
@@ -215,6 +227,10 @@ class LvmVolume(BaseVolume):
             raise ExternalStorageCommandErrorException(
                 "Error whilst resizing disk:\n" + str(exc)
             )
+
+    def undo__resize(self, original_size, *args, **kwargs):
+        """Rerun resize to set volume back to the orignial size"""
+        self.resize(size=original_size, increase=False)
 
     def check_exists(self):
         """Determine whether logical volume exists"""

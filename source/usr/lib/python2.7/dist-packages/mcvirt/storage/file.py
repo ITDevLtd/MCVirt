@@ -100,6 +100,12 @@ class File(Base):
         """The libvirt property for source"""
         return 'file'
 
+    @property
+    def _id_volume_name(self):
+        """Return the name of the identification volume"""
+        # Create a hidden file with the ID
+        return '.%s' % self.id_
+
     @Expose(remote_nodes=True)
     def get_free_space(self):
         """Return the free space in megabytes."""

@@ -39,6 +39,7 @@ from mcvirt.utils import get_hostname
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.constants import LockStates
+from mcvirt.syslogger import Syslogger
 
 
 class Driver(Enum):
@@ -148,19 +149,18 @@ class Base(PyroObject):
             'virtual_machine_factory').getVirtualMachineByName(vm_name)
 
     def get_remote_object(self,
-                          node_name=None,     # The name of the remote node to connect to
-                          remote_node=None,   # Otherwise, pass a remote node connection
-                          registered=True,  # If the hard drive can be setup
-                          return_node=False):
+                          node=None,     # The name of the remote node to connect to
+                          node_object=None,   # Otherwise, pass a remote node connection
+                          registered=True):  # If the hard drive can be setup
         """Obtain an instance of the current hard drive object on a remote node"""
         cluster = self._get_registered_object('cluster')
-        if remote_node is None:
-            remote_node = cluster.get_remote_node(node_name)
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
 
-        remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
+        remote_vm_factory = node_object.get_connection('virtual_machine_factory')
         remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
 
-        remote_hard_drive_factory = remote_node.get_connection('hard_drive_factory')
+        remote_hard_drive_factory = node_object.get_connection('hard_drive_factory')
 
         kwargs = {
             'vm_object': remote_vm,
@@ -172,18 +172,15 @@ class Base(PyroObject):
             for config in self.config_properties:
                 kwargs[config] = getattr(self, config)
 
-            remote_storage_factory = remote_node.get_connection('storage_factory')
+            remote_storage_factory = node_object.get_connection('storage_factory')
             remote_storage_backend = remote_storage_factory.get_object(
-                self.get_storage_backend().name
+                self.get_storage_backend().id_
             )
             kwargs['storage_backend'] = remote_storage_backend
 
         hard_drive_object = remote_hard_drive_factory.getObject(**kwargs)
-        remote_node.annotate_object(hard_drive_object)
-        if return_node:
-            return hard_drive_object, remote_node
-        else:
-            return hard_drive_object
+        node_object.annotate_object(hard_drive_object)
+        return hard_drive_object
 
     def _get_available_id(self):
         """Obtain the next available ID for the VM hard drive, by scanning the IDs
@@ -210,6 +207,7 @@ class Base(PyroObject):
 
     def _ensure_exists(self):
         """Ensure the disk exists on the local node"""
+        self.get_storage_backend().ensure_available()
         if not self._check_exists():
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
@@ -236,7 +234,7 @@ class Base(PyroObject):
         return self.__class__.__name__
 
     @Expose(locking=True)
-    def delete(self):
+    def delete(self, local_only=False):
         """Delete the logical volume for the disk"""
         # Ensure that the user has permissions to add delete storage
         self._get_registered_object('auth').assert_permission(
@@ -251,16 +249,17 @@ class Base(PyroObject):
         self.vm_object.ensureUnlocked()
         self.vm_object.ensure_stopped()
 
-        if self.vm_object.isRegisteredLocally():
-            # Remove from LibVirt, if registered, so that libvirt doesn't
-            # hold the device open when the storage is removed
-            self._unregisterLibvirt()
-
         # Remove backing storage
-        self._removeStorage()
+        self._removeStorage(local_only=local_only)
+
+        if local_only:
+            nodes = [get_hostname()]
+        else:
+            cluster = self._get_registered_object('cluster')
+            nodes = cluster.get_nodes(include_local=True)
 
         # Remove the hard drive from the MCVirt VM configuration
-        self.removeFromVirtualMachine(unregister=False)
+        self.removeFromVirtualMachine(nodes=nodes)
 
         # Unregister object and remove from factory cache
         hdd_factory = self._get_registered_object('hard_drive_factory')
@@ -302,8 +301,8 @@ class Base(PyroObject):
 
         return new_disk_object
 
-    @Expose(locking=True)
-    def addToVirtualMachine(self, register=True):
+    @Expose(locking=True, remote_nodes=True, undo_method='removeFromVirtualMachine')
+    def addToVirtualMachine(self):
         """Add the hard drive to the virtual machine,
            and performs the base function on all nodes in the cluster"""
         # Ensure that the user has permissions to modify VM
@@ -327,33 +326,13 @@ class Base(PyroObject):
                                 (self.disk_id, self.vm_object.get_name())
         )
 
-        # If the node cluster is initialised, update all remote node configurations
-        if self._is_cluster_master:
-
-            # Create list of nodes that the hard drive was successfully added to
-            successful_nodes = []
-            cluster = self._get_registered_object('cluster')
-            try:
-                for node in cluster.get_nodes():
-                    remote_disk_object = self.get_remote_object(node, registered=False)
-                    remote_disk_object.addToVirtualMachine()
-                    successful_nodes.append(node)
-            except Exception:
-                # If the hard drive fails to be added to a node, remove it from all successful nodes
-                # and remove from the local node
-                for node in successful_nodes:
-                    self.get_remote_object(node).removeFromVirtualMachine()
-
-                self.removeFromVirtualMachine(unregister=register, all_nodes=False)
-                raise
-
     @staticmethod
     def isAvailable(node, node_drbd):
         """Returns whether the storage type is available on the node"""
         raise NotImplementedError
 
-    @Expose(locking=True)
-    def removeFromVirtualMachine(self, unregister=False, all_nodes=True):
+    @Expose(locking=True, remote_nodes=True)
+    def removeFromVirtualMachine(self):
         """Remove the hard drive from a VM configuration and perform all nodes
            in the cluster"""
         # Ensure that the user has permissions to modify VM
@@ -363,7 +342,7 @@ class Base(PyroObject):
         )
         # If the VM that the hard drive is attached to is registered on the local
         # node, remove the hard drive from the LibVirt configuration
-        if unregister and self.vm_object.isRegisteredLocally():
+        if self.vm_object.isRegisteredLocally():
             self._unregisterLibvirt()
 
         # Update VM config file
@@ -373,13 +352,6 @@ class Base(PyroObject):
         self.vm_object.get_config_object().update_config(
             removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %
             (self.disk_id, self.vm_object.get_name()))
-
-        # If the cluster is initialised, run on all nodes that the VM is available on
-        if self._is_cluster_master and all_nodes:
-            cluster = self._get_registered_object('cluster')
-            for node in cluster.get_nodes():
-                remote_disk_object = self.get_remote_object(node)
-                remote_disk_object.removeFromVirtualMachine()
 
     def _unregisterLibvirt(self):
         """Removes the hard drive from the LibVirt configuration for the VM"""
@@ -424,35 +396,6 @@ class Base(PyroObject):
                 updateStorageTypeConfig, 'Updated storage type for \'%s\' to \'%s\'' %
                 (self.vm_object.get_name(), self.get_type()))
 
-    @Expose(locking=True)
-    def resize_volume(self, *args, **kwargs):
-        """Provides an exposed method for _resize_volume
-           with permission checking"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-
-        return self._resize_volume(*args, **kwargs)
-
-    def _resize_volume(self, volume, size, perform_on_nodes=False):
-        """Creates a logical volume on the node/cluster"""
-
-        try:
-            # Create on local node
-            System.runCommand(command_args)
-
-            if perform_on_nodes and self._is_cluster_master:
-                def remoteCommand(node):
-                    remote_disk = self.get_remote_object(remote_node=node, registered=False)
-                    remote_disk.resize_logical_volume(name=name, size=size)
-
-                cluster = self._get_registered_object('cluster')
-                cluster.run_remote_command(callback_method=remoteCommand,
-                                           nodes=self.vm_object._get_remote_nodes())
-
-        except MCVirtCommandException, e:
-            raise ExternalStorageCommandErrorException(
-                "Error whilst resizing disk logical volume:\n" + str(e)
-            )
-
     def activate_volume(self, volume, perform_on_nodes=False):
         """Activates a logical volume on the node/cluster"""
         # Obtain logical volume path
@@ -460,7 +403,7 @@ class Base(PyroObject):
 
         if perform_on_nodes and self._is_cluster_master:
             def remoteCommand(node):
-                remote_disk = self.get_remote_object(remote_node=node, registered=False)
+                remote_disk = self.get_remote_object(node_object=node, registered=False)
                 remote_disk.activate_volume(volume=volume)
 
             cluster = self._get_registered_object('cluster')
@@ -575,7 +518,7 @@ class Base(PyroObject):
         """Move the storage to another node in the cluster"""
         raise NotImplementedError
 
-    def _removeStorage(self):
+    def _removeStorage(self, local_only=False, remove_raw=True):
         """Delete te underlying storage for the disk"""
         raise NotImplementedError
 
@@ -631,7 +574,7 @@ class Base(PyroObject):
         """Return the MCVirt configuration for the hard drive object"""
         config = {
             'driver': self.driver,
-            'storage_backend': self.get_storage_backend().name
+            'storage_backend': self.get_storage_backend().id_
         }
         return config
 
@@ -648,12 +591,12 @@ class Base(PyroObject):
         if (not self._storage_backend or
                 isinstance(self._storage_backend, str) or
                 isinstance(self._storage_backend, unicode)):
-            storage_backend_name = (self._storage_backend
-                                    if isinstance(self._storage_backend, str) else
-                                    self.getDiskConfig()['storage_backend'])
+            storage_backend_id = (self._storage_backend
+                                  if isinstance(self._storage_backend, str) else
+                                  self.getDiskConfig()['storage_backend'])
             self._storage_backend = self._get_registered_object(
                 'storage_factory'
-            ).get_object(storage_backend_name)
+            ).get_object(storage_backend_id)
         return self._storage_backend
 
     def _get_volume(self, disk_name):

@@ -206,7 +206,7 @@ class Factory(PyroObject):
 
         # Determine if the list of nodes is a pre-defined list by the user, or
         # list of all nodes
-        nodes_predefined = nodes is not None
+        nodes_predefined = (nodes is not None and len(nodes))
 
         # If nodes has not been defined, get a list of all
         if not nodes:

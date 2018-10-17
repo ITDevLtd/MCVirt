@@ -43,6 +43,38 @@ class Factory(PyroObject):
     CACHED_OBJECTS = {}
 
     @Expose()
+    def pre_check_network(self, name, interface):
+        """Perform pre-limiary checks on node before determining
+           that a network can be added"""
+        self._get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')
+        # Ensure that the physical interface exists
+        self.assert_interface_exists(interface)
+
+        # Ensure that there are no interfaces present on the MCVirt instance
+        # that match the network
+        if self.check_exists(name):
+            raise NetworkAlreadyExistsException('Network already exists on node: %s %s' %
+                                                (name, get_hostname()))
+
+        # Ensure that there is not already a network with the same name defined in
+        # libvirt
+        try:
+            self._get_registered_object(
+                'libvirt_connector'
+            ).get_connection().networkLookupByName(name)
+
+            # If the libvirt connect did not throw an error that
+            # the network does not exist, raise an exception
+            # as the network must be pressent
+            # @TODO: do this more nicely. Get list of networks and
+            # assert that it's not in the list
+            raise NetworkAlreadyExistsException(
+                'Network already defined in libvirt on node: %s %s' %
+                (name, get_hostname()))
+        except libvirtError:
+            pass
+
+    @Expose()
     def interface_exists(self, interface):
         """Public method for to determine if an interface exists"""
         self._get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')

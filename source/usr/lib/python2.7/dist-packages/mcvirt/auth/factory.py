@@ -17,6 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+from texttable import Texttable
+
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import (IncorrectCredentials, InvalidUsernameException,
                                UserDoesNotExistException, InvalidUserTypeException,
@@ -49,6 +51,11 @@ class Factory(PyroObject):
                 return user_type_itx
 
         raise InvalidUserTypeException('An invalid user type has been passed')
+
+    @Expose()
+    def generate_password(self):
+        """Generate password"""
+        return UserBase.generate_password(10)
 
     @Expose()
     def create(self, username, password, user_type=LocalUser):
@@ -89,6 +96,7 @@ class Factory(PyroObject):
         user_config['password'] = hashed_password
         user_config['salt'] = salt
         user_config['user_type'] = user_type.__name__
+        user_config['global_permissions'] = []
 
         def update_config(config):
             config['users'][username] = user_config
@@ -142,6 +150,30 @@ class Factory(PyroObject):
         user_classes = filter(lambda user_class: not user_class.CLUSTER_USER,
                               self.get_user_types())
         return self.get_all_user_objects(user_classes=user_classes)
+
+    @Expose()
+    def list(self):
+        """List the Drbd volumes and statuses"""
+        # Set permissions as having been checked, as listing VMs
+        # does not require permissions
+        self._get_registered_object('auth').set_permission_asserted()
+
+        # Create table and add headers
+        table = Texttable()
+        table.set_deco(Texttable.HEADER | Texttable.VLINES | Texttable.HLINES)
+        table.header(('Name', 'User Type', 'Groups'))
+
+        # Set column alignment and widths
+        table.set_cols_width((15, 10, 40))
+        table.set_cols_align(('l', 'l', 'l'))
+
+        for user in self.get_all_users():
+            table.add_row((
+                user.get_username(),
+                user.get_user_type(),
+                ', '.join([group.name for group in user.get_groups()])
+            ))
+        return table.draw()
 
     @Expose()
     def get_all_user_objects(self, user_classes=[]):
