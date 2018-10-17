@@ -48,6 +48,7 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname, convert_size_friendly
 from mcvirt.argument_validator import ArgumentValidator
+from mcvirt.utils import dict_merge
 
 
 class Modification(Enum):
@@ -1675,15 +1676,56 @@ class VirtualMachine(PyroObject):
         """Obtain watchdog interval from config"""
         return self.get_config_object().get_config()['watchdog']['enabled']
 
-    # def set_wathdog_status(self, status):
-    #     """Update the status of the watchdog"""
+    def set_wathdog_status(self, status):
+        """Update the status of the watchdog"""
+        # Validate status boolean
+        ArgumentValidator.validate_boolean(status)
+        self.update_vm_config(
+            {'watchdog': {'enabled': status}},
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
-    # def set_watchdog_interval(self, interval):
-    #     """Update the watchdog interval"""
+    def set_watchdog_interval(self, interval):
+        # Validate interval
+        ArgumentValidator.validate_positive_integer(interval)
+        self.update_vm_config(
+            {'watchdog': {'interval': interval}},
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
-    # def set_watchdog_reset_fail_count(self, count):
-    #     """Update reset fail count for watchdog"""
-    #     pass
+    def set_watchdog_reset_fail_count(self, count):
+        """Update reset fail count for watchdog"""
+        ArgumentValidator.validate_positive_integer(status)
+        self.update_vm_config(
+            {'watchdog': {'reset_fail_count': count}},
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    def set_watchdog_boot_wait(self, wait):
+        """Update boot wait for watchdog"""
+        ArgumentValidator.validate_positive_integer(wait)
+        self.update_vm_config(
+            {'watchdog': {'boot_wait': wait}},
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def update_vm_config(self, changes_dict, reason, f_):
+        """Update VM config using dict"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+        def update_config(config):
+            f_.add_undo_argument(original_config=dict(config))
+            dict_merge(config, changes_dict)
+
+        self.get_config_object().update_config(update_config, reason)
+
+    @Expose()
+    def undo__update_vm_config(self, changes_dict, reason, original_config, f_):
+        """Undo config change"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+        def revert_config(config):
+            """Revert config"""
+            config = original_config
+
+        self.get_config_object().update_config('Revert: %s' % reason)
 
     def get_watchdog_interval(self):
         """Obtain watchdog interval from config"""
