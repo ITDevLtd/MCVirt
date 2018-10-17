@@ -1,4 +1,4 @@
-Package: mcvirt-daemon
+Package: mcvirt-agent
 Version: %VERSION%
 Section: utils
 Maintainer: Matt Comben <matthew@dockstudios.co.uk>
