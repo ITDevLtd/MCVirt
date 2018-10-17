@@ -31,4 +31,4 @@ do
 done
 
 # Remove old version number
-git checkout -- ./source/usr/lib/python2.7/dist-packages/mcvirt/version.py ./source/*/DEBIAN/control
+git checkout -- ./source/mcvirt-common/usr/lib/python2.7/dist-packages/mcvirt/version.py ./source/*/DEBIAN/control
