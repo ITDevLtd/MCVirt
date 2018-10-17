@@ -20,8 +20,11 @@ ARCH=all
 # Put version number into version file
 echo "VERSION = '$VERSION'" >> ./source/usr/lib/python2.7/dist-packages/mcvirt/version.py
 
+# Put version into debian control file
+sed -i "s/%VERSION%/$VERSION/g" ./source/DEBIAN/control
+
 # Build the package
 dpkg --build ./source ./mcvirt_${VERSION}_${ARCH}.deb
 
 # Remove old version number
-git checkout -- ./source/usr/lib/python2.7/dist-packages/mcvirt/version.py
+git checkout -- ./source/usr/lib/python2.7/dist-packages/mcvirt/version.py ./source/DEBIAN/control

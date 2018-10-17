@@ -1,5 +1,5 @@
 Package: mcvirt
-Version: 9.1.0
+Version: %VERSION%
 Section: utils
 Maintainer: Matt Comben <matthew@dockstudios.co.uk>
 Architecture: all
