@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import time
 from serial import Serial
 
 from mcvirt.constants import AgentSerialConfig
@@ -40,9 +41,11 @@ class HostConnection(object):
         while True:
             msg = conn.readline().strip()
             self._handle_command(conn, msg)
+            time.sleep(1)
 
     def _handle_command(self, conn, msg):
         """Proces command from host"""
         # For now, the only command is a 'ping'
         if msg == 'ping':
             conn.write('pong\n')
+            conn.flush()
