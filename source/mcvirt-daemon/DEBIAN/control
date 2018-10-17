@@ -1,0 +1,11 @@
+Package: mcvirt-daemon
+Version: %VERSION%
+Section: utils
+Maintainer: Matt Comben <matthew@dockstudios.co.uk>
+Architecture: all
+Depends: python, python-libvirt, qemu, python-lockfile, python-enum34, python-texttable, python-paramiko, python-cheetah, libvirt-bin, python-argcomplete, python-netifaces, python-pbkdf2, python-ldap, python-serial, mcvirt-common=%VERSION%
+Recommends: git
+Suggests: iotop, iftop, htop, drbd8-utils
+Description: Virtualization host management utility.
+ MCVirt is a tool for controlling VMs built around
+ libvirt, using kvn backed virtualisation.
