@@ -161,7 +161,6 @@ class BaseRpcDaemon(Pyro4.Daemon):
         """Perform node version check on cluster"""
         if Pyro4.current_context.cluster_master:
             self.registered_factories['cluster'].check_node_versions()
-        Pyro4.current_context.PERMISSION_ASSERTED = False
 
     def handshake__raise_exception(self):
         """Raise standard exception for all authentication errors"""
