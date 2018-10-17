@@ -19,8 +19,16 @@ mcvirt.node.drbd module
     :undoc-members:
     :show-inheritance:
 
-mcvirt.node.libvirt_config module
----------------------------------
+mcvirt.node.ldap\_factory module
+--------------------------------
+
+.. automodule:: mcvirt.node.ldap_factory
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mcvirt.node.libvirt\_config module
+----------------------------------
 
 .. automodule:: mcvirt.node.libvirt_config
     :members:

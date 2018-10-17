@@ -13,48 +13,56 @@ Subpackages
 Submodules
 ----------
 
-mcvirt.test.auth_tests module
------------------------------
+mcvirt.test.auth\_tests module
+------------------------------
 
 .. automodule:: mcvirt.test.auth_tests
     :members:
     :undoc-members:
     :show-inheritance:
 
-mcvirt.test.run_tests module
-----------------------------
+mcvirt.test.ldap\_tests module
+------------------------------
+
+.. automodule:: mcvirt.test.ldap_tests
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mcvirt.test.run\_tests module
+-----------------------------
 
 .. automodule:: mcvirt.test.run_tests
     :members:
     :undoc-members:
     :show-inheritance:
 
-mcvirt.test.test_base module
-----------------------------
+mcvirt.test.test\_base module
+-----------------------------
 
 .. automodule:: mcvirt.test.test_base
     :members:
     :undoc-members:
     :show-inheritance:
 
-mcvirt.test.unit_test_bootstrap module
---------------------------------------
+mcvirt.test.unit\_test\_bootstrap module
+----------------------------------------
 
 .. automodule:: mcvirt.test.unit_test_bootstrap
     :members:
     :undoc-members:
     :show-inheritance:
 
-mcvirt.test.update_tests module
--------------------------------
+mcvirt.test.update\_tests module
+--------------------------------
 
 .. automodule:: mcvirt.test.update_tests
     :members:
     :undoc-members:
     :show-inheritance:
 
-mcvirt.test.validation_tests module
------------------------------------
+mcvirt.test.validation\_tests module
+------------------------------------
 
 .. automodule:: mcvirt.test.validation_tests
     :members:
