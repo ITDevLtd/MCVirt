@@ -937,7 +937,7 @@ class VirtualMachine(PyroObject):
         try:
             self._get_registered_object(
                 'libvirt_connector').get_connection().defineXML(domain_xml_string)
-        except:
+        except Exception:
             raise LibvirtException('Error: An error occurred whilst updating the VM')
 
     def getCloneParent(self):
@@ -1494,7 +1494,7 @@ class VirtualMachine(PyroObject):
             try:
                 Syslogger.logger().error('Libvirt error whilst registering %s:\n%s' %
                                          (self.get_name(), str(e)))
-            except:
+            except Exception:
                 pass
             raise LibvirtException('Error: An error occurred whilst registering VM')
 
@@ -1527,7 +1527,7 @@ class VirtualMachine(PyroObject):
         # Remove VM from LibVirt
         try:
             self._getLibvirtDomainObject().undefine()
-        except:
+        except Exception:
             raise LibvirtException('Failed to delete VM from libvirt')
 
         # De-activate the disk objects

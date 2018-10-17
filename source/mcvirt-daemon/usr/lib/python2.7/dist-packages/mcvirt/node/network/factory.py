@@ -139,7 +139,7 @@ class Factory(PyroObject):
         try:
             self._get_registered_object('libvirt_connector').get_connection(
             ).networkDefineXML(network_xml_string)
-        except:
+        except Exception:
             raise LibvirtException('An error occurred whilst registering network with LibVirt')
 
         # Update MCVirt config
@@ -223,12 +223,12 @@ class Factory(PyroObject):
             default = libvirt.networkLookupByName(DEFAULT_LIBVIRT_NETWORK_NAME)
             try:
                 default.destroy()
-            except:
+            except Exception:
                 pass
 
             try:
                 default.undefine()
-            except:
+            except Exception:
                 pass
 
         except libvirtError:

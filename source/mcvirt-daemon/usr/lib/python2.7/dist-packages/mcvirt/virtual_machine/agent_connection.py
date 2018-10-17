@@ -58,7 +58,7 @@ class AgentConnection(PyroObject):
             conn = self.get_serial_connection()
             try:
                 resp = callback(conn)
-            except:
+            except Exception:
                 conn.close()
                 raise
             conn.close()

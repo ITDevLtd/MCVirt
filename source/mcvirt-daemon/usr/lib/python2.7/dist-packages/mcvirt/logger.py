@@ -63,7 +63,7 @@ class Logger(PyroObject):
             try:
                 cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(remote_command)
-            except:
+            except Exception:
                 pass
 
         return log_item
@@ -186,7 +186,7 @@ class LogItem(PyroObject):
         for remote_log in self.remote_logs:
             try:
                 remote_log.start()
-            except:
+            except Exception:
                 pass
 
     @Pyro4.expose
@@ -214,7 +214,7 @@ class LogItem(PyroObject):
         for remote_log in self.remote_logs:
             try:
                 remote_log.finish_error_unknown(str(exception))
-            except:
+            except Exception:
                 pass
         self.unregister()
 
@@ -231,7 +231,7 @@ class LogItem(PyroObject):
         for remote_log in self.remote_logs:
             try:
                 remote_log.finish_error(str(exception))
-            except:
+            except Exception:
                 pass
         self.unregister()
 
@@ -241,7 +241,7 @@ class LogItem(PyroObject):
         for log in self.remote_logs:
             try:
                 log.unregister()
-            except:
+            except Exception:
                 pass
         self.remote_logs = []
         self.unregister_object()

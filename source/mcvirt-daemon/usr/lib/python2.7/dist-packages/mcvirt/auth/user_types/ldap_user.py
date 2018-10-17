@@ -68,7 +68,7 @@ class LdapUser(UserBase):
             pass
         except MCVirtException:
             raise
-        except:
+        except Exception:
             raise LdapConnectionFailedException('An error occurred whilst connecting to LDAP')
         return False
 

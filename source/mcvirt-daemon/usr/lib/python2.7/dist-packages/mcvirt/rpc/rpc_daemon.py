@@ -289,7 +289,7 @@ class RpcNSMixinDaemon(object):
             Syslogger.logger().info('Shutting down timer: %s' % timer)
             try:
                 timer.cancel()
-            except:
+            except Exception:
                 pass
         RpcNSMixinDaemon.DAEMON.shutdown()
         Syslogger.logger().debug('finisehd shutdown')

@@ -76,7 +76,7 @@ class PyroObject(object):
             try:
                 if debug:
                     Syslogger.logger().debug('Registering object (dynamic): %s' % local_object)
-            except:
+            except Exception:
                 pass
             self._pyroDaemon.register(local_object)
 
@@ -109,7 +109,7 @@ class PyroObject(object):
             try:
                 if debug:
                     Syslogger.logger().debug('Unregistering object (dynamic): %s' % obj)
-            except:
+            except Exception:
                 pass
 
             # Unregister object from pyro

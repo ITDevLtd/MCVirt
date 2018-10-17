@@ -65,7 +65,7 @@ class LdapFactory(PyroObject):
             except AttributeError:
                 # This is required for the mockldap server as part of the unit tests
                 ldap_connection.simple_bind_s(bind_dn, password)
-        except:
+        except Exception:
             raise LdapConnectionFailedException(
                 'Connection attempts to the LDAP server failed.'
             )
@@ -132,7 +132,7 @@ class LdapFactory(PyroObject):
             res = ldap_con.search_s(ldap_config['base_dn'], ldap.SCOPE_SUBTREE,
                                     self.get_user_filter(),
                                     [str(ldap_config['username_attribute'])])
-        except:
+        except Exception:
             raise UnknownLdapError(('An LDAP search error occurred. Please read the MCVirt'
                                     ' logs for more information'))
         return [user_obj[1][ldap_config['username_attribute']][0] for user_obj in res]
@@ -147,7 +147,7 @@ class LdapFactory(PyroObject):
                                     self.get_user_filter(username),
                                     [str(ldap_config['username_attribute'])])
 
-        except:
+        except Exception:
             raise UnknownLdapError(('An LDAP search error occurred. Please read the MCVirt'
                                     ' logs for more information'))
         if len(res):

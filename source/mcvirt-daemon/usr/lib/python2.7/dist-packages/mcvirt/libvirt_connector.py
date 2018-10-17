@@ -38,7 +38,7 @@ class LibvirtConnector(PyroObject):
             try:
                 if connection is not None and not connection.isAlive():
                     connection = None
-            except:
+            except Exception:
                 connection = None
 
         if connection is None:

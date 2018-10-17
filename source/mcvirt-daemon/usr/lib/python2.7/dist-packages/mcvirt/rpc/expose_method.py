@@ -117,7 +117,7 @@ class Transaction(object):
             else:
                 # Otherwise, undo single function
                 function.undo()
-        except:
+        except Exception:
             # If exception is thrown, remove any remaining
             # transactions and reset undo_state
             for transaction_ar in cls.transactions:
@@ -274,12 +274,12 @@ class Function(PyroObject):
                 # by method
                 self.complete()
 
-        except:
+        except Exception:
             # Also try-catch the tear-down
             try:
                 # Notify that the transaction that the functino has failed
                 Transaction.function_failed(self)
-            except:
+            except Exception:
                 # Reset user session after the command is
                 # complete
                 self._reset_user_session()

@@ -252,7 +252,7 @@ class Parser(object):
                         self.print_status('Authentication error occured when using saved session.')
                         try:
                             os.remove(auth_cache_file)
-                        except:
+                        except Exception:
                             pass
                         self.rpc = None
 
@@ -277,7 +277,7 @@ class Parser(object):
             try:
                 with open(auth_cache_file, 'w') as f:
                     f.write("%s\n%s" % (self.rpc.username, self.rpc.session_id))
-            except:
+            except Exception:
                 pass
 
         if args.ignore_drbd:

@@ -64,7 +64,7 @@ class Network(PyroObject):
         try:
             self._get_libvirt_object().destroy()
             self._get_libvirt_object().undefine()
-        except:
+        except Exception:
             raise LibvirtException('Failed to delete network from libvirt')
 
         # Update MCVirt config

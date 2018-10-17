@@ -189,7 +189,7 @@ class ConfigFile(PyroObject):
                                    'push'],
                                   raise_exception_on_failure=False,
                                   cwd=DirectoryLocation.BASE_STORAGE_DIR)
-            except:
+            except Exception:
                 pass
 
     def gitRemove(self, message=''):
@@ -219,7 +219,7 @@ class ConfigFile(PyroObject):
                                    'push'],
                                   raise_exception_on_failure=False,
                                   cwd=DirectoryLocation.BASE_STORAGE_DIR)
-            except:
+            except Exception:
                 pass
 
     def _checkGitRepo(self):

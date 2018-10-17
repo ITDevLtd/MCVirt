@@ -433,7 +433,7 @@ class Base(PyroObject):
         except VolumeAlreadyExistsError:
             self.vm_object._setLockState(LockStates.UNLOCKED)
             raise BackupSnapshotAlreadyExistsException('Backup snapshot already exists')
-        except:
+        except Exception:
             self.vm_object._setLockState(LockStates.UNLCoKED)
             raise
 
