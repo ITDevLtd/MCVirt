@@ -103,16 +103,17 @@ class Watchdog(RepeatTimer):
 
         agent_conn = self.virtual_machine.get_agent_connection()
 
-        resp = None
         def ping_agent(conn):
             """Send request to agent and ensure it responds"""
-            conn.send('ping\n')
-            resp = conn.readline().strip()
+            conn.write('ping\n')
+            return conn.readline().strip()
 
+        resp = None
         try:
-            agent_conn.wait_lock(ping_agent)
-        except TimeoutExceededSerialLockError:
-            pass
+            resp = agent_conn.wait_lock(ping_agent)
+        except Exception, e:
+            Syslogger.logger().error(e)
+            raise
 
         # If response is valid, reset counter and state
         if resp == 'pong':

@@ -29,8 +29,7 @@ class AgentConnection(PyroObject):
     """Obtain connection and perform commands with VM agent"""
 
     LOCKS = {}
-    COND = {}
-    LOCK_TIMEOUT = 5
+    LOCK_TIMEOUT = 2
 
     def __init__(self, virtual_machine):
         """Store member variables"""
@@ -42,56 +41,28 @@ class AgentConnection(PyroObject):
 
         # Create lock if it does not exist for VM
         if cache_key not in AgentConnection.LOCKS:
-            AgentConnection.LOCKS[cache_key] = Lock()
+            AgentConnection.LOCKS[cache_key] = LockObject()
 
-        # Create condition if it does not exist for VM
-        if cache_key not in AgentConnection.COND:
-            AgentConnection.COND[cache_key] = Condition(AgentConnection.LOCKS[cache_key])
-
-        return AgentConnection.LOCKS[cache_key], \
-            AgentConnection.COND[cache_key]
+        return AgentConnection.LOCKS[cache_key]
 
     def wait_lock(self, callback):
         """Wait for lock"""
         # @TODO Replace with 'with' statement
         # Get lock and condition object
-        lock, cond = self.get_lock_condition()
-        with cond:
-            # Get current time
-            current_time = start_time = time.time()
-
-            # Whilst timeout has not been exceeded...
-            while current_time < start_time + self.LOCK_TIMEOUT:
-                # Attempt to aquire lock
-                if lock.acquire(False):
-                    # Attempt to run callback method and capture output
-                    conn = None
-                    try:
-                        # Obtain serial connection and
-                        # pass to callback
-                        conn = self.get_serial_connection()
-                        resp = callback(conn)
-                        conn.close()
-                    except:
-                        # Release lock and re-raise exception
-                        try:
-                            conn.close()
-                        except:
-                            pass
-                        lock.release()
-                        raise
-                    # Release lock and return value
-                    conn.close()
-                    lock.release()
-                    return resp
-                else:
-                    cond.wait(self.LOCK_TIMEOUT - current_time + start_time)
-                    current_time = time.time()
-
-        # If function has not run, raise exception as tieout has been
-        # exceeded
-        raise TimeoutExceededSerialLockError(
-            'Timeout exceeded whilst waiting for serial lock')
+        lock = self.get_lock_condition()
+        with TimeoutLock(lock=lock, timeout=AgentConnection.LOCK_TIMEOUT):
+            # Attempt to run callback method and capture output
+            conn = None
+            # Obtain serial connection and
+            # pass to callback
+            conn = self.get_serial_connection()
+            try:
+                resp = callback(conn)
+            except:
+                conn.close()
+                raise
+            conn.close()
+            return resp
 
     def get_serial_connection(self):
         """Obtain serial connection object"""
@@ -99,9 +70,65 @@ class AgentConnection(PyroObject):
         timeout = self.virtual_machine.get_agent_timeout()
         serial_obj = Serial(port=serial_port,
                             baudrate=AgentSerialConfig.BAUD_RATE,
-                            timeout=timeout)
+                            timeout=timeout,
+                            rtscts=True, dsrdtr=True)
 
         # Clear buffers and return serial object
         serial_obj.reset_input_buffer()
         serial_obj.reset_output_buffer()
         return serial_obj
+
+
+class LockObject(object):
+    """Lock object for timeout locks"""
+
+    def __init__(self):
+        """Create lock and condition objects"""
+        self.lock = Lock()
+        self.cond = Condition()
+
+    def _release(self):
+        """Release lock and notify the condition"""
+        self.lock.release()
+        with self.cond:
+            self.cond.notify()
+
+
+class TimeoutLock(object):
+    """Provide lock functionality with a timeout"""
+
+    def __init__(self, lock, timeout):
+        """Store member variables"""
+        self.lock = lock
+        self.timeout = timeout
+
+    def __enter__(self):
+        """Once entered a 'with' clause"""
+        self.acquire()
+        return self
+
+    def __exit__(self, type, value, tb):
+        """Release lock when exiting 'with' clause and did not raise an exception"""
+        self.release()
+
+    def acquire(self):
+        """Attempt ot aquire lock"""
+        if not self._waitLock():
+            raise TimeoutExceededSerialLockError(
+                'Timeout exceeded whilst waiting for serial lock')
+
+    def release(self):
+        """Release lock object"""
+        self._lock._release()
+
+    def _waitLock(self):
+        """Loop until either getting lock or timeout exceeded"""
+        with self.lock.cond:
+            current_time = start_time = time.time()
+            while current_time < start_time + self.timeout:
+                if self.lock.lock.acquire(False):
+                    return True
+                else:
+                    self.lock.cond.wait(self.timeout - current_time + start_time)
+                    current_time = time.time()
+        return False

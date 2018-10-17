@@ -1653,13 +1653,12 @@ class VirtualMachine(PyroObject):
                 libvirt.VIR_DOMAIN_XML_SECURE
             )
         )
-
         if domain_xml.find(
-                './devices/serial/alias[@name="serialAgent"]/../source') is None:
+                './devices/serial[@type="pty"]/target[@port="5"]/../source') is None:
             raise VncNotEnabledException('VNC is not enabled on the VM')
         else:
             return domain_xml.find(
-                './devices/serial/alias[@name="serialAgent"]/../source').get('path')
+                './devices/serial[@type="pty"]/target[@port="5"]/../source').get('path')
 
     def get_agent_timeout(self):
         """Obtain agent timeout from config"""
@@ -1672,6 +1671,16 @@ class VirtualMachine(PyroObject):
     def is_watchdog_enabled(self):
         """Obtain watchdog interval from config"""
         return self.get_config_object().get_config()['watchdog']['enabled']
+
+    # def set_wathdog_status(self, status):
+    #     """Update the status of the watchdog"""
+
+    # def set_watchdog_interval(self, interval):
+    #     """Update the watchdog interval"""
+
+    # def set_watchdog_reset_fail_count(self, count):
+    #     """Update reset fail count for watchdog"""
+    #     pass
 
     def get_watchdog_interval(self):
         """Obtain watchdog interval from config"""
