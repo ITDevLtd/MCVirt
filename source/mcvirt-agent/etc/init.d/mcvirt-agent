@@ -1,12 +1,12 @@
 #!/bin/sh
 ### BEGIN INIT INFO
-# Provides:          mcvirtd
-# Required-Start:    $remote_fs $syslog mcvirt-ns
+# Provides:          mcvirt-agent
+# Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: MCvirt daemon.
-# Description:       MCVirt daemon.
+# Short-Description: MCVirt agent.
+# Description:       MCVirt agent.
 ### END INIT INFO
 
 # Author: Matt Comben <matt.comben@itdev.co.uk>
