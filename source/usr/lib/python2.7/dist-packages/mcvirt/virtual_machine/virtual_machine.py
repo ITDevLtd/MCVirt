@@ -1676,48 +1676,77 @@ class VirtualMachine(PyroObject):
         """Obtain watchdog interval from config"""
         return self.get_config_object().get_config()['watchdog']['enabled']
 
-    def set_wathdog_status(self, status):
+    @Expose(locking=True)
+    def set_watchdog_status(self, status):
         """Update the status of the watchdog"""
         # Validate status boolean
         ArgumentValidator.validate_boolean(status)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self)
+
         self.update_vm_config(
-            {'watchdog': {'enabled': status}},
+            change_dict={'watchdog': {'enabled': status}},
+            reason='Update watchdog status',
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
+    @Expose(locking=True)
     def set_watchdog_interval(self, interval):
+        """Set VM watchdog interval"""
         # Validate interval
         ArgumentValidator.validate_positive_integer(interval)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self)
+
         self.update_vm_config(
-            {'watchdog': {'interval': interval}},
+            change_dict={'watchdog': {'interval': interval}},
+            reason='Update watchdog interval',
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
+    @Expose(locking=True)
     def set_watchdog_reset_fail_count(self, count):
         """Update reset fail count for watchdog"""
         ArgumentValidator.validate_positive_integer(status)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self)
+
         self.update_vm_config(
-            {'watchdog': {'reset_fail_count': count}},
+            change_dict={'watchdog': {'reset_fail_count': count}},
+            reason='Update watchdog reset fail count',
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
+    @Expose(locking=True)
     def set_watchdog_boot_wait(self, wait):
         """Update boot wait for watchdog"""
         ArgumentValidator.validate_positive_integer(wait)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self)
+
         self.update_vm_config(
-            {'watchdog': {'boot_wait': wait}},
+            change_dict={'watchdog': {'boot_wait': wait}},
+            reason='Update watchdog boot wait',
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def update_vm_config(self, changes_dict, reason, f_):
+    def update_vm_config(self, change_dict, reason, _f):
         """Update VM config using dict"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
         def update_config(config):
-            f_.add_undo_argument(original_config=dict(config))
-            dict_merge(config, changes_dict)
+            _f.add_undo_argument(original_config=dict(config))
+            dict_merge(config, change_dict)
 
         self.get_config_object().update_config(update_config, reason)
 
     @Expose()
-    def undo__update_vm_config(self, changes_dict, reason, original_config, f_):
+    def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
         """Undo config change"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -1725,7 +1754,8 @@ class VirtualMachine(PyroObject):
             """Revert config"""
             config = original_config
 
-        self.get_config_object().update_config('Revert: %s' % reason)
+        if original_config is not None:
+            self.get_config_object().update_config('Revert: %s' % reason)
 
     def get_watchdog_interval(self):
         """Obtain watchdog interval from config"""
