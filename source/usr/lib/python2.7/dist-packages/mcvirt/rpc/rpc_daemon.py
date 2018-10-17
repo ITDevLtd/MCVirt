@@ -200,7 +200,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
         except Pyro4.errors.SecurityError, e:
             Syslogger.logger().exception('SecurityError during authentication: %s' % str(e))
-            self.handshake__raise_exception()
+            raise
         except Exception, e:
             Syslogger.logger().exception('Error during authentication: %s' % str(e))
         # If no valid authentication was provided, raise an error
