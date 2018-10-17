@@ -561,7 +561,7 @@ class VirtualMachine(PyroObject):
         ArgumentValidator.validate_boolean(local_only)
 
         # Disable watchdog, if it exists
-        self._get_registered_object('watchdog_manager').get_watchdog(self).cancel()
+        self._get_registered_object('watchdog_factory').get_watchdog(self).cancel()
 
         # Check the user has permission to modify VMs or
         # that the user is the owner of the VM and the VM is a clone

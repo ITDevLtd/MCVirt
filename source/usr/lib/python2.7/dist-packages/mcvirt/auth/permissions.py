@@ -31,7 +31,7 @@ PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY
                                    'SUPERUSER', 'MANAGE_NODE', 'SET_SYNC_STATE',
                                    'MANAGE_ISO', 'MANAGE_STORAGE_BACKEND',
                                    'MANAGE_STORAGE_VOLUME', 'MANAGE_GROUPS',
-                                   'MANAGE_GROUP_MEMBERS'])
+                                   'MANAGE_GROUP_MEMBERS', 'MANAGE_GLOBAL_WATCHDOG'])
 
 PERMISSION_DESCRIPTIONS = {
     'CHANGE_VM_POWER_STATE': ('Power on, power off, reset and shutdown (ACPI) '
@@ -60,5 +60,6 @@ PERMISSION_DESCRIPTIONS = {
     'MANGAE_ISO': 'Upload and delete ISOs from hosts',
     'MANAGE_STORAGE_BACKEND': 'Create/delete storage backends',
     'MANAGE_GROUPS': 'Create, delete and modify permissions groups',
-    'MANAGE_GROUP_MEMBERS': 'Add/remove users from permission groups'
+    'MANAGE_GROUP_MEMBERS': 'Add/remove users from permission groups',
+    'MANAGE_GLOBAL_WATCHDOG': 'Manage the global configuration for watchdog'
 }

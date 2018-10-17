@@ -21,6 +21,11 @@ import Pyro4
 from mcvirt.thread.repeat_timer import RepeatTimer
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.syslogger import Syslogger
+from mcvirt.argument_validator import ArgumentValidator
+from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.rpc.expose_method import Expose
+from mcvirt.utils import dict_merge
+from mcvirt.auth.permissions import PERMISSIONS
 
 
 WATCHDOG_STATES = Enum(
@@ -40,30 +45,41 @@ WATCHDOG_STATES = Enum(
 )
 
 
-class WatchdogManager(PyroObject):
+class WatchdogFactory(PyroObject):
     """Object to configure and create watchdog daemons"""
 
     def __init__(self):
         """Intialise state of watchdogs"""
         self.watchdogs = {}
 
+    def get_remote_object(self,
+                          node=None,     # The name of the remote node to connect to
+                          node_object=None):   # Otherwise, pass a remote node connection
+        """Obtain an instance of the watchdog factory on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
+
+        return node_object.get_connection('watchdog_factory')
+
     def initialise(self):
         """Detect running VMs on local node and create watchdog daemon"""
         # Check all VMs
-        for vm in self._get_registered_object('virtual_machine_factory').getAllVirtualMachines():
+        for virtual_machine in self._get_registered_object(
+                'virtual_machine_factory').getAllVirtualMachines():
 
-            Syslogger.logger().debug('Registering watchdog for: %s' % vm.get_name())
-            self.start_watchdog(vm)
+            Syslogger.logger().debug('Registering watchdog for: %s' % virtual_machine.get_name())
+            self.start_watchdog(virtual_machine)
 
     def start_watchdog(self, virtual_machine):
         """Create watchdog and start"""
-        wd = self.get_watchdog(virtual_machine)
-        wd.initialise()
+        watchdog = self.get_watchdog(virtual_machine)
+        watchdog.initialise()
 
     def stop_watchdog(self, virtual_machine):
         """Stop watchdog"""
-        wd = self.get_watchdog(virtual_machine)
-        wd.cancel()
+        watchdog = self.get_watchdog(virtual_machine)
+        watchdog.cancel()
 
     def get_watchdog(self, virtual_machine):
         """Get a watchdog obect for a given virtual machine"""
@@ -73,12 +89,81 @@ class WatchdogManager(PyroObject):
 
     def cancel(self):
         """Stop all threads"""
-        for wd in self.watchdogs.values():
-            wd.repeat = False
-            wd.cancel()
+        for watchdog in self.watchdogs.values():
+            watchdog.repeat = False
+            watchdog.cancel()
+
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def update_watchdog_config(self, change_dict, reason, _f):
+        """Update global watchdog config using dict"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+
+        def update_config(config):
+            """Update mcvirt config"""
+            _f.add_undo_argument(original_config=dict(config['watchdog']))
+            dict_merge(config['watchdog'], change_dict)
+
+        MCVirtConfig().update_config(update_config, reason)
+
+    @Expose(locking=True)
+    def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
+        """Undo config change"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+
+        def revert_config(config):
+            """Revert config"""
+            config['watchdog'] = original_config
+
+        if original_config is not None:
+            MCVirtConfig().update_config('Revert: %s' % reason, revert_config)
+
+    @Expose(locking=True)
+    def set_global_interval(self, interval):
+        """Set global default watchdog check interval"""
+        ArgumentValidator.validate_positive_integer(interval)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
+
+        self.update_watchdog_config(
+            change_dict={'interval': interval},
+            reason='Update global watchdog interval',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True)
+    def set_global_reset_fail_count(self, count):
+        """Set global default watchdog reset fail count"""
+        ArgumentValidator.validate_positive_integer(count)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
+
+        self.update_watchdog_config(
+            change_dict={'reset_fail_count': count},
+            reason='Update global watchdog reset fail count',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True)
+    def set_global_boot_wait(self, wait):
+        """Set the global default boot wait period"""
+        ArgumentValidator.validate_positive_integer(wait)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
+
+        self.update_watchdog_config(
+            change_dict={'boot_wait': wait},
+            reason='Update global watchdog boot wait period',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
 
 class Watchdog(RepeatTimer):
+    """Watchdog timer thread for checking VM status"""
 
     def __init__(self, virtual_machine, *args, **kwargs):
         """Store virtual machine and initialise state"""
