@@ -22,7 +22,6 @@ from mcvirt.thread.repeat_timer import RepeatTimer
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.syslogger import Syslogger
 from mcvirt.utils import get_hostname
-from mcvirt.exceptions import TimeoutExceededSerialLockError
 
 
 WATCHDOG_STATES = Enum('WATCHDOG_STATES',
@@ -90,7 +89,13 @@ class Watchdog(RepeatTimer):
     @property
     def interval(self):
         """Return the timer interval"""
-        return self.virtual_machine.get_watchdog_interval()
+        if self.state is WATCHDOG_STATES.STARTUP:
+            boot_wait = self.virtual_machine.get_watchdog_boot_wait()
+            Syslogger.logger().debug(
+                'In boot period, interval is: %s' % boot_wait)
+            return boot_wait
+        else:
+            return self.virtual_machine.get_watchdog_interval()
 
     def run(self):
         """Perform watchdog check"""
@@ -113,7 +118,6 @@ class Watchdog(RepeatTimer):
             resp = agent_conn.wait_lock(ping_agent)
         except Exception, e:
             Syslogger.logger().error(e)
-            raise
 
         # If response is valid, reset counter and state
         if resp == 'pong':

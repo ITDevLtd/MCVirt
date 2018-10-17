@@ -87,7 +87,7 @@ class LockObject(object):
         self.lock = Lock()
         self.cond = Condition()
 
-    def _release(self):
+    def release(self):
         """Release lock and notify the condition"""
         self.lock.release()
         with self.cond:
@@ -119,7 +119,7 @@ class TimeoutLock(object):
 
     def release(self):
         """Release lock object"""
-        self._lock._release()
+        self.lock.release()
 
     def _waitLock(self):
         """Loop until either getting lock or timeout exceeded"""

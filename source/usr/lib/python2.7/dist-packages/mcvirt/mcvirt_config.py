@@ -151,8 +151,8 @@ class MCVirtConfig(ConfigFile):
                     'interval': 60,
                     # By default, reset VM after 3 failed checks
                     'reset_fail_count': 3,
-                    # By default, wait indefinitly for VM to boot
-                    'boot_wait': 0
+                    # By default, wait 5 minutes for VM to boot
+                    'boot_wait': 300
                 }
             }
 
@@ -261,8 +261,8 @@ class MCVirtConfig(ConfigFile):
                 'interval': 60,
                 # 3 failures results in a reset
                 'reset_fail_count': 3,
-                # Wait indefinitly for boot
-                'boot_wait': 0
+                # Wait 5 minutes for boot
+                'boot_wait': 300
             }
             config['agent'] = {
                 # 10 seconds for read timeout on connection
