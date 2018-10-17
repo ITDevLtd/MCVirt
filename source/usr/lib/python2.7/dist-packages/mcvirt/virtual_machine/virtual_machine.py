@@ -76,7 +76,7 @@ class VirtualMachine(PyroObject):
     def initialise(self):
         """Run after object is registered with pyro"""
         # Take the oportunity to update libvirt config
-        self.check_config_update()
+        self.check_libvirt_config_update()
 
     def __eq__(self, comp):
         """Allow for comparison of VM objects"""
@@ -117,7 +117,7 @@ class VirtualMachine(PyroObject):
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(update_remote_node)
 
-    def check_config_update(self):
+    def check_libvirt_config_update(self):
         """Determine if config updates need to be performed to libvirt"""
         config = self.get_config_object().get_config()
         # Determine if applied config is older than the config version and
@@ -172,6 +172,30 @@ class VirtualMachine(PyroObject):
             """Update the VM config"""
             config['permissions'] = config
         self.get_config_object().update_config(update_vm_config, 'Sync permissions')
+
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def update_vm_config(self, change_dict, reason, _f):
+        """Update VM config using dict"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+        def update_config(config):
+            _f.add_undo_argument(original_config=dict(config))
+            dict_merge(config, change_dict)
+
+        self.get_config_object().update_config(update_config, reason)
+
+    @Expose()
+    def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
+        """Undo config change"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+        def revert_config(config):
+            """Revert config"""
+            config = original_config
+
+        if original_config is not None:
+            self.get_config_object().update_config('Revert: %s' % reason)
+
 
     @Expose()
     def get_name(self):
@@ -253,7 +277,7 @@ class VirtualMachine(PyroObject):
             remote_vm.stop()
 
             # Take the oportunity to update libvirt config
-            self.check_config_update()
+            self.check_libvirt_config_update()
         else:
             raise VmRegisteredElsewhereException(
                 'VM registered elsewhere and cluster is not initialised'
@@ -321,7 +345,7 @@ class VirtualMachine(PyroObject):
                 raise VmAlreadyStartedException('The VM is already running')
 
             # Take the oportunity to update libvirt config
-            self.check_config_update()
+            self.check_libvirt_config_update()
 
             for disk_object in self.getHardDriveObjects():
                 disk_object.activateDisk()
@@ -1695,7 +1719,8 @@ class VirtualMachine(PyroObject):
     def set_watchdog_interval(self, interval):
         """Set VM watchdog interval"""
         # Validate interval
-        ArgumentValidator.validate_positive_integer(interval)
+        if interval is not None:
+            ArgumentValidator.validate_positive_integer(interval)
 
         # Check permissions
         self._get_registered_object('auth').assert_permission(
@@ -1709,7 +1734,8 @@ class VirtualMachine(PyroObject):
     @Expose(locking=True)
     def set_watchdog_reset_fail_count(self, count):
         """Update reset fail count for watchdog"""
-        ArgumentValidator.validate_positive_integer(status)
+        if count is not None:
+            ArgumentValidator.validate_positive_integer(count)
 
         # Check permissions
         self._get_registered_object('auth').assert_permission(
@@ -1723,7 +1749,8 @@ class VirtualMachine(PyroObject):
     @Expose(locking=True)
     def set_watchdog_boot_wait(self, wait):
         """Update boot wait for watchdog"""
-        ArgumentValidator.validate_positive_integer(wait)
+        if wait is not None:
+            ArgumentValidator.validate_positive_integer(wait)
 
         # Check permissions
         self._get_registered_object('auth').assert_permission(
@@ -1733,29 +1760,6 @@ class VirtualMachine(PyroObject):
             change_dict={'watchdog': {'boot_wait': wait}},
             reason='Update watchdog boot wait',
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
-
-    @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def update_vm_config(self, change_dict, reason, _f):
-        """Update VM config using dict"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
-        def update_config(config):
-            _f.add_undo_argument(original_config=dict(config))
-            dict_merge(config, change_dict)
-
-        self.get_config_object().update_config(update_config, reason)
-
-    @Expose()
-    def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
-        """Undo config change"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
-        def revert_config(config):
-            """Revert config"""
-            config = original_config
-
-        if original_config is not None:
-            self.get_config_object().update_config('Revert: %s' % reason)
 
     def get_watchdog_interval(self):
         """Obtain watchdog interval from config"""
