@@ -65,6 +65,10 @@ class AgentSerialConfig(object):
     # Baud rate
     BAUD_RATE = 115200
 
+    # Agent Port
+    AGENT_PORT = "ttyS0"
+    AGENT_PORT_PATH = "/dev/%s" % AGENT_PORT
+
 
 # Name of the default storage backend, used during upgrade
 # from pre-v9.0.0 installations
