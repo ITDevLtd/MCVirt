@@ -76,6 +76,16 @@ class Factory(PyroObject):
                                              (vm.get_name(), str(e)))
         Syslogger.logger().info('Finished autostsart: %s' % start_type.name)
 
+    def get_remote_object(self,
+                          node=None,     # The name of the remote node to connect to
+                          node_object=None):   # Otherwise, pass a remote node connection
+        """Obtain an instance of the virtual machine factory on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
+
+        return node_object.get_connection('virtual_machine_factory')
+
     @Expose()
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
