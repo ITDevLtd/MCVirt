@@ -21,18 +21,23 @@ import Pyro4
 from mcvirt.thread.repeat_timer import RepeatTimer
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.syslogger import Syslogger
-from mcvirt.utils import get_hostname
 
 
-WATCHDOG_STATES = Enum('WATCHDOG_STATES',
-                       ['INITIALISING',  # Daemon started after VM, awaiting
-                                         # first communications
-                        'STARTUP',  # VM starting being reset
-                        'ACTIVE',  # VM responded to last ping
-                        'WAITING_RESP',  # Sent ping, awaiting response
-                        'FAILING',  # VM falied to respond to last ping,
-                                    # currently in retry period
-                        'FAILED'])  # VM has failed to respond to pings and to be reset
+WATCHDOG_STATES = Enum(
+    'WATCHDOG_STATES',
+    [
+        'INITIALISING',  # Daemon started after VM, awaiting
+                         # first communications
+        'STARTUP',  # VM starting being reset
+        'ACTIVE',  # VM responded to last ping
+        'WAITING_RESP',  # Sent ping, awaiting response
+        'FAILING',  # VM falied to respond to last ping,
+                    # currently in retry period
+        'FAILED',  # VM has failed to respond to pings and to be reset
+        'NOT_SUITABLE'  # VM either not registered locally, running
+                        # or watchdog not enabled to run
+    ]
+)
 
 
 class WatchdogManager(PyroObject):
@@ -45,27 +50,32 @@ class WatchdogManager(PyroObject):
     def initialise(self):
         """Detect running VMs on local node and create watchdog daemon"""
         # Check all VMs
-        for vm in self._get_registered_object(
-                'virtual_machine_factory').getAllVirtualMachines(node=get_hostname()):
-            # If VM is registered locally, is running and watchdog is
-            # enabled, create watchdog and register
-            if (vm.isRegisteredLocally() and
-                    vm.is_running and
-                    vm.is_watchdog_enabled()):
-                Syslogger.logger().debug('Registering watchdog for: %s' % vm.get_name())
-                self.register_virtual_machine(vm)
+        for vm in self._get_registered_object('virtual_machine_factory').getAllVirtualMachines():
 
-    def register_virtual_machine(self, virtual_machine):
-        """Create watchdog and register"""
-        wd = Watchdog(virtual_machine)
+            Syslogger.logger().debug('Registering watchdog for: %s' % vm.get_name())
+            self.start_watchdog(vm)
+
+    def start_watchdog(self, virtual_machine):
+        """Create watchdog and start"""
+        wd = self.get_watchdog(virtual_machine)
         wd.initialise()
-        self.watchdogs[virtual_machine.get_name()] = wd
+
+    def stop_watchdog(self, virtual_machine):
+        """Stop watchdog"""
+        wd = self.get_watchdog(virtual_machine)
+        wd.cancel()
+
+    def get_watchdog(self, virtual_machine):
+        """Get a watchdog obect for a given virtual machine"""
+        if virtual_machine.get_name() not in self.watchdogs:
+            self.watchdogs[virtual_machine.get_name()] = Watchdog(virtual_machine)
+        return self.watchdogs[virtual_machine.get_name()]
 
     def cancel(self):
         """Stop all threads"""
         for wd in self.watchdogs.values():
             wd.repeat = False
-            wd.timer.cancel()
+            wd.cancel()
 
 
 class Watchdog(RepeatTimer):
@@ -102,6 +112,16 @@ class Watchdog(RepeatTimer):
         Syslogger.logger().debug('Watchdog checking: %s' %
                                  self.virtual_machine.get_name())
         Pyro4.current_context.INTERNAL_REQUEST = True
+
+        # Ensure that VM is registered locally, running and watchog is enabled
+        if not (self.virtual_machine.is_watchdog_enabled() and
+                self.virtual_machine.isRegisteredLocally() and
+                self.virtual_machine.is_running):
+            self.set_state(WATCHDOG_STATES.NOT_SUITABLE)
+            Syslogger.logger().error(
+                'Watchdog not run: %s' %
+                self.virtual_machine.get_name())
+            return
 
         if self.state in [WATCHDOG_STATES.ACTIVE, WATCHDOG_STATES.FAILING]:
             self.set_state(WATCHDOG_STATES.WAITING_RESP)

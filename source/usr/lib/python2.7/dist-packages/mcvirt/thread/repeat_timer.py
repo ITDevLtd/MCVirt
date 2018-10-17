@@ -47,6 +47,11 @@ class RepeatTimer(PyroObject):
             self.timer = Timer(float(self.interval), self.repeat_run)
             self.timer.start()
 
+    def cancel(self):
+        """Cancel timer, if it is running"""
+        if self.timer:
+            self.timer.cancel()
+
     def repeat_run(self):
         """Re-start timer once run has complete"""
         # Restart timer, if set to repeat before run
