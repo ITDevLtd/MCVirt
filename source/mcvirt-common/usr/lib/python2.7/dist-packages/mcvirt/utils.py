@@ -41,8 +41,13 @@ def get_hostname():
     # the current socket hostname and write to file
     if not isfile(hostname_file):
         HostnameCache.HOSTNAME = get_network_hostname()
-        with open(hostname_file, 'w') as fh:
-            fh.write(HostnameCache.HOSTNAME)
+        try:
+            with open(hostname_file, 'w') as fh:
+                fh.write(HostnameCache.HOSTNAME)
+
+        # Don't throw an exception if this cannot be created
+        except IOError:
+            pass
 
     # If the hostname has not been cached in the local variable,
     # then obtain from the file
