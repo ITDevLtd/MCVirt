@@ -49,6 +49,7 @@ from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname, convert_size_friendly
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.utils import dict_merge
+from mcvirt.size_converter import SizeConverter
 
 
 class Modification(Enum):
@@ -486,8 +487,7 @@ class VirtualMachine(PyroObject):
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.add_row(('Name', self.get_name()))
         table.add_row(('CPU Cores', self.getCPU()))
-        table.add_row(('Memory Allocation',
-                       convert_size_friendly(int(self.getRAM()) / 1024)))
+        table.add_row(('Memory Allocation', SizeConverter(self.getRAM()).to_string()))
         table.add_row(('State', self._getPowerState().name))
         table.add_row(('Autostart', self._get_autostart_state().name))
         table.add_row(('Node', self.getNode()))
@@ -1467,7 +1467,8 @@ class VirtualMachine(PyroObject):
 
         # Add Name, RAM, CPU and graphics driver variables to XML
         domain_xml.find('./name').text = self.get_name()
-        domain_xml.find('./memory').text = self.getRAM()
+        domain_xml.find('./memory').text = '%s' % self.getRAM()
+        domain_xml.find('./memory').set('unit', 'b')
         domain_xml.find('./vcpu').text = self.getCPU()
         domain_xml.find('./devices/video/model').set('type', self.getGraphicsDriver())
 
