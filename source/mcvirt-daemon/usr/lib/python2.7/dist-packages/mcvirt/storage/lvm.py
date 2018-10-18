@@ -110,7 +110,7 @@ class LvmVolume(BaseVolume):
         command_args = ['/sbin/lvcreate',
                         self.storage_backend.get_location(),  # Specify volume group
                         '--name', self.name,
-                        '--size', '%sM' % size]
+                        '--size', '%sB' % size]
         try:
             # Create on local node
             System.runCommand(command_args)
