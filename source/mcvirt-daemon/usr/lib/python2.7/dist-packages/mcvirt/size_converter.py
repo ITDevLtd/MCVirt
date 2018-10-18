@@ -34,7 +34,7 @@ class Unit(object):
 
         # Decimal (boolean) (vs binary)
         self.dec = dec
-        SizeConversion.units.append(self)
+        SizeConverter.units.append(self)
 
     def get_multiplier(self):
         """Get multiplier for unit"""
@@ -42,7 +42,7 @@ class Unit(object):
         return base ** self.oom
 
 
-class SizeConversion(object):
+class SizeConverter(object):
     """Convert string into object and provide methods to obtain
     the size in different formats
     """
@@ -67,14 +67,14 @@ class SizeConversion(object):
             return None
         size_s = re_match.group(1)
         # Get unit and default to bytes
-        unit_str = re_match.group(2) or 'b'
+        unit_str = re_match.group(2) or 'B'
 
         # Obtain unit type
         unit = [u for u in cls.units if u.suffix.lower() == unit_str.lower()]
         if not unit:
             raise Exception('Invalid unit suffix')
         unit = unit[0]
-        # Convert size to bytes and create SizeConversion object
+        # Convert size to bytes and create SizeConverter object
         size = Decimal(size_s) * unit.get_multiplier()
 
         # Ensure that value is a round number of bytes
@@ -82,7 +82,7 @@ class SizeConversion(object):
             raise Exception('Value not a round number of bytes')
 
         # Create size object, using integer of size
-        return SizeConversion(int(size))
+        return SizeConverter(int(size))
 
     def get_bytes(self):
         """Get size in bytes"""
@@ -91,7 +91,7 @@ class SizeConversion(object):
     def to_string(self):
         """Convert to string"""
         # Iterate through units, from largest to smallest
-        for unit in sorted(SizeConversion.units, key=lambda x: x.get_multiplier(), reverse=True):
+        for unit in sorted(SizeConverter.units, key=lambda x: x.get_multiplier(), reverse=True):
             # If the value can be shown acurately to 2DP, then use this
             # for the string.. e.g. 1.25KB would return 1.25KB,
             # 1.001KB would return 1001B
