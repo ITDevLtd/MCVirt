@@ -15,12 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
 from texttable import Texttable
 from os.path import exists as os_path_exists
 from os import makedirs
 from enum import Enum
-import time
 
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
@@ -42,6 +40,7 @@ from mcvirt.syslogger import Syslogger
 
 class GraphicsDriver(Enum):
     """Enums for specifying the graphics driver type"""
+
     VGA = 'vga'
     CIRRUS = 'cirrus'
     VMVGA = 'vmvga'
@@ -57,6 +56,7 @@ class Factory(PyroObject):
     VIRTUAL_MACHINE_CLASS = VirtualMachine
     DEFAULT_GRAPHICS_DRIVER = GraphicsDriver.VMVGA.value
     CACHED_OBJECTS = {}
+    CACHED_SERIAL_OBJECTS = {}
 
     def autostart(self, start_type=AutoStartStates.ON_POLL):
         """Autostart VMs"""
@@ -83,6 +83,7 @@ class Factory(PyroObject):
         if vm_name not in Factory.CACHED_OBJECTS:
             vm_object = VirtualMachine(self, vm_name)
             self._register_object(vm_object)
+            vm_object.initialise()
             Factory.CACHED_OBJECTS[vm_name] = vm_object
         return Factory.CACHED_OBJECTS[vm_name]
 
@@ -102,10 +103,10 @@ class Factory(PyroObject):
             return MCVirtConfig().get_config()['virtual_machines']
 
         elif node == get_hostname():
-            # TODO - Why is this using libvirt?! Should use
-            #        VM objects (i.e. config file to determine)
-            #        and use a seperate function to get libvirt
-            #        registered VMs
+            # @TODO - Why is this using libvirt?! Should use
+            #         VM objects (i.e. config file to determine)
+            #         and use a seperate function to get libvirt
+            #         registered VMs
             # Obtain array of all domains from libvirt
             all_domains = self._get_registered_object(
                 'libvirt_connector').get_connection().listAllDomains()

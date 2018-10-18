@@ -57,6 +57,7 @@ class VirtualMachineConfig(ConfigFile):
         json_data = \
             {
                 'version': VirtualMachineConfig.CURRENT_VERSION,
+                'applied_version': VirtualMachineConfig.CURRENT_VERSION,
                 'permissions':
                 {
                     'users': {},
@@ -75,7 +76,16 @@ class VirtualMachineConfig(ConfigFile):
                 'graphics_driver': graphics_driver,
                 'modifications': [],
                 'autostart': AutoStartStates.NO_AUTOSTART.value,
-                'uuid': None
+                'uuid': None,
+                'agent': {
+                    'connection_timeout': None
+                },
+                'watchdog': {
+                    'enabled': False,
+                    'interval': None,
+                    'reset_fail_count': None,
+                    'boot_wait': None
+                }
             }
 
         # Write the configuration to disk
@@ -160,4 +170,21 @@ class VirtualMachineConfig(ConfigFile):
                     }
                 },
                 'users': {}
+            }
+
+        if self._getVersion() < 14:
+            # Create attribute that shows the
+            # version of the VM applied to libvirt.
+            # i.e. needs registering
+            config['applied_version'] = 13
+            # Create watchdog config, specifying default to disable
+            # and no overrides from global config
+            config['agent'] = {
+                'connection_timeout': None
+            }
+            config['watchdog'] = {
+                'enabled': False,
+                'interval': None,
+                'reset_fail_count': None,
+                'boot_wait': None
             }

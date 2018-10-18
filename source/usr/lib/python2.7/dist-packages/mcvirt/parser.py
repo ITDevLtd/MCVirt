@@ -53,6 +53,7 @@ from mcvirt.parser_modules.resync_parser import ResyncParser
 from mcvirt.parser_modules.drbd_parser import DrbdParser
 from mcvirt.parser_modules.virtual_machine.backup_parser import BackupParser
 from mcvirt.parser_modules.virtual_machine.lock_parser import LockParser
+from mcvirt.parser_modules.watchdog_parser import WatchdogParser
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -179,6 +180,9 @@ class Parser(object):
 
         # Create sub-parser for Drbd-related commands
         DrbdParser(self.subparsers, self.parent_parser)
+
+        # Create sub-parser for watchdog
+        WatchdogParser(self.subparsers, self.parent_parser)
 
         # Create sub-parser for backup commands
         BackupParser(self.subparsers, self.parent_parser)

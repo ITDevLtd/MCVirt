@@ -38,6 +38,7 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                InvalidModificationFlagException, MCVirtTypeError,
                                UsbDeviceAttachedToVirtualMachine)
 from mcvirt.syslogger import Syslogger
+from mcvirt.virtual_machine.agent_connection import AgentConnection
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.usb_device import UsbDevice
@@ -47,6 +48,7 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname, convert_size_friendly
 from mcvirt.argument_validator import ArgumentValidator
+from mcvirt.utils import dict_merge
 
 
 class Modification(Enum):
@@ -70,6 +72,22 @@ class VirtualMachine(PyroObject):
             raise VirtualMachineDoesNotExistException(
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
+
+    def initialise(self):
+        """Run after object is registered with pyro"""
+        # Take the oportunity to update libvirt config
+        self.check_libvirt_config_update()
+
+    def __eq__(self, comp):
+        """Allow for comparison of VM objects"""
+        # Ensure class and name of object match
+        if ('__class__' in dir(comp) and
+                comp.__class__ == self.__class__ and
+                'get_name' in dir(comp) and comp.get_name() == self.get_name()):
+            return True
+
+        # Otherwise return false
+        return False
 
     @Expose()
     def set_v9_release_config(self, config):
@@ -98,6 +116,24 @@ class VirtualMachine(PyroObject):
                 virtual_machine.set_v9_release_config(config)
             cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(update_remote_node)
+
+    def check_libvirt_config_update(self):
+        """Determine if config updates need to be performed to libvirt"""
+        config = self.get_config_object().get_config()
+        # Determine if applied config is older than the config version and
+        # VM is registered locally
+        if (config['applied_version'] < config['version'] and
+                self.isRegisteredLocally() and
+                self.is_stopped):
+            # If so, unregister and re-register VM with libvirt
+            self._unregister()
+            self._register()
+
+            # Update VM config with new applied version
+            def update_config(config):
+                """Update applied version with config version"""
+                config['applied_version'] = config['version']
+            self.get_config_object().update_config(update_config, 'Update applied version')
 
     def get_remote_object(self, node=None, node_object=None, include_node=False,
                           set_cluster_master=False):
@@ -136,6 +172,30 @@ class VirtualMachine(PyroObject):
             """Update the VM config"""
             config['permissions'] = config
         self.get_config_object().update_config(update_vm_config, 'Sync permissions')
+
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def update_vm_config(self, change_dict, reason, _f):
+        """Update VM config using dict"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+        def update_config(config):
+            _f.add_undo_argument(original_config=dict(config))
+            dict_merge(config, change_dict)
+
+        self.get_config_object().update_config(update_config, reason)
+
+    @Expose()
+    def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
+        """Undo config change"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+        def revert_config(config):
+            """Revert config"""
+            config = original_config
+
+        if original_config is not None:
+            self.get_config_object().update_config('Revert: %s' % reason)
+
 
     @Expose()
     def get_name(self):
@@ -215,6 +275,9 @@ class VirtualMachine(PyroObject):
         elif not self._cluster_disabled and self.isRegisteredRemotely():
             remote_vm = self.get_remote_object()
             remote_vm.stop()
+
+            # Take the oportunity to update libvirt config
+            self.check_libvirt_config_update()
         else:
             raise VmRegisteredElsewhereException(
                 'VM registered elsewhere and cluster is not initialised'
@@ -280,6 +343,9 @@ class VirtualMachine(PyroObject):
             # Determine if VM is stopped
             if self._getPowerState() is PowerStates.RUNNING:
                 raise VmAlreadyStartedException('The VM is already running')
+
+            # Take the oportunity to update libvirt config
+            self.check_libvirt_config_update()
 
             for disk_object in self.getHardDriveObjects():
                 disk_object.activateDisk()
@@ -493,6 +559,9 @@ class VirtualMachine(PyroObject):
         ArgumentValidator.validate_boolean(keep_disks)
         ArgumentValidator.validate_boolean(keep_config)
         ArgumentValidator.validate_boolean(local_only)
+
+        # Disable watchdog, if it exists
+        self._get_registered_object('watchdog_factory').get_watchdog(self).cancel()
 
         # Check the user has permission to modify VMs or
         # that the user is the owner of the VM and the VM is a clone
@@ -1598,6 +1667,124 @@ class VirtualMachine(PyroObject):
             raise VncNotEnabledException('VNC is not enabled on the VM')
         else:
             return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
+
+    def get_agent_connection(self):
+        """Obtain an agent connection object"""
+        return AgentConnection(self)
+
+    def get_host_agent_path(self):
+        """Obtain the path of the serial interface for the VM on the host"""
+        if self._getPowerState() is not PowerStates.RUNNING:
+            raise VmAlreadyStoppedException('The VM is not running')
+        domain_xml = ET.fromstring(
+            self._getLibvirtDomainObject().XMLDesc(
+                libvirt.VIR_DOMAIN_XML_SECURE
+            )
+        )
+        if domain_xml.find(
+                './devices/serial[@type="pty"]/target[@port="5"]/../source') is None:
+            raise VncNotEnabledException('VNC is not enabled on the VM')
+        else:
+            return domain_xml.find(
+                './devices/serial[@type="pty"]/target[@port="5"]/../source').get('path')
+
+    def get_agent_timeout(self):
+        """Obtain agent timeout from config"""
+        timeout = self.get_config_object().get_config()['agent']['connection_timeout']
+        if timeout is None:
+            timeout = MCVirtConfig().get_config()['agent']['connection_timeout']
+
+        return timeout
+
+    def is_watchdog_enabled(self):
+        """Obtain watchdog interval from config"""
+        return self.get_config_object().get_config()['watchdog']['enabled']
+
+    @Expose(locking=True)
+    def set_watchdog_status(self, status):
+        """Update the status of the watchdog"""
+        # Validate status boolean
+        ArgumentValidator.validate_boolean(status)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self)
+
+        self.update_vm_config(
+            change_dict={'watchdog': {'enabled': status}},
+            reason='Update watchdog status',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True)
+    def set_watchdog_interval(self, interval):
+        """Set VM watchdog interval"""
+        # Validate interval
+        if interval is not None:
+            ArgumentValidator.validate_positive_integer(interval)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self)
+
+        self.update_vm_config(
+            change_dict={'watchdog': {'interval': interval}},
+            reason='Update watchdog interval',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True)
+    def set_watchdog_reset_fail_count(self, count):
+        """Update reset fail count for watchdog"""
+        if count is not None:
+            ArgumentValidator.validate_positive_integer(count)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self)
+
+        self.update_vm_config(
+            change_dict={'watchdog': {'reset_fail_count': count}},
+            reason='Update watchdog reset fail count',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True)
+    def set_watchdog_boot_wait(self, wait):
+        """Update boot wait for watchdog"""
+        if wait is not None:
+            ArgumentValidator.validate_positive_integer(wait)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM, self)
+
+        self.update_vm_config(
+            change_dict={'watchdog': {'boot_wait': wait}},
+            reason='Update watchdog boot wait',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    def get_watchdog_interval(self):
+        """Obtain watchdog interval from config"""
+        interval = self.get_config_object().get_config()['watchdog']['interval']
+        if interval is None:
+            interval = MCVirtConfig().get_config()['watchdog']['interval']
+
+        return interval
+
+    def get_watchdog_boot_wait(self):
+        """Obtain watchdog interval from config"""
+        boot_wait = self.get_config_object().get_config()['watchdog']['boot_wait']
+        if boot_wait is None:
+            boot_wait = MCVirtConfig().get_config()['watchdog']['boot_wait']
+
+        return boot_wait
+
+    def get_watchdog_reset_fail_count(self):
+        """Obtain watchdog interval from config"""
+        reset_fail_count = self.get_config_object().get_config()['watchdog'][
+            'reset_fail_count']
+        if reset_fail_count is None:
+            reset_fail_count = MCVirtConfig().get_config()['watchdog']['reset_fail_count']
+
+        return reset_fail_count
 
     def ensureUnlocked(self):
         """Ensures that the VM is in an unlocked state"""

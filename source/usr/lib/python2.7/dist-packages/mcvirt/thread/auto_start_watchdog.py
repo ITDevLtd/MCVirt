@@ -68,6 +68,11 @@ class AutoStartWatchdog(RepeatTimer):
                 self.repeat = True
                 self.repeat_run()
 
+    def cancel(self):
+        """Cancel timer"""
+        self.repeat = False
+        self.timer.cancel()
+
     def initialise(self):
         """Perform the ON_BOOT autostart and start timer"""
         Pyro4.current_context.INTERNAL_REQUEST = True

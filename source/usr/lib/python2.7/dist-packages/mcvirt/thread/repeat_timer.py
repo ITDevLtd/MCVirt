@@ -18,7 +18,6 @@
 from threading import Timer
 
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.syslogger import Syslogger
 
 
 class RepeatTimer(PyroObject):
@@ -26,28 +25,49 @@ class RepeatTimer(PyroObject):
 
     @property
     def interval(self):
+        """Method for returning interval for timer"""
         raise NotImplementedError
 
-    def __init__(self, args=[], kwargs={}, repeat_after_run=True):
+    def __init__(self, args=None, kwargs=None, repeat_after_run=True):
         """Create member variables for repeat status and position of restart"""
+        # State to determine if next run should kick off another timer
         self.repeat = True
+        # Timer object
         self.timer = None
-        self.run_args = args
-        self.run_kwargs = kwargs
+        # Store arguments and kwargs for run
+        self.run_args = args if args is not None else []
+        self.run_kwargs = kwargs if kwargs is not None else {}
+        # Determine if next timer is started before or after
+        # the actual function is called
         self.repeat_after_run = repeat_after_run
 
     def initialise(self):
+        """Create timer object and start timer"""
         if self.interval and self.interval > 0:
             self.timer = Timer(float(self.interval), self.repeat_run)
             self.timer.start()
 
+    def cancel(self):
+        """Cancel timer, if it is running"""
+        if self.timer:
+            self.timer.cancel()
+
     def repeat_run(self):
         """Re-start timer once run has complete"""
+        # Restart timer, if set to repeat before run
         if not self.repeat_after_run and self.repeat:
             self.timer = Timer(float(self.interval), self.repeat_run)
             self.timer.start()
+
+        # Run command
         return_output = self.run(*self.run_args, **self.run_kwargs)
+
+        # Restart timer, if set to repeat after run
         if self.repeat_after_run and self.repeat:
             self.timer = Timer(float(self.interval), self.repeat_run)
             self.timer.start()
         return return_output
+
+    def run(self, *args, **kwargs):
+        """Method to run"""
+        raise NotImplementedError

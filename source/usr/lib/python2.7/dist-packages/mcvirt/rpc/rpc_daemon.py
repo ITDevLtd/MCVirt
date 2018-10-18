@@ -51,6 +51,7 @@ from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.thread.auto_start_watchdog import AutoStartWatchdog
+from mcvirt.thread.watchdog import WatchdogFactory
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -160,7 +161,6 @@ class BaseRpcDaemon(Pyro4.Daemon):
         """Perform node version check on cluster"""
         if Pyro4.current_context.cluster_master:
             self.registered_factories['cluster'].check_node_versions()
-        Pyro4.current_context.PERMISSION_ASSERTED = False
 
     def handshake__raise_exception(self):
         """Raise standard exception for all authentication errors"""
@@ -200,7 +200,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
         except Pyro4.errors.SecurityError, e:
             Syslogger.logger().exception('SecurityError during authentication: %s' % str(e))
-            self.handshake__raise_exception()
+            raise
         except Exception, e:
             Syslogger.logger().exception('Error during authentication: %s' % str(e))
         # If no valid authentication was provided, raise an error
@@ -288,7 +288,7 @@ class RpcNSMixinDaemon(object):
         for timer in self.timer_objects:
             Syslogger.logger().info('Shutting down timer: %s' % timer)
             try:
-                timer.timer.cancel()
+                timer.cancel()
             except:
                 pass
         RpcNSMixinDaemon.DAEMON.shutdown()
@@ -325,20 +325,21 @@ class RpcNSMixinDaemon(object):
             [LibvirtConfig(), 'libvirt_config'],
             [LibvirtConnector(), 'libvirt_connector'],
             [LdapFactory(), 'ldap_factory'],
-            [MCVirtConfig, 'mcvirt_config']
+            [MCVirtConfig, 'mcvirt_config'],
+            [Session(), 'mcvirt_session'],
+            [WatchdogFactory(), 'watchdog_factory'],
+            [AutoStartWatchdog(), 'autostart_watchdog']
         ]
         for factory_object, name in registration_factories:
             self.register(factory_object, objectId=name, force=True)
 
-        # Create an MCVirt session
-        session_object = Session()
-        self.register(session_object, objectId='mcvirt_session', force=True)
-        Expose.SESSION_OBJECT = session_object
+        Expose.SESSION_OBJECT = RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session']
 
-        # Create autostart watchdog object
-        autostart_watchdog = AutoStartWatchdog()
-        self.timer_objects.append(autostart_watchdog)
-        self.register(autostart_watchdog, objectId='autostart_watchdog', force=True)
+        # Register timer objects that need cancelling during shutdown
+        self.timer_objects.append(
+            RpcNSMixinDaemon.DAEMON.registered_factories['watchdog_factory'])
+        self.timer_objects.append(
+            RpcNSMixinDaemon.DAEMON.registered_factories['autostart_watchdog'])
 
     def obtain_connection(self):
         """Attempt to obtain a connection to the name server."""
