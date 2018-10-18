@@ -39,6 +39,7 @@ from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistEx
                                VmNotRegistered, InaccessibleNodeException,
                                InsufficientSpaceException,
                                InconsistentVolumeSizeError)
+from mcvirt.size_converter import SizeConverter
 
 
 class DrbdConnectionState(Enum):
@@ -495,11 +496,12 @@ class Drbd(Base):
 
         for node in free_space:
             if free_space[node] < increase_size:
-                raise InsufficientSpaceException('Attempted to increase disk by %iMB, '
-                                                 'but there is only %i MB of free space '
+                raise InsufficientSpaceException('Attempted to increase disk by %s, '
+                                                 'but there is only %s of free space '
                                                  'available in storage backend \'%s\' '
                                                  'on node %s.' %
-                                                 (increase_size, free_space[node],
+                                                 (SizeConverter(increase_size).to_string(),
+                                                  SizeConverter(free_space[node]).to_string(),
                                                   self.get_storage_backend().name,
                                                   node))
 

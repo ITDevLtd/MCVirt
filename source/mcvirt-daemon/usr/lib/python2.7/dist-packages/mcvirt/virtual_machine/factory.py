@@ -299,8 +299,13 @@ class Factory(PyroObject):
         modification_flags = [] if modification_flags is None else modification_flags
 
         # Convert memory and disk sizes to bytes
-        hard_drives = [SizeConverter.from_string(hdd_size).to_bytes() for hdd_size in hard_drives]
-        memory_allocation = SizeConverter.from_string(memory_allocation).to_bytes()
+        hard_drives = [hdd_size
+                       if type(hdd_size) is int else
+                       SizeConverter.from_string(hdd_size).to_bytes()
+                       for hdd_size in hard_drives]
+        memory_allocation = (memory_allocation
+                             if memory_allocation is type(memory_allocation) is int else
+                             SizeConverter.from_string(memory_allocation).to_bytes())
 
         if storage_backend:
             storage_backend = self._convert_remote_object(storage_backend)
