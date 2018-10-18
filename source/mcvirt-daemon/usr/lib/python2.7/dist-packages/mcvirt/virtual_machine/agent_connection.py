@@ -73,9 +73,12 @@ class AgentConnection(PyroObject):
                             timeout=timeout,
                             rtscts=True, dsrdtr=True)
 
-        # Clear buffers and return serial object
-        serial_obj.reset_input_buffer()
-        serial_obj.reset_output_buffer()
+        # Attempt to clear buffers, but retain compatibility with
+        # older versions
+        if 'reset_input_buffer' in dir(serial_obj):
+            serial_obj.reset_input_buffer()
+        if 'reset_output_buffer' in dir(serial_obj):
+            serial_obj.reset_output_buffer()
         return serial_obj
 
 
