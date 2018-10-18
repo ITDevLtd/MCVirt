@@ -94,7 +94,7 @@ class CreateParser(object):
         vm_factory.create(
             name=args.vm_name,
             cpu_cores=args.cpu_count,
-            memory_allocation=args.memor,
+            memory_allocation=args.memory,
             hard_drives=hard_disks,
             network_interfaces=args.networks,
             storage_type=storage_type,

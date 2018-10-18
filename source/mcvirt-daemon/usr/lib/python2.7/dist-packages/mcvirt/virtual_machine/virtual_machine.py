@@ -528,7 +528,7 @@ class VirtualMachine(PyroObject):
             for disk_object in sorted(disk_objects, key=lambda disk: disk.disk_id):
                 table.add_row(
                     (str(disk_object.disk_id),
-                     convert_size_friendly(disk_object.getSize()))
+                     SizeConverter(disk_object.getSize()).to_string())
                 )
         else:
             warnings += "No hard disks present on machine\n"

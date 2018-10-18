@@ -117,10 +117,7 @@ class File(Base):
         # block size
         free_space_b = statvfs.f_bavail * statvfs.f_frsize
 
-        # Convert bytes to megabytes
-        free_space_mb = float(free_space_b) / (1024 ** 2)
-
-        return free_space_mb
+        return free_space_b
 
 
 class FileVolume(BaseVolume):
@@ -249,7 +246,4 @@ class FileVolume(BaseVolume):
         # Obtain size from os stat (in bytes)
         size_b = os.stat(self.get_path()).st_size
 
-        # Convert size in bytes to megabytes
-        size_mb = float(size_b) / (1024 ** 2)
-
-        return size_mb
+        return size_b

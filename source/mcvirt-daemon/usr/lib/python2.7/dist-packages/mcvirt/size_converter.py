@@ -84,7 +84,7 @@ class SizeConverter(object):
         # Create size object, using integer of size
         return SizeConverter(int(size))
 
-    def get_bytes(self):
+    def to_bytes(self):
         """Get size in bytes"""
         return self.size
 
@@ -95,9 +95,9 @@ class SizeConverter(object):
             # If the value can be shown acurately to 2DP, then use this
             # for the string.. e.g. 1.25KB would return 1.25KB,
             # 1.001KB would return 1001B
-            if (float(self.get_bytes()) / unit.get_multiplier() ==
-                    round(float(self.get_bytes()) / unit.get_multiplier(), 2)):
-                return '%s%s' % ((Decimal(self.get_bytes()) / unit.get_multiplier()), unit.suffix)
+            if (float(self.to_bytes()) / unit.get_multiplier() ==
+                    round(float(self.to_bytes()) / unit.get_multiplier(), 2)):
+                return '%s%s' % ((Decimal(self.to_bytes()) / unit.get_multiplier()), unit.suffix)
 
 
 # Register units to be used

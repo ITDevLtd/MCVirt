@@ -16,6 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import getpass
+from math import ceil
 import subprocess
 import sys
 
@@ -23,6 +24,7 @@ from mcvirt.exceptions import (MCVirtCommandException,
                                PasswordsDoNotMatchException,
                                DDCommandError)
 from mcvirt.syslogger import Syslogger
+from mcvirt.constants import OPTIMAL_DD_BS_SIZE
 
 
 class System(object):
@@ -87,10 +89,28 @@ class System(object):
         if source is System.WIPE:
             source = '/dev/zero'
 
+        # Since the size is in bytes and to perform the
+        # dd efficiently, need to find a BS size that is
+        # devisible by the size, in order to get an integer count
+        bs_size = None
+
+        # Work forwards then backwards from the optimal size to +/-10%,
+        # attempting to find a suitable BS size
+        for bs_size_test in (range(OPTIMAL_DD_BS_SIZE,
+                                   ceil(OPTIMAL_DD_BS_SIZE * 1.1)) +
+                             list(reversed(range(ceil(OPTIMAL_DD_BS_SIZE * 0.9),
+                                                 OPTIMAL_DD_BS_SIZE)))):
+            if size % bs_size_test == 0:
+                bs_size = bs_size_test
+                count = size / bs_size
+                break
+        else:
+            raise Exception('Unable to find suitable BS size')
+
         # Compile command arguments
         command_args = ['dd', 'if=%s' % source, 'of=%s' % destination,
-                        'bs=1M', 'conv=fsync', 'oflag=direct',
-                        'count=%s' % size]
+                        'bs=%sB' % bs_size, 'conv=fsync', 'oflag=direct',
+                        'count=%s' % count]
 
         try:
             # Perform the dd command
