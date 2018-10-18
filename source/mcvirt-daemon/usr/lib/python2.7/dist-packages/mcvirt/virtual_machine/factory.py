@@ -36,6 +36,7 @@ from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.virtual_machine.hard_drive.base import Driver as HardDriveDriver
 from mcvirt.constants import AutoStartStates
 from mcvirt.syslogger import Syslogger
+from mcvirt.size_converter import SizeConverter
 
 
 class GraphicsDriver(Enum):
@@ -286,6 +287,10 @@ class Factory(PyroObject):
         nodes_predefined = available_nodes is not None
         available_nodes = [] if available_nodes is None else available_nodes
         modification_flags = [] if modification_flags is None else modification_flags
+
+        # Convert memory and disk sizes to bytes
+        hard_drives = [SizeConverter.from_string(hdd_size).to_bytes() for hdd_size in hard_drives]
+        memory_allocation = SizeConverter.from_string(memory_allocation).to_bytes()
 
         if storage_backend:
             storage_backend = self._convert_remote_object(storage_backend)
