@@ -1262,11 +1262,11 @@ class Drbd(Base):
         meta_size_formula_step_2 = meta_size_formula_step_1 * 8
         meta_size_sectors = meta_size_formula_step_2 + 72
 
-        # Convert meta size in sectors to Mebibytes
-        meta_size_mebibytes = math.ceil((meta_size_sectors * sector_size) / (1024 ^ 2))
+        # Convert meta size in sectors to bytes
+        bytes = math.ceil(meta_size_sectors * sector_size)
 
         # Convert from float to int and return
-        return int(meta_size_mebibytes)
+        return int(bytes)
 
     def _getMCVirtConfig(self):
         """Returns the MCVirt hard drive configuration for the Drbd hard drive"""
