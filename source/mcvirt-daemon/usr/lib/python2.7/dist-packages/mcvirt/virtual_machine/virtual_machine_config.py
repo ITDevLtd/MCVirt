@@ -188,3 +188,7 @@ class VirtualMachineConfig(ConfigFile):
                 'reset_fail_count': None,
                 'boot_wait': None
             }
+
+        if self._getVersion() < 15:
+            # Convert memory allocation to Bytes from Kib
+            config['memory_allocation'] = int(config['memory_allocation']) * 1024
