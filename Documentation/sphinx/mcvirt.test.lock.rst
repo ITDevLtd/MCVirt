@@ -4,8 +4,8 @@ mcvirt.test.lock package
 Submodules
 ----------
 
-mcvirt.test.lock.lock_tests module
-----------------------------------
+mcvirt.test.lock.lock\_tests module
+-----------------------------------
 
 .. automodule:: mcvirt.test.lock.lock_tests
     :members:
