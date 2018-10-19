@@ -55,7 +55,7 @@ class SizeConverter(object):
         self.storage = storage
 
         # Ensure if if storage, the value must be a multiple of 512
-        if self.size % 512 != 0:
+        if storage and self.size % 512 != 0:
             raise Exception('Size must be a multiple of 512 bytes')
 
     @classmethod
