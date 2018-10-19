@@ -1460,9 +1460,9 @@ class VirtualMachine(PyroObject):
 
         # Add Name, RAM, CPU and graphics driver variables to XML
         domain_xml.find('./name').text = self.get_name()
-        domain_xml.find('./memory').text = '%s' % self.getRAM()
+        domain_xml.find('./memory').text = '%s' % str(self.getRAM())
         domain_xml.find('./memory').set('unit', 'b')
-        domain_xml.find('./vcpu').text = self.getCPU()
+        domain_xml.find('./vcpu').text = str(self.getCPU())
         domain_xml.find('./devices/video/model').set('type', self.getGraphicsDriver())
 
         device_xml = domain_xml.find('./devices')
