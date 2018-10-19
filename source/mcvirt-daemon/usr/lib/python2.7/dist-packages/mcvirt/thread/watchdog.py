@@ -247,7 +247,6 @@ class Watchdog(RepeatTimer):
                 # Reset WATCHDOG_STATES
                 self.set_state(WATCHDOG_STATES.STARTUP)
 
-
         Pyro4.current_context.INTERNAL_REQUEST = False
         Syslogger.logger().debug('Watchdog complete: %s' %
                                  self.virtual_machine.get_name())

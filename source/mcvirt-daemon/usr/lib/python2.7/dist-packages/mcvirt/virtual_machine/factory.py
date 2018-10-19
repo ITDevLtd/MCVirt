@@ -388,7 +388,6 @@ class Factory(PyroObject):
             name, config_nodes, cpu_cores, memory_allocation, graphics_driver,
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
-
         if node == get_hostname():
             # Register VM with LibVirt. If MCVirt has not been initialised on this node,
             # do not set the node in the VM configuration, as the change can't be
