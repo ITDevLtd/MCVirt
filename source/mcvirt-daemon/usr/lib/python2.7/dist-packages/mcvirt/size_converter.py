@@ -71,16 +71,17 @@ class SizeConverter(object):
         if not re_match:
             return None
         size_s = re_match.group(1)
-        # Get unit and default to bytes
         unit_str = re_match.group(2) or 'B'
-
-        # Obtain unit type
-        unit = [u for u in cls.units if u.suffix.lower() == unit_str.lower()]
-        if not unit:
-            raise Exception('Invalid unit suffix')
-        unit = unit[0]
-        # Convert size to bytes and create SizeConverter object
-        size = Decimal(size_s) * unit.get_multiplier()
+        if unit_str.lower() == 'b':
+            size = size_s
+        else:
+            # Obtain unit type
+            unit = [u for u in cls.units if u.suffix.lower() == unit_str.lower()]
+            if not unit:
+                raise Exception('Invalid unit suffix')
+            unit = unit[0]
+            # Convert size to bytes and create SizeConverter object
+            size = Decimal(size_s) * unit.get_multiplier()
 
         # Ensure that value is a round number of bytes
         if int(size) != size:

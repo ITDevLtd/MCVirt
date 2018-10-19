@@ -653,7 +653,7 @@ class VirtualMachine(PyroObject):
         """Updates the amount of RAM allocated to a VM"""
         # Convert memory and disk sizes to bytes
         memory_allocation = (memory_allocation
-                             if memory_allocation is type(memory_allocation) is int else
+                             if memory_allocation is isinstance(memory_allocation, int) else
                              SizeConverter.from_string(memory_allocation).to_bytes())
 
         # Check the user has permission to modify VMs
@@ -1214,8 +1214,9 @@ class VirtualMachine(PyroObject):
 
         # Create new VM for clone, without hard disks
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        new_vm_object = vm_factory._create(clone_vm_name, self.getCPU(),
-                                           self.getRAM(), [], [],
+        new_vm_object = vm_factory._create(clone_vm_name,
+                                           self.getCPU(),
+                                           self.getRAM(),
                                            available_nodes=self.getAvailableNodes(),
                                            node=self.getNode(),
                                            is_static=self.is_static())
