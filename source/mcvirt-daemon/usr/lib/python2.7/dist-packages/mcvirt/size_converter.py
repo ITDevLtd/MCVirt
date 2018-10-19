@@ -67,7 +67,7 @@ class SizeConverter(object):
     def from_string(cls, size_string, storage=False):
         """Create object from a string"""
         # Split value and units
-        re_match = re.match(r'([0-9\.]+)([a-zA-Z]*)', size_string)
+        re_match = re.match(r'([0-9\.]+)([a-zA-Z]*)', str(size_string))
         if not re_match:
             return None
         size_s = re_match.group(1)
