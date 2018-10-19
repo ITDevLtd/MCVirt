@@ -19,6 +19,10 @@ import unittest
 
 from mcvirt.test.test_base import TestBase
 from mcvirt.size_converter import SizeConverter
+from mcvirt.exceptions import (SizeMustBeMultipleOf512Error,
+                               InvalidSizeSuffixError,
+                               InvalidSizeFormatError,
+                               SizeNotIntegerBytesError)
 
 
 class SizeConverterTests(TestBase):
@@ -35,7 +39,10 @@ class SizeConverterTests(TestBase):
         suite.addTest(SizeConverterTests('test_valid_bytes_int_without_units_storage'))
         suite.addTest(SizeConverterTests('test_valid_bytes_str_without_units_storage'))
         suite.addTest(SizeConverterTests('test_invalid_bytes_int_with_units_decimal_storage'))
-        suite.addTest(SizeConverterTests('test_invalid_bytes_int_with_units_non_512_multiple_storage'))
+        suite.addTest(SizeConverterTests('test_invalid_mb_str_with_units_decimal'))
+        suite.addTest(SizeConverterTests('test_invalid_mb_str_with_units_decimal_storage'))
+        suite.addTest(SizeConverterTests(
+            'test_invalid_bytes_int_with_units_non_512_multiple_storage'))
         suite.addTest(SizeConverterTests('test_conversion_bytes'))
         suite.addTest(SizeConverterTests('test_conversion_kb'))
         suite.addTest(SizeConverterTests('test_conversion_kib'))
@@ -54,6 +61,8 @@ class SizeConverterTests(TestBase):
         suite.addTest(SizeConverterTests('test_conversion_invalid_case'))
         suite.addTest(SizeConverterTests('test_conversion_invalid_mb_storage_non_512'))
         suite.addTest(SizeConverterTests('test_conversion_b_to_tb'))
+        suite.addTest(SizeConverterTests('test_invalid_size'))
+        suite.addTest(SizeConverterTests('test_conversion_size_decimal_0dp'))
 
         return suite
 
@@ -76,7 +85,7 @@ class SizeConverterTests(TestBase):
     def test_invalid_bytes_int_with_units_decimal(self):
         """Test passing invalid decimal size in bytes without units as integer"""
         # Assert that an excpetion is raised
-        with self.assertRaises(Exception):
+        with self.assertRaises(SizeNotIntegerBytesError):
             SizeConverter.from_string(523.53)
 
     def test_valid_bytes_int_with_units_non_512_multiple(self):
@@ -106,12 +115,24 @@ class SizeConverterTests(TestBase):
     def test_invalid_bytes_int_with_units_decimal_storage(self):
         """Test passing invalid decimal size in bytes without units as integer as storage"""
         # Assert that an excpetion is raised
-        with self.assertRaises(Exception):
+        with self.assertRaises(SizeNotIntegerBytesError):
             SizeConverter.from_string(523.53, storage=True)
+
+    def test_invalid_mb_str_with_units_decimal(self):
+        """Test passing invalid size that results in decimal bytes as sring"""
+        # Assert that an excpetion is raised
+        with self.assertRaises(SizeNotIntegerBytesError):
+            SizeConverter.from_string('1.5231kB')
+
+    def test_invalid_mb_str_with_units_decimal_storage(self):
+        """Test passing invalid size that results in decimal bytes as sring as storage"""
+        # Assert that an excpetion is raised
+        with self.assertRaises(SizeNotIntegerBytesError):
+            SizeConverter.from_string('1.5231kB', storage=True)
 
     def test_invalid_bytes_int_with_units_non_512_multiple_storage(self):
         """Test passing valid small size in bytes without units as storage"""
-        with self.assertRaises(Exception):
+        with self.assertRaises(SizeMustBeMultipleOf512Error):
             SizeConverter.from_string(1023, storage=True)
 
     def test_conversion_bytes(self):
@@ -252,7 +273,7 @@ class SizeConverterTests(TestBase):
         """Test conversion of terrabytes for storage that is
         not a multiple of 512
         """
-        with self.assertRaises(Exception):
+        with self.assertRaises(SizeMustBeMultipleOf512Error):
             SizeConverter.from_string('1.2MB', storage=True)
 
     def test_conversion_b_to_tb(self):
@@ -260,6 +281,19 @@ class SizeConverterTests(TestBase):
         size_obj = SizeConverter.from_string('3000000000000B')
         self.assertEqual(size_obj.to_bytes(), 3000000000000)
         self.assertEqual(size_obj.to_string(), '3TB')
+
+        # Assert that bytes returned is an integer
+        self.assertEqual(type(size_obj.to_bytes()), int)
+
+    def test_invalid_size(self):
+        """Test conversion of invalid size"""
+        with self.assertRaises(InvalidSizeFormatError):
+            SizeConverter.from_string('shouldnotwork')
+
+    def test_conversion_size_decimal_0dp(self):
+        """Test conversion of invalid size"""
+        size_obj = SizeConverter.from_string('1.KiB')
+        self.assertEqual(size_obj.to_bytes(), 1024)
 
         # Assert that bytes returned is an integer
         self.assertEqual(type(size_obj.to_bytes()), int)

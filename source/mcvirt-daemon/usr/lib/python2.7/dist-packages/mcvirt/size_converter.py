@@ -19,6 +19,11 @@
 from decimal import Decimal
 import re
 
+from mcvirt.exceptions import (SizeMustBeMultipleOf512Error,
+                               InvalidSizeSuffixError,
+                               InvalidSizeFormatError,
+                               SizeNotIntegerBytesError)
+
 
 class Unit(object):
     """A unit object, which stores information about
@@ -56,7 +61,7 @@ class SizeConverter(object):
 
         # Ensure if if storage, the value must be a multiple of 512
         if storage and self.size % 512 != 0:
-            raise Exception('Size must be a multiple of 512 bytes')
+            raise SizeMustBeMultipleOf512Error('Size must be a multiple of 512 bytes')
 
     @classmethod
     def get_units(cls):
@@ -68,24 +73,28 @@ class SizeConverter(object):
         """Create object from a string"""
         # Split value and units
         re_match = re.match(r'([0-9\.]+)([a-zA-Z]*)', str(size_string))
-        if not re_match:
-            return None
+        if not re_match or not re_match.group(1):
+            raise InvalidSizeFormatError('Size is in an invalid format')
+
         size_s = re_match.group(1)
         unit_str = re_match.group(2) or 'B'
         if unit_str.lower() == 'b':
-            size = int(size_s)
+            try:
+                size = int(size_s)
+            except ValueError:
+                raise SizeNotIntegerBytesError('Value not a round number of bytes')
         else:
             # Obtain unit type
             unit = [u for u in cls.units if u.suffix.lower() == unit_str.lower()]
             if not unit:
-                raise Exception('Invalid unit suffix')
+                raise InvalidSizeSuffixError('Invalid unit suffix')
             unit = unit[0]
             # Convert size to bytes and create SizeConverter object
             size = Decimal(size_s) * unit.get_multiplier()
 
         # Ensure that value is a round number of bytes
         if not float(size).is_integer():
-            raise Exception('Value not a round number of bytes')
+            raise SizeNotIntegerBytesError('Value not a round number of bytes')
 
         # Create size object, using integer of size
         return SizeConverter(int(size), storage=storage)
