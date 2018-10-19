@@ -289,6 +289,11 @@ class Factory(PyroObject):
         if storage_backend is not None:
             storage_backend = self._convert_remote_object(storage_backend)
 
+        # Convert disk size to bytes
+        size = (size
+                if type(size) is int else
+                SizeConverter.from_string(size, storage=True).to_bytes())
+
         # Ensure that the user has permissions to add create storage
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,

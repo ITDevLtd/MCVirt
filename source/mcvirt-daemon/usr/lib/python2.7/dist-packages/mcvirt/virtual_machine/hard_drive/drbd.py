@@ -482,6 +482,11 @@ class Drbd(Base):
             PERMISSIONS.MODIFY_VM, self.vm_object
         )
 
+        # Convert disk size to bytes
+        increase_size = (increase_size
+                         if isinstance(increase_size, int) else
+                         SizeConverter.from_string(increase_size, storage=True).to_bytes())
+
         # Ensure disks are the same size
         self._ensure_consistent_volumes_size()
 

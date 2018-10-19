@@ -217,7 +217,7 @@ class LvmVolume(BaseVolume):
             size = '+%s' % size
 
         # Compile arguments for resize
-        command_args = ['/sbin/lvresize', '--size', '%sM' % size,
+        command_args = ['/sbin/lvresize', '--size', '%sB' % size,
                         self.get_path()]
         try:
             # Create on local node

@@ -72,7 +72,8 @@ class UpdateParser(object):
                   "To be used with --change-network")
         )
         self.update_parser.add_argument('--add-disk', dest='add_disk', metavar='Add Disk',
-                                        type=int, help='Add disk to the VM (size in MB)')
+                                        type=str, help=('Add disk to the VM '
+                                                        '(specify with suffix, e.g. 8GB)'))
         self.update_parser.add_argument('--delete-disk', dest='delete_disk', metavar='Disk ID',
                                         type=int, help='Remove a hard drive from a VM')
         self.update_parser.add_argument('--storage-type', dest='storage_type',
@@ -87,8 +88,9 @@ class UpdateParser(object):
                                         help='Driver for graphics',
                                         default=None)
         self.update_parser.add_argument('--increase-disk', dest='increase_disk',
-                                        metavar='Increase Disk', type=int,
-                                        help='Increases VM disk by provided amount (MB)')
+                                        metavar='Increase Disk', type=str,
+                                        help=('Increases VM disk by provided amount'
+                                              '(specify with suffix, e.g. 8GB)'))
         self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
                                         help='The ID of the disk to be increased by')
         self.update_parser.add_argument('--attach-iso', '--iso', dest='iso', metavar='ISO Name',
@@ -180,7 +182,7 @@ class UpdateParser(object):
             hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
             hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
             p_.rpc.annotate_object(hard_drive_object)
-            hard_drive_object.increaseSize(args.delete())
+            hard_drive_object.delete()
 
         if args.increase_disk and args.disk_id:
             hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
