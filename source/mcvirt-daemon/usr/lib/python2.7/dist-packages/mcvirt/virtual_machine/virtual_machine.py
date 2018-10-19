@@ -178,7 +178,9 @@ class VirtualMachine(PyroObject):
         """Update VM config using dict"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
+
         def update_config(config):
+            """Update the MCVirt config"""
             _f.add_undo_argument(original_config=dict(config))
             dict_merge(config, change_dict)
 
@@ -189,13 +191,15 @@ class VirtualMachine(PyroObject):
         """Undo config change"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
+
         def revert_config(config):
             """Revert config"""
             config = original_config
 
         if original_config is not None:
-            self.get_config_object().update_config('Revert: %s' % reason)
-
+            self.get_config_object().update_config(
+                revert_config,
+                'Revert: %s' % reason)
 
     @Expose()
     def get_name(self):

@@ -88,7 +88,6 @@ def get_all_submodules(target_class):
         subclasses += get_all_submodules(subclass)
     return subclasses
 
-
 def convert_size_friendly(original):
     """Convert from MB to a readable size, depneding on
     size
@@ -112,8 +111,8 @@ def dict_merge(dct, merge_dct):
     OBTAINED FROM: https://gist.github.com/angstwad/bf22d1822c38a92ec0a9
     """
     for k, v in merge_dct.iteritems():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], collections.Mapping)):
+        if (k in dct and isinstance(dct[k], dict) and
+                isinstance(merge_dct[k], collections.Mapping)):
             dict_merge(dct[k], merge_dct[k])
         else:
             dct[k] = merge_dct[k]

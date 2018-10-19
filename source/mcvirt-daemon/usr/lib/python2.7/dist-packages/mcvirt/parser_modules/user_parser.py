@@ -19,6 +19,7 @@
 
 from mcvirt.system import System
 
+
 class UserParser(object):
     """Handle user parser"""
 
