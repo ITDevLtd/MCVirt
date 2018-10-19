@@ -301,7 +301,7 @@ class Factory(PyroObject):
         # Convert memory and disk sizes to bytes
         hard_drives = [hdd_size
                        if type(hdd_size) is int else
-                       SizeConverter.from_string(hdd_size).to_bytes()
+                       SizeConverter.from_string(hdd_size, storage=True).to_bytes()
                        for hdd_size in hard_drives]
         memory_allocation = (memory_allocation
                              if memory_allocation is type(memory_allocation) is int else

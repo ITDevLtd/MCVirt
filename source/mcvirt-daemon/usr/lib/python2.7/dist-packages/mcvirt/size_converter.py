@@ -49,9 +49,14 @@ class SizeConverter(object):
 
     units = []
 
-    def __init__(self, size):
+    def __init__(self, size, storage=False):
         """Create object and store size"""
-        self.size = size
+        self.size = int(size)
+        self.storage = storage
+
+        # Ensure if if storage, the value must be a multiple of 512
+        if self.size % 512 != 0:
+            raise Exception('Size must be a multiple of 512 bytes')
 
     @classmethod
     def get_units(cls):
@@ -59,7 +64,7 @@ class SizeConverter(object):
         return cls.units
 
     @classmethod
-    def from_string(cls, size_string):
+    def from_string(cls, size_string, storage=False):
         """Create object from a string"""
         # Split value and units
         re_match = re.match(r'([0-9\.]+)([a-zA-Z]*)', size_string)
@@ -82,7 +87,7 @@ class SizeConverter(object):
             raise Exception('Value not a round number of bytes')
 
         # Create size object, using integer of size
-        return SizeConverter(int(size))
+        return SizeConverter(int(size), storage=storage)
 
     def to_bytes(self):
         """Get size in bytes"""
