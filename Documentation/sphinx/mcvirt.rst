@@ -6,36 +6,48 @@ Subpackages
 
 .. toctree::
 
+    mcvirt.agent
     mcvirt.auth
     mcvirt.client
     mcvirt.cluster
     mcvirt.iso
     mcvirt.node
+    mcvirt.parser_modules
     mcvirt.rpc
+    mcvirt.storage
     mcvirt.test
+    mcvirt.thread
     mcvirt.virtual_machine
 
 Submodules
 ----------
 
-mcvirt.argument_validator module
---------------------------------
+mcvirt.argument\_validator module
+---------------------------------
 
 .. automodule:: mcvirt.argument_validator
     :members:
     :undoc-members:
     :show-inheritance:
 
-mcvirt.bash-complete module
----------------------------
+mcvirt.bash\-complete module
+----------------------------
 
 .. automodule:: mcvirt.bash-complete
     :members:
     :undoc-members:
     :show-inheritance:
 
-mcvirt.config_file module
--------------------------
+mcvirt.build\_man module
+------------------------
+
+.. automodule:: mcvirt.build_man
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mcvirt.config\_file module
+--------------------------
 
 .. automodule:: mcvirt.config_file
     :members:
@@ -58,8 +70,8 @@ mcvirt.exceptions module
     :undoc-members:
     :show-inheritance:
 
-mcvirt.libvirt_connector module
--------------------------------
+mcvirt.libvirt\_connector module
+--------------------------------
 
 .. automodule:: mcvirt.libvirt_connector
     :members:
@@ -74,16 +86,16 @@ mcvirt.logger module
     :undoc-members:
     :show-inheritance:
 
-mcvirt.mcvirt-drbd module
--------------------------
+mcvirt.mcvirt\-drbd module
+--------------------------
 
 .. automodule:: mcvirt.mcvirt-drbd
     :members:
     :undoc-members:
     :show-inheritance:
 
-mcvirt.mcvirt_config module
----------------------------
+mcvirt.mcvirt\_config module
+----------------------------
 
 .. automodule:: mcvirt.mcvirt_config
     :members:

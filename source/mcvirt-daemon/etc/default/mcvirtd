@@ -1,0 +1,3 @@
+# Set debug level
+#   Available options: CRITICAL, ERROR, DEBUG
+MCVIRT_DEBUG=ERROR

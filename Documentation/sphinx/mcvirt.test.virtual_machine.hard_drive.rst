@@ -1,11 +1,11 @@
-mcvirt.test.virtual_machine.hard_drive package
-==============================================
+mcvirt.test.virtual\_machine.hard\_drive package
+================================================
 
 Submodules
 ----------
 
-mcvirt.test.virtual_machine.hard_drive.drbd_tests module
---------------------------------------------------------
+mcvirt.test.virtual\_machine.hard\_drive.drbd\_tests module
+-----------------------------------------------------------
 
 .. automodule:: mcvirt.test.virtual_machine.hard_drive.drbd_tests
     :members:
