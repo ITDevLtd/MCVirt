@@ -99,6 +99,10 @@ class Transaction(object):
         the undo method on all previous functions on each of the
         transactions
         """
+        # If already undoing transaction, do not undo the undo methods
+        if Transaction.undo_state:
+            return
+
         Transaction.undo_state = True
         try:
             # If in a transaction
@@ -117,7 +121,9 @@ class Transaction(object):
             else:
                 # Otherwise, undo single function
                 function.undo()
-        except Exception:
+        except Exception, exc:
+            Syslogger.logger().error('Failed during undo: %s' % str(exc))
+
             # If exception is thrown, remove any remaining
             # transactions and reset undo_state
             for transaction_ar in cls.transactions:

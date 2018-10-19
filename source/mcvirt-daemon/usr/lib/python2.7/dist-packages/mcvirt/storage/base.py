@@ -165,7 +165,7 @@ class Base(PyroObject):
 
         try:
             # Create ID volume
-            volume.create(size=1, nodes=nodes)
+            volume.create(size=2 ** 20, nodes=nodes)
         except ExternalStorageCommandErrorException:
             raise ExternalStorageCommandErrorException(
                 ('An error occured whilst adding storage backend: Either the storage '

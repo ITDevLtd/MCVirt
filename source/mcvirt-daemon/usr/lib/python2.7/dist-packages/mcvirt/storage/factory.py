@@ -30,6 +30,7 @@ from mcvirt.exceptions import (UnknownStorageTypeException, StorageBackendDoesNo
                                NodeVersionMismatch, StorageBackendAlreadyExistsError)
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.utils import convert_size_friendly, get_all_submodules, get_hostname
+from mcvirt.size_converter import SizeConverter
 
 
 class Factory(PyroObject):
@@ -464,7 +465,7 @@ class Factory(PyroObject):
                 storage_backend.get_location(),
                 ', '.join(storage_backend.nodes),
                 str(storage_backend.shared),
-                convert_size_friendly(storage_backend.get_free_space())
+                SizeConverter(storage_backend.get_free_space()).to_string()
             ))
         return table.draw()
 

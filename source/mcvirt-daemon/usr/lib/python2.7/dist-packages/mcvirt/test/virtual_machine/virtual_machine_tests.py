@@ -112,9 +112,9 @@ class VirtualMachineTests(TestBase):
         self.rpc.annotate_object(vm_object)
 
         # Check each of the attributes for VM
-        self.assertEqual(int(vm_object.getRAM()),
-                         self.test_vms['TEST_VM_1']['memory_allocation'] * 1024)
-        self.assertEqual(vm_object.getCPU(), str(self.test_vms['TEST_VM_1']['cpu_count']))
+        self.assertEqual(vm_object.getRAM(),
+                         self.test_vms['TEST_VM_1']['memory_allocation_bytes'])
+        self.assertEqual(vm_object.getCPU(), self.test_vms['TEST_VM_1']['cpu_count'])
 
         # Ensure second VM does not exist
         self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_2']['name']))
@@ -327,12 +327,12 @@ class VirtualMachineTests(TestBase):
     def test_create_duplicate(self):
         """Attempt to create two VMs with the same name"""
         # Create Virtual machine
-        original_memory_allocation = 200
+        original_memory_allocation = 80000
         test_vm_object = self.vm_factory.create(
             self.test_vms['TEST_VM_1']['name'],
             1,
             original_memory_allocation,
-            [100],
+            ['8MiB'],
             ['Production'],
             storage_type='Local')
         self.rpc.annotate_object(test_vm_object)
@@ -353,7 +353,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
 
         # Check memory amount of VM matches original VM
-        self.assertEqual(int(test_vm_object.getRAM()), int(original_memory_allocation))
+        self.assertEqual(test_vm_object.getRAM(), original_memory_allocation)
 
         # Remove test VM
         test_vm_object.delete()

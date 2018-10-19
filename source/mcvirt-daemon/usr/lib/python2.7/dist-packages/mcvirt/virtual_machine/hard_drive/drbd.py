@@ -39,6 +39,7 @@ from mcvirt.exceptions import (DrbdStateException, DrbdBlockDeviceDoesNotExistEx
                                VmNotRegistered, InaccessibleNodeException,
                                InsufficientSpaceException,
                                InconsistentVolumeSizeError)
+from mcvirt.size_converter import SizeConverter
 
 
 class DrbdConnectionState(Enum):
@@ -481,6 +482,11 @@ class Drbd(Base):
             PERMISSIONS.MODIFY_VM, self.vm_object
         )
 
+        # Convert disk size to bytes
+        increase_size = (increase_size
+                         if isinstance(increase_size, int) else
+                         SizeConverter.from_string(increase_size, storage=True).to_bytes())
+
         # Ensure disks are the same size
         self._ensure_consistent_volumes_size()
 
@@ -495,11 +501,12 @@ class Drbd(Base):
 
         for node in free_space:
             if free_space[node] < increase_size:
-                raise InsufficientSpaceException('Attempted to increase disk by %iMB, '
-                                                 'but there is only %i MB of free space '
+                raise InsufficientSpaceException('Attempted to increase disk by %s, '
+                                                 'but there is only %s of free space '
                                                  'available in storage backend \'%s\' '
                                                  'on node %s.' %
-                                                 (increase_size, free_space[node],
+                                                 (SizeConverter(increase_size).to_string(),
+                                                  SizeConverter(free_space[node]).to_string(),
                                                   self.get_storage_backend().name,
                                                   node))
 
@@ -1262,11 +1269,11 @@ class Drbd(Base):
         meta_size_formula_step_2 = meta_size_formula_step_1 * 8
         meta_size_sectors = meta_size_formula_step_2 + 72
 
-        # Convert meta size in sectors to Mebibytes
-        meta_size_mebibytes = math.ceil((meta_size_sectors * sector_size) / (1024 ^ 2))
+        # Convert meta size in sectors to bytes
+        bytes = math.ceil(meta_size_sectors * sector_size)
 
         # Convert from float to int and return
-        return int(meta_size_mebibytes)
+        return int(bytes)
 
     def _getMCVirtConfig(self):
         """Returns the MCVirt hard drive configuration for the Drbd hard drive"""

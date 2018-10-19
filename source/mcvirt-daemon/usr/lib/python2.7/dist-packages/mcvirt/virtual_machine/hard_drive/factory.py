@@ -103,6 +103,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname, get_all_submodules
 from mcvirt.rpc.expose_method import Expose
+from mcvirt.size_converter import SizeConverter
 
 
 class Factory(PyroObject):
@@ -269,11 +270,12 @@ class Factory(PyroObject):
         free_space = storage_backend.get_free_space(nodes=nodes, return_dict=True)
         for node in free_space:
             if free_space[node] < size:
-                raise InsufficientSpaceException('Attempted to create a disk with %i MB, '
-                                                 'but there is only %i MB of free space '
+                raise InsufficientSpaceException('Attempted to create a disk with %s, '
+                                                 'but there is only %s of free space '
                                                  'available in storage backend \'%s\' '
                                                  'on node %s.' %
-                                                 (size, free_space[node],
+                                                 (SizeConverter(size).to_string(),
+                                                  SizeConverter(free_space[node]).to_string(),
                                                   storage_backend.name,
                                                   node))
 
@@ -286,6 +288,11 @@ class Factory(PyroObject):
         vm_object = self._convert_remote_object(vm_object)
         if storage_backend is not None:
             storage_backend = self._convert_remote_object(storage_backend)
+
+        # Convert disk size to bytes
+        size = (size
+                if type(size) is int else
+                SizeConverter.from_string(size, storage=True).to_bytes())
 
         # Ensure that the user has permissions to add create storage
         self._get_registered_object('auth').assert_permission(
