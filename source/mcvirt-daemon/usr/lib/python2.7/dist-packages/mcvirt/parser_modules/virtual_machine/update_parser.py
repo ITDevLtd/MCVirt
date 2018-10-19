@@ -132,13 +132,9 @@ class UpdateParser(object):
         p_.rpc.annotate_object(vm_object)
 
         if args.memory:
-            old_ram_allocation_kib = vm_object.getRAM()
-            old_ram_allocation = int(old_ram_allocation_kib) / 1024
-            new_ram_allocation = int(args.memory) * 1024
-            vm_object.updateRAM(new_ram_allocation, old_value=old_ram_allocation_kib)
+            vm_object.updateRAM(args.memory)
             p_.print_status(
-                'RAM allocation will be changed from %sMiB to %sMiB.' %
-                (old_ram_allocation, args.memory)
+                'RAM allocation will be changed to %s on next VM boot.' % args.memory
             )
 
         if args.cpu_count:

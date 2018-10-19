@@ -649,7 +649,7 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['memory_allocation']
 
     @Expose(locking=True)
-    def updateRAM(self, memory_allocation, old_value):
+    def updateRAM(self, memory_allocation):
         """Updates the amount of RAM allocated to a VM"""
         # Convert memory and disk sizes to bytes
         memory_allocation = (memory_allocation
@@ -661,7 +661,7 @@ class VirtualMachine(PyroObject):
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object(set_cluster_master=True)
-            return vm_object.updateRAM(memory_allocation, old_value)
+            return vm_object.updateRAM(memory_allocation)
 
         self.ensureRegisteredLocally()
 
