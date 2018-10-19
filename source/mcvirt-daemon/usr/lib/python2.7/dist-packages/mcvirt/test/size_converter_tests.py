@@ -52,7 +52,7 @@ class SizeConverterTests(TestBase):
         suite.addTest(SizeConverterTests('test_conversion_mb_5dp'))
         suite.addTest(SizeConverterTests('test_conversion_mb_6dp'))
         suite.addTest(SizeConverterTests('test_conversion_invalid_case'))
-        suite.addTest(SizeConverterTests('test_conversion_invalid_tb_storage_non_512'))
+        suite.addTest(SizeConverterTests('test_conversion_invalid_mb_storage_non_512'))
         suite.addTest(SizeConverterTests('test_conversion_b_to_tb'))
 
         return suite
@@ -124,7 +124,7 @@ class SizeConverterTests(TestBase):
 
     def test_conversion_kb(self):
         """Test conversion of MB"""
-        size_obj = SizeConverter.from_string('535KB')
+        size_obj = SizeConverter.from_string('535kB')
         self.assertEqual(size_obj.to_bytes(), 535000)
 
         # Assert that bytes returned is an integer
@@ -199,7 +199,7 @@ class SizeConverterTests(TestBase):
         """Test conversion of MB with 2 decimal place"""
         size_obj = SizeConverter.from_string('535.45MB')
         self.assertEqual(size_obj.to_bytes(), 535450000)
-        self.assertEqual(size_obj.to_string(), '535.45KB')
+        self.assertEqual(size_obj.to_string(), '535.45MB')
 
         # Assert that bytes returned is an integer
         self.assertEqual(type(size_obj.to_bytes()), int)
@@ -208,7 +208,7 @@ class SizeConverterTests(TestBase):
         """Test conversion of MB with 3 decimal place"""
         size_obj = SizeConverter.from_string('535.501MB')
         self.assertEqual(size_obj.to_bytes(), 535501000)
-        self.assertEqual(size_obj.to_string(), '535501KB')
+        self.assertEqual(size_obj.to_string(), '535501kB')
 
         # Assert that bytes returned is an integer
         self.assertEqual(type(size_obj.to_bytes()), int)
@@ -217,7 +217,7 @@ class SizeConverterTests(TestBase):
         """Test conversion of MB with 4 decimal place"""
         size_obj = SizeConverter.from_string('535.5519MB')
         self.assertEqual(size_obj.to_bytes(), 535551900)
-        self.assertEqual(size_obj.to_string(), '535501.9KB')
+        self.assertEqual(size_obj.to_string(), '535551.9kB')
 
         # Assert that bytes returned is an integer
         self.assertEqual(type(size_obj.to_bytes()), int)
@@ -226,7 +226,7 @@ class SizeConverterTests(TestBase):
         """Test conversion of MB with 5 decimal place"""
         size_obj = SizeConverter.from_string('535.55192MB')
         self.assertEqual(size_obj.to_bytes(), 535551920)
-        self.assertEqual(size_obj.to_string(), '535501.92KB')
+        self.assertEqual(size_obj.to_string(), '535551.92kB')
 
         # Assert that bytes returned is an integer
         self.assertEqual(type(size_obj.to_bytes()), int)
@@ -235,7 +235,7 @@ class SizeConverterTests(TestBase):
         """Test conversion of MB with 6 decimal place"""
         size_obj = SizeConverter.from_string('535.551964MB')
         self.assertEqual(size_obj.to_bytes(), 535551964)
-        self.assertEqual(size_obj.to_string(), '535501964B')
+        self.assertEqual(size_obj.to_string(), '535551964B')
 
         # Assert that bytes returned is an integer
         self.assertEqual(type(size_obj.to_bytes()), int)
@@ -248,12 +248,12 @@ class SizeConverterTests(TestBase):
         # Assert that bytes returned is an integer
         self.assertEqual(type(size_obj.to_bytes()), int)
 
-    def test_conversion_invalid_tb_storage_non_512(self):
+    def test_conversion_invalid_mb_storage_non_512(self):
         """Test conversion of terrabytes for storage that is
         not a multiple of 512
         """
         with self.assertRaises(Exception):
-            SizeConverter.from_string('1.2TB', storage=True)
+            SizeConverter.from_string('1.2MB', storage=True)
 
     def test_conversion_b_to_tb(self):
         """Test conversion of invalid suffix case"""
