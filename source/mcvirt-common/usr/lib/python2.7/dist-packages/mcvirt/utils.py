@@ -88,6 +88,7 @@ def get_all_submodules(target_class):
         subclasses += get_all_submodules(subclass)
     return subclasses
 
+
 def convert_size_friendly(original):
     """Convert from MB to a readable size, depneding on
     size
@@ -99,6 +100,7 @@ def convert_size_friendly(original):
         return '%.2fGB' % round(float(original) / 1024, 2)
     else:
         return '%.2fTB' % round(float(original) / (1024 ** 2), 2)
+
 
 def dict_merge(dct, merge_dct):
     """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
