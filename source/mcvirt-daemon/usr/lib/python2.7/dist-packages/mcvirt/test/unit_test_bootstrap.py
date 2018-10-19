@@ -29,6 +29,7 @@ from mcvirt.test.auth_tests import AuthTests
 from mcvirt.test.virtual_machine.hard_drive.drbd_tests import DrbdTests
 from mcvirt.test.update_tests import UpdateTests
 from mcvirt.test.virtual_machine.online_migrate_tests import OnlineMigrateTests
+from mcvirt.test.size_converter_tests import SizeConverterTests
 from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
 
 
@@ -56,6 +57,7 @@ class UnitTestBootstrap(object):
         validation_test_suite = ValidationTests.suite()
         lock_tests_suite = LockTests.suite()
         ldap_tests_suite = LdapTests.suite()
+        size_converter_tests = SizeConverterTests.suite()
 
         OnlineMigrateTests.RPC_DAEMON = self.daemon
         AuthTests.RPC_DAEMON = self.daemon
@@ -71,7 +73,8 @@ class UnitTestBootstrap(object):
             online_migrate_test_suite,
             validation_test_suite,
             lock_tests_suite,
-            ldap_tests_suite
+            ldap_tests_suite,
+            size_converter_tests
         ])
 
     def daemon_loop_condition(self):
@@ -80,6 +83,7 @@ class UnitTestBootstrap(object):
 
     def start(self):
         """Start the daemon, run the unit tests and tear down"""
+        success = False
         try:
             # Attempt to start daemon
             self.daemon_thread.start()
