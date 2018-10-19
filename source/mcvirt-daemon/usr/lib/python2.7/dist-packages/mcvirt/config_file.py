@@ -34,7 +34,7 @@ from mcvirt.exceptions import UserDoesNotExistException
 class ConfigFile(PyroObject):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    CURRENT_VERSION = 14
+    CURRENT_VERSION = 15
     GIT = '/usr/bin/git'
 
     def __init__(self):

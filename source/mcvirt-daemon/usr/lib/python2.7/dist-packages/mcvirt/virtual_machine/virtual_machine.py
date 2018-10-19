@@ -49,6 +49,7 @@ from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname, convert_size_friendly
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.utils import dict_merge
+from mcvirt.size_converter import SizeConverter
 
 
 class Modification(Enum):
@@ -490,8 +491,7 @@ class VirtualMachine(PyroObject):
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.add_row(('Name', self.get_name()))
         table.add_row(('CPU Cores', self.getCPU()))
-        table.add_row(('Memory Allocation',
-                       convert_size_friendly(int(self.getRAM()) / 1024)))
+        table.add_row(('Memory Allocation', SizeConverter(self.getRAM()).to_string()))
         table.add_row(('State', self._getPowerState().name))
         table.add_row(('Autostart', self._get_autostart_state().name))
         table.add_row(('Node', self.getNode()))
@@ -532,7 +532,7 @@ class VirtualMachine(PyroObject):
             for disk_object in sorted(disk_objects, key=lambda disk: disk.disk_id):
                 table.add_row(
                     (str(disk_object.disk_id),
-                     convert_size_friendly(disk_object.getSize()))
+                     SizeConverter(disk_object.getSize()).to_string())
                 )
         else:
             warnings += "No hard disks present on machine\n"
@@ -653,32 +653,21 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['memory_allocation']
 
     @Expose(locking=True)
-    def updateRAM(self, memory_allocation, old_value):
+    def updateRAM(self, memory_allocation):
         """Updates the amount of RAM allocated to a VM"""
-        ArgumentValidator.validate_positive_integer(memory_allocation)
-        ArgumentValidator.validate_positive_integer(old_value)
+        # Convert memory and disk sizes to bytes
+        memory_allocation = (memory_allocation
+                             if memory_allocation is isinstance(memory_allocation, int) else
+                             SizeConverter.from_string(memory_allocation).to_bytes())
 
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object(set_cluster_master=True)
-            return vm_object.updateRAM(memory_allocation, old_value)
+            return vm_object.updateRAM(memory_allocation)
 
         self.ensureRegisteredLocally()
-
-        # Ensure memory_allocation is an interger, greater than 0
-        try:
-            int(memory_allocation)
-            if int(memory_allocation) <= 0 or str(memory_allocation) != str(int(memory_allocation)):
-                raise ValueError
-        except ValueError:
-            raise InvalidArgumentException('Memory allocation must be an integer greater than 0')
-
-        current_value = self.getRAM()
-        if old_value and current_value != old_value:
-            raise AttributeAlreadyChanged(
-                'Memory has already been changed to %s since command call' % current_value)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -886,6 +875,10 @@ class VirtualMachine(PyroObject):
         """Update a VM configuration attribute and
         replicates change across all nodes
         """
+        # @TODO Merge with update_vm_config, moving the local_only
+        # parameter to update_vm_config and rename update_vm_config
+        # to update_config
+
         # Update the local configuration
 
         def update_local_config(config):
@@ -1225,8 +1218,9 @@ class VirtualMachine(PyroObject):
 
         # Create new VM for clone, without hard disks
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        new_vm_object = vm_factory._create(clone_vm_name, self.getCPU(),
-                                           self.getRAM(), [], [],
+        new_vm_object = vm_factory._create(clone_vm_name,
+                                           self.getCPU(),
+                                           self.getRAM(),
                                            available_nodes=self.getAvailableNodes(),
                                            node=self.getNode(),
                                            is_static=self.is_static())
@@ -1471,8 +1465,9 @@ class VirtualMachine(PyroObject):
 
         # Add Name, RAM, CPU and graphics driver variables to XML
         domain_xml.find('./name').text = self.get_name()
-        domain_xml.find('./memory').text = self.getRAM()
-        domain_xml.find('./vcpu').text = self.getCPU()
+        domain_xml.find('./memory').text = '%s' % str(self.getRAM())
+        domain_xml.find('./memory').set('unit', 'b')
+        domain_xml.find('./vcpu').text = str(self.getCPU())
         domain_xml.find('./devices/video/model').set('type', self.getGraphicsDriver())
 
         device_xml = domain_xml.find('./devices')

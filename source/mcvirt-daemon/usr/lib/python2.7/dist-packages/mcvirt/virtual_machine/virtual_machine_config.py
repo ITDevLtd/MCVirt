@@ -51,6 +51,7 @@ class VirtualMachineConfig(ConfigFile):
     @staticmethod
     def create(vm_name, available_nodes, cpu_cores, memory_allocation, graphics_driver):
         """Creates a basic VM configuration for new VMs"""
+        # @TODO Move import to main
         from mcvirt.virtual_machine.virtual_machine import LockStates
 
         # Create basic config
@@ -65,8 +66,8 @@ class VirtualMachineConfig(ConfigFile):
                 },
                 'hard_disks': {},
                 'storage_type': None,
-                'memory_allocation': str(memory_allocation),
-                'cpu_cores': str(cpu_cores),
+                'memory_allocation': memory_allocation,
+                'cpu_cores': cpu_cores,
                 'clone_parent': False,
                 'clone_children': [],
                 'network_interfaces': {},
@@ -188,3 +189,8 @@ class VirtualMachineConfig(ConfigFile):
                 'reset_fail_count': None,
                 'boot_wait': None
             }
+
+        if self._getVersion() < 15:
+            # Convert memory allocation to Bytes from Kib
+            config['memory_allocation'] = int(config['memory_allocation']) * 1024
+            config['cpu_'] = int(config['cpu_cores'])

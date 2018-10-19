@@ -829,6 +829,30 @@ class TimeoutExceededSerialLockError(MCVirtException):
     pass
 
 
+class SizeMustBeMultipleOf512Error(MCVirtException):
+    """Storage sizes must be a multiple of 512 bytes"""
+
+    pass
+
+
+class InvalidSizeFormatError(MCVirtException):
+    """Size was specified in an invalid format"""
+
+    pass
+
+
+class InvalidSizeSuffixError(MCVirtException):
+    """Size does not use a valid suffix"""
+
+    pass
+
+
+class SizeNotIntegerBytesError(MCVirtException):
+    """Size resolves to a decimal amount of bytes"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)

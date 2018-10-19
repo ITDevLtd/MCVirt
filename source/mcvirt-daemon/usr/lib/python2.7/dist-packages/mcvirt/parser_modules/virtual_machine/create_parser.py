@@ -33,11 +33,13 @@ class CreateParser(object):
 
         # Add arguments for creating a VM
         self.create_parser.add_argument('--memory', dest='memory', metavar='Memory',
-                                        required=True, type=int,
-                                        help='Amount of memory to allocate to the VM (MiB)')
+                                        required=True, type=str,
+                                        help=('Amount of memory to allocate to the VM '
+                                              '(specify with suffix, e.g. 8GB)'))
         self.create_parser.add_argument('--disk-size', dest='disk_size', metavar='Disk Size',
-                                        type=int, default=None,
-                                        help='Size of disk to be created for the VM (MB)')
+                                        type=str, default=None,
+                                        help=('Size of disk to be created for the VM'
+                                              '(specify with suffix, e.g. 80GB)'))
         self.create_parser.add_argument(
             '--cpu-count', dest='cpu_count', metavar='CPU Count',
             help='Number of virtual CPU cores to be allocated to the VM',
@@ -86,15 +88,13 @@ class CreateParser(object):
             storage_backend = None
         storage_type = args.storage_type or None
 
-        # Convert memory allocation from MiB to KiB
-        memory_allocation = int(args.memory) * 1024
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         hard_disks = [args.disk_size] if args.disk_size is not None else []
         mod_flags = args.modification_flags or []
         vm_factory.create(
             name=args.vm_name,
             cpu_cores=args.cpu_count,
-            memory_allocation=memory_allocation,
+            memory_allocation=args.memory,
             hard_drives=hard_disks,
             network_interfaces=args.networks,
             storage_type=storage_type,

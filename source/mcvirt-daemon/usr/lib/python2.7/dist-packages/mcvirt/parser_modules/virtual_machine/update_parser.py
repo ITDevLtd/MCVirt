@@ -34,8 +34,9 @@ class UpdateParser(object):
             parents=[self.parent_parser])
         self.update_parser.set_defaults(func=self.handle_update)
 
-        self.update_parser.add_argument('--memory', dest='memory', metavar='Memory', type=int,
-                                        help='Amount of memory to allocate to the VM (MiB)')
+        self.update_parser.add_argument('--memory', dest='memory', metavar='Memory', type=str,
+                                        help=('Amount of memory to allocate to the VM'
+                                              '(specify with suffix, e.g. 8GB)'))
         self.update_parser.add_argument(
             '--cpu-count', dest='cpu_count', metavar='CPU Count', type=int,
             help='Number of virtual CPU cores to be allocated to the VM'
@@ -71,7 +72,8 @@ class UpdateParser(object):
                   "To be used with --change-network")
         )
         self.update_parser.add_argument('--add-disk', dest='add_disk', metavar='Add Disk',
-                                        type=int, help='Add disk to the VM (size in MB)')
+                                        type=str, help=('Add disk to the VM '
+                                                        '(specify with suffix, e.g. 8GB)'))
         self.update_parser.add_argument('--delete-disk', dest='delete_disk', metavar='Disk ID',
                                         type=int, help='Remove a hard drive from a VM')
         self.update_parser.add_argument('--storage-type', dest='storage_type',
@@ -86,10 +88,11 @@ class UpdateParser(object):
                                         help='Driver for graphics',
                                         default=None)
         self.update_parser.add_argument('--increase-disk', dest='increase_disk',
-                                        metavar='Increase Disk', type=int,
-                                        help='Increases VM disk by provided amount (MB)')
+                                        metavar='Increase Disk', type=str,
+                                        help=('Increases VM disk by provided amount'
+                                              '(specify with suffix, e.g. 8GB)'))
         self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
-                                        help='The ID of the disk to be increased by')
+                                        help='The ID of the disk to be increased/removed')
         self.update_parser.add_argument('--attach-iso', '--iso', dest='iso', metavar='ISO Name',
                                         type=str, default=None, nargs='?',
                                         help=('Attach an ISO to a running VM.'
@@ -131,13 +134,9 @@ class UpdateParser(object):
         p_.rpc.annotate_object(vm_object)
 
         if args.memory:
-            old_ram_allocation_kib = vm_object.getRAM()
-            old_ram_allocation = int(old_ram_allocation_kib) / 1024
-            new_ram_allocation = int(args.memory) * 1024
-            vm_object.updateRAM(new_ram_allocation, old_value=old_ram_allocation_kib)
+            vm_object.updateRAM(args.memory)
             p_.print_status(
-                'RAM allocation will be changed from %sMiB to %sMiB.' %
-                (old_ram_allocation, args.memory)
+                'RAM allocation will be changed to %s on next VM boot.' % args.memory
             )
 
         if args.cpu_count:
@@ -181,9 +180,9 @@ class UpdateParser(object):
                                       driver=args.hard_disk_driver)
         if args.delete_disk:
             hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-            hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+            hard_drive_object = hard_drive_factory.getObject(vm_object, args.delete_disk)
             p_.rpc.annotate_object(hard_drive_object)
-            hard_drive_object.increaseSize(args.delete())
+            hard_drive_object.delete()
 
         if args.increase_disk and args.disk_id:
             hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')

@@ -26,6 +26,7 @@ from mcvirt.exceptions import (VmAlreadyStartedException, VmIsCloneException,
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.expose_method import Expose
+from mcvirt.size_converter import SizeConverter
 
 
 class Local(Base):
@@ -72,6 +73,11 @@ class Local(Base):
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM, self.vm_object
         )
+
+        # Convert disk size to bytes
+        increase_size = (increase_size
+                         if isinstance(increase_size, int) else
+                         SizeConverter.from_string(increase_size, storage=True).to_bytes())
 
         # Ensure disk exists
         self._ensure_exists()

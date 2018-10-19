@@ -80,10 +80,10 @@ class Lvm(Base):
                                        # Specify unit size in megabytes. Note from the man:
                                        # "Capitalise to use multiples of 1000 (S.I.)
                                        # instead of 1024."
-                                       '--units', 'm'],
+                                       '--units', 'b'],
                                       False,
                                       DirectoryLocation.BASE_STORAGE_DIR)
-        return float(out)
+        return int(out)
 
 
 class LvmVolume(BaseVolume):
@@ -110,7 +110,7 @@ class LvmVolume(BaseVolume):
         command_args = ['/sbin/lvcreate',
                         self.storage_backend.get_location(),  # Specify volume group
                         '--name', self.name,
-                        '--size', '%sM' % size]
+                        '--size', '%sB' % size]
         try:
             # Create on local node
             System.runCommand(command_args)
@@ -217,7 +217,7 @@ class LvmVolume(BaseVolume):
             size = '+%s' % size
 
         # Compile arguments for resize
-        command_args = ['/sbin/lvresize', '--size', '%sM' % size,
+        command_args = ['/sbin/lvresize', '--size', '%sB' % size,
                         self.get_path()]
         try:
             # Create on local node
@@ -246,7 +246,7 @@ class LvmVolume(BaseVolume):
             '--nosuffix',
             '--noheadings',
             '--units',
-            'm',
+            'b',
             '--options',
             'lv_size',
             self.get_path())

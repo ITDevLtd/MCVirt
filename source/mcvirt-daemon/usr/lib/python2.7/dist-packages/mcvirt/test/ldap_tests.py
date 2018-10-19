@@ -63,11 +63,13 @@ class LdapTests(TestBase):
     @classmethod
     def setUpClass(cls):
         """ """
+        super(cls, LdapTests).setUpClass()
         cls.mockldap = MockLdap(cls.DIRECTORY)
 
     @classmethod
     def tearDownClass(cls):
         del cls.mockldap
+        super(cls, LdapTests).tearDownClass()
 
     def setUp(self):
         """Create test Ldap configuration"""
