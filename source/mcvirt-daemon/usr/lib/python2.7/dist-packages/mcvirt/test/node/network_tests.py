@@ -38,6 +38,14 @@ class NetworkTests(TestBase):
 
         return suite
 
+    def setUp(self):
+        """Remove test networks if they exist"""
+        # Remove the test network, if it exists
+        if self.network_factory.check_exists(self.test_network_name):
+            network = self.network_factory.get_network_by_name(self.test_network_name)
+            self.rpc.annotate_object(network)
+            network.delete()
+
     def test_create(self):
         """Test the creation of network through the argument parser"""
         # Ensure network does not exist
