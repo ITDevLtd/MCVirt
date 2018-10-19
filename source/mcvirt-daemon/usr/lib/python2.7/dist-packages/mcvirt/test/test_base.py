@@ -51,27 +51,26 @@ class TestBase(unittest.TestCase):
     RPC_USERNAME = 'mjc'
     RPC_PASSWORD = 'pass'
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
         """Obtain connections to the daemon and create various
         member variables.
         """
         # Create and store RPC connection to daemon.
-        cls.rpc = Connection(cls.RPC_USERNAME, cls.RPC_PASSWORD)
+        self.rpc = Connection(self.RPC_USERNAME, self.RPC_PASSWORD)
 
         # Create and store parser instance
-        cls.parser = Parser(verbose=False)
+        self.parser = Parser(verbose=False)
 
         # Obtain the session ID from the RPC connection and re-use this,
         # so that the parser does not need to authenticate with a password
         # self.parser.parse_arguments('list --username %s --password %s' % (self.RPC_USERNAME,
         #                                                                   self.RPC_PASSWORD))
 
-        cls.parser.USERNAME = cls.RPC_USERNAME
-        cls.parser.SESSION_ID = cls.rpc.session_id
+        self.parser.USERNAME = self.RPC_USERNAME
+        self.parser.SESSION_ID = self.rpc.session_id
 
         # Setup variable for test VM
-        cls.test_vms = \
+        self.test_vms = \
             {
                 'TEST_VM_1':
                 {
@@ -96,39 +95,38 @@ class TestBase(unittest.TestCase):
             }
 
         # Ensure any test VM is stopped and removed from the machine
-        cls.stop_and_delete(cls.test_vms['TEST_VM_2']['name'])
-        cls.stop_and_delete(cls.test_vms['TEST_VM_1']['name'])
+        self.stop_and_delete(self.test_vms['TEST_VM_2']['name'])
+        self.stop_and_delete(self.test_vms['TEST_VM_1']['name'])
 
-        cls.vm_factory = cls.rpc.get_connection('virtual_machine_factory')
+        self.vm_factory = self.rpc.get_connection('virtual_machine_factory')
 
-        cls.test_network_name = 'testnetwork'
-        cls.test_physical_interface = 'vmbr0'
-        cls.network_factory = cls.rpc.get_connection('network_factory')
+        self.test_network_name = 'testnetwork'
+        self.test_physical_interface = 'vmbr0'
+        self.network_factory = self.rpc.get_connection('network_factory')
 
         # Determine if the test network exists. If so, delete it
-        if cls.network_factory.check_exists(cls.test_network_name):
-            network = cls.network_factory.get_network_by_name(cls.test_network_name)
-            cls.rpc.annotate_object(network)
+        if self.network_factory.check_exists(self.test_network_name):
+            network = self.network_factory.get_network_by_name(self.test_network_name)
+            self.rpc.annotate_object(network)
             network.delete()
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         """Destroy stored objects."""
         # Ensure any test VM is stopped and removed from the machine
-        cls.rpc.ignore_drbd()
-        cls.stop_and_delete(cls.test_vms['TEST_VM_2']['name'])
-        cls.stop_and_delete(cls.test_vms['TEST_VM_1']['name'])
+        self.rpc.ignore_drbd()
+        self.stop_and_delete(self.test_vms['TEST_VM_2']['name'])
+        self.stop_and_delete(self.test_vms['TEST_VM_1']['name'])
 
         # Remove the test network, if it exists
-        if cls.network_factory.check_exists(cls.test_network_name):
-            network = cls.network_factory.get_network_by_name(cls.test_network_name)
-            cls.rpc.annotate_object(network)
+        if self.network_factory.check_exists(self.test_network_name):
+            network = self.network_factory.get_network_by_name(self.test_network_name)
+            self.rpc.annotate_object(network)
             network.delete()
 
-        cls.network_factory = None
-        cls.vm_factory = None
-        cls.rpc = None
-        cls.parser = None
+        self.network_factory = None
+        self.vm_factory = None
+        self.rpc = None
+        self.parser = None
 
     def create_vm(self, vm_name, storage_type):
         """Create a test VM, annotate object and ensure it exists"""
@@ -156,18 +154,17 @@ class TestBase(unittest.TestCase):
         self.assertTrue(self.vm_factory.check_exists(self.test_vms[vm_name]['name']))
         return vm_object
 
-    @classmethod
-    def stop_and_delete(cls, vm_name):
+    def stop_and_delete(self, vm_name):
         """Stop and remove a virtual machine"""
-        virtual_machine_factory = cls.rpc.get_connection('virtual_machine_factory')
+        virtual_machine_factory = self.rpc.get_connection('virtual_machine_factory')
 
         if virtual_machine_factory.check_exists(vm_name):
             vm_object = virtual_machine_factory.getVirtualMachineByName(vm_name)
-            cls.rpc.annotate_object(vm_object)
+            self.rpc.annotate_object(vm_object)
 
             # Reset sync state for any Drbd disks
             for disk_object in vm_object.getHardDriveObjects():
-                cls.rpc.annotate_object(disk_object)
+                self.rpc.annotate_object(disk_object)
                 if disk_object.get_type() == 'Drbd':
                     disk_object.setSyncState(True)
 

@@ -73,7 +73,7 @@ class SizeConverter(object):
         size_s = re_match.group(1)
         unit_str = re_match.group(2) or 'B'
         if unit_str.lower() == 'b':
-            size = size_s
+            size = int(size_s)
         else:
             # Obtain unit type
             unit = [u for u in cls.units if u.suffix.lower() == unit_str.lower()]
@@ -84,7 +84,7 @@ class SizeConverter(object):
             size = Decimal(size_s) * unit.get_multiplier()
 
         # Ensure that value is a round number of bytes
-        if str(int(size)) != str(size):
+        if not float(size).is_integer():
             raise Exception('Value not a round number of bytes')
 
         # Create size object, using integer of size
