@@ -92,7 +92,7 @@ class UpdateParser(object):
                                         help=('Increases VM disk by provided amount'
                                               '(specify with suffix, e.g. 8GB)'))
         self.update_parser.add_argument('--disk-id', dest='disk_id', metavar='Disk Id', type=int,
-                                        help='The ID of the disk to be increased by')
+                                        help='The ID of the disk to be increased/removed')
         self.update_parser.add_argument('--attach-iso', '--iso', dest='iso', metavar='ISO Name',
                                         type=str, default=None, nargs='?',
                                         help=('Attach an ISO to a running VM.'
@@ -180,7 +180,7 @@ class UpdateParser(object):
                                       driver=args.hard_disk_driver)
         if args.delete_disk:
             hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-            hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+            hard_drive_object = hard_drive_factory.getObject(vm_object, args.delete_disk)
             p_.rpc.annotate_object(hard_drive_object)
             hard_drive_object.delete()
 
