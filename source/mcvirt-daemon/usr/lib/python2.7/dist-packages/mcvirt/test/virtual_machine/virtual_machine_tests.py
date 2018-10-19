@@ -114,7 +114,7 @@ class VirtualMachineTests(TestBase):
         # Check each of the attributes for VM
         self.assertEqual(vm_object.getRAM(),
                          self.test_vms['TEST_VM_1']['memory_allocation_bytes'])
-        self.assertEqual(vm_object.getCPU(), str(self.test_vms['TEST_VM_1']['cpu_count']))
+        self.assertEqual(vm_object.getCPU(), self.test_vms['TEST_VM_1']['cpu_count'])
 
         # Ensure second VM does not exist
         self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_2']['name']))
