@@ -34,8 +34,9 @@ class UpdateParser(object):
             parents=[self.parent_parser])
         self.update_parser.set_defaults(func=self.handle_update)
 
-        self.update_parser.add_argument('--memory', dest='memory', metavar='Memory', type=int,
-                                        help='Amount of memory to allocate to the VM (MiB)')
+        self.update_parser.add_argument('--memory', dest='memory', metavar='Memory', type=str,
+                                        help=('Amount of memory to allocate to the VM'
+                                              '(specify with suffix, e.g. 8GB)'))
         self.update_parser.add_argument(
             '--cpu-count', dest='cpu_count', metavar='CPU Count', type=int,
             help='Number of virtual CPU cores to be allocated to the VM'

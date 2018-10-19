@@ -651,8 +651,10 @@ class VirtualMachine(PyroObject):
     @Expose(locking=True)
     def updateRAM(self, memory_allocation, old_value):
         """Updates the amount of RAM allocated to a VM"""
-        ArgumentValidator.validate_positive_integer(memory_allocation)
-        ArgumentValidator.validate_positive_integer(old_value)
+        # Convert memory and disk sizes to bytes
+        memory_allocation = (memory_allocation
+                             if memory_allocation is type(memory_allocation) is int else
+                             SizeConverter.from_string(memory_allocation).to_bytes())
 
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
@@ -662,19 +664,6 @@ class VirtualMachine(PyroObject):
             return vm_object.updateRAM(memory_allocation, old_value)
 
         self.ensureRegisteredLocally()
-
-        # Ensure memory_allocation is an interger, greater than 0
-        try:
-            int(memory_allocation)
-            if int(memory_allocation) <= 0 or str(memory_allocation) != str(int(memory_allocation)):
-                raise ValueError
-        except ValueError:
-            raise InvalidArgumentException('Memory allocation must be an integer greater than 0')
-
-        current_value = self.getRAM()
-        if old_value and current_value != old_value:
-            raise AttributeAlreadyChanged(
-                'Memory has already been changed to %s since command call' % current_value)
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -882,6 +871,10 @@ class VirtualMachine(PyroObject):
         """Update a VM configuration attribute and
         replicates change across all nodes
         """
+        # @TODO Merge with update_vm_config, moving the local_only
+        # parameter to update_vm_config and rename update_vm_config
+        # to update_config
+
         # Update the local configuration
 
         def update_local_config(config):
