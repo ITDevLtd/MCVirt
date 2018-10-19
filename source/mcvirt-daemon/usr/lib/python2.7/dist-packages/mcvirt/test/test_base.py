@@ -77,15 +77,19 @@ class TestBase(unittest.TestCase):
                     'name': 'mcvirt-unittest-vm',
                     'cpu_count': 1,
                     'memory_allocation': '100MB',
+                    'memory_allocation_bytes': 100000000,
                     'disk_size': ['100MiB'],
+                    'disk_size_bytes': [104857600],
                     'networks': ['Production']
                 },
                 'TEST_VM_2':
                 {
                     'name': 'mcvirt-unittest-vm2',
                     'cpu_count': 2,
-                    'memory_allocation': '120MB',
-                    'disk_size': ['1GiB'],
+                    'memory_allocation': '120MiB',
+                    'memory_allocation_bytes': 125829120,
+                    'disk_size': ['25.6MB'],
+                    'disk_size_bytes': [25600000],
                     'networks': ['Production']
                 }
             }
