@@ -42,8 +42,10 @@ class System(object):
             cwd=cwd)
         Syslogger.logger().debug('Started system command: %s' % ', '.join(command_args))
         rc = command_process.wait()
-        stdout = command_process.stdout.read()
-        stderr = command_process.stderr.read()
+        stdout = command_process.stdout.read().decode(
+            'utf8', errors='backslashreplace').replace('\r', '')
+        stderr = command_process.stderr.read().decode(
+            'utf8', errors='backslashreplace').replace('\r', '')
         if rc and raise_exception_on_failure:
             Syslogger.logger().error("Failed system command: %s\nRC: %s\nStdout: %s\nStderr: %s" %
                                      (', '.join(command_args), rc, stdout, stderr))
@@ -94,22 +96,30 @@ class System(object):
         # devisible by the size, in order to get an integer count
         bs_size = None
 
-        # Work forwards then backwards from the optimal size to +/-10%,
-        # attempting to find a suitable BS size
-        for bs_size_test in (range(OPTIMAL_DD_BS_SIZE,
-                                   ceil(OPTIMAL_DD_BS_SIZE * 1.1)) +
-                             list(reversed(range(ceil(OPTIMAL_DD_BS_SIZE * 0.9),
-                                                 OPTIMAL_DD_BS_SIZE)))):
-            if size % bs_size_test == 0:
-                bs_size = bs_size_test
-                count = size / bs_size
-                break
+        # If size is less than 64MiB, then use a bs_size of 512 (which all disks
+        # are a factor of)
+        if size < (2 ** 26):
+            bs_size = 512
+
         else:
-            raise Exception('Unable to find suitable BS size')
+            # Work forwards then backwards from the optimal size to +/-10%,
+            # attempting to find a suitable BS size
+            for bs_size_test in (range(OPTIMAL_DD_BS_SIZE,
+                                       int(ceil(OPTIMAL_DD_BS_SIZE * 2))) +
+                                 list(reversed(range(int(ceil(OPTIMAL_DD_BS_SIZE * 0.5)),
+                                                     OPTIMAL_DD_BS_SIZE)))):
+                if size % bs_size_test == 0:
+                    bs_size = bs_size_test
+                    count = size / bs_size
+                    break
+            else:
+                raise Exception('Unable to find suitable BS size')
 
         # Compile command arguments
+        count = size / bs_size
         command_args = ['dd', 'if=%s' % source, 'of=%s' % destination,
-                        'bs=%sB' % bs_size, 'conv=fsync', 'oflag=direct',
+                        'bs=%s' % bs_size,
+                        'conv=fsync', 'oflag=direct',
                         'count=%s' % count]
 
         try:
