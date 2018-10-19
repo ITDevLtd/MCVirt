@@ -84,7 +84,7 @@ class SizeConverter(object):
             size = Decimal(size_s) * unit.get_multiplier()
 
         # Ensure that value is a round number of bytes
-        if int(size) != size:
+        if str(int(size)) != str(size):
             raise Exception('Value not a round number of bytes')
 
         # Create size object, using integer of size
