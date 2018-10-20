@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import random
 import xml.etree.ElementTree as ET
 
 from mcvirt.exceptions import NetworkAdapterDoesNotExistException
@@ -100,7 +101,6 @@ class NetworkAdapter(PyroObject):
     @staticmethod
     def generateMacAddress():
         """Generates a random MAC address for new VM network interfaces"""
-        import random
         mac = [0x00, 0x16, 0x3e,
                random.randint(0x00, 0x7f),
                random.randint(0x00, 0xff),
@@ -122,13 +122,15 @@ class NetworkAdapter(PyroObject):
         )
 
         # Update the VM configuration
-        def updateVmConfig(config):
+        def update_vm_config(config):
+            """Update VM config with new network"""
             config['network_interfaces'][self.getMacAddress()] = network.get_name()
         self.vm_object.get_config_object().update_config(
-            updateVmConfig, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
+            update_vm_config, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
             (self.vm_object.get_name(), self.getConnectedNetwork(), self.getMacAddress()))
 
-        def updateXML(domain_xml):
+        def update_libvirt(domain_xml):
+            """Update network in libvirt config"""
             device_xml = domain_xml.find('./devices')
             interface_xml = device_xml.find(
                 './interface[@type="network"]/mac[@address="%s"]/..' %
@@ -142,7 +144,7 @@ class NetworkAdapter(PyroObject):
             device_xml.remove(interface_xml)
             device_xml.append(self._generateLibvirtXml())
 
-        self.vm_object._editConfig(updateXML)
+        self.vm_object._editConfig(update_libvirt)
 
     @Expose(locking=True)
     def delete(self):
@@ -154,7 +156,8 @@ class NetworkAdapter(PyroObject):
 
         cache_key = (self.getMacAddress(), self.vm_object.get_name())
 
-        def updateXML(domain_xml):
+        def update_libvirt(domain_xml):
+            """Remove network from libvirt config"""
             device_xml = domain_xml.find('./devices')
             interface_xml = device_xml.find(
                 './interface[@type="network"]/mac[@address="%s"]/..' %
@@ -167,13 +170,14 @@ class NetworkAdapter(PyroObject):
 
             device_xml.remove(interface_xml)
 
-        self.vm_object._editConfig(updateXML)
+        self.vm_object._editConfig(update_libvirt)
 
         # Update the VM configuration
-        def updateVmConfig(config):
+        def update_vm_config(config):
+            """Remove network interface from VM config"""
             del config['network_interfaces'][self.getMacAddress()]
         self.vm_object.get_config_object().update_config(
-            updateVmConfig, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
+            update_vm_config, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
             (self.vm_object.get_name(), self.getConnectedNetwork(), self.getMacAddress()))
 
         # Unregister Pyro object and cached object

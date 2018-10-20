@@ -24,10 +24,13 @@ from mcvirt.utils import get_hostname
 
 
 def skip_drbd(required):
+    """Skip DRBD wrapper"""
 
     def wrapper_gen(f):
+        """Wrapper method call"""
 
         def wrapper(*args):
+            """Skip DRBD depending on whether it's enable or not"""
             if (bool(args[0].rpc.get_connection('node_drbd').is_enabled()) !=
                     bool(wrapper.required)):
                 return args[0].skipTest(('DRBD either required and not available or'

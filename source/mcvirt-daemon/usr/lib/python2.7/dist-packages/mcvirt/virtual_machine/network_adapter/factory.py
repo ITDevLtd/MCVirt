@@ -43,6 +43,7 @@ class Factory(PyroObject):
 
         # Add network interface to VM configuration
         def update_vm_config(config):
+            """Add network interface to MCVirt config"""
             config['network_interfaces'][mac_address] = network_object.get_name()
         virtual_machine.get_config_object().update_config(
             update_vm_config, 'Added network adapter to \'%s\' on \'%s\' network' %
@@ -50,6 +51,7 @@ class Factory(PyroObject):
 
         if self._is_cluster_master:
             def remote_command(node_connection):
+                """Add network to remote nodes"""
                 remote_vm_factory = node_connection.get_connection('virtual_machine_factory')
                 remote_vm = remote_vm_factory.getVirtualMachineByName(virtual_machine.get_name())
                 remote_network_factory = node_connection.get_connection('network_factory')
@@ -68,6 +70,7 @@ class Factory(PyroObject):
         # Only update the LibVirt configuration if VM is registered on this node
         if virtual_machine.isRegisteredLocally():
             def updateXML(domain_xml):
+                """Add network to VM libvirt config"""
                 network_xml = network_adapter_object._generateLibvirtXml()
                 device_xml = domain_xml.find('./devices')
                 device_xml.append(network_xml)

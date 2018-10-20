@@ -112,6 +112,7 @@ class Cluster(PyroObject):
         and checks the node Status
         """
         def check_version(connection):
+            """Check node config on remote node"""
             node = connection.get_connection('node')
             return node.get_version()
         node_versions = self.run_remote_command(check_version)
@@ -145,6 +146,7 @@ class Cluster(PyroObject):
 
         # Add node to configuration file
         def add_node_config(mcvirt_config):
+            """Add node config to MCVirt config"""
             mcvirt_config['cluster']['nodes'][node_name] = {
                 'ip_address': ip_address,
                 'username': username,
@@ -592,6 +594,7 @@ class Cluster(PyroObject):
         all_nodes.remove(node_name_to_remove)
 
         def remove_vm(remote_connection, vm_name):
+            """Remove VM from remote node"""
             if remote_connection is not None:
                 remote_vm_factory = remote_connection.get_connection('virtual_machine_factory')
                 remote_vm = remote_vm_factory.getVirtualMachineByName(vm_name)
@@ -628,7 +631,7 @@ class Cluster(PyroObject):
         """
         if self._is_cluster_master:
             def remove_auth(node_connection, remove_nodes):
-                # Removes the SSL certificates for the remote node
+                """Removes the SSL certificates for the remote node"""
                 remote_cluster = node_connection.get_connection('cluster')
                 for remove_node in remove_nodes:
                     remote_cluster.remove_node_ssl_certificates(remove_node)
@@ -758,6 +761,7 @@ class Cluster(PyroObject):
         authorized_keys file
         """
         def remove_node_config(mcvirt_config):
+            """Remove node config from MCVirt config"""
             del mcvirt_config['cluster']['nodes'][node_name]
         MCVirtConfig().update_config(remove_node_config)
 

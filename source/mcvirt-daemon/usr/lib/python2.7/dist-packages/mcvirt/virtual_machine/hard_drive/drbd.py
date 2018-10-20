@@ -317,18 +317,19 @@ class Drbd(Base):
         self._ensureBlockDeviceExists()
 
     def deactivateDisk(self):
-        """Marks Drbd volume as secondary"""
+        """Mark Drbd volume as secondary"""
         self._ensure_exists()
         self._drbdSetSecondary()
 
     def getSize(self):
-        """Gets the size of the disk (in MB)"""
+        """Get the size of the disk (in MB)"""
         self._ensure_exists()
         return self.get_raw_volume().get_size()
 
     def create(self, size):
-        """Creates a new hard drive, attaches the disk to the VM and records the disk
-        in the VM configuration"""
+        """Create a new hard drive, attaches the disk to the VM and records the disk
+        in the VM configuration
+        """
         # Ensure user has privileges to create a Drbd volume
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.vm_object)
@@ -343,7 +344,7 @@ class Drbd(Base):
         if len(remote_nodes) != 1:
             raise InvalidNodesException('Only one remote node can be used')
 
-        t = Transaction()
+        trans = Transaction()
 
         # Ensure DRBD port is determined before obtaining a remote object
         self.drbd_port
@@ -399,7 +400,7 @@ class Drbd(Base):
 
         self.drbdSetSecondary(nodes=remote_nodes)
 
-        t.finish()
+        trans.finish()
 
     @Expose()
     def removeStorage(self, *args, **kwargs):
@@ -409,6 +410,7 @@ class Drbd(Base):
 
     def _removeStorage(self, local_only=False, remove_raw=True):
         """Removes the backing storage for the Drbd hard drive"""
+        # @TODO Use transaction and pass nodes to each function
         self._ensure_exists()
         cluster = self._get_registered_object('cluster')
         remote_nodes = [] if local_only else self.vm_object._get_remote_nodes()
@@ -417,25 +419,28 @@ class Drbd(Base):
                      self.vm_object.getAvailableNodes())
 
         # Disconnect and perform a 'down' on the Drbd volume on all nodes
-        def remoteCommand(node):
+        def disconnect_remote(node):
+            """Disconnect DRBD on remote node"""
             remote_disk = self.get_remote_object(node_object=node, registered=False)
             remote_disk.drbdDisconnect()
-        cluster.run_remote_command(callback_method=remoteCommand,
+        cluster.run_remote_command(callback_method=disconnect_remote,
                                    nodes=remote_nodes)
         self._drbdDisconnect()
 
-        def remoteCommand(node):
+        def drbd_down_remote(node):
+            """Down DRBD on remote node"""
             remote_disk = self.get_remote_object(node_object=node, registered=False)
             remote_disk.drbdDown()
-        cluster.run_remote_command(callback_method=remoteCommand,
+        cluster.run_remote_command(callback_method=drbd_down_remote,
                                    nodes=remote_nodes)
         self._drbdDown()
 
         # Remove the Drbd configuration from all nodes
-        def remoteCommand(node):
+        def remote_config_remote(node):
+            """Remove DRBD config from remote node"""
             remote_disk = self.get_remote_object(node_object=node, registered=False)
             remote_disk.removeDrbdConfig()
-        cluster.run_remote_command(callback_method=remoteCommand,
+        cluster.run_remote_command(callback_method=remote_config_remote,
                                    nodes=remote_nodes)
         self._removeDrbdConfig()
 
@@ -447,7 +452,8 @@ class Drbd(Base):
     @Expose(locking=True)
     def initialiseMetaData(self, *args, **kwargs):
         """Provides an exposed method for _initialiseMetaData
-           with permission checking"""
+        with permission checking
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._initialiseMetaData(*args, **kwargs)
@@ -535,10 +541,11 @@ class Drbd(Base):
         self._drbd_resize()
         cluster = self._get_registered_object('cluster')
 
-        def remoteCommand(node):
+        def resize_drbd_remote(node):
+            """Resize DRBD on remote node"""
             remote_disk = self.get_remote_object(node_object=node)
             remote_disk.drbd_resize()
-        cluster.run_remote_command(callback_method=remoteCommand,
+        cluster.run_remote_command(callback_method=resize_drbd_remote,
                                    nodes=self.vm_object._get_remote_nodes())
 
         # Ensure taht volumes are the same size after resize
@@ -562,7 +569,8 @@ class Drbd(Base):
     @Expose(locking=True)
     def drbdUp(self, *args, **kwargs):
         """Provides an exposed method for _drbdUp
-           with permission checking"""
+        with permission checking
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdUp(*args, **kwargs)
@@ -576,7 +584,8 @@ class Drbd(Base):
     @Expose(locking=True)
     def drbdDown(self, *args, **kwargs):
         """Provides an exposed method for _drbdDown
-           with permission checking"""
+        with permission checking
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdDown(*args, **kwargs)
@@ -593,7 +602,8 @@ class Drbd(Base):
     @Expose(locking=True)
     def drbdConnect(self, *args, **kwargs):
         """Provides an exposed method for _drbdConnect
-           with permission checking"""
+        with permission checking
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdConnect(*args, **kwargs)
@@ -609,7 +619,8 @@ class Drbd(Base):
     @Expose(locking=True)
     def drbdDisconnect(self, *args, **kwargs):
         """Provides an exposed method for _drbdDisconnect
-           with permission checking"""
+        with permission checking
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdDisconnect(*args, **kwargs)
@@ -621,14 +632,16 @@ class Drbd(Base):
     @Expose(locking=True)
     def setTwoPrimariesConfig(self, *args, **kwargs):
         """Provides an exposed method for _setTwoPrimariesConfig
-           with permission checking"""
+        with permission checking
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._setTwoPrimariesConfig(*args, **kwargs)
 
     def _setTwoPrimariesConfig(self, allow=False):
         """Configures Drbd to temporarily allow or re-disable whether
-           two allow two primaries"""
+        two allow two primaries
+        """
         if allow:
             # Configure Drbd on both nodes to allow Drbd volume to be set to primary
             self._checkDrbdStatus()
@@ -661,16 +674,18 @@ class Drbd(Base):
         if self._is_cluster_master:
             cluster_instance = self._get_registered_object('cluster')
 
-            def remoteCommand(node):
+            def set_dual_primary_remote(node):
+                """set dual primary on remote node"""
                 remote_disk = self.get_remote_object(node_object=node)
                 remote_disk.setTwoPrimariesConfig(allow=allow)
-            cluster_instance.run_remote_command(callback_method=remoteCommand,
+            cluster_instance.run_remote_command(callback_method=set_dual_primary_remote,
                                                 nodes=self.vm_object._get_remote_nodes())
 
     @Expose(locking=True)
     def drbdSetPrimary(self, *args, **kwargs):
         """Provides an exposed method for _drbdSetPrimary
-           with permission checking"""
+        with permission checking
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdSetPrimary(*args, **kwargs)
@@ -833,9 +848,9 @@ class Drbd(Base):
                                      'Both nodes must be up-to-date and connected')
 
     def preOnlineMigration(self, destination_node):
-        """Performs required tasks in order
-           for the underlying VM to perform an
-           online migration"""
+        """Performs required tasks in order for the underlying VM to perform an
+        online migration
+        """
         # Temporarily allow the Drbd volume to be in a dual-primary mode
         self._setTwoPrimariesConfig(allow=True)
 
@@ -844,8 +859,7 @@ class Drbd(Base):
         remote_disk.drbdSetPrimary(allow_two_primaries=True)
 
     def postOnlineMigration(self):
-        """Performs post tasks after a VM
-           has performed an online migration"""
+        """Performs post tasks after a VM has performed an online migration"""
         # Set Drbd on local node as secondary
         self._drbdSetSecondary()
 
@@ -908,6 +922,7 @@ class Drbd(Base):
         )
 
         def update_config(config):
+            """Set sync state in VM config"""
             config['hard_disks'][self.disk_id]['sync_state'] = sync_state
         self.vm_object.get_config_object().update_config(
             update_config,
@@ -920,10 +935,11 @@ class Drbd(Base):
         if self._is_cluster_master and update_remote:
             cluster = self._get_registered_object('cluster')
 
-            def remoteCommand(node):
+            def set_sync_state_remote(node):
+                """Set sync state on remote node"""
                 remote_disk = self.get_remote_object(node_object=node)
                 remote_disk.setSyncState(sync_state=sync_state)
-            cluster.run_remote_command(callback_method=remoteCommand,
+            cluster.run_remote_command(callback_method=set_sync_state_remote,
                                        nodes=self.vm_object._get_remote_nodes())
 
     @Expose()
@@ -1189,7 +1205,8 @@ class Drbd(Base):
     @Expose(locking=True)
     def generateDrbdConfig(self, *args, **kwargs):
         """Provides an exposed method for _generateDrbdConfig
-           with permission checking"""
+        with permission checking
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._generateDrbdConfig(*args, **kwargs)
@@ -1243,7 +1260,8 @@ class Drbd(Base):
     @Expose(locking=True)
     def removeDrbdConfig(self, *args, **kwargs):
         """Provides an exposed method for _removeDrbdConfig
-           with permission checking"""
+        with permission checking
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._removeDrbdConfig(*args, **kwargs)

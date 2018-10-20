@@ -635,10 +635,11 @@ class VirtualMachine(PyroObject):
             rmtree(VirtualMachine.get_vm_dir(self.name))
 
         # Remove VM from MCVirt configuration
-        def updateMCVirtConfig(config):
+        def update_mcvirt_config(config):
+            """Remove VM from MCVirt config"""
             config['virtual_machines'].remove(self.name)
         MCVirtConfig().update_config(
-            updateMCVirtConfig,
+            update_mcvirt_config,
             'Removed VM \'%s\' from global MCVirt config' %
             self.name)
 
@@ -672,14 +673,14 @@ class VirtualMachine(PyroObject):
         # Ensure VM is unlocked
         self.ensureUnlocked()
 
-        def updateXML(domain_xml):
-            # Update RAM allocation and unit measurement
+        def update_libvirt(domain_xml):
+            """Update RAM allocation and unit measurement"""
             domain_xml.find('./memory').text = str(memory_allocation)
             domain_xml.find('./memory').set('unit', 'KiB')
             domain_xml.find('./currentMemory').text = str(memory_allocation)
             domain_xml.find('./currentMemory').set('unit', 'KiB')
 
-        self._editConfig(updateXML)
+        self._editConfig(update_libvirt)
 
         # Update the MCVirt configuration
         self.update_config(['memory_allocation'], str(memory_allocation),
@@ -723,10 +724,10 @@ class VirtualMachine(PyroObject):
         self.ensureRegisteredLocally()
 
         if self.isRegistered():
-            def updateXML(domain_xml):
-                # Update RAM allocation and unit measurement
+            def update_libvirt(domain_xml):
+                """Update RAM allocation and unit measurement"""
                 domain_xml.find('./vcpu').text = str(cpu_count)
-            self._editConfig(updateXML)
+            self._editConfig(update_libvirt)
 
         # Update the MCVirt configuration
         self.update_config(['cpu_cores'], str(cpu_count), 'CPU count has been changed to %s' %
@@ -737,7 +738,8 @@ class VirtualMachine(PyroObject):
         """Apply the XML changes for CPU flags"""
         flags = self.get_modification_flags()
 
-        def updateXML(domain_xml):
+        def update_libvirt(domain_xml):
+            """Apply CPU flags to libvirt config"""
             cpu_section = domain_xml.find('./cpu')
 
             # Delete the CPU section if it already exists
@@ -755,7 +757,7 @@ class VirtualMachine(PyroObject):
                 cpu_section.append(model)
                 cpu_section.append(feature)
 
-        self._editConfig(updateXML)
+        self._editConfig(update_libvirt)
 
     @Expose()
     def get_modification_flags(self):
@@ -882,6 +884,7 @@ class VirtualMachine(PyroObject):
         # Update the local configuration
 
         def update_local_config(config):
+            """Update VM config"""
             config_level = config
             for attribute in attribute_path[:-1]:
                 config_level = config_level[attribute]
@@ -890,14 +893,16 @@ class VirtualMachine(PyroObject):
         self.get_config_object().update_config(update_local_config, reason)
 
         if not local_only:
-            def remote_command(remote_object):
+            def update_config_remote(remote_object):
+                """Update remote VM config"""
                 vm_factory = remote_object.get_connection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
                 remote_object.annotate_object(remote_vm)
                 remote_vm.remote_update_config(attribute_path=attribute_path, value=value,
                                                reason=reason, local_only=True)
             cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_command, ignore_cluster_master=ignore_cluster_master)
+            cluster.run_remote_command(update_config_remote,
+                ignore_cluster_master=ignore_cluster_master)
 
     @staticmethod
     def get_vm_dir(name):
@@ -906,7 +911,8 @@ class VirtualMachine(PyroObject):
 
     def getLibvirtConfig(self):
         """Returns an XML object of the libvirt configuration
-        for the domain"""
+        for the domain
+        """
         domain_flags = (libvirt.VIR_DOMAIN_XML_INACTIVE + libvirt.VIR_DOMAIN_XML_SECURE)
         domain_xml = ET.fromstring(self._getLibvirtDomainObject().XMLDesc(domain_flags))
         return domain_xml
@@ -914,14 +920,16 @@ class VirtualMachine(PyroObject):
     @Expose(locking=True)
     def editConfig(self, *args, **kwargs):
         """Provides permission checking around the editConfig method and
-           exposes the method"""
+        exposes the method
+        """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
         return self._editConfig(*args, **kwargs)
 
     def _editConfig(self, callback_function):
         """Provides an interface for updating the libvirt configuration, by obtaining
-           the configuration, performing a callback function to perform changes on the
-           configuration and pushing the configuration back into LibVirt"""
+        the configuration, performing a callback function to perform changes on the
+        configuration and pushing the configuration back into LibVirt
+        """
         # Obtain VM XML
         domain_xml = self.getLibvirtConfig()
 
@@ -981,7 +989,7 @@ class VirtualMachine(PyroObject):
                 )
 
             # Wait for 5 seconds before checking the VM state again
-            sleep.sleep(5)
+            sleep(5)
 
         # Unregister the VM on the local node
         self._unregister()
@@ -1232,18 +1240,20 @@ class VirtualMachine(PyroObject):
                                            network_adapter.getMacAddress() if retain_mac else None)
 
         # Mark VM as being a clone and mark parent as being a clone
-        def setCloneParent(vm_config):
+        def set_clone_parent(vm_config):
+            """Update clone parent config"""
             vm_config['clone_parent'] = self.get_name()
 
         new_vm_object.get_config_object().update_config(
-            setCloneParent,
+            set_clone_parent,
             'Set VM clone parent after initial clone')
 
-        def setCloneChild(vm_config):
+        def set_clone_child(vm_config):
+            """Set clone children config in new VM"""
             vm_config['clone_children'].append(new_vm_object.get_name())
 
         self.get_config_object().update_config(
-            setCloneChild,
+            set_clone_child,
             'Added new clone \'%s\' to VM configuration' %
             self.get_name())
 
@@ -1350,8 +1360,8 @@ class VirtualMachine(PyroObject):
             raise UnsuitableNodeException('Source node is not configured for the VM')
 
         # Ensure that, if the VM is Drbd-backed, that the local node is not the source
-        if ((self.getStorageType() == 'Drbd' and
-             source_node == get_hostname())):
+        if (self.getStorageType() == 'Drbd' and
+                source_node == get_hostname()):
             raise UnsuitableNodeException('Drbd-backed VMs must be moved on the node' +
                                           ' that will remain attached to the VM')
         elif self.getStorageType() == 'Local':
@@ -1554,19 +1564,21 @@ class VirtualMachine(PyroObject):
         """Sets the node of the VM"""
         if self._is_cluster_master:
             # Update remote nodes
-            def remote_command(remote_connection):
+            def set_node_remote(remote_connection):
+                """Set VM node on remote nodes"""
                 vm_factory = remote_connection.get_connection('virtual_machine_factory')
                 remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
                 remote_connection.annotate_object(remote_vm)
                 remote_vm.setNodeRemote(node)
             cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_command)
+            cluster.run_remote_command(set_node_remote)
 
         # Update the node in the VM configuration
-        def updateVmConfig(config):
+        def update_vm_conf(config):
+            """Update node in VM config"""
             config['node'] = node
         self.get_config_object().update_config(
-            updateVmConfig, 'Changing node for VM \'%s\' to \'%s\'' %
+            update_vm_conf, 'Changing node for VM \'%s\' to \'%s\'' %
             (self.get_name(), node))
 
     def _get_remote_nodes(self):
@@ -1837,16 +1849,18 @@ class VirtualMachine(PyroObject):
             raise VirtualMachineLockException('Lock for \'%s\' is already set to \'%s\'' %
                                               (self.get_name(), self._getLockState().name))
 
-        def updateLock(config):
+        def update_lock(config):
+            """Update lock in VM config"""
             config['lock'] = lock_status.value
-        self.get_config_object().update_config(updateLock,
+        self.get_config_object().update_config(update_lock,
                                                'Setting lock state of \'%s\' to \'%s\'' %
                                                (self.get_name(), lock_status.name))
 
     def setBootOrder(self, boot_devices):
         """Sets the boot devices and the order in which devices are booted from"""
 
-        def updateXML(domain_xml):
+        def update_libvirt(domain_xml):
+            """Update libvirt config with new boot order"""
             old_boot_objects = domain_xml.findall('./os/boot')
             os_xml = domain_xml.find('./os')
 
@@ -1862,7 +1876,7 @@ class VirtualMachine(PyroObject):
                 # Append new XML configuration onto OS section of domain XML
                 os_xml.append(new_boot_xml_object)
 
-        self._editConfig(updateXML)
+        self._editConfig(update_libvirt)
 
     @Expose(locking=True)
     def update_graphics_driver(self, driver):
@@ -1886,10 +1900,11 @@ class VirtualMachine(PyroObject):
             # Ensure VM is unlocked
             self.ensureUnlocked()
 
-            def updateXML(domain_xml):
+            def update_libvirt(domain_xml):
+                """Update graphics in libvirt config"""
                 domain_xml.find('./devices/video/model').set('type', driver)
 
-            self._editConfig(updateXML)
+            self._editConfig(update_libvirt)
 
     def getGraphicsDriver(self):
         """Returns the graphics driver for this VM"""

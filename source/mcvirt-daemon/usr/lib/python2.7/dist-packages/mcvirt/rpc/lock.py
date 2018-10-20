@@ -38,6 +38,9 @@ class MethodLock(object):
 
 
 def lock_log_and_call(callback, args, kwargs, instance_method, object_type):
+    """Provide functionality to lock the cluster, log the command
+    and then call it
+    """
     # Attempt to obtain object type and name for logging
     object_name, object_type = getLogNames(callback,
                                            instance_method,

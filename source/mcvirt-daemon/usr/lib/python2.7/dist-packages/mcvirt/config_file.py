@@ -106,6 +106,7 @@ class ConfigFile(PyroObject):
         """Set file permissions for config directories"""
 
         def set_permission(path, directory=True, owner=0):
+            """Ser permissions on directory"""
             permission_mode = stat.S_IRUSR
             if directory:
                 permission_mode = permission_mode | stat.S_IWUSR | stat.S_IXUSR
@@ -141,6 +142,7 @@ class ConfigFile(PyroObject):
         current_version = self._getVersion()
         if current_version < self.CURRENT_VERSION:
             def upgradeConfig(config):
+                """Update config in config file"""
                 # Perform the configuration sub-class specific upgrade
                 # tasks
                 self._upgrade(config)

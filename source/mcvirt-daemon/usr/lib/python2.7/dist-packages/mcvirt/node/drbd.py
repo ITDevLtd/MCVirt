@@ -118,6 +118,7 @@ class Drbd(PyroObject):
             cluster = self._get_registered_object('cluster')
 
             def remote_command(node):
+                """Enable DRBD on remote node, specifying the secret"""
                 remote_drbd = node.get_connection('node_drbd')
                 remote_drbd.enable(secret=secret)
 
@@ -128,6 +129,7 @@ class Drbd(PyroObject):
 
         # Update the local configuration
         def update_config(config):
+            """Enable DRBD in local MCVirt config"""
             config['drbd']['enabled'] = 1
         MCVirtConfig().update_config(update_config, 'Enabled Drbd')
 
@@ -174,6 +176,7 @@ class Drbd(PyroObject):
     def set_secret(self, secret):
         """Set the Drbd configuration in the global MCVirt config file"""
         def update_config(config):
+            """Set secret in MCVirt config"""
             config['drbd']['secret'] = secret
         MCVirtConfig().update_config(update_config, 'Set Drbd secret')
 

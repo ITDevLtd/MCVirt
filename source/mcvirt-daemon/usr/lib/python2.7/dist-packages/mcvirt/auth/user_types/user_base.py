@@ -163,6 +163,7 @@ class UserBase(PyroObject):
         password_hash = self._hash_password(new_password)
 
         def update_config(config):
+            """Update password hash in user config in MCVirt config"""
             config['users'][self.get_username()]['password'] = password_hash
         MCVirtConfig().update_config(
             update_config, 'Updated password for \'%s\'' % self.get_username()
@@ -170,6 +171,7 @@ class UserBase(PyroObject):
 
         if self.DISTRIBUTED and self._is_cluster_master:
             def remote_command(node_connection):
+                """Update password hash in user config on remote nodes"""
                 remote_user_factory = node_connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(self.get_username())
                 node_connection.annotate_object(remote_user)

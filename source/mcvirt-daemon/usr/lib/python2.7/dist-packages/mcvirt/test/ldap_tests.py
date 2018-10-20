@@ -62,12 +62,13 @@ class LdapTests(TestBase):
 
     @classmethod
     def setUpClass(cls):
-        """ """
+        """Setup class, creating mock ldap object"""
         super(cls, LdapTests).setUpClass()
         cls.mockldap = MockLdap(cls.DIRECTORY)
 
     @classmethod
     def tearDownClass(cls):
+        """REmove mock ldap object"""
         del cls.mockldap
         super(cls, LdapTests).tearDownClass()
 
@@ -79,6 +80,7 @@ class LdapTests(TestBase):
         self.original_ldap_config = MCVirtConfig().get_config()['ldap']
 
         def update_config(config):
+            """Upate LDAP config in MCVirt config"""
             config['ldap'] = LdapTests.TEST_LDAP_CONFIG
         MCVirtConfig().update_config(update_config, 'Create test Ldap configuration')
 
@@ -90,6 +92,7 @@ class LdapTests(TestBase):
     def tearDown(self):
         """Restore the correct Ldap configuration"""
         def reset_config(config):
+            """Reset LDAP config in MCVirt config"""
             config['ldap'] = self.original_ldap_config
         MCVirtConfig().update_config(reset_config, 'Reset Ldap configuration')
 
@@ -179,6 +182,7 @@ class LdapTests(TestBase):
     def test_user_search(self):
         """Test that getting LDAP usernames takes the user_search attribute into account"""
         def update_config(config):
+            """Update LDAP config in MCVirt config"""
             config['ldap']['user_search'] = '(loginShell=/bin/bash)'
         MCVirtConfig().update_config(update_config, 'Set user_search')
 

@@ -107,6 +107,7 @@ class Factory(PyroObject):
             pass
 
         def get_remote_config(connection):
+            """Get storage config for remote node"""
             storage_factory = connection.get_connection('storage_factory')
             # Get the remote node's storage object
             try:
@@ -249,6 +250,7 @@ class Factory(PyroObject):
         if self._is_cluster_master:
             # If cluster master, update the remote nodes
             def update_remote_config(remote_connection):
+                """Update config on remote node"""
                 storage_factory = remote_connection.get_connection('storage_factory')
                 storage_factory.set_default_v9_release_config(config)
             cluster = self._get_registered_object('cluster')

@@ -105,6 +105,7 @@ class Factory(PyroObject):
 
         if self._is_cluster_master:
             def remote_command(remote_connection):
+                """Check that interface exists on remote node"""
                 network_factory = remote_connection.get_connection('network_factory')
                 network_factory.assert_interface_exists(physical_interface)
 
@@ -142,9 +143,11 @@ class Factory(PyroObject):
 
         # Update MCVirt config
         def update_config(config):
+            """Update MCVirt config"""
             config['networks'][name] = physical_interface
-        from mcvirt.mcvirt_config import MCVirtConfig
-        MCVirtConfig().update_config(update_config, 'Created network \'%s\'' % name)
+
+        self._get_registered_object('mcvirt_config')().update_config(
+            update_config, 'Created network \'%s\'' % name)
 
         # Obtain instance of the network object
         network_instance = self.get_network_by_name(name)
@@ -157,6 +160,7 @@ class Factory(PyroObject):
 
         if self._is_cluster_master:
             def remote_add(node):
+                """Create network on remote node"""
                 network_factory = node.get_connection('network_factory')
                 network_factory.create(name, physical_interface)
             cluster = self._get_registered_object('cluster')

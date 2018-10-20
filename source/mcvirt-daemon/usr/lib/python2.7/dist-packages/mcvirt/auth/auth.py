@@ -169,6 +169,7 @@ class Auth(PyroObject):
         # Ensure user is not already a superuser
         if username not in self.get_superusers():
             def update_config(config):
+                """Append superuser to MCVirt config"""
                 config['superusers'].append(username)
             mcvirt_config.update_config(update_config, 'Added superuser \'%s\'' % username)
 
@@ -179,6 +180,7 @@ class Auth(PyroObject):
 
         if self._is_cluster_master:
             def remote_command(connection):
+                """Add superuser to remote node"""
                 remote_user_factory = connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(user_object.get_username())
                 remote_auth = connection.get_connection('auth')
@@ -209,12 +211,14 @@ class Auth(PyroObject):
         mcvirt_config = MCVirtConfig()
 
         def update_config(config):
+            """Remove superuser from MCVirt config"""
             config['superusers'].remove(username)
         mcvirt_config.update_config(update_config, 'Removed \'%s\' from superuser group' %
                                                    username)
 
         if self._is_cluster_master:
             def remote_command(connection):
+                """Remove superuser from remote nodes"""
                 remote_user_factory = connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(user_object.get_username())
                 remote_auth = connection.get_connection('auth')
@@ -232,6 +236,7 @@ class Auth(PyroObject):
 
         # Add permissions configuration from source VM to destination VM
         def add_user_to_group(vm_config):
+            """Copy permissions to config"""
             vm_config['permissions'] = permission_config
 
         dest_vm.get_config_object().update_config(add_user_to_group,
