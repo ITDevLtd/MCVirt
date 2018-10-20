@@ -18,7 +18,6 @@
 from enum import Enum
 import os
 import math
-import Pyro4
 
 import time
 from Cheetah.Template import Template

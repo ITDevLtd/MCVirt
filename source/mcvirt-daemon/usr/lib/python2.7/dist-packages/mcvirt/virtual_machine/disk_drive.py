@@ -17,7 +17,6 @@
 
 import libvirt
 import xml.etree.ElementTree as ET
-import Pyro4
 
 from mcvirt.exceptions import LibvirtException, IsoNotPresentOnDestinationNodeException
 from mcvirt.iso.iso import Iso

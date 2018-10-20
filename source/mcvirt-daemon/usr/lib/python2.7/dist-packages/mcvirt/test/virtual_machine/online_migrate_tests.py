@@ -19,7 +19,6 @@ import unittest
 import os
 import time
 from enum import Enum
-import Pyro4
 import libvirt
 
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine

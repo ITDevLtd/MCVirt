@@ -19,7 +19,6 @@
 
 import json
 import base64
-import Pyro4
 
 import socket
 from texttable import Texttable

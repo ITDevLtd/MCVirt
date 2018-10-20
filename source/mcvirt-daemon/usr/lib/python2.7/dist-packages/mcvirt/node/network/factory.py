@@ -17,8 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
-
 from texttable import Texttable
 import xml.etree.ElementTree as ET
 import netifaces

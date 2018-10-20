@@ -19,7 +19,6 @@
 
 import os
 import stat
-import Pyro4
 
 from mcvirt.exceptions import (InvalidISOPathException, NameNotSpecifiedException,
                                IsoAlreadyExistsException, FailedToRemoveFileException,

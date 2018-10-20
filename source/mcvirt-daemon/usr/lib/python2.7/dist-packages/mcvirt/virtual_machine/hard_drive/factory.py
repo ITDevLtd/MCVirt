@@ -90,8 +90,6 @@
 #########################################################################################
 """
 
-import Pyro4
-
 from mcvirt.exceptions import (UnknownStorageTypeException, HardDriveDoesNotExistException,
                                InsufficientSpaceException, StorageBackendNotAvailableOnNode,
                                UnknownStorageBackendException, InvalidNodesException,

@@ -20,8 +20,6 @@
 from Cheetah.Template import Template
 import os
 from texttable import Texttable
-import Pyro4
-import string
 import json
 from binascii import hexlify
 

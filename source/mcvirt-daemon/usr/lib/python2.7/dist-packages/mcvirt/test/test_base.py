@@ -16,7 +16,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import unittest
-import threading
 
 from mcvirt.client.rpc import Connection
 from mcvirt.parser import Parser
