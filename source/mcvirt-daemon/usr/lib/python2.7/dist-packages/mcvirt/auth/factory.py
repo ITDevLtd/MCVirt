@@ -80,7 +80,7 @@ class Factory(PyroObject):
                 )
 
         # Ensure that there is not a duplicate user
-        if user_type._check_exists(username):
+        if user_type.check_exists(username):
             raise UserAlreadyExistsException('There is a user with the same username \'%s\'' %
                                              username)
 

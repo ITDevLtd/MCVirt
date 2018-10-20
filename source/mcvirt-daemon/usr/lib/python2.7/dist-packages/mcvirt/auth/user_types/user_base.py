@@ -97,7 +97,7 @@ class UserBase(PyroObject):
         return False
 
     @classmethod
-    def _check_exists(cls, username):
+    def check_exists(cls, username):
         """Check the MCVirt config to determine if a given user exists."""
         return username in cls.get_all_usernames()
 
@@ -123,7 +123,7 @@ class UserBase(PyroObject):
 
     def _ensure_exists(self):
         """Ensure that the current user exists in the MCVirt configuration"""
-        if not self.__class__._check_exists(self.get_username()):
+        if not self.__class__.check_exists(self.get_username()):
             raise UserDoesNotExistException('User %s does not exist' %
                                             self.get_username())
 
@@ -154,7 +154,7 @@ class UserBase(PyroObject):
         return self._get_config()['salt']
 
     @Expose()
-    def set_password(self, new_password):
+    def set_password(self, new_password):  # pylint: disable=W0613
         """Default functionality for password change is to throw an exception"""
         raise InvalidUserTypeException('Cannot change password for this type of user')
 
