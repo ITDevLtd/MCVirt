@@ -83,7 +83,7 @@ class DiskDrive(PyroObject):
         domain_config = self.vm_object.getLibvirtConfig()
         source_xml = domain_config.find('./devices/disk[@device="cdrom"]/source')
 
-        if (source_xml is not None):
+        if source_xml is not None:
             filename = Iso.get_filename_from_path(source_xml.get('file'))
             return Iso(filename)
         else:

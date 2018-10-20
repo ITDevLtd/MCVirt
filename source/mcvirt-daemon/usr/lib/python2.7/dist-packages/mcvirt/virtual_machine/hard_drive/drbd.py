@@ -1126,7 +1126,7 @@ class Drbd(Base):
         # Determine a free port
         test_port = self.INITIAL_PORT
 
-        while (available_port is None):
+        while available_port is None:
 
             if test_port in used_ports or test_port in listening_ports:
                 test_port += 1
@@ -1145,7 +1145,7 @@ class Drbd(Base):
         # Determine a free minor
         test_minor_id = Drbd.INITIAL_MINOR
 
-        while (available_minor_id is None):
+        while available_minor_id is None:
             if test_minor_id in used_minor_ids:
                 test_minor_id += 1
             else:

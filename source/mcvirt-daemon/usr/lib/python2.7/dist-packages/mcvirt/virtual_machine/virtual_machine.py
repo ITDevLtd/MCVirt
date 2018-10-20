@@ -250,12 +250,12 @@ class VirtualMachine(PyroObject):
     @property
     def is_running(self):
         """Return True if VM is running"""
-        return (self._getPowerState() is PowerStates.RUNNING)
+        return self._getPowerState() is PowerStates.RUNNING
 
     @property
     def is_stopped(self):
         """Return true is VM is stopped"""
-        return (self._getPowerState() is PowerStates.STOPPED)
+        return self._getPowerState() is PowerStates.STOPPED
 
     @Expose(locking=True)
     def stop(self):
@@ -970,7 +970,7 @@ class VirtualMachine(PyroObject):
         self._preMigrationChecks(destination_node_name)
 
         # Check if VM is running
-        while (self._getPowerState() is PowerStates.RUNNING):
+        while self._getPowerState() is PowerStates.RUNNING:
             # Unless the user has specified to wait for the VM to shutdown, throw an exception
             # if the VM is running
             if not wait_for_vm_shutdown:
@@ -1584,17 +1584,17 @@ class VirtualMachine(PyroObject):
     @Expose()
     def isRegisteredLocally(self):
         """Returns true if the VM is registered on the local node"""
-        return (self.getNode() == get_hostname())
+        return self.getNode() == get_hostname()
 
     @Expose()
     def isRegisteredRemotely(self):
         """Returns true if the VM is registered on a remote node"""
-        return (not (self.getNode() == get_hostname() or self.getNode() is None))
+        return not (self.getNode() == get_hostname() or self.getNode() is None)
 
     @Expose()
     def isRegistered(self):
         """Returns true if the VM is registered on a node"""
-        return (self.getNode() is not None)
+        return self.getNode() is not None
 
     def ensureRegistered(self):
         """Ensures that the VM is registered"""

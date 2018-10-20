@@ -346,7 +346,7 @@ class Base(PyroObject):
 
         # Update VM config file
         def removeDiskFromConfig(vm_config):
-            del(vm_config['hard_disks'][str(self.disk_id)])
+            del vm_config['hard_disks'][str(self.disk_id)]
 
         self.vm_object.get_config_object().update_config(
             removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %

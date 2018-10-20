@@ -746,7 +746,7 @@ class Cluster(PyroObject):
 
     def check_node_exists(self, node_name, include_local=False):
         """Determine if a node is already present in the cluster"""
-        return (node_name in self.get_nodes(return_all=True, include_local=include_local))
+        return node_name in self.get_nodes(return_all=True, include_local=include_local)
 
     def ensure_node_exists(self, node, include_local=False):
         """Check if node exists and throws exception if it does not"""
@@ -758,7 +758,7 @@ class Cluster(PyroObject):
         authorized_keys file
         """
         def remove_node_config(mcvirt_config):
-            del(mcvirt_config['cluster']['nodes'][node_name])
+            del mcvirt_config['cluster']['nodes'][node_name]
         MCVirtConfig().update_config(remove_node_config)
 
     def get_compatible_nodes(self, storage_backends, networks):

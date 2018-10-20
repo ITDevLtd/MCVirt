@@ -175,7 +175,7 @@ class Factory(PyroObject):
         except (MCVirtTypeError, InvalidVirtualMachineNameException):
             return False
 
-        return (vm_name in self.getAllVmNames())
+        return vm_name in self.getAllVmNames()
 
     @Expose()
     def checkName(self, name, ignore_exists=False):

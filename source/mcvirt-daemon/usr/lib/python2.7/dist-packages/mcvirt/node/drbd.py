@@ -179,7 +179,7 @@ class Drbd(PyroObject):
 
     def adjust_drbd_config(self, resource='all'):
         """Perform a Drbd adjust, which updates the Drbd running configuration"""
-        if (len(self.get_all_drbd_hard_drive_object())):
+        if len(self.get_all_drbd_hard_drive_object()):
             System.runCommand([Drbd.DrbdADM, 'adjust', resource])
 
     def get_all_drbd_hard_drive_object(self, include_remote=False):
@@ -187,11 +187,11 @@ class Drbd(PyroObject):
         hard_drive_objects = []
         vm_factory = self._get_registered_object('virtual_machine_factory')
         for vm_object in vm_factory.getAllVirtualMachines():
-            if (get_hostname() in vm_object.getAvailableNodes() or include_remote):
+            if get_hostname() in vm_object.getAvailableNodes() or include_remote:
                 all_hard_drive_objects = vm_object.getHardDriveObjects()
 
                 for hard_drive_object in all_hard_drive_objects:
-                    if (hard_drive_object.get_type() is 'Drbd'):
+                    if hard_drive_object.get_type() is 'Drbd':
                         hard_drive_objects.append(hard_drive_object)
 
         return hard_drive_objects

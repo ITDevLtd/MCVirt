@@ -60,7 +60,7 @@ class NetworkAdapter(PyroObject):
     def _check_exists(self):
         """Determines if the network interface is present on the VM"""
         vm_config = self.vm_object.get_config_object().get_config()
-        return (self.getMacAddress() in vm_config['network_interfaces'])
+        return self.getMacAddress() in vm_config['network_interfaces']
 
     def getLibvirtConfig(self):
         """Returns a dict of the LibVirt configuration for the network interface"""
@@ -69,7 +69,7 @@ class NetworkAdapter(PyroObject):
             './devices/interface[@type="network"]/mac[@address="%s"]/..' %
             self.mac_address)
 
-        if (interface_config is None):
+        if interface_config is None:
             raise NetworkAdapterDoesNotExistException(
                 'Interface does not exist: %s' % self.mac_address
             )
@@ -134,7 +134,7 @@ class NetworkAdapter(PyroObject):
                 './interface[@type="network"]/mac[@address="%s"]/..' %
                 self.getMacAddress())
 
-            if (interface_xml is None):
+            if interface_xml is None:
                 raise NetworkAdapterDoesNotExistException(
                     'No interface with MAC address \'%s\' attached to VM' %
                     self.getMacAddress())
@@ -160,7 +160,7 @@ class NetworkAdapter(PyroObject):
                 './interface[@type="network"]/mac[@address="%s"]/..' %
                 self.getMacAddress())
 
-            if (interface_xml is None):
+            if interface_xml is None:
                 raise NetworkAdapterDoesNotExistException(
                     'No interface with MAC address \'%s\' attached to VM' %
                     self.getMacAddress())
@@ -178,5 +178,5 @@ class NetworkAdapter(PyroObject):
 
         # Unregister Pyro object and cached object
         if cache_key in self._get_registered_object('network_adapter_factory').CACHED_OBJECTS:
-            del(self._get_registered_object('network_adapter_factory').CACHED_OBJECTS[cache_key])
+            del self._get_registered_object('network_adapter_factory').CACHED_OBJECTS[cache_key]
         self.unregister_object()

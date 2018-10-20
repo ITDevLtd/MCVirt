@@ -358,7 +358,7 @@ class Factory(PyroObject):
     def getClass(self, storage_type):
         """Obtains the hard drive class for a given storage type"""
         for hard_drive_class in self.getStorageTypes():
-            if (storage_type == hard_drive_class.__name__):
+            if storage_type == hard_drive_class.__name__:
                 return hard_drive_class
         raise UnknownStorageTypeException(
             'Attempted to initialise an unknown storage type: %s' %

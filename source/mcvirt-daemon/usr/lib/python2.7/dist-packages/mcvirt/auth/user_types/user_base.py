@@ -89,7 +89,7 @@ class UserBase(PyroObject):
         username = self.get_username()
         superusers = self._get_registered_object('auth').get_superusers()
 
-        return ((username in superusers))
+        return username in superusers
 
     @property
     def allow_proxy_user(self):
@@ -99,7 +99,7 @@ class UserBase(PyroObject):
     @classmethod
     def _check_exists(cls, username):
         """Check the MCVirt config to determine if a given user exists."""
-        return (username in cls.get_all_usernames())
+        return username in cls.get_all_usernames()
 
     @staticmethod
     def _generate_salt():
@@ -147,7 +147,7 @@ class UserBase(PyroObject):
         """Check the given password against the stored password for the user."""
         password_hash = self._hash_password(password)
         config = self._get_config()
-        return (password_hash == config['password'])
+        return password_hash == config['password']
 
     def _get_password_salt(self):
         """Return the user's salt"""
@@ -301,7 +301,7 @@ class UserBase(PyroObject):
 
         # Unregister and remove cached object
         if self.get_username() in self._get_registered_object('user_factory').CACHED_OBJECTS:
-            del(self._get_registered_object('user_factory').CACHED_OBJECTS[self.get_username()])
+            del self._get_registered_object('user_factory').CACHED_OBJECTS[self.get_username()]
         self.unregister_object()
 
     @staticmethod

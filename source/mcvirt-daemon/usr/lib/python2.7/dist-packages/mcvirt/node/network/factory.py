@@ -80,7 +80,7 @@ class Factory(PyroObject):
 
     def _interface_exists(self, interface):
         """Determine if a given network adapter exists on the node"""
-        return (interface in netifaces.interfaces())
+        return interface in netifaces.interfaces()
 
     @Expose()
     def assert_interface_exists(self, interface):
@@ -212,7 +212,7 @@ class Factory(PyroObject):
 
         # Determine if the name of any of the networks returned
         # matches the requested name
-        return (name in networks.keys())
+        return name in networks.keys()
 
     def initialise(self):
         """Delete the default libvirt network if it exists"""

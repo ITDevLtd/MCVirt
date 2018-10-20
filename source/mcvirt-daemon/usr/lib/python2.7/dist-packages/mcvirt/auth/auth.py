@@ -142,7 +142,7 @@ class Auth(PyroObject):
         username = user_object.get_username()
         superusers = self.get_superusers()
 
-        return ((username in superusers))
+        return username in superusers
 
     def get_superusers(self):
         """Return a list of superusers"""
@@ -203,7 +203,7 @@ class Auth(PyroObject):
         username = user_object.get_username()
 
         # Ensure user to be removed is a superuser
-        if (username not in self.get_superusers()):
+        if username not in self.get_superusers():
             raise UserNotPresentInGroup('User \'%s\' is not a superuser' % username)
 
         mcvirt_config = MCVirtConfig()
