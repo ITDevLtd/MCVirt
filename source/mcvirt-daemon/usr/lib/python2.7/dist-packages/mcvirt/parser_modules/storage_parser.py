@@ -138,6 +138,13 @@ class StorageParser(object):
             node[0]: {'location': node[1] if len(node) == 2 else None}
             for node in args.nodes
         }
+
+        # Add warning for shared/file-based storage
+        if args.storage_type == 'File' or args.shared:
+            self.print_status(('WARNING: Shared and file-based storage is a new feature.\n'
+                               'Some features may not yet be supported with this type of storage '
+                               'and/or maybe unstable'))
+
         storage_factory.create(name=args.Name,
                                storage_type=args.storage_type,
                                node_config=node_config,
