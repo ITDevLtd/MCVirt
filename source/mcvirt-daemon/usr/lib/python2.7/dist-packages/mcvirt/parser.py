@@ -72,8 +72,8 @@ class Parser(object):
 
     def __init__(self, verbose=True):
         """Configure the argument parser object."""
-        self.USERNAME = None
-        self.SESSION_ID = None
+        self.username = None
+        self.session_id = None
         self.rpc = None
         self.auth_cache_file = os.getenv('HOME') + '/' + self.AUTH_FILE
         self.verbose = verbose
@@ -231,8 +231,8 @@ class Parser(object):
             try:
                 self.rpc = Connection(username=auth_username, session_id=auth_session,
                                       ignore_cluster=ignore_cluster)
-                self.SESSION_ID = self.rpc.session_id
-                self.USERNAME = self.rpc.username
+                self.session_id = self.rpc.session_id
+                self.username = self.rpc.username
             except AuthenticationError:
                 # If authentication fails with cached session,
                 # print error, attempt to remove sessionn file and
@@ -258,8 +258,8 @@ class Parser(object):
             ).rstrip()
         self.rpc = Connection(username=username, password=password,
                               ignore_cluster=ignore_cluster)
-        self.SESSION_ID = self.rpc.session_id
-        self.USERNAME = self.rpc.username
+        self.session_id = self.rpc.session_id
+        self.username = self.rpc.username
 
     def store_cached_session(self, args):
         # If successfully authenticated then store session ID and username in auth file
@@ -281,8 +281,8 @@ class Parser(object):
 
         ignore_cluster = self.check_ignore_failed(args)
 
-        if self.SESSION_ID and self.USERNAME:
-            self.rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID,
+        if self.session_id and self.username:
+            self.rpc = Connection(username=self.username, session_id=self.session_id,
                                   ignore_cluster=ignore_cluster)
         else:
             # Obtain connection to Pyro server

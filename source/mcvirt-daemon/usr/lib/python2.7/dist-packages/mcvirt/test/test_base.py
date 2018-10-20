@@ -69,8 +69,8 @@ class TestBase(unittest.TestCase):
         # self.parser.parse_arguments('list --username %s --password %s' % (self.RPC_USERNAME,
         #                                                                   self.RPC_PASSWORD))
 
-        cls.parser.USERNAME = cls.RPC_USERNAME
-        cls.parser.SESSION_ID = cls.rpc.session_id
+        cls.parser.username = cls.RPC_USERNAME
+        cls.parser.session_id = cls.rpc.session_id
 
         # Setup variable for test VM
         cls.test_vms = \

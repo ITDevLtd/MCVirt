@@ -84,7 +84,7 @@ class UserParser(object):
     def handle_change_password(self, p_, args):
         """Handle change password"""
         user_factory = p_.rpc.get_connection('user_factory')
-        target_user = args.target_user or p_.USERNAME
+        target_user = args.target_user or p_.username
         user = user_factory.get_user_by_username(target_user)
         p_.rpc.annotate_object(user)
         new_password = args.new_password or System.getNewPassword()
