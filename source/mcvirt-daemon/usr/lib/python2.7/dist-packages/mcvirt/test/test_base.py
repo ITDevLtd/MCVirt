@@ -29,8 +29,9 @@ def skip_drbd(required):
     def wrapper_gen(f):
         """Wrapper method call"""
 
-        def wrapper(*args):
-            """Skip DRBD depending on whether it's enable or not"""
+        # Disable docstring check, as this will override the docstring
+        # used for the test
+        def wrapper(*args):  # pylint: disable=C0111
             if (bool(args[0].rpc.get_connection('node_drbd').is_enabled()) !=
                     bool(wrapper.required)):
                 return args[0].skipTest(('DRBD either required and not available or'
