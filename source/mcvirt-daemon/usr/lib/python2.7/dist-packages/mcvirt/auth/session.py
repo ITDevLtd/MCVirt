@@ -54,7 +54,7 @@ class SessionInfo(object):
         """Return True if this session is valid"""
         # Session is valid if expiry time is greater than
         # the current time or expires has been disabled
-        return (self.expires is False or self.expires > time.time())
+        return self.expires is False or self.expires > time.time()
 
     def renew(self):
         """Renew this session by increasing the expiry time (if applicable)"""

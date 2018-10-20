@@ -44,11 +44,13 @@ class LockTests(TestBase, PyroObject):
 
         @Expose(locking=True)
         def hold_lock_forever(self):
+            """Hold lock forever"""
             while not thread_should_stop_event.is_set():
                 thread_is_running_event.set()
 
         @Expose(locking=True)
         def take_lock(self):
+            """Take lock"""
             return True
 
         # Test nothing else running
@@ -93,6 +95,7 @@ class LockTests(TestBase, PyroObject):
 
             @Expose(locking=True)
             def hold_lock_forever(self):
+                """Hold lock forever"""
                 while not thread_should_stop_event.is_set():
                     thread_is_running_event.set()
 

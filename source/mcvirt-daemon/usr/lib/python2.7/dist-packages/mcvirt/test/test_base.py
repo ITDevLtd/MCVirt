@@ -16,7 +16,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import unittest
-import threading
 
 from mcvirt.client.rpc import Connection
 from mcvirt.parser import Parser
@@ -25,10 +24,14 @@ from mcvirt.utils import get_hostname
 
 
 def skip_drbd(required):
+    """Skip DRBD wrapper"""
 
     def wrapper_gen(f):
+        """Wrapper method call"""
 
-        def wrapper(*args):
+        # Disable docstring check, as this will override the docstring
+        # used for the test
+        def wrapper(*args):  # pylint: disable=C0111
             if (bool(args[0].rpc.get_connection('node_drbd').is_enabled()) !=
                     bool(wrapper.required)):
                 return args[0].skipTest(('DRBD either required and not available or'
@@ -67,8 +70,8 @@ class TestBase(unittest.TestCase):
         # self.parser.parse_arguments('list --username %s --password %s' % (self.RPC_USERNAME,
         #                                                                   self.RPC_PASSWORD))
 
-        cls.parser.USERNAME = cls.RPC_USERNAME
-        cls.parser.SESSION_ID = cls.rpc.session_id
+        cls.parser.username = cls.RPC_USERNAME
+        cls.parser.session_id = cls.rpc.session_id
 
         # Setup variable for test VM
         cls.test_vms = \

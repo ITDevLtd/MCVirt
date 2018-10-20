@@ -55,6 +55,7 @@ class ClusterUser(UserBase):
     def update_host(self, host):
         """Update the host associated with the user."""
         def update_config(config):
+            """Update host in user config in MCVirt config"""
             config['users'][self.get_username()]['host'] = host
         MCVirtConfig().update_config(update_config, 'Updated host for \'%s\'' %
                                                     self.get_username())

@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import os
 import xml.etree.ElementTree as ET
 from enum import Enum
 
@@ -304,7 +303,8 @@ class Base(PyroObject):
     @Expose(locking=True, remote_nodes=True, undo_method='removeFromVirtualMachine')
     def addToVirtualMachine(self):
         """Add the hard drive to the virtual machine,
-           and performs the base function on all nodes in the cluster"""
+        and performs the base function on all nodes in the cluster
+        """
         # Ensure that the user has permissions to modify VM
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
@@ -319,6 +319,7 @@ class Base(PyroObject):
 
         # Update VM config file
         def add_disk_to_config(vm_config):
+            """Add disk to VM config"""
             vm_config['hard_disks'][str(self.disk_id)] = self._getMCVirtConfig()
 
         self.vm_object.get_config_object().update_config(
@@ -334,7 +335,8 @@ class Base(PyroObject):
     @Expose(locking=True, remote_nodes=True)
     def removeFromVirtualMachine(self):
         """Remove the hard drive from a VM configuration and perform all nodes
-           in the cluster"""
+        in the cluster
+        """
         # Ensure that the user has permissions to modify VM
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
@@ -347,7 +349,8 @@ class Base(PyroObject):
 
         # Update VM config file
         def removeDiskFromConfig(vm_config):
-            del(vm_config['hard_disks'][str(self.disk_id)])
+            """Remove disk from VM config"""
+            del vm_config['hard_disks'][str(self.disk_id)]
 
         self.vm_object.get_config_object().update_config(
             removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %
@@ -356,7 +359,8 @@ class Base(PyroObject):
     def _unregisterLibvirt(self):
         """Removes the hard drive from the LibVirt configuration for the VM"""
         # Update the libvirt domain XML configuration
-        def updateXML(domain_xml):
+        def update_libvirt(domain_xml):
+            """Update libvirt config"""
             device_xml = domain_xml.find('./devices')
             disk_xml = device_xml.find(
                 './disk/target[@dev="%s"]/..' %
@@ -364,18 +368,19 @@ class Base(PyroObject):
             device_xml.remove(disk_xml)
 
         # Update libvirt configuration
-        self.vm_object._editConfig(updateXML)
+        self.vm_object._editConfig(update_libvirt)
 
     def _registerLibvirt(self):
         """Register the hard drive with the Libvirt VM configuration"""
 
-        def updateXML(domain_xml):
+        def update_libvirt(domain_xml):
+            """Add disk to libvirt config"""
             drive_xml = self._generateLibvirtXml()
             device_xml = domain_xml.find('./devices')
             device_xml.append(drive_xml)
 
         # Update libvirt configuration
-        self.vm_object._editConfig(updateXML)
+        self.vm_object._editConfig(update_libvirt)
 
     def _setVmStorageType(self):
         """Set the VM configuration storage type to the current hard drive type"""
@@ -390,10 +395,12 @@ class Base(PyroObject):
                     'The VM (%s) is already configured with %s disks' %
                     (self.vm_object.get_name(), current_storage_type))
 
-            def updateStorageTypeConfig(config):
+            def update_storage_type_config(config):
+                """Update VM storage type"""
                 config['storage_type'] = self.get_type()
             self.vm_object.get_config_object().update_config(
-                updateStorageTypeConfig, 'Updated storage type for \'%s\' to \'%s\'' %
+                update_storage_type_config,
+                'Updated storage type for \'%s\' to \'%s\'' %
                 (self.vm_object.get_name(), self.get_type()))
 
     def activate_volume(self, volume, perform_on_nodes=False):
@@ -402,12 +409,13 @@ class Base(PyroObject):
         volume.activate()
 
         if perform_on_nodes and self._is_cluster_master:
-            def remoteCommand(node):
+            def remote_command(node):
+                """Activate volume on remote node"""
                 remote_disk = self.get_remote_object(node_object=node, registered=False)
                 remote_disk.activate_volume(volume=volume)
 
             cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(callback_method=remoteCommand,
+            cluster.run_remote_command(callback_method=remote_command,
                                        nodes=self.vm_object._get_remote_nodes())
 
     @Expose(locking=True)
@@ -500,18 +508,17 @@ class Base(PyroObject):
         raise NotImplementedError
 
     def preOnlineMigration(self):
-        """Perform required tasks in order
-           for the underlying VM to perform an
-           online migration"""
+        """Perform required tasks in order for the underlying
+        VM to perform an online migration
+        """
         raise NotImplementedError
 
     def postOnlineMigration(self):
-        """Perform post tasks after a VM
-           has performed an online migration"""
+        """Perform post tasks after a VM has performed an online migration"""
         raise NotImplementedError
 
     def getSize(self):
-        """Get the size of the disk (in MB)"""
+        """Get the size of the disk (in bytes)"""
         raise NotImplementedError
 
     def move(self, destination_node, source_node):

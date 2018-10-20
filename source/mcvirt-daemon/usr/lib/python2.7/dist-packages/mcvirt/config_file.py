@@ -106,6 +106,7 @@ class ConfigFile(PyroObject):
         """Set file permissions for config directories"""
 
         def set_permission(path, directory=True, owner=0):
+            """Ser permissions on directory"""
             permission_mode = stat.S_IRUSR
             if directory:
                 permission_mode = permission_mode | stat.S_IWUSR | stat.S_IXUSR
@@ -118,8 +119,8 @@ class ConfigFile(PyroObject):
         # Set permissions on git directory
         for directory in os.listdir(DirectoryLocation.BASE_STORAGE_DIR):
             path = os.path.join(DirectoryLocation.BASE_STORAGE_DIR, directory)
-            if (os.path.isdir(path)):
-                if (directory == '.git'):
+            if os.path.isdir(path):
+                if directory == '.git':
                     set_permission(path, directory=True)
                 else:
                     set_permission(os.path.join(path, 'vm'), directory=True)
@@ -141,6 +142,7 @@ class ConfigFile(PyroObject):
         current_version = self._getVersion()
         if current_version < self.CURRENT_VERSION:
             def upgradeConfig(config):
+                """Update config in config file"""
                 # Perform the configuration sub-class specific upgrade
                 # tasks
                 self._upgrade(config)
@@ -157,7 +159,7 @@ class ConfigFile(PyroObject):
     def _getVersion(self):
         """Return the version number of the configuration file"""
         config = self.get_config()
-        if ('version' in config.keys()):
+        if 'version' in config.keys():
             return config['version']
         else:
             return 0

@@ -43,6 +43,7 @@ class NodeTests(TestBase):
     def tearDown(self):
         """Reset any values changed to the MCVirt config"""
         def reset_config(config):
+            """Reset cluster IP"""
             config['cluster']['cluster_ip'] = self.original_ip_address
         MCVirtConfig().update_config(reset_config, 'Reset node configurations')
 

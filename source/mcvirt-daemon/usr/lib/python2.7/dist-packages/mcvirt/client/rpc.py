@@ -26,7 +26,6 @@ from mcvirt.utils import get_network_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
-import traceback
 
 
 class Connection(object):

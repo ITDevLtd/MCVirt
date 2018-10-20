@@ -89,7 +89,7 @@ class UserBase(PyroObject):
         username = self.get_username()
         superusers = self._get_registered_object('auth').get_superusers()
 
-        return ((username in superusers))
+        return username in superusers
 
     @property
     def allow_proxy_user(self):
@@ -97,9 +97,9 @@ class UserBase(PyroObject):
         return False
 
     @classmethod
-    def _check_exists(cls, username):
+    def check_exists(cls, username):
         """Check the MCVirt config to determine if a given user exists."""
-        return (username in cls.get_all_usernames())
+        return username in cls.get_all_usernames()
 
     @staticmethod
     def _generate_salt():
@@ -123,7 +123,7 @@ class UserBase(PyroObject):
 
     def _ensure_exists(self):
         """Ensure that the current user exists in the MCVirt configuration"""
-        if not self.__class__._check_exists(self.get_username()):
+        if not self.__class__.check_exists(self.get_username()):
             raise UserDoesNotExistException('User %s does not exist' %
                                             self.get_username())
 
@@ -147,14 +147,14 @@ class UserBase(PyroObject):
         """Check the given password against the stored password for the user."""
         password_hash = self._hash_password(password)
         config = self._get_config()
-        return (password_hash == config['password'])
+        return password_hash == config['password']
 
     def _get_password_salt(self):
         """Return the user's salt"""
         return self._get_config()['salt']
 
     @Expose()
-    def set_password(self, new_password):
+    def set_password(self, new_password):  # pylint: disable=W0613
         """Default functionality for password change is to throw an exception"""
         raise InvalidUserTypeException('Cannot change password for this type of user')
 
@@ -163,6 +163,7 @@ class UserBase(PyroObject):
         password_hash = self._hash_password(new_password)
 
         def update_config(config):
+            """Update password hash in user config in MCVirt config"""
             config['users'][self.get_username()]['password'] = password_hash
         MCVirtConfig().update_config(
             update_config, 'Updated password for \'%s\'' % self.get_username()
@@ -170,6 +171,7 @@ class UserBase(PyroObject):
 
         if self.DISTRIBUTED and self._is_cluster_master:
             def remote_command(node_connection):
+                """Update password hash in user config on remote nodes"""
                 remote_user_factory = node_connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(self.get_username())
                 node_connection.annotate_object(remote_user)
@@ -301,7 +303,7 @@ class UserBase(PyroObject):
 
         # Unregister and remove cached object
         if self.get_username() in self._get_registered_object('user_factory').CACHED_OBJECTS:
-            del(self._get_registered_object('user_factory').CACHED_OBJECTS[self.get_username()])
+            del self._get_registered_object('user_factory').CACHED_OBJECTS[self.get_username()]
         self.unregister_object()
 
     @staticmethod

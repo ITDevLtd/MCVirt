@@ -80,7 +80,7 @@ class Factory(PyroObject):
                 )
 
         # Ensure that there is not a duplicate user
-        if user_type._check_exists(username):
+        if user_type.check_exists(username):
             raise UserAlreadyExistsException('There is a user with the same username \'%s\'' %
                                              username)
 
@@ -99,17 +99,19 @@ class Factory(PyroObject):
         user_config['global_permissions'] = []
 
         def update_config(config):
+            """Update user config in MCVirt config"""
             config['users'][username] = user_config
         MCVirtConfig().update_config(update_config, 'Create user \'%s\'' % username)
 
         if user_type.DISTRIBUTED and self._is_cluster_master:
             # Create the user on the other nodes in the cluster
-            def remote_command(node_connection):
+            def create_user_remote(node_connection):
+                """Create user on remote node"""
                 remote_user_factory = node_connection.get_connection('user_factory')
                 remote_user_factory.create(username, password)
 
             cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(remote_command)
+            cluster.run_remote_command(create_user_remote)
 
     @Expose()
     def add_config(self, username, user_config):
@@ -118,6 +120,7 @@ class Factory(PyroObject):
         self._get_registered_object('auth').check_user_type('ClusterUser')
 
         def update_config(config):
+            """Add user config to MCVirt config"""
             config['users'][username] = user_config
         MCVirtConfig().update_config(update_config, 'Adding user %s' % username)
 

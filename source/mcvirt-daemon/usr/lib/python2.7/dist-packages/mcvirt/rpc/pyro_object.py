@@ -43,7 +43,7 @@ class PyroObject(object):
     @property
     def _is_pyro_initialised(self):
         """Determine if object is registered with the Pyro deamon"""
-        return ('_pyroDaemon' in self.__dict__.keys())
+        return '_pyroDaemon' in self.__dict__.keys()
 
     @property
     def _cluster_disabled(self):

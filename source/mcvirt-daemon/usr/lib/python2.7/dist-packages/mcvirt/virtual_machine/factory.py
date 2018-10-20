@@ -128,6 +128,7 @@ class Factory(PyroObject):
             cluster = self._get_registered_object('cluster')
 
             def remote_command(node_connection):
+                """Get virtual machine names from remote node"""
                 virtual_machine_factory = node_connection.get_connection('virtual_machine_factory')
                 return virtual_machine_factory.getAllVmNames(node=node)
             return cluster.run_remote_command(callback_method=remote_command, nodes=[node])[node]
@@ -175,7 +176,7 @@ class Factory(PyroObject):
         except (MCVirtTypeError, InvalidVirtualMachineNameException):
             return False
 
-        return (vm_name in self.getAllVmNames())
+        return vm_name in self.getAllVmNames()
 
     @Expose()
     def checkName(self, name, ignore_exists=False):

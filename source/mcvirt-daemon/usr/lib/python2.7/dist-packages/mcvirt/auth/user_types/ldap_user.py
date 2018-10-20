@@ -18,7 +18,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import ldap
-import Pyro4
 
 from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.exceptions import MCVirtException, LdapConnectionFailedException
