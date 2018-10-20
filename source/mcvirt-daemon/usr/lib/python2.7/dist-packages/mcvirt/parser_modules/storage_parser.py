@@ -143,7 +143,8 @@ class StorageParser(object):
         if args.storage_type == 'File' or args.shared:
             self.print_status(('WARNING: Shared and file-based storage is a new feature.\n'
                                'Some features may not yet be supported with this type of storage '
-                               'and/or maybe unstable'))
+                               'and/or maybe unstable.\n'
+                               'These issues will be resolved in Release 11.0.0'))
 
         storage_factory.create(name=args.Name,
                                storage_type=args.storage_type,
