@@ -53,6 +53,7 @@ class Logger(PyroObject):
         Logger.LOGS.append(log_item)
         if not local_only and self._is_pyro_initialised:
             def remote_command(remote_node):
+                """Create log object on remote node"""
                 remote_logger = remote_node.get_connection('logger')
                 remote_log = remote_logger.create_log_remote(
                     method_name=method_name, user=user, object_name=object_name,

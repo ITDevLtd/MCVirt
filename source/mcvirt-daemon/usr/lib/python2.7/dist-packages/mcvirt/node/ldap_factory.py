@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import Pyro4
 import ldap
 import os
 
@@ -85,11 +84,13 @@ class LdapFactory(PyroObject):
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
 
         def update_config(config):
+            """Enable LDAP in MCVirt config"""
             config['ldap']['enabled'] = enable
         MCVirtConfig().update_config(update_config, 'Updated LDAP status')
 
         if self._is_cluster_master:
             def remote_command(node_connection):
+                """Enable ldap on a remote node"""
                 remote_ldap_factory = node_connection.get_connection('ldap_factory')
                 remote_ldap_factory.set_enable(enable)
             cluster = self._get_registered_object('cluster')
@@ -174,6 +175,7 @@ class LdapFactory(PyroObject):
                 config_changes[config] = value
 
         def update_config(config):
+            """Update LDAP conifg in MCVirt config"""
             config['ldap'].update(config_changes)
         MCVirtConfig().update_config(update_config, 'Updated LDAP configuration')
 
@@ -188,6 +190,7 @@ class LdapFactory(PyroObject):
 
         if self._is_cluster_master:
             def remote_command(node_connection):
+                """Update ldap config in remote nodes"""
                 remote_ldap_factory = node_connection.get_connection('ldap_factory')
                 remote_ldap_factory.set_config(**config_changes)
             cluster = self._get_registered_object('cluster')

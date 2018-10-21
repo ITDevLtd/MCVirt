@@ -101,6 +101,7 @@ def convert_size_friendly(original):
     else:
         return '%.2fTB' % round(float(original) / (1024 ** 2), 2)
 
+
 def dict_merge(dct, merge_dct):
     """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
     updating only top-level keys, dict_merge recurses down into dicts nested
@@ -112,8 +113,8 @@ def dict_merge(dct, merge_dct):
     OBTAINED FROM: https://gist.github.com/angstwad/bf22d1822c38a92ec0a9
     """
     for k, v in merge_dct.iteritems():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], collections.Mapping)):
+        if (k in dct and isinstance(dct[k], dict) and
+                isinstance(merge_dct[k], collections.Mapping)):
             dict_merge(dct[k], merge_dct[k])
         else:
             dct[k] = merge_dct[k]

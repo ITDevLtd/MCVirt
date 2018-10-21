@@ -19,7 +19,6 @@ import unittest
 import os
 import time
 from enum import Enum
-import Pyro4
 import libvirt
 
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
@@ -82,7 +81,8 @@ class VirtualMachineLibvirtFail(VirtualMachine):
 
     def _getLibvirtDomainObject(self, allow_remote=False):
         """Obtains the libvirt domain object and, if specified, overrides the migrate3
-           method to simulate different failure cases"""
+        method to simulate different failure cases
+        """
         libvirt_object = super(VirtualMachineLibvirtFail, self)._getLibvirtDomainObject(
             allow_remote=False
         )
@@ -92,6 +92,7 @@ class VirtualMachineLibvirtFail(VirtualMachine):
 
             # Override migrate3 method to raise an exception before the migration takes place
             def migrate3(self, *args, **kwargs):
+                """Raise exception for pre-migration failure"""
                 raise LibvirtFailureSimulationException('Pre-migration failure')
 
             # Bind overridden migrate3 method to libvirt object
@@ -103,6 +104,7 @@ class VirtualMachineLibvirtFail(VirtualMachine):
             # Override the migrate3 method to raise an exception
             # after the migration has taken place
             def migrate3(self, *args, **kwargs):
+                """Raise post migration failure"""
                 libvirt.virDomain.migrate3(libvirt_object, *args, **kwargs)
                 raise LibvirtFailureSimulationException('Post-migration failure')
 
@@ -221,16 +223,18 @@ class OnlineMigrateTests(TestBase):
            its available nodes"""
         remote_node = self.local_vm_object._get_remote_nodes()[0]
 
-        def update_config(config):
+        def remote_node_config(config):
+            """Remove node from VM config"""
             config['available_nodes'].remove(remote_node)
-        self.local_vm_object.get_config_object().update_config(update_config)
+        self.local_vm_object.get_config_object().update_config(remote_node_config)
 
         with self.assertRaises(UnsuitableNodeException):
             self.test_vm_object.onlineMigrate(remote_node)
 
-        def update_config(config):
+        def add_node_config(config):
+            """Update available nodes config"""
             config['available_nodes'].append(remote_node)
-        self.local_vm_object.get_config_object().update_config(update_config)
+        self.local_vm_object.get_config_object().update_config(add_node_config)
 
     @skip_drbd(True)
     def test_migrate_drbd_not_connected(self):
@@ -246,10 +250,11 @@ class OnlineMigrateTests(TestBase):
         """Attempts to migrate a VM attached to a network that doesn't exist
            on the destination node"""
         # Replace the network in VM network adapters with an invalid network
-        def setInvalidNetwork(config):
+        def set_invalid_network(config):
+            """Set invalid network name"""
             for mac_address in config['network_interfaces']:
                 config['network_interfaces'][mac_address] = 'Non-existent-network'
-        self.local_vm_object.get_config_object().update_config(setInvalidNetwork)
+        self.local_vm_object.get_config_object().update_config(set_invalid_network)
 
         # Attempt to migrate the VM
         with self.assertRaises(UnsuitableNodeException):
@@ -257,6 +262,7 @@ class OnlineMigrateTests(TestBase):
 
         # Reset the VM configuration
         def resetNetwork(config):
+            """Reset network config"""
             for mac_address in config['network_interfaces']:
                 config['network_interfaces'][mac_address] = self.test_vms[
                     'TEST_VM_1'

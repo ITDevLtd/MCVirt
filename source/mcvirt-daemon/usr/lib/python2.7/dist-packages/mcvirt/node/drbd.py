@@ -20,8 +20,6 @@
 from Cheetah.Template import Template
 import os
 from texttable import Texttable
-import Pyro4
-import string
 import json
 from binascii import hexlify
 
@@ -120,6 +118,7 @@ class Drbd(PyroObject):
             cluster = self._get_registered_object('cluster')
 
             def remote_command(node):
+                """Enable DRBD on remote node, specifying the secret"""
                 remote_drbd = node.get_connection('node_drbd')
                 remote_drbd.enable(secret=secret)
 
@@ -130,6 +129,7 @@ class Drbd(PyroObject):
 
         # Update the local configuration
         def update_config(config):
+            """Enable DRBD in local MCVirt config"""
             config['drbd']['enabled'] = 1
         MCVirtConfig().update_config(update_config, 'Enabled Drbd')
 
@@ -176,12 +176,13 @@ class Drbd(PyroObject):
     def set_secret(self, secret):
         """Set the Drbd configuration in the global MCVirt config file"""
         def update_config(config):
+            """Set secret in MCVirt config"""
             config['drbd']['secret'] = secret
         MCVirtConfig().update_config(update_config, 'Set Drbd secret')
 
     def adjust_drbd_config(self, resource='all'):
         """Perform a Drbd adjust, which updates the Drbd running configuration"""
-        if (len(self.get_all_drbd_hard_drive_object())):
+        if len(self.get_all_drbd_hard_drive_object()):
             System.runCommand([Drbd.DrbdADM, 'adjust', resource])
 
     def get_all_drbd_hard_drive_object(self, include_remote=False):
@@ -189,11 +190,11 @@ class Drbd(PyroObject):
         hard_drive_objects = []
         vm_factory = self._get_registered_object('virtual_machine_factory')
         for vm_object in vm_factory.getAllVirtualMachines():
-            if (get_hostname() in vm_object.getAvailableNodes() or include_remote):
+            if get_hostname() in vm_object.getAvailableNodes() or include_remote:
                 all_hard_drive_objects = vm_object.getHardDriveObjects()
 
                 for hard_drive_object in all_hard_drive_objects:
-                    if (hard_drive_object.get_type() is 'Drbd'):
+                    if hard_drive_object.get_type() is 'Drbd':
                         hard_drive_objects.append(hard_drive_object)
 
         return hard_drive_objects

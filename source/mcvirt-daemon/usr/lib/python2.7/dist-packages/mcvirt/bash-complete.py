@@ -18,7 +18,6 @@
 
 # Script to allow bash completion, which will not be run using sudo
 
-import getpass
 import argcomplete
 
 from mcvirt.parser import Parser

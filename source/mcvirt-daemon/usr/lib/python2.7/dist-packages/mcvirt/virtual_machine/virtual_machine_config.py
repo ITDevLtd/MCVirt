@@ -34,7 +34,7 @@ class VirtualMachineConfig(ConfigFile):
         self.git_object = None
         self.vm_object = vm_object
         self.config_file = VirtualMachineConfig.get_config_path(self.vm_object.name)
-        if (not os.path.isfile(self.config_file)):
+        if not os.path.isfile(self.config_file):
             raise ConfigFileCouldNotBeFoundException(
                 'Could not find config file for %s' % vm_object.name
             )
@@ -46,7 +46,7 @@ class VirtualMachineConfig(ConfigFile):
     def get_config_path(vm_name):
         """Provides the path of the VM-spefic configuration file"""
         from mcvirt.virtual_machine.virtual_machine import VirtualMachine
-        return ('%s/config.json' % VirtualMachine.get_vm_dir(vm_name))
+        return '%s/config.json' % VirtualMachine.get_vm_dir(vm_name)
 
     @staticmethod
     def create(vm_name, available_nodes, cpu_cores, memory_allocation, graphics_driver):
@@ -100,7 +100,7 @@ class VirtualMachineConfig(ConfigFile):
             config['hard_disks'] = {}
             for disk_id in config['disks']:
                 config['hard_disks'][disk_id] = {}
-            del(config['disks'])
+            del config['disks']
 
             # Set storage type for the VM to local
             config['storage_type'] = 'Local'

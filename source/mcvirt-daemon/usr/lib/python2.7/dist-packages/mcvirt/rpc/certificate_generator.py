@@ -54,7 +54,7 @@ class CertificateGenerator(PyroObject):
     @property
     def is_local(self):
         """Determine if the server is the local machine"""
-        return (self.server == get_hostname())
+        return self.server == get_hostname()
 
     @property
     def ssl_dn(self):

@@ -72,8 +72,10 @@ class Parser(object):
 
     def __init__(self, verbose=True):
         """Configure the argument parser object."""
-        self.USERNAME = None
-        self.SESSION_ID = None
+        self.username = None
+        self.session_id = None
+        self.rpc = None
+        self.auth_cache_file = os.getenv('HOME') + '/' + self.AUTH_FILE
         self.verbose = verbose
         self.parent_parser = ThrowingArgumentParser(add_help=False)
 
@@ -198,17 +200,8 @@ class Parser(object):
         if self.verbose:
             print status
 
-    def parse_arguments(self, script_args=None):
-        """Parse arguments and performs actions based on the arguments."""
-        # If arguments have been specified, split, so that
-        # an array is sent to the argument parser
-        if (script_args is not None):
-            script_args = script_args.split()
-
-        args = self.parser.parse_args(script_args)
-
-        ignore_cluster = False
-
+    def check_ignore_failed(self, args):
+        """Check ignore failed"""
         if args.ignore_failed_nodes:
             # If the user has specified to ignore the cluster,
             # print a warning and confirm the user's answer
@@ -220,65 +213,86 @@ class Parser(object):
                 if continue_answer.strip() is not 'Y':
                     self.print_status('Cancelled...')
                     return
-            ignore_cluster = True
+            return True
+        return False
 
-        self.rpc = None
-        auth_cache_file = os.getenv('HOME') + '/' + self.AUTH_FILE
-        if self.SESSION_ID and self.USERNAME:
-            self.rpc = Connection(username=self.USERNAME, session_id=self.SESSION_ID,
+    def authenticate_saved_session(self, ignore_cluster):
+        """Attempt to authenticate using saved session"""
+        # Try logging in with saved session
+        auth_session = None
+        try:
+            with open(self.auth_cache_file, 'r') as cache_fh:
+                auth_username = cache_fh.readline().strip()
+                auth_session = cache_fh.readline().strip()
+        except IOError:
+            pass
+
+        if auth_session:
+            try:
+                self.rpc = Connection(username=auth_username, session_id=auth_session,
+                                      ignore_cluster=ignore_cluster)
+                self.session_id = self.rpc.session_id
+                self.username = self.rpc.username
+            except AuthenticationError:
+                # If authentication fails with cached session,
+                # print error, attempt to remove sessionn file and
+                # remove rpc connection
+                self.print_status('Authentication error occured when using saved session.')
+                try:
+                    os.remove(self.auth_cache_file)
+                except OSError:
+                    pass
+                self.rpc = None
+
+    def authenticate_username_password(self, args, ignore_cluster):
+        """Authenticate using username and password"""
+        # Check if user/password have been passed. Else, ask for them.
+        username = args.username if args.username else System.getUserInput(
+            'Username: '
+        ).rstrip()
+        if args.password:
+            password = args.password
+        else:
+            password = System.getUserInput(
+                'Password: ', password=True
+            ).rstrip()
+        self.rpc = Connection(username=username, password=password,
+                              ignore_cluster=ignore_cluster)
+        self.session_id = self.rpc.session_id
+        self.username = self.rpc.username
+
+    def store_cached_session(self, args):
+        # If successfully authenticated then store session ID and username in auth file
+        if args.cache_credentials:
+            try:
+                with open(self.auth_cache_file, 'w') as cache_fh:
+                    cache_fh.write("%s\n%s" % (self.rpc.username, self.rpc.session_id))
+            except OSError:
+                pass
+
+    def parse_arguments(self, script_args=None):
+        """Parse arguments and performs actions based on the arguments."""
+        # If arguments have been specified, split, so that
+        # an array is sent to the argument parser
+        if script_args is not None:
+            script_args = script_args.split()
+
+        args = self.parser.parse_args(script_args)
+
+        ignore_cluster = self.check_ignore_failed(args)
+
+        if self.session_id and self.username:
+            self.rpc = Connection(username=self.username, session_id=self.session_id,
                                   ignore_cluster=ignore_cluster)
         else:
             # Obtain connection to Pyro server
             if not (args.password or args.username):
-                # Try logging in with saved session
-                auth_session = None
-                try:
-                    with open(auth_cache_file, 'r') as f:
-                        auth_username = f.readline().strip()
-                        auth_session = f.readline().strip()
-                except IOError:
-                    pass
-
-                if auth_session:
-                    try:
-                        self.rpc = Connection(username=auth_username, session_id=auth_session,
-                                              ignore_cluster=ignore_cluster)
-                        self.SESSION_ID = self.rpc.session_id
-                        self.USERNAME = self.rpc.username
-                    except AuthenticationError:
-                        # If authentication fails with cached session,
-                        # print error, attempt to remove sessionn file and
-                        # remove rpc connection
-                        self.print_status('Authentication error occured when using saved session.')
-                        try:
-                            os.remove(auth_cache_file)
-                        except Exception:
-                            pass
-                        self.rpc = None
+                self.authenticate_saved_session(ignore_cluster)
 
             if not self.rpc:
-                # Check if user/password have been passed. Else, ask for them.
-                username = args.username if args.username else System.getUserInput(
-                    'Username: '
-                ).rstrip()
-                if args.password:
-                    password = args.password
-                else:
-                    password = System.getUserInput(
-                        'Password: ', password=True
-                    ).rstrip()
-                self.rpc = Connection(username=username, password=password,
-                                      ignore_cluster=ignore_cluster)
-                self.SESSION_ID = self.rpc.session_id
-                self.USERNAME = self.rpc.username
+                self.authenticate_username_password(args, ignore_cluster)
 
-        # If successfully authenticated then store session ID and username in auth file
-        if args.cache_credentials:
-            try:
-                with open(auth_cache_file, 'w') as f:
-                    f.write("%s\n%s" % (self.rpc.username, self.rpc.session_id))
-            except Exception:
-                pass
+        self.store_cached_session(args)
 
         if args.ignore_drbd:
             self.rpc.ignore_drbd()

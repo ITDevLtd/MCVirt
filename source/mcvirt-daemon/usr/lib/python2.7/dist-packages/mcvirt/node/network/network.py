@@ -69,12 +69,14 @@ class Network(PyroObject):
 
         # Update MCVirt config
         def update_config(config):
+            """Delete network from MCVirt config"""
             del config['networks'][self.get_name()]
         from mcvirt.mcvirt_config import MCVirtConfig
         MCVirtConfig().update_config(update_config, 'Deleted network \'%s\'' % self.get_name())
 
         if self._is_cluster_master:
             def remove_remote(node):
+                """Remove network from remote nodes"""
                 network_factory = node.get_connection('network_factory')
                 network = network_factory.get_network_by_name(self.name)
                 node.annotate_object(network)

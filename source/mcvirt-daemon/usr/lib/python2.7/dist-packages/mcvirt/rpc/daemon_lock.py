@@ -16,10 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import atexit
 from lockfile import FileLock
 import os
-import signal
 
 from mcvirt.constants import DirectoryLocation
 from mcvirt.exceptions import MCVirtLockException

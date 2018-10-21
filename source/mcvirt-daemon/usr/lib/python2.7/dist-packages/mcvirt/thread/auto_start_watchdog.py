@@ -45,6 +45,7 @@ class AutoStartWatchdog(RepeatTimer):
         interval_time = int(interval_time)
 
         def update_config(config):
+            """Update autostart interval in MCVirt config"""
             config['autostart_interval'] = interval_time
         self._get_registered_object('mcvirt_config')().update_config(update_config,
                                                                      'Update autostart interval')
@@ -52,6 +53,7 @@ class AutoStartWatchdog(RepeatTimer):
         if self._is_cluster_master:
 
             def remote_update(node):
+                """Update autostart interval on remote node"""
                 autostart_watchdog = node.get_connection('autostart_watchdog')
                 autostart_watchdog.set_autostart_interval(interval_time)
             cluster = self._get_registered_object('cluster')

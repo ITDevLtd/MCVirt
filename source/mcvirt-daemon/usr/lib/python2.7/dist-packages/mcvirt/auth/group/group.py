@@ -113,7 +113,9 @@ class Group(PyroObject):
         cluster = self._get_registered_object('cluster')
         if virtual_machine:
             # Convert remote objects
-            self.add_user_to_vm_config(user, virtual_machine, nodes=cluster.get_nodes(include_local=True))
+            self.add_user_to_vm_config(
+                user, virtual_machine,
+                nodes=cluster.get_nodes(include_local=True))
         else:
             self.add_user_to_config(user, nodes=cluster.get_nodes(include_local=True))
 
