@@ -853,6 +853,24 @@ class SizeNotIntegerBytesError(MCVirtException):
     pass
 
 
+class InvalidConfirmationCode(MCVirtException):
+    """Confirmation code is not correct"""
+
+    pass
+
+
+class DeleteProtectionAlreadyEnabled(MCVirtException):
+    """Delete protection is already enabled"""
+
+    pass
+
+
+class DeleteProtectionNotEnabled(MCVirtException):
+    """Delete protection is not enabled on the VM"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)

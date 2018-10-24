@@ -36,7 +36,8 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                VirtualMachineDoesNotExistException, VmIsCloneException,
                                VncNotEnabledException, AttributeAlreadyChanged,
                                InvalidModificationFlagException, MCVirtTypeError,
-                               UsbDeviceAttachedToVirtualMachine)
+                               UsbDeviceAttachedToVirtualMachine, InvalidConfirmationCode,
+                               DeleteProtectionAlreadyEnable, DeleteProtectionNotEnabled)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -1855,6 +1856,45 @@ class VirtualMachine(PyroObject):
         self.get_config_object().update_config(update_lock,
                                                'Setting lock state of \'%s\' to \'%s\'' %
                                                (self.get_name(), lock_status.name))
+
+    @Expose()
+    def get_delete_protection_state(self):
+        """Get the current state of the deletion lock"""
+        return self.get_config_object().get_config()['delete_protection']
+
+    @Expose(locking=True)
+    def enable_deletion_protection(self):
+        """Enable delete protection on the VM"""
+        # Check the user has permission to modify VMs
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        # Ensure that delete protection is not already enabled
+        if self.get_delete_protection_state():
+            raise DeleteProtectionAlreadyEnable('Delete protection is already enabled')
+
+        self.update_vm_config(
+            change_dict={'delete_protection': False},
+            reason='Enable deletion protection',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True)
+    def disable_deletion_lock(self, confirmation):
+        """Disable the deletion protection"""
+        # Check the user has permission to modify VMs
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        # Check the confirmation is valid (the reverse of the name)
+        if confirmation != self.get_name()[::-1]:
+            raise InvalidConfirmationCode('Invalid confirmation code')
+
+        # Ensure that delete protection is not already enabled
+        if not self.get_delete_protection_state():
+            raise DeleteProtectionNotEnabled('Delete protection is already enabled')
+
+        self.update_vm_config(
+            change_dict={'delete_protection': False},
+            reason='Disable deletion protection',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     def setBootOrder(self, boot_devices):
         """Sets the boot devices and the order in which devices are booted from"""
