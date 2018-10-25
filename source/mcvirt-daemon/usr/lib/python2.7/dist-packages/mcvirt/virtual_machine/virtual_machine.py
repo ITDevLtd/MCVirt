@@ -37,7 +37,8 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                VncNotEnabledException, AttributeAlreadyChanged,
                                InvalidModificationFlagException, MCVirtTypeError,
                                UsbDeviceAttachedToVirtualMachine, InvalidConfirmationCode,
-                               DeleteProtectionAlreadyEnable, DeleteProtectionNotEnabled)
+                               DeleteProtectionAlreadyEnable, DeleteProtectionNotEnabled,
+                               DeleteProtectionEnabled)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -584,6 +585,10 @@ class VirtualMachine(PyroObject):
             # Manually set permission asserted, since we do a complex permission
             # check, which doesn't explicitly use assert_permission
             self._get_registered_object('auth').set_permission_asserted()
+
+        # Delete if delete protection is enabled
+        if self.get_delete_protection_state():
+            raise DeleteProtectionEnabled('VM is configured with delete protection')
 
         # Determine if VM is running
         if self._is_cluster_master and self._getPowerState() == PowerStates.RUNNING:
