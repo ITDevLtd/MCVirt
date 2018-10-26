@@ -36,9 +36,9 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                VirtualMachineDoesNotExistException, VmIsCloneException,
                                VncNotEnabledException, AttributeAlreadyChanged,
                                InvalidModificationFlagException, MCVirtTypeError,
-                               UsbDeviceAttachedToVirtualMachine, InvalidConfirmationCode,
-                               DeleteProtectionAlreadyEnable, DeleteProtectionNotEnabled,
-                               DeleteProtectionEnabled)
+                               UsbDeviceAttachedToVirtualMachine, InvalidConfirmationCodeError,
+                               DeleteProtectionAlreadyEnableError, DeleteProtectionNotEnabledError,
+                               DeleteProtectionEnabledError)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -588,7 +588,7 @@ class VirtualMachine(PyroObject):
 
         # Delete if delete protection is enabled
         if self.get_delete_protection_state():
-            raise DeleteProtectionEnabled('VM is configured with delete protection')
+            raise DeleteProtectionEnabledError('VM is configured with delete protection')
 
         # Determine if VM is running
         if self._is_cluster_master and self._getPowerState() == PowerStates.RUNNING:
@@ -1875,7 +1875,7 @@ class VirtualMachine(PyroObject):
 
         # Ensure that delete protection is not already enabled
         if self.get_delete_protection_state():
-            raise DeleteProtectionAlreadyEnable('Delete protection is already enabled')
+            raise DeleteProtectionAlreadyEnableError('Delete protection is already enabled')
 
         self.update_vm_config(
             change_dict={'delete_protection': False},
@@ -1890,11 +1890,11 @@ class VirtualMachine(PyroObject):
 
         # Check the confirmation is valid (the reverse of the name)
         if confirmation != self.get_name()[::-1]:
-            raise InvalidConfirmationCode('Invalid confirmation code')
+            raise InvalidConfirmationCodeError('Invalid confirmation code')
 
         # Ensure that delete protection is not already enabled
         if not self.get_delete_protection_state():
-            raise DeleteProtectionNotEnabled('Delete protection is already enabled')
+            raise DeleteProtectionNotEnabledError('Delete protection is already enabled')
 
         self.update_vm_config(
             change_dict={'delete_protection': False},
