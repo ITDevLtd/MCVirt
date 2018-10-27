@@ -17,6 +17,7 @@
 
 import os
 import hashlib
+import json
 
 from mcvirt.config_file import ConfigFile
 from mcvirt.constants import (DirectoryLocation,
@@ -105,7 +106,7 @@ class MCVirtConfig(ConfigFile):
                     'node_name': get_hostname(),
                     'nodes': {}
                 },
-                'virtual_machines': [],
+                'virtual_machines': {},
                 'networks': {
                 },
                 'drbd': NodeDrbd.get_default_config(),
@@ -270,13 +271,31 @@ class MCVirtConfig(ConfigFile):
             }
 
         if self._getVersion() < 17:
-            # Little bit crazy, but need to hook in here to rename VM
-            # configuration files and update them, as well as the main MCVirt config
-            # for this release. This is because the VM objects fail initialise becuase
-            # the configuration file will be loaded from the new path (which uses ID, rather than
-            # name).
-            from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+            # Little bit crazy, but need to load VM configs from
+            # old VM config files (since there won't be any supporting
+            # classes/methods to help) and move contents into MCVirt config
+            new_vm_config_dict = {}
             for vm_name in config['virtual_machines']:
-                vm_id = ''
-                self._gitMove(VirtualMachine.get_vm_dir(vm_name), VirtualMachine.get_vm_dir(vm_id))
-                # Update VM config to add name pararmeter
+                # Generate ID for VM
+                name_checksum = hashlib.sha512(vm_name).hexdigest()
+                date_checksum = hashlib.sha512('0').hexdigest()
+                vm_id = 'vm-%s-%s' % (name_checksum[0:18], date_checksum[0:22])
+
+                # Obtain VM config
+                vm_config_fh = open('%s/vm/%s/config.json' % (
+                    DirectoryLocation.NODE_STORAGE_DIR, vm_name), 'r')
+                vm_config = json.loads(vm_config_fh.read())
+                vm_config_fh.close()
+
+                # Add config to the new VM config
+                new_vm_config_dict[vm_id] = vm_config
+
+                # Add VM name to the VM config
+                new_vm_config_dict[vm_id]['name'] = vm_name
+
+                # TODO GIT RM ORIGINAL CONFIG
+
+                # Perform migration of the VM config
+
+
+            config['virtual_machines'] = new_vm_config_dict
