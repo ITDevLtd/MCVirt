@@ -70,6 +70,15 @@ class PyroObject(object):
         else:
             return True
 
+    @property
+    def _has_lock(self):
+        """Determine if the current session holds the global lock"""
+        if self._is_pyro_initialised and 'has_lock' in dir(Pyro4.current_context):
+            return Pyro4.current_context.has_lock
+        else:
+            # If not defined, assume that we do not have the lock
+            return False
+
     def _register_object(self, local_object, debug=True):
         """Register an object with the pyro daemon"""
         if self._is_pyro_initialised:
