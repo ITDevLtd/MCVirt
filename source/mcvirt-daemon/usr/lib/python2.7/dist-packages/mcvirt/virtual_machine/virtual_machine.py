@@ -1868,7 +1868,7 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['delete_protection']
 
     @Expose(locking=True)
-    def enable_deletion_protection(self):
+    def enable_delete_protection(self):
         """Enable delete protection on the VM"""
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
@@ -1883,7 +1883,7 @@ class VirtualMachine(PyroObject):
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     @Expose(locking=True)
-    def disable_deletion_lock(self, confirmation):
+    def disable_delete_protection(self, confirmation):
         """Disable the deletion protection"""
         # Check the user has permission to modify VMs
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)

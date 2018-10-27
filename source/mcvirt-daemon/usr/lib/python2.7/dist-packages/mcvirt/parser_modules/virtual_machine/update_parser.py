@@ -125,6 +125,17 @@ class UpdateParser(object):
         self.update_parser.add_argument('--remove-flag', help='Remove VM modification flag',
                                         dest='remove_flags', action='append')
 
+        self.delete_protection_mutual_group = self.update_parser.add_mutually_exclusive_group(
+            required=False)
+        self.delete_protection_mutual_group.add_argument(
+            '--enable-delete-protection', dest='enable_delete_protection',
+            action='store_true',
+            help='Enable VM delete protection.')
+        self.delete_protection_mutual_group.add_argument(
+            '--disable-delete-protection', type=str,
+            dest='disable_delete_protection',
+            help='Disable VM delete protection. Must provide name of VM in reverse.')
+
     def handle_update(self, p_, args):
         """Handle VM update"""
         if bool(args.change_network) != bool(args.new_network):
@@ -218,3 +229,9 @@ class UpdateParser(object):
             vm_object.update_modification_flags(add_flags=add_flags, remove_flags=remove_flags)
             flags_str = ", ".join(vm_object.get_modification_flags())
             p_.print_status('Modification flags set to: %s' % (flags_str or 'None'))
+
+        if args.enable_delete_protection:
+            vm_object.enable_delete_protection()
+
+        if args.disable_delete_protection:
+            vm_object.disable_delete_protection(args.disable_delete_protection)
