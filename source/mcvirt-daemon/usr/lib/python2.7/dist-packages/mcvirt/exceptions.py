@@ -853,25 +853,25 @@ class SizeNotIntegerBytesError(MCVirtException):
     pass
 
 
-class InvalidConfirmationCode(MCVirtException):
+class InvalidConfirmationCodeError(MCVirtException):
     """Confirmation code is not correct"""
 
     pass
 
 
-class DeleteProtectionAlreadyEnabled(MCVirtException):
+class DeleteProtectionAlreadyEnabledError(MCVirtException):
     """Delete protection is already enabled"""
 
     pass
 
 
-class DeleteProtectionNotEnabled(MCVirtException):
+class DeleteProtectionNotEnabledError(MCVirtException):
     """Delete protection is not enabled on the VM"""
 
     pass
 
 
-class DeleteProtectionEnabled(MCVirtTypeError):
+class DeleteProtectionEnabledError(MCVirtTypeError):
     """Delete protection is enabled on the VM"""
 
     pass
