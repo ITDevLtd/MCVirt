@@ -21,6 +21,7 @@ import json
 import os
 import stat
 import pwd
+import shutil
 
 from mcvirt.utils import get_hostname
 from mcvirt.system import System
@@ -194,10 +195,40 @@ class ConfigFile(PyroObject):
             except Exception:
                 pass
 
+    def gitMove(self, src, dest, message=''):
+        """Move git directory, commit and push"""
+        if self._checkGitRepo():
+            session_obj = self._get_registered_object('mcvirt_session')
+            username = ''
+            user = None
+            if session_obj:
+                try:
+                    user = session_obj.get_proxy_user_object()
+                except UserDoesNotExistException:
+                    pass
+            if user:
+                username = session_obj.get_proxy_user_object().get_username()
+            message += "\nUser: %s\nNode: %s" % (username, get_hostname())
+
+            # Perform git move
+            System.runCommand(['git', 'mv', src, dest])
+
+            # Attempt to commit and push changes
+            try:
+                System.runCommand([self.GIT, 'commit', '-m', message],
+                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
+                System.runCommand([self.GIT,
+                                   'push'],
+                                  raise_exception_on_failure=False,
+                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
+            except Exception:
+                pass
+        else:
+            shutil.move(src, dest)
+
     def gitRemove(self, message=''):
         """Remove and commits a configuration file"""
         if self._checkGitRepo():
-            session_obj = self._get_registered_object('mcvirt_session')
             session_obj = self._get_registered_object('mcvirt_session')
             username = ''
             user = None

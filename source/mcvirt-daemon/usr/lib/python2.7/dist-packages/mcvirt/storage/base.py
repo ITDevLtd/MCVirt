@@ -17,9 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import hashlib
-import datetime
-
 from mcvirt.mcvirt_config import MCVirtConfig
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
@@ -45,6 +42,21 @@ from mcvirt.system import System
 class Base(PyroObject):
     """Provides base functionality for storage backends"""
 
+    @staticmethod
+    def get_id_code():
+        """Return the ID code for the object"""
+        return 'sb'
+
+    @staticmethod
+    def get_id_name_checksum_length():
+        """Return the lenght of the name checksum to use in the ID"""
+        return 16
+
+    @staticmethod
+    def get_id_date_checksum_length():
+        """Return the lenght of the name checksum to use in the ID"""
+        return 24
+
     @classmethod
     def check_permissions(cls, libvirt_config, directory):
         """Method to check permissions of directory"""
@@ -56,15 +68,6 @@ class Base(PyroObject):
         # Ensure that all nodes specified are valid
         for node in config['nodes']:
             cluster.ensure_node_exists(node, include_local=True)
-
-    @classmethod
-    def generate_id(cls, name):
-        """Generate ID for storage backend"""
-        # Generate sha sum of name and sha sum of
-        # current datetime
-        name_checksum = hashlib.sha512(name).hexdigest()
-        date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
-        return 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
 
     @classmethod
     def node_pre_check(cls, cluster, libvirt_config, location):

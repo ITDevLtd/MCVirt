@@ -65,9 +65,10 @@ class VirtualMachine(PyroObject):
 
     OBJECT_TYPE = 'virtual machine'
 
-    def __init__(self, virtual_machine_factory, name):
+    def __init__(self, virtual_machine_factory, _id):
         """Set member variables and obtains LibVirt domain object."""
-        self.name = name
+        self._id = _id
+        self.name = None
         self.disk_drive_object = None
 
         # Check that the domain exists
@@ -75,6 +76,11 @@ class VirtualMachine(PyroObject):
             raise VirtualMachineDoesNotExistException(
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
+
+    @staticmethod
+    def get_id_code():
+        """Return default Id code for object - should be overriden"""
+        return 'vm'
 
     def initialise(self):
         """Run after object is registered with pyro"""
@@ -86,7 +92,7 @@ class VirtualMachine(PyroObject):
         # Ensure class and name of object match
         if ('__class__' in dir(comp) and
                 comp.__class__ == self.__class__ and
-                'get_name' in dir(comp) and comp.get_name() == self.get_name()):
+                'get_id' in dir(comp) and comp.get_id() == self.get_id()):
             return True
 
         # Otherwise return false
@@ -169,7 +175,7 @@ class VirtualMachine(PyroObject):
                 node_object = cluster.get_remote_node(node or self.getNode(),
                                                       set_cluster_master=set_cluster_master)
             remote_vm_factory = node_object.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
+            remote_vm = remote_vm_factory.getVirtualMachineById(self.get_id())
             node_object.annotate_object(remote_vm)
             return remote_vm
         else:
@@ -221,7 +227,14 @@ class VirtualMachine(PyroObject):
     @Expose()
     def get_name(self):
         """Return the name of the VM"""
+        if self.name is None:
+            self.name = self.get_config_object().get_config()['name']
         return self.name
+
+    @Expose()
+    def get_id(self):
+        """Return the ID of the VM"""
+        return self._id
 
     def is_static(self):
         """Determine if node is statically defined to given nodes.

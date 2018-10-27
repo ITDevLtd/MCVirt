@@ -268,3 +268,15 @@ class MCVirtConfig(ConfigFile):
                 # 10 seconds for read timeout on connection
                 'connection_timeout': 10,
             }
+
+        if self._getVersion() < 17:
+            # Little bit crazy, but need to hook in here to rename VM
+            # configuration files and update them, as well as the main MCVirt config
+            # for this release. This is because the VM objects fail initialise becuase
+            # the configuration file will be loaded from the new path (which uses ID, rather than
+            # name).
+            from mcvirt.virtual_machine.virtual_machine import VirtualMachine
+            for vm_name in config['virtual_machines']:
+                vm_id = ''
+                self._gitMove(VirtualMachine.get_vm_dir(vm_name), VirtualMachine.get_vm_dir(vm_id))
+                # Update VM config to add name pararmeter

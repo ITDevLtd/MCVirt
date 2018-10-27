@@ -35,14 +35,10 @@ from mcvirt.argument_validator import ArgumentValidator
 class Group(PyroObject):
     """Object for groups"""
 
-    @classmethod
-    def generate_id(cls, name):
-        """Generate ID for group"""
-        # Generate sha sum of name and sha sum of
-        # current datetime
-        name_checksum = hashlib.sha512(name).hexdigest()
-        date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
-        return 'gp-%s-%s' % (name_checksum[0:18], date_checksum[0:22])
+    @staticmethod
+    def get_id_code():
+        """Return the ID code for the object"""
+        return 'gp'
 
     def __init__(self, id_):
         """Setup member variables"""

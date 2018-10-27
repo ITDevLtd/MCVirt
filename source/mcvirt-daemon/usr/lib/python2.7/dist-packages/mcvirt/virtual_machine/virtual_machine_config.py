@@ -33,23 +33,23 @@ class VirtualMachineConfig(ConfigFile):
         """Sets member variables and obtains libvirt domain object"""
         self.git_object = None
         self.vm_object = vm_object
-        self.config_file = VirtualMachineConfig.get_config_path(self.vm_object.name)
+        self.config_file = VirtualMachineConfig.get_config_path(self.vm_object.get_name())
         if not os.path.isfile(self.config_file):
             raise ConfigFileCouldNotBeFoundException(
-                'Could not find config file for %s' % vm_object.name
+                'Could not find config file for %s' % vm_object.get_name()
             )
 
         # Perform upgrade of configuration
         self.upgrade()
 
     @staticmethod
-    def get_config_path(vm_name):
+    def get_config_path(vm_id):
         """Provides the path of the VM-spefic configuration file"""
         from mcvirt.virtual_machine.virtual_machine import VirtualMachine
-        return '%s/config.json' % VirtualMachine.get_vm_dir(vm_name)
+        return '%s/config.json' % VirtualMachine.get_vm_dir(vm_id)
 
     @staticmethod
-    def create(vm_name, available_nodes, cpu_cores, memory_allocation, graphics_driver):
+    def create(vm_id, vm_name, available_nodes, cpu_cores, memory_allocation, graphics_driver):
         """Creates a basic VM configuration for new VMs"""
         # @TODO Move import to main
         from mcvirt.virtual_machine.virtual_machine import LockStates
@@ -57,6 +57,7 @@ class VirtualMachineConfig(ConfigFile):
         # Create basic config
         json_data = \
             {
+                'name': vm_name,
                 'version': VirtualMachineConfig.CURRENT_VERSION,
                 'applied_version': VirtualMachineConfig.CURRENT_VERSION,
                 'permissions':
@@ -91,7 +92,7 @@ class VirtualMachineConfig(ConfigFile):
             }
 
         # Write the configuration to disk
-        VirtualMachineConfig._writeJSON(json_data, VirtualMachineConfig.get_config_path(vm_name))
+        VirtualMachineConfig._writeJSON(json_data, VirtualMachineConfig.get_config_path(vm_id))
 
     def _upgrade(self, config):
         """Perform an upgrade of the configuration file"""
@@ -204,3 +205,7 @@ class VirtualMachineConfig(ConfigFile):
             if 'cpu_' in config:
                 config['cpu_cores'] = int(config['cpu_cores'])
                 del config['cpu_']
+
+        if self._getVersion() < 17:
+            # Name parameter added in MCVirtConfig object, due to change of VM dir
+            pass
