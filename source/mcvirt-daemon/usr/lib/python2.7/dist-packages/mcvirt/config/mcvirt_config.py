@@ -19,14 +19,14 @@ import os
 import hashlib
 import json
 
-from mcvirt.config_file import ConfigFile
+from mcvirt.config.base import Base
 from mcvirt.constants import (DirectoryLocation,
                               DEFAULT_STORAGE_NAME, DEFAULT_STORAGE_ID,
                               DEFAULT_USER_GROUP_ID, DEFAULT_OWNER_GROUP_ID)
 from mcvirt.utils import get_hostname
 
 
-class MCVirtConfig(ConfigFile):
+class MCVirtConfig(Base):
     """Provides operations to obtain and set the MCVirt
     configuration for a VM
     """

@@ -22,7 +22,7 @@ from enum import Enum
 
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,

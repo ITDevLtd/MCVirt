@@ -30,7 +30,7 @@ from mcvirt.exceptions import (HardDriveDoesNotExistException,
                                LogicalVolumeIsNotActiveException,
                                VolumeDoesNotExistError,
                                VolumeAlreadyExistsError)
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt_config import MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import ReachedMaximumStorageDevicesException

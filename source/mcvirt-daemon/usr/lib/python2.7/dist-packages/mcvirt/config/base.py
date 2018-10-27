@@ -32,7 +32,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import UserDoesNotExistException
 
 
-class ConfigFile(PyroObject):
+class Base(PyroObject):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     CURRENT_VERSION = 17
@@ -65,7 +65,7 @@ class ConfigFile(PyroObject):
     def manual_update_config(self, config, reason=''):
         """Provide an exposed method for updating the config"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
-        ConfigFile._writeJSON(config, self.config_file)
+        Base._writeJSON(config, self.config_file)
         self.config = config
         self.gitAdd(reason)
         self.setConfigPermissions()
@@ -74,7 +74,7 @@ class ConfigFile(PyroObject):
         """Write a provided configuration back to the configuration file."""
         config = self.get_config()
         callback_function(config)
-        ConfigFile._writeJSON(config, self.config_file)
+        Base._writeJSON(config, self.config_file)
         self.config = config
         self.gitAdd(reason)
         self.setConfigPermissions()

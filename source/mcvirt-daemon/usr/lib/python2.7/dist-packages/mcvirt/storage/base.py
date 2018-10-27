@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt_config import MCVirtConfig
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS

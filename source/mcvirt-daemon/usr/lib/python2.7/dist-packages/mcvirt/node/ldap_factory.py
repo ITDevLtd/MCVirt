@@ -20,7 +20,7 @@
 import ldap
 import os
 
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt_config import MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose

@@ -19,14 +19,14 @@ import os
 import hashlib
 
 from mcvirt.exceptions import ConfigFileCouldNotBeFoundException
-from mcvirt.config_file import ConfigFile
+from mcvirt.config.base import Base
 from mcvirt.constants import (AutoStartStates,
                               DEFAULT_USER_GROUP_ID,
                               DEFAULT_OWNER_GROUP_ID)
 from mcvirt.utils import get_hostname
 
 
-class VirtualMachineConfig(ConfigFile):
+class VirtualMachineConfig(Base):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     def __init__(self, vm_object):
