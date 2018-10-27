@@ -189,7 +189,7 @@ class TestBase(unittest.TestCase):
             if vm_object.getLockState() is LockStates.LOCKED.value:
                 vm_object.setLockState(LockStates.UNLOCKED.value)
 
-            if vm_object.get_delete_protection_status():
+            if vm_object.get_delete_protection_state():
                 vm_object.disable_delete_protection()
 
             # Delete VM

@@ -40,7 +40,7 @@ from mcvirt.exceptions import (InvalidVirtualMachineNameException,
                                DeleteProtectionAlreadyEnabledError,
                                InvalidConfirmationCodeError,
                                DeleteProtectionEnabledError,
-                               DeleteProtectionAlreadyDisabledError)
+                               DeleteProtectionNotEnabledError)
 from mcvirt.test.test_base import TestBase, skip_drbd
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdDiskState
 
@@ -73,11 +73,11 @@ class VirtualMachineTests(TestBase):
 
         # Disable protection tests
         suite.addTest(VirtualMachineTests('test_enable_delete_protection'))
-        suite.addTest(VirtualMachineTests('test_enable_delete__protection_already_enabled'))
+        suite.addTest(VirtualMachineTests('test_enable_delete_protection_already_enabled'))
         suite.addTest(VirtualMachineTests('test_disable_delete_protection'))
         suite.addTest(VirtualMachineTests('test_disable_delete_protection_incorrect_check'))
         suite.addTest(VirtualMachineTests('test_disable_delete_protection_already_disabled'))
-        suite.addTest(VirtualMachineTests('test_remove_vm_disable_protection'))
+        suite.addTest(VirtualMachineTests('test_delete_vm_with_delete_protection'))
 
         # # Add tests for Drbd
         suite.addTest(VirtualMachineTests('test_create_drbd'))
@@ -665,13 +665,13 @@ class VirtualMachineTests(TestBase):
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Ensure that delete protection is disabled
-        self.assertFalse(test_vm_object.get_delete_protection_status())
+        self.assertFalse(test_vm_object.get_delete_protection_state())
 
         self.parser.parse_arguments(
             'update --enable-delete-protection %s' %
             self.test_vms['TEST_VM_1']['name'])
 
-        self.assertTrue(test_vm_object.get_delete_protection_status())
+        self.assertTrue(test_vm_object.get_delete_protection_state())
 
     def test_enable_delete_protection_already_enabled(self):
         """Attempt to enable delete protection on a VM that it is already enabled on"""
@@ -679,14 +679,14 @@ class VirtualMachineTests(TestBase):
 
         # Enable delete protection on VM
         test_vm_object.enable_delete_protection()
-        self.assertTrue(test_vm_object.get_delete_protection_status())
+        self.assertTrue(test_vm_object.get_delete_protection_state())
 
         with self.assertRaises(DeleteProtectionAlreadyEnabledError):
             self.parser.parse_arguments(
                 'update --enable-delete-protection %s' %
                 self.test_vms['TEST_VM_1']['name'])
 
-        self.assertTrue(test_vm_object.get_ddelete_protection_status())
+        self.assertTrue(test_vm_object.get_delete_protection_state())
 
     def test_disable_delete_protection(self):
         """Disable delete protection on a VM"""
@@ -694,13 +694,13 @@ class VirtualMachineTests(TestBase):
 
         # Enable delete protection on VM
         test_vm_object.enable_delete_protection()
-        self.assertTrue(test_vm_object.get_ddelete_protection_status())
+        self.assertTrue(test_vm_object.get_delete_protection_state())
 
         self.parser.parse_arguments(
             'update --disable-delete-protection %s %s' %
             ('mv-tsettinu-trivcm', self.test_vms['TEST_VM_1']['name']))
 
-        self.assertFalse(test_vm_object.get_ddelete_protection_status())
+        self.assertFalse(test_vm_object.get_delete_protection_state())
 
     def test_disable_delete_protection_incorrect_check(self):
         """Attempt to disable delete protection on a VM with an incorrect confirmation string"""
@@ -708,28 +708,28 @@ class VirtualMachineTests(TestBase):
 
         # Enable delete protection on VM
         test_vm_object.enable_delete_protection()
-        self.assertTrue(test_vm_object.get_ddelete_protection_status())
+        self.assertTrue(test_vm_object.get_delete_protection_state())
 
         with self.assertRaises(InvalidConfirmationCodeError):
             self.parser.parse_arguments(
                 'update --disable-delete-protection %s %s' %
                 ('incorrect', self.test_vms['TEST_VM_1']['name']))
 
-        self.assertTrue(test_vm_object.get_ddelete_protection_status())
+        self.assertTrue(test_vm_object.get_delete_protection_state())
 
     def test_disable_delete_protection_already_disabled(self):
         """Attempt to disable delete protection on a VM where it is already disabled"""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Ensure that delete protection is disabled
-        self.assertFalse(test_vm_object.get_delete_protection_status())
+        self.assertFalse(test_vm_object.get_delete_protection_state())
 
-        with self.assertRaises(DeleteProtectionAlreadyDisabledError):
+        with self.assertRaises(DeleteProtectionNotEnabledError):
             self.parser.parse_arguments(
                 'update --disable-delete-protection %s' %
                 ('mv-tsettinu-trivcm', self.test_vms['TEST_VM_1']['name']))
 
-        self.assertTrue(test_vm_object.get_ddelete_protection_status())
+        self.assertTrue(test_vm_object.get_delete_protection_state())
 
     def test_delete_vm_with_delete_protection(self):
         """Attempt to delete a VM with delete protection enabled"""
@@ -737,7 +737,7 @@ class VirtualMachineTests(TestBase):
 
         # Ensure that delete protection is disabled
         test_vm_object.enable_delete_protection()
-        self.assertTrue(test_vm_object.get_ddelete_protection_status())
+        self.assertTrue(test_vm_object.get_delete_protection_state())
 
         with self.assertRaises(DeleteProtectionEnabledError):
             self.parser.parse_arguments(
