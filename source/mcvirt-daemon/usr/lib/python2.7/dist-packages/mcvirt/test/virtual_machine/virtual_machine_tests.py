@@ -726,7 +726,7 @@ class VirtualMachineTests(TestBase):
 
         with self.assertRaises(DeleteProtectionNotEnabledError):
             self.parser.parse_arguments(
-                'update --disable-delete-protection %s' %
+                'update --disable-delete-protection %s %s' %
                 ('mv-tsettinu-trivcm', self.test_vms['TEST_VM_1']['name']))
 
         self.assertTrue(test_vm_object.get_delete_protection_state())
@@ -741,7 +741,7 @@ class VirtualMachineTests(TestBase):
 
         with self.assertRaises(DeleteProtectionEnabledError):
             self.parser.parse_arguments(
-                'delete %s %s' %
+                'delete %s' %
                 self.test_vms['TEST_VM_1']['name'])
 
         self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
