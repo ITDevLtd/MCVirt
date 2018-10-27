@@ -66,6 +66,7 @@ class VirtualMachineConfig(ConfigFile):
                 },
                 'hard_disks': {},
                 'storage_type': None,
+                'delete_protection': False,
                 'memory_allocation': memory_allocation,
                 'cpu_cores': cpu_cores,
                 'clone_parent': False,
@@ -193,4 +194,13 @@ class VirtualMachineConfig(ConfigFile):
         if self._getVersion() < 15:
             # Convert memory allocation to Bytes from Kib
             config['memory_allocation'] = int(config['memory_allocation']) * 1024
-            config['cpu_'] = int(config['cpu_cores'])
+            config['cpu_cores'] = int(config['cpu_cores'])
+
+        if self._getVersion() < 16:
+            # Set new config item for delete protection
+            config['delete_protection'] = False
+
+            # Fix bug in previous config migration
+            if 'cpu_' in config:
+                config['cpu_cores'] = int(config['cpu_cores'])
+                del config['cpu_']

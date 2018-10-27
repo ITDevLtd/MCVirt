@@ -36,7 +36,9 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                VirtualMachineDoesNotExistException, VmIsCloneException,
                                VncNotEnabledException, AttributeAlreadyChanged,
                                InvalidModificationFlagException, MCVirtTypeError,
-                               UsbDeviceAttachedToVirtualMachine)
+                               UsbDeviceAttachedToVirtualMachine, InvalidConfirmationCodeError,
+                               DeleteProtectionAlreadyEnabledError, DeleteProtectionNotEnabledError,
+                               DeleteProtectionEnabledError)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
 from mcvirt.mcvirt_config import MCVirtConfig
@@ -123,18 +125,32 @@ class VirtualMachine(PyroObject):
         config = self.get_config_object().get_config()
         # Determine if applied config is older than the config version and
         # VM is registered locally
-        if (config['applied_version'] < config['version'] and
-                self.isRegisteredLocally() and
-                self.is_stopped):
-            # If so, unregister and re-register VM with libvirt
-            self._unregister()
-            self._register()
+        try:
+            if (config['applied_version'] < config['version'] and
+                    self.isRegisteredLocally() and
+                    self.is_stopped):
 
-            # Update VM config with new applied version
-            def update_config(config):
-                """Update applied version with config version"""
-                config['applied_version'] = config['version']
-            self.get_config_object().update_config(update_config, 'Update applied version')
+                try:
+                    # If so, unregister and re-register VM with libvirt
+                    self._unregister()
+                    self._register()
+
+                    # Update VM config with new applied version
+                    def update_config(config):
+                        """Update applied version with config version"""
+                        config['applied_version'] = config['version']
+                    self.get_config_object().update_config(update_config, 'Update applied version')
+                except Exception:
+                    # If the VM was unregistered from libvirt during the
+                    # config migration, set it as unregistered
+                    if self._getLibvirtDomainObject() is None:
+                        self._setNode(None)
+
+                    raise
+
+        except Exception, exc:
+            Syslogger.logger().warning('Error during VM config upgrade: %s: %s' % (
+                self.get_name(), str(exc)))
 
     def get_remote_object(self, node=None, node_object=None, include_node=False,
                           set_cluster_master=False):
@@ -224,7 +240,7 @@ class VirtualMachine(PyroObject):
 
         return is_static
 
-    def _getLibvirtDomainObject(self, allow_remote=False):
+    def _getLibvirtDomainObject(self, allow_remote=False, auto_register=True):
         """Look up LibVirt domain object, based on VM name,
         and return object
         """
@@ -236,10 +252,23 @@ class VirtualMachine(PyroObject):
                 raise VmRegisteredElsewhereException('Virtual machine is registered elsewhere')
         else:
             libvirt_connection = self._get_registered_object('libvirt_connector').get_connection()
-        # Get the domain object.
-        return libvirt_connection.lookupByName(
-            self.name
-        )
+        try:
+            # Get the domain object.
+            return libvirt_connection.lookupByName(
+                self.name
+            )
+        except libvirt.libvirtError, exc:
+            # A libvirt error occured...
+            # If the error is related to domain not existing...
+            if 'Domain not found: no domain with matching name' in str(exc):
+                # If the current session has a lock, then re-register with libvirt
+                if self._has_lock and auto_register:
+                    self._register(set_node=False, ignore_registered_locally=True)
+
+                    # Return with call from this method
+                    return self._getLibvirtDomainObject(allow_remote=allow_remote,
+                                                        auto_register=False)
+            raise
 
     @Expose()
     def get_libvirt_xml(self):
@@ -497,6 +526,9 @@ class VirtualMachine(PyroObject):
         table.add_row(('Node', self.getNode()))
         table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
         table.add_row(('Lock State', self._getLockState().name))
+        table.add_row(('Delete protection', ('Enabled'
+                                             if self.get_delete_protection_state() else
+                                             'Disabled')))
         table.add_row(('UUID', self.get_uuid()))
         table.add_row(('Graphics Driver', self.getGraphicsDriver()))
 
@@ -583,6 +615,10 @@ class VirtualMachine(PyroObject):
             # Manually set permission asserted, since we do a complex permission
             # check, which doesn't explicitly use assert_permission
             self._get_registered_object('auth').set_permission_asserted()
+
+        # Delete if delete protection is enabled
+        if self.get_delete_protection_state():
+            raise DeleteProtectionEnabledError('VM is configured with delete protection')
 
         # Determine if VM is running
         if self._is_cluster_master and self._getPowerState() == PowerStates.RUNNING:
@@ -1441,11 +1477,19 @@ class VirtualMachine(PyroObject):
         )
         self._register()
 
-    def _register(self, set_node=True):
+    def _register(self, set_node=True, ignore_registered_locally=False):
         """Register a VM with LibVirt"""
         # Import domain XML template
         current_node = self.getNode()
-        if current_node is not None:
+
+        # Ensure that the current node is not set OR
+        # it is currently registered on the local node,
+        # has been explicitly allowed and node in config
+        # is not being set
+        if (current_node is not None and not
+                (ignore_registered_locally and
+                 current_node == get_hostname() and
+                 not set_node)):
             raise VmAlreadyRegisteredException(
                 'VM \'%s\' already registered on node: %s' %
                 (self.name, current_node))
@@ -1693,11 +1737,11 @@ class VirtualMachine(PyroObject):
             )
         )
         if domain_xml.find(
-                './devices/serial[@type="pty"]/target[@port="5"]/../source') is None:
-            raise VncNotEnabledException('VNC is not enabled on the VM')
+                './devices/serial[@type="pty"]/target[@port="0"]/../source') is None:
+            raise VncNotEnabledException('Serial port cannot be found for VM')
         else:
             return domain_xml.find(
-                './devices/serial[@type="pty"]/target[@port="5"]/../source').get('path')
+                './devices/serial[@type="pty"]/target[@port="0"]/../source').get('path')
 
     def get_agent_timeout(self):
         """Obtain agent timeout from config"""
@@ -1855,6 +1899,45 @@ class VirtualMachine(PyroObject):
         self.get_config_object().update_config(update_lock,
                                                'Setting lock state of \'%s\' to \'%s\'' %
                                                (self.get_name(), lock_status.name))
+
+    @Expose()
+    def get_delete_protection_state(self):
+        """Get the current state of the deletion lock"""
+        return self.get_config_object().get_config()['delete_protection']
+
+    @Expose(locking=True)
+    def enable_delete_protection(self):
+        """Enable delete protection on the VM"""
+        # Check the user has permission to modify VMs
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        # Ensure that delete protection is not already enabled
+        if self.get_delete_protection_state():
+            raise DeleteProtectionAlreadyEnabledError('Delete protection is already enabled')
+
+        self.update_vm_config(
+            change_dict={'delete_protection': True},
+            reason='Enable deletion protection',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True)
+    def disable_delete_protection(self, confirmation):
+        """Disable the deletion protection"""
+        # Check the user has permission to modify VMs
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        # Check the confirmation is valid (the reverse of the name)
+        if confirmation != self.get_name()[::-1]:
+            raise InvalidConfirmationCodeError('Invalid confirmation code')
+
+        # Ensure that delete protection is not already enabled
+        if not self.get_delete_protection_state():
+            raise DeleteProtectionNotEnabledError('Delete protection is already enabled')
+
+        self.update_vm_config(
+            change_dict={'delete_protection': False},
+            reason='Disable deletion protection',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     def setBootOrder(self, boot_devices):
         """Sets the boot devices and the order in which devices are booted from"""

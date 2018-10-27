@@ -167,6 +167,18 @@ class Function(PyroObject):
         if remote_nodes and 'nodes' in kwargs:
             nodes = kwargs['nodes']
             del kwargs['nodes']
+
+        # If all nodes has been specified, then obtain them
+        # from cluster
+        elif remote_nodes and 'all_nodes' in kwargs:
+            all_nodes = kwargs['all_nodes']
+            del kwargs['all_nodes']
+            if all_nodes:
+                nodes = self._get_registered_object('cluster').get_nodes(
+                    include_local=True)
+            else:
+                nodes = [get_hostname()]
+
         # Otherwise, just add the local node
         else:
             nodes = [get_hostname()]
