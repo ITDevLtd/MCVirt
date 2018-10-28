@@ -41,10 +41,10 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                DeleteProtectionEnabledError)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.usb_device import UsbDevice
-from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
+from mcvirt.config.virtual_machine import VirtualMachine as VirtualMachineConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
@@ -65,16 +65,22 @@ class VirtualMachine(PyroObject):
 
     OBJECT_TYPE = 'virtual machine'
 
-    def __init__(self, virtual_machine_factory, name):
+    def __init__(self, virtual_machine_factory, _id):
         """Set member variables and obtains LibVirt domain object."""
-        self.name = name
+        self._id = _id
+        self.name = None
         self.disk_drive_object = None
 
         # Check that the domain exists
-        if not virtual_machine_factory.check_exists(self.name):
+        if not virtual_machine_factory.check_exists(self._id):
             raise VirtualMachineDoesNotExistException(
-                'Error: Virtual Machine does not exist: %s' % self.name
+                'Error: Virtual Machine does not exist: %s' % self._id
             )
+
+    @staticmethod
+    def get_id_code():
+        """Return default Id code for object"""
+        return 'vm'
 
     def initialise(self):
         """Run after object is registered with pyro"""
@@ -86,7 +92,7 @@ class VirtualMachine(PyroObject):
         # Ensure class and name of object match
         if ('__class__' in dir(comp) and
                 comp.__class__ == self.__class__ and
-                'get_name' in dir(comp) and comp.get_name() == self.get_name()):
+                'get_id' in dir(comp) and comp.get_id() == self.get_id()):
             return True
 
         # Otherwise return false
@@ -169,7 +175,7 @@ class VirtualMachine(PyroObject):
                 node_object = cluster.get_remote_node(node or self.getNode(),
                                                       set_cluster_master=set_cluster_master)
             remote_vm_factory = node_object.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
+            remote_vm = remote_vm_factory.get_virtual_machine_by_id(self.get_id())
             node_object.annotate_object(remote_vm)
             return remote_vm
         else:
@@ -221,7 +227,14 @@ class VirtualMachine(PyroObject):
     @Expose()
     def get_name(self):
         """Return the name of the VM"""
+        if self.name is None:
+            self.name = self.get_config_object().get_config()['name']
         return self.name
+
+    @Expose()
+    def get_id(self):
+        """Return the ID of the VM"""
+        return self._id
 
     def is_static(self):
         """Determine if node is statically defined to given nodes.
@@ -663,21 +676,8 @@ class VirtualMachine(PyroObject):
                 removeCloneChildConfig, 'Removed clone child \'%s\' from \'%s\'' %
                 (self.get_name(), self.getCloneParent()))
 
-        # Unless 'keep_config' has been passed as True, delete directory
-        # from VM storage
-        if not keep_config:
-            # Remove VM configuration file
-            self.get_config_object().gitRemove('VM \'%s\' has been removed' % self.name)
-            rmtree(VirtualMachine.get_vm_dir(self.name))
-
         # Remove VM from MCVirt configuration
-        def update_mcvirt_config(config):
-            """Remove VM from MCVirt config"""
-            config['virtual_machines'].remove(self.name)
-        MCVirtConfig().update_config(
-            update_mcvirt_config,
-            'Removed VM \'%s\' from global MCVirt config' %
-            self.name)
+        self.get_config_object().delete()
 
         vm_factory = self._get_registered_object('virtual_machine_factory')
         if self.get_name() in vm_factory.CACHED_OBJECTS:
@@ -937,7 +937,8 @@ class VirtualMachine(PyroObject):
                 remote_vm.remote_update_config(attribute_path=attribute_path, value=value,
                                                reason=reason, local_only=True)
             cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(update_config_remote,
+            cluster.run_remote_command(
+                update_config_remote,
                 ignore_cluster_master=ignore_cluster_master)
 
     @staticmethod
@@ -1253,7 +1254,8 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Ensure new VM name doesn't already exist
-        if self._get_registered_object('virtual_machine_factory').check_exists(clone_vm_name):
+        if self._get_registered_object(
+                'virtual_machine_factory').check_exists_by_name(clone_vm_name):
             raise VirtualMachineDoesNotExistException('VM %s already exists' % clone_vm_name)
 
         # Ensure VM is not a clone, as cloning a cloned VM will cause issues
@@ -1324,7 +1326,8 @@ class VirtualMachine(PyroObject):
             raise VmAlreadyStartedException('Can\'t duplicate running VM')
 
         # Ensure new VM name doesn't already exist
-        if self._get_registered_object('virtual_machine_factory').check_exists(duplicate_vm_name):
+        if self._get_registered_object(
+                'virtual_machine_factory').check_exists_by_name(duplicate_vm_name):
             raise VmAlreadyExistsException('VM already exists with name %s' % duplicate_vm_name)
 
         # Create new VM for clone, without hard disks

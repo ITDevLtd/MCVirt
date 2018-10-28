@@ -49,7 +49,7 @@ class Syslogger(object):
         """Return the log level, set either by environmental variable
         or configuration in MCVirt config
         """
-        from mcvirt.mcvirt_config import MCVirtConfig
+        from mcvirt.config.core import Core as MCVirtConfig
         if 'MCVIRT_DEBUG' in os.environ:
             return os.environ['MCVIRT_DEBUG'].upper()
         else:

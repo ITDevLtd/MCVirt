@@ -40,7 +40,7 @@ class DrbdTests(TestBase):
         """Test the Drbd verification for both in-sync and out-of-sync Drbd volumes"""
         # Create Virtual machine
         test_vm_object = self.create_vm('TEST_VM_1', 'Drbd')
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Wait for 10 seconds after creation to ensure that Drbd
         # goes into connection -> Resyncing state

@@ -18,7 +18,7 @@
 import unittest
 
 from mcvirt.exceptions import MCVirtTypeError
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.test.test_base import TestBase
 
 

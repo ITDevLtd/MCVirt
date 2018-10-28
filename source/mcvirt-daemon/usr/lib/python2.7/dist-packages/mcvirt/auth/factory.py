@@ -19,7 +19,7 @@
 
 from texttable import Texttable
 
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.exceptions import (IncorrectCredentials, InvalidUsernameException,
                                UserDoesNotExistException, InvalidUserTypeException,
                                UserAlreadyExistsException, BlankPasswordException)

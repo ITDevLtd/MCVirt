@@ -160,7 +160,7 @@ class TestBase(unittest.TestCase):
                                            storage_type=storage_type,
                                            available_nodes=available_nodes)
         self.rpc.annotate_object(vm_object)
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms[vm_name]['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms[vm_name]['name']))
         return vm_object
 
     @classmethod
@@ -168,7 +168,7 @@ class TestBase(unittest.TestCase):
         """Stop and remove a virtual machine"""
         virtual_machine_factory = cls.rpc.get_connection('virtual_machine_factory')
 
-        if virtual_machine_factory.check_exists(vm_name):
+        if virtual_machine_factory.check_exists_by_name(vm_name):
             vm_object = virtual_machine_factory.getVirtualMachineByName(vm_name)
             cls.rpc.annotate_object(vm_object)
 

@@ -21,14 +21,14 @@ from os import makedirs
 from enum import Enum
 
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
-from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.virtual_machine import VirtualMachine as VirtualMachineConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                ClusterNotInitialisedException, NodeDoesNotExistException,
                                VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException,
-                               MCVirtTypeError)
+                               MCVirtTypeError, VirtualMachineDoesNotExistException)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose, Transaction
 from mcvirt.utils import get_hostname
@@ -95,17 +95,43 @@ class Factory(PyroObject):
     def getVirtualMachineByName(self, vm_name):
         """Obtain a VM object, based on VM name"""
         ArgumentValidator.validate_hostname(vm_name)
-        if vm_name not in Factory.CACHED_OBJECTS:
-            vm_object = VirtualMachine(self, vm_name)
+        name_id_dict = {
+            val['name']: key
+            for key, val in VirtualMachineConfig.get_global_config().items()
+        }
+        if vm_name not in name_id_dict:
+            raise VirtualMachineDoesNotExistException(
+                'Error: Virtual Machine does not exist: %s' % vm_name
+            )
+
+        return self.get_virtual_machine_by_id(name_id_dict[vm_name])
+
+    @Expose()
+    def get_virtual_machine_by_id(self, vm_id):
+        """Obtain a VM object, based on VM name"""
+        # Validate VM ID
+        ArgumentValidator.validate_id(vm_id, VirtualMachine)
+
+        # Determine if VM object has been cached
+        if vm_id not in Factory.CACHED_OBJECTS:
+            # If not, create object, register with pyro
+            # and store in cached object dict
+            vm_object = VirtualMachine(self, vm_id)
             self._register_object(vm_object)
             vm_object.initialise()
-            Factory.CACHED_OBJECTS[vm_name] = vm_object
-        return Factory.CACHED_OBJECTS[vm_name]
+            Factory.CACHED_OBJECTS[vm_id] = vm_object
+        # Return the cached object
+        return Factory.CACHED_OBJECTS[vm_id]
 
     @Expose()
     def getAllVirtualMachines(self, node=None):
         """Return objects for all virtual machines"""
-        return [self.getVirtualMachineByName(vm_name) for vm_name in self.getAllVmNames(node=node)]
+        return [self.get_virtual_machine_by_id(vm_id) for vm_id in self.get_all_vm_ids(node=node)]
+
+    @Expose()
+    def get_all_vm_ids(self, node=None):
+        """Get all VM IDs"""
+        return VirtualMachineConfig.get_global_config().keys()
 
     @Expose()
     def getAllVmNames(self, node=None):
@@ -115,7 +141,7 @@ class Factory(PyroObject):
 
         # If no node was defined, check the local configuration for all VMs
         if node is None:
-            return MCVirtConfig().get_config()['virtual_machines']
+            return [vm['name'] for vm in VirtualMachineConfig.get_global_config().values()]
 
         elif node == get_hostname():
             # @TODO - Why is this using libvirt?! Should use
@@ -173,14 +199,24 @@ class Factory(PyroObject):
         return table_output
 
     @Expose()
-    def check_exists(self, vm_name):
+    def check_exists(self, id_):
         """Determines if a VM exists, given a name"""
         try:
-            ArgumentValidator.validate_hostname(vm_name)
+            ArgumentValidator.validate_id(id_, VirtualMachine)
         except (MCVirtTypeError, InvalidVirtualMachineNameException):
             return False
 
-        return vm_name in self.getAllVmNames()
+        return id_ in self.get_all_vm_ids()
+
+    @Expose()
+    def check_exists_by_name(self, name):
+        """Determines if a VM exists, given a name"""
+        try:
+            ArgumentValidator.validate_hostname(name)
+        except (MCVirtTypeError, InvalidVirtualMachineNameException):
+            return False
+
+        return name in self.getAllVmNames()
 
     @Expose()
     def checkName(self, name, ignore_exists=False):
@@ -194,7 +230,7 @@ class Factory(PyroObject):
         if len(name) < 3:
             raise InvalidVirtualMachineNameException('VM Name must be at least 3 characters long')
 
-        if self.check_exists(name) and not ignore_exists:
+        if self.check_exists_by_name(name) and not ignore_exists:
             raise VmAlreadyExistsException('VM already exists')
 
         return True
@@ -377,7 +413,7 @@ class Factory(PyroObject):
                                                  ' is not initialised')
 
         # Determine if VM already exists
-        if self.check_exists(name):
+        if self.check_exists_by_name(name):
             raise VmAlreadyExistsException('Error: VM already exists')
 
         # Create directory for VM on the local and remote nodes
@@ -396,11 +432,13 @@ class Factory(PyroObject):
                             (is_static is not None and not is_static))
                         else available_nodes)
 
+        id_ = VirtualMachine.generate_id(name)
+
         # Start transaction
         t = Transaction()
 
         vm_object = self.create_config(
-            name, config_nodes, cpu_cores, memory_allocation, graphics_driver,
+            id_, name, config_nodes, cpu_cores, memory_allocation, graphics_driver,
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
         if node == get_hostname():
@@ -439,29 +477,15 @@ class Factory(PyroObject):
         return vm_object
 
     @Expose(remote_nodes=True)
-    def create_config(self, name, config_nodes, cpu_cores, memory_allocation,
+    def create_config(self, id_, name, config_nodes, cpu_cores, memory_allocation,
                       graphics_driver):
         """Create required VM configs"""
-        # Create directory for VM
-        makedirs(VirtualMachine.get_vm_dir(name))
-
-        # Add VM to MCVirt configuration
-        def update_mcvirt_config(config):
-            """Add VM to global MCVirt config"""
-            config['virtual_machines'].append(name)
-        MCVirtConfig().update_config(
-            update_mcvirt_config,
-            'Adding new VM \'%s\' to global MCVirt configuration' %
-            name)
-
-        VirtualMachineConfig.create(name, config_nodes, cpu_cores, memory_allocation,
+        VirtualMachineConfig.create(id_, name, config_nodes, cpu_cores, memory_allocation,
                                     graphics_driver)
 
         # Obtain an object for the new VM, to use to create disks/network interfaces
-        vm_object = self.getVirtualMachineByName(name)
-        vm_object.get_config_object().gitAdd('Created VM \'%s\'' % vm_object.get_name())
-        return vm_object
+        return self.getVirtualMachineByName(name)
 
-    def undo__create_config(self, name, *args, **kwargs):
+    def undo__create_config(self, id_, name, *args, **kwargs):
         """Remove any directories or configs that were created for VM"""
-        pass
+        self.get_virtual_machine_by_id(id_).get_config_object().delete()

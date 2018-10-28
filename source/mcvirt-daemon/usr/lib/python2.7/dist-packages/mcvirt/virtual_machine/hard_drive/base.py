@@ -30,7 +30,7 @@ from mcvirt.exceptions import (HardDriveDoesNotExistException,
                                LogicalVolumeIsNotActiveException,
                                VolumeDoesNotExistError,
                                VolumeAlreadyExistsError)
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import ReachedMaximumStorageDevicesException
@@ -243,8 +243,6 @@ class Base(PyroObject):
 
         self._ensure_exists()
 
-        cache_key = (self.vm_object.get_name(), self.disk_id, self.get_type())
-
         self.vm_object.ensureUnlocked()
         self.vm_object.ensure_stopped()
 
@@ -259,12 +257,6 @@ class Base(PyroObject):
 
         # Remove the hard drive from the MCVirt VM configuration
         self.removeFromVirtualMachine(nodes=nodes)
-
-        # Unregister object and remove from factory cache
-        hdd_factory = self._get_registered_object('hard_drive_factory')
-        if cache_key in hdd_factory.CACHED_OBJECTS:
-            del hdd_factory.CACHED_OBJECTS[cache_key]
-        self.unregister_object()
 
     def duplicate(self, destination_vm_object, storage_backend=None):
         """Clone the hard drive and attach it to the new VM object"""
@@ -355,6 +347,13 @@ class Base(PyroObject):
         self.vm_object.get_config_object().update_config(
             removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %
             (self.disk_id, self.vm_object.get_name()))
+
+        # Unregister object and remove from factory cache
+        hdd_factory = self._get_registered_object('hard_drive_factory')
+        cache_key = (self.vm_object.get_id(), self.disk_id, self.get_type())
+        if cache_key in hdd_factory.CACHED_OBJECTS:
+            del hdd_factory.CACHED_OBJECTS[cache_key]
+        self.unregister_object()
 
     def _unregisterLibvirt(self):
         """Removes the hard drive from the LibVirt configuration for the VM"""

@@ -18,7 +18,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from mcvirt.auth.user_types.user_base import UserBase
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.rpc.expose_method import Expose
 
 

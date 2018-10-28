@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import hashlib
+import datetime
 import Pyro4
 from threading import Lock
 
@@ -31,6 +33,33 @@ class PyroObject(object):
         have been added to the daemon
         """
         pass
+
+    @staticmethod
+    def get_id_name_checksum_length():
+        """Return the lenght of the name checksum to use in the ID"""
+        return 18
+
+    @staticmethod
+    def get_id_date_checksum_length():
+        """Return the lenght of the name checksum to use in the ID"""
+        return 22
+
+    @staticmethod
+    def get_id_code():
+        """Return default Id code for object - should be overriden"""
+        return 'po'
+
+    @classmethod
+    def generate_id(cls, name):
+        """Generate ID for group"""
+        # Generate sha sum of name and sha sum of
+        # current datetime
+        name_checksum = hashlib.sha512(name).hexdigest()
+        date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
+        return '%s-%s-%s' % (
+            cls.get_id_code(),
+            name_checksum[0:cls.get_id_name_checksum_length()],
+            date_checksum[0:cls.get_id_date_checksum_length()])
 
     @property
     def convert_to_remote_object_in_args(self):
