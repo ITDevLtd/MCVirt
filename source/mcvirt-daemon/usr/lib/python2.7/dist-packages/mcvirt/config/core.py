@@ -169,7 +169,7 @@ class Core(Base):
             }
 
         # Write the configuration to disk
-        MCVirt._writeJSON(json_data, self.config_file)
+        Core._writeJSON(json_data, self.config_file)
 
     def _upgrade(self, config):
         """Perform an upgrade of the configuration file"""
