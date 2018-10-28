@@ -60,8 +60,6 @@ class BaseSubconfig(Core):
             # Traverse the parent config to get the subconfig
             subconfig = config
             for key_itx in self.__class__.SUBTREE_ARRAY + [self._get_config_key()]:
-                print subconfig
-                print key_itx
                 if key_itx:
                     subconfig = subconfig[key_itx]
 
