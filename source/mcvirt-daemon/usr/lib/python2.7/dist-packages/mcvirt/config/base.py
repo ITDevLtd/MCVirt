@@ -69,7 +69,6 @@ class Base(PyroObject):
         config = Base.get_config(self)
         callback_function(config)
         Base._writeJSON(config, self.config_file)
-        self.config = config
         self.gitAdd(reason)
         self.setConfigPermissions()
 
