@@ -278,27 +278,31 @@ class Base(PyroObject):
         # Ensure node is not already attached to storage backend
         if node_name in self.nodes:
             raise NodeAlreadyConfiguredInStorageBackend(
-                'Node already configured in storage backend: %s %s' % node_name, self.name
+                'Node already configured in storage backend: %s %s' % (node_name, self.name)
             )
 
         cluster = self._get_registered_object('cluster')
 
-        # If adding local node to cluster
-        if self._is_cluster_master:
-            if node_name == get_hostname():
+        if node_name == get_hostname():
+            # Ensure that the requested volume exists
+            storage_factory = self._get_registered_object('storage_factory')
+            storage_factory.node_pre_check(storage_type=self.storage_type,
+                                           location=location)
+        else:
+            def pre_check_remote(connection):
+                """Perform pre check on remote node"""
+                remote_storage_factory = connection.get_connection('storage_factory')
+                remote_storage_factory.node_pre_check(storage_type=self.storage_type,
+                                                      location=location)
+            cluster.run_remote_command(pre_check_remote, node=node_name)
 
-                # Ensure that the requested volume exists
-                storage_factory = self._get_registered_object('storage_factory')
-                storage_factory.node_pre_check(storage_type=self.storage_type,
-                                               location=location)
-            else:
-                def pre_check_remote(connection):
-                    """Perform pre check on remote node"""
-                    remote_storage_factory = connection.get_connection('storage_factory')
-                    remote_storage_factory.node_pre_check(storage_type=self.storage_type,
-                                                          location=location)
-                cluster.run_remote_command(pre_check_remote, node=node_name)
+        self.add_node_to_config(
+            node_name, custom_location,
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
+    @Expose(locking=True, remote_nodes=True, undo_method='remove_node_from_config')
+    def add_node_to_config(self, node_name, custom_location):
+        """Add node to storage backend config"""
         def update_storage_backend_config(config):
             """Add node to storage backend config"""
             config['nodes'][node_name] = {
@@ -308,16 +312,6 @@ class Base(PyroObject):
         self.update_config(
             update_storage_backend_config,
             'Add node %s to storage backend %s' % (node_name, self.name))
-
-        if self._is_cluster_master:
-            # Perform this function on remote nodes
-            def update_remote_mcvirt_config(connection):
-                """Update MCVirt config on remote node"""
-                remote_storage_backend = self.get_remote_object(node_object=connection)
-                remote_storage_backend.add_node(node_name=node_name,
-                                                custom_location=custom_location)
-
-            cluster.run_remote_command(update_remote_mcvirt_config)
 
     def update_config(self, callback, reason):
         """Update backend storage configuration"""
@@ -373,21 +367,20 @@ class Base(PyroObject):
 
         # Assuming that these checks have passed,
         # remove node from storage backend
-        def update_config(config):
-            """Update the storage backend config; removing the node"""
-            del config['nodes'][node_name]
-        self.get_config_object().update_config(
-            update_config,
-            'Remove node %s from storage backend %s' % (node_name, self.name))
+        self.remove_node_from_config(
+            node_name,
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
-        # Perform on remote nodes
-        if self._is_cluster_master:
-            def remove_node_remote(connection):
-                """Update shared status of remote nodes"""
-                remote_storage_backend = self.get_remote_object(node_object=connection)
-                remote_storage_backend.remove_node(node_name)
-            self._get_registered_object('cluster').run_remote_command(
-                remove_node_remote)
+    @Expose(locking=True, remote_nodes=True)
+    def remove_node_from_config(self, node_name):
+        """Add node to storage backend config"""
+        def update_storage_backend_config(config):
+            """Add node to storage backend config"""
+            del config['nodes'][node_name]
+        # Update the config on the local node
+        self.update_config(
+            update_storage_backend_config,
+            'Remove node %s to storage backend %s' % (node_name, self.name))
 
     @Expose(locking=True)
     def set_shared(self, shared):
