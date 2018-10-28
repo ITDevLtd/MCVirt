@@ -74,7 +74,7 @@ class VirtualMachine(PyroObject):
         # Check that the domain exists
         if not virtual_machine_factory.check_exists(self._id):
             raise VirtualMachineDoesNotExistException(
-                'Error: Virtual Machine does not exist: %s' % self.name
+                'Error: Virtual Machine does not exist: %s' % self._id
             )
 
     @staticmethod

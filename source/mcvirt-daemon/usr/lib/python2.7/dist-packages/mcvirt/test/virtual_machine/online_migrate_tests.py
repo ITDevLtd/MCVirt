@@ -65,10 +65,13 @@ class LibvirtConnectorUnitTest(LibvirtConnector):
 class VirtualMachineFactoryUnitTest(VirtualMachineFactory):
 
     @Expose()
-    def getVirtualMachineByName(self, vm_name):
+    def get_virtual_machine_by_id(self, vm_id):
         """Obtain a VM object, based on VM name"""
-        vm_object = VirtualMachineLibvirtFail(self, vm_name)
+        # If not, create object, register with pyro
+        # and store in cached object dict
+        vm_object = VirtualMachineLibvirtFail(self, vm_id)
         self._register_object(vm_object)
+        vm_object.initialise()
         return vm_object
 
 
