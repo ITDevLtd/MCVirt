@@ -20,7 +20,7 @@
 import os
 from Cheetah.Template import Template
 
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.system import System
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname

@@ -22,7 +22,7 @@ from mockldap import MockLdap
 
 from mcvirt.test.test_base import TestBase
 from mcvirt.parser import Parser
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.exceptions import AuthenticationError, ArgumentParserException
 from mcvirt.constants import DirectoryLocation
 from mcvirt.node.ldap_factory import LdapFactory

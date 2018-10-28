@@ -24,7 +24,7 @@ import json
 from binascii import hexlify
 
 from mcvirt.exceptions import DrbdNotInstalledException, DrbdAlreadyEnabled
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
@@ -130,28 +130,13 @@ class Drbd(PyroObject):
         # Update the local configuration
         def update_config(config):
             """Enable DRBD in local MCVirt config"""
-            config['drbd']['enabled'] = 1
+            config['drbd']['enabled'] = True
         MCVirtConfig().update_config(update_config, 'Enabled Drbd')
 
     def get_config(self):
         """Return the global Drbd configuration"""
         mcvirt_config = MCVirtConfig()
-        if 'drbd' in mcvirt_config.get_config().keys():
-            return mcvirt_config.get_config()['drbd']
-        else:
-            return self.get_default_config()
-
-    @staticmethod
-    def get_default_config():
-        """Return the default configuration for DRBD"""
-        default_config = \
-            {
-                'enabled': 0,
-                'secret': '',
-                'sync_rate': '10M',
-                'protocol': 'C'
-            }
-        return default_config
+        return mcvirt_config.get_config()['drbd']
 
     def generate_config(self):
         """Generate the Drbd configuration"""

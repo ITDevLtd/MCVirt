@@ -17,12 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import json
-import os
-import stat
-import pwd
-import shutil
-
 from mcvirt.config.mcvirt import MCVirtConfig
 
 
@@ -35,18 +29,24 @@ class BaseSubconfig(MCVirtConfig):
         """Get the key for the config, default to no key, which will be skipped"""
         return None
 
-    def get_config(self):
-        """Load the VM configuration from disk and returns the parsed JSON."""
+    @classmethod
+    def get_global_config(cls):
+        """Obtain entire config for this object type"""
         # Get config from parent, which should be the whole config
-        parent_config = super(BaseSubconfig, self).get_config()
+        parent_config = MCVirtConfig().get_config()
 
         # Traverse the parent config, to get the sub config
         subconfig = parent_config
-        for key_itx in self.SUBTREE_ARRAY + [self._get_config_key()]:
+        for key_itx in cls.SUBTREE_ARRAY:
             subconfig = subconfig[key_itx]
 
         # Return the sub config
         return subconfig
+
+    def get_config(self):
+        """Get the config for the object."""
+        # Return the object ID value from the config dict
+        return self.__class__.get_global_config()[self._get_config_key()]
 
     def update_config(self, callback_function, reason=''):
         """Write a provided configuration back to the configuration file."""
@@ -54,7 +54,7 @@ class BaseSubconfig(MCVirtConfig):
             """Update the subconfig"""
             # Traverse the parent config to get the subconfig
             subconfig = config
-            for key_itx in self.SUBTREE_ARRAY + [self._get_config_key()]:
+            for key_itx in self.__class__.SUBTREE_ARRAY + [self._get_config_key()]:
                 if key_itx:
                     subconfig = subconfig[key_itx]
 

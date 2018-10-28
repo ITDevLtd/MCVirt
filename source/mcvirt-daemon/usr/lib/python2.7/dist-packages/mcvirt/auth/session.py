@@ -26,7 +26,7 @@ from mcvirt.exceptions import (AuthenticationError, CurrentUserError,
                                UserDoesNotExistException)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.syslogger import Syslogger
 
 

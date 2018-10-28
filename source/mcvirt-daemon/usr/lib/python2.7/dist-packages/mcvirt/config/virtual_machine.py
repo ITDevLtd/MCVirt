@@ -16,24 +16,24 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os
-import hashlib
 
-from mcvirt.exceptions import ConfigFileCouldNotBeFoundException
-from mcvirt.config.base import Base
+from mcvirt.exceptions import (ConfigFileCouldNotBeFoundException,
+                               IntermediateUpgradeRequiredError)
+from mcvirt.config.base_subparser import BaseSubparser
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.constants import (AutoStartStates,
-                              DEFAULT_USER_GROUP_ID,
-                              DEFAULT_OWNER_GROUP_ID)
-from mcvirt.utils import get_hostname
+                              LockStates)
+import mcvirt.config.migrations.virtual_machine as migrations
 
 
-class VirtualMachineConfig(Base):
+class VirtualMachine(BaseSubparser):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
+
+    SUBTREE_ARRAY = ['virtual_machines']
 
     def __init__(self, vm_object):
         """Sets member variables and obtains libvirt domain object"""
-        self.git_object = None
         self.vm_object = vm_object
-        self.config_file = VirtualMachineConfig.get_config_path(self.vm_object.get_name())
         if not os.path.isfile(self.config_file):
             raise ConfigFileCouldNotBeFoundException(
                 'Could not find config file for %s' % vm_object.get_name()
@@ -42,24 +42,20 @@ class VirtualMachineConfig(Base):
         # Perform upgrade of configuration
         self.upgrade()
 
-    @staticmethod
-    def get_config_path(vm_id):
-        """Provides the path of the VM-spefic configuration file"""
-        from mcvirt.virtual_machine.virtual_machine import VirtualMachine
-        return '%s/config.json' % VirtualMachine.get_vm_dir(vm_id)
+    def _get_config_key(self):
+        """Get the key for the config"""
+        return self.vm_object.get_id()
 
     @staticmethod
     def create(vm_id, vm_name, available_nodes, cpu_cores, memory_allocation, graphics_driver):
         """Creates a basic VM configuration for new VMs"""
-        # @TODO Move import to main
-        from mcvirt.virtual_machine.virtual_machine import LockStates
 
         # Create basic config
-        json_data = \
+        config = \
             {
                 'name': vm_name,
-                'version': VirtualMachineConfig.CURRENT_VERSION,
-                'applied_version': VirtualMachineConfig.CURRENT_VERSION,
+                'version': VirtualMachine.CURRENT_VERSION,
+                'applied_version': VirtualMachine.CURRENT_VERSION,
                 'permissions':
                 {
                     'users': {},
@@ -92,120 +88,17 @@ class VirtualMachineConfig(Base):
             }
 
         # Write the configuration to disk
-        VirtualMachineConfig._writeJSON(json_data, VirtualMachineConfig.get_config_path(vm_id))
+        VirtualMachine._add_config(
+            vm_id, config,
+            'Add virtual machine config: %s' % vm_name)
 
     def _upgrade(self, config):
         """Perform an upgrade of the configuration file"""
-        if self._getVersion() < 1:
-            # Convert old disk array into hash. Assume that all old disks were
-            # local, as Drbd was not supported in pre-version 1 configurations
-            config['hard_disks'] = {}
-            for disk_id in config['disks']:
-                config['hard_disks'][disk_id] = {}
-            del config['disks']
-
-            # Set storage type for the VM to local
-            config['storage_type'] = 'Local'
-
-            # Set the current node and available nodes to the local machine, as the VM
-            # will be local
-            config['node'] = get_hostname()
-            config['available_nodes'] = [get_hostname()]
-
-            # Obtain details about the VM and add to configuration file
-            vm_libvirt_config = self.vm_object.getLibvirtConfig()
-            config['memory_allocation'] = vm_libvirt_config.find('./memory').text
-            config['cpu_cores'] = vm_libvirt_config.find('./vcpu').text
-
-            # Move network interface configurations into configuration file
-            config['network_interfaces'] = {}
-            interfaces_xml = vm_libvirt_config.findall('./devices/interface[@type="network"]')
-            for interface_xml in interfaces_xml:
-                mac_address = interface_xml.find('./mac').get('address')
-                connected_network = interface_xml.find('./source').get('network')
-                config['network_interfaces'][mac_address] = connected_network
-
-            from mcvirt.virtual_machine.virtual_machine import LockStates
-            # Add 'lock' to configuration
-            config['lock'] = LockStates.UNLOCKED.value
-
-        if self._getVersion() < 2:
-            # Add the hard drive driver configuration to each of the
-            # disk configurations
-            for disk in config['hard_disks']:
-                config['hard_disks'][disk]['driver'] = 'VIRTIO'
-
-        if self._getVersion() < 6:
-            config['modifications'] = []
-            config['graphics_driver'] = 'vmvga'
-
-        if self._getVersion() < 8:
-            config['autostart'] = AutoStartStates.NO_AUTOSTART.value
-
-        if self._getVersion() < 9:
-            config['uuid'] = None
-
-        if self._getVersion() < 10:
-            if 'volume_group' in config:
-                config['custom_volume_group'] = config['volume_group']
-                del config['volume_group']
-
-        if self._getVersion() < 12:
-            for disk_id in config['hard_disks']:
-                if 'storage_backend' in config['hard_disks'][disk_id]:
-                    # Generate ID for storage backend
-                    name_checksum = hashlib.sha512(
-                        config['hard_disks'][disk_id]['storage_backend']).hexdigest()
-                    date_checksum = hashlib.sha512('0').hexdigest()
-                    storage_id = 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
-                    config['hard_disks'][disk_id]['storage_backend'] = storage_id
-
-        if self._getVersion() < 13:
-            users = list(config['permissions']['user'])
-            owners = list(config['permissions']['owner'])
-            config['permissions'] = {
-                'groups': {
-                    DEFAULT_USER_GROUP_ID: {
-                        'users': users
-                    },
-                    DEFAULT_OWNER_GROUP_ID: {
-                        'users': owners
-                    }
-                },
-                'users': {}
-            }
-
-        if self._getVersion() < 14:
-            # Create attribute that shows the
-            # version of the VM applied to libvirt.
-            # i.e. needs registering
-            config['applied_version'] = 13
-            # Create watchdog config, specifying default to disable
-            # and no overrides from global config
-            config['agent'] = {
-                'connection_timeout': None
-            }
-            config['watchdog'] = {
-                'enabled': False,
-                'interval': None,
-                'reset_fail_count': None,
-                'boot_wait': None
-            }
-
-        if self._getVersion() < 15:
-            # Convert memory allocation to Bytes from Kib
-            config['memory_allocation'] = int(config['memory_allocation']) * 1024
-            config['cpu_cores'] = int(config['cpu_cores'])
 
         if self._getVersion() < 16:
-            # Set new config item for delete protection
-            config['delete_protection'] = False
-
-            # Fix bug in previous config migration
-            if 'cpu_' in config:
-                config['cpu_cores'] = int(config['cpu_cores'])
-                del config['cpu_']
+            raise IntermediateUpgradeRequiredError(
+                'Must upgrade to MCVirt v10.0.2 before upgrading to <=v11.0.0')
 
         if self._getVersion() < 17:
             # Name parameter added in MCVirtConfig object, due to change of VM dir
-            pass
+            migrations.v17.migrate(self, config)

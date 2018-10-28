@@ -41,10 +41,10 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                DeleteProtectionEnabledError)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.usb_device import UsbDevice
-from mcvirt.virtual_machine.virtual_machine_config import VirtualMachineConfig
+from mcvirt.config.virtual_machine import VirtualMachine as VirtualMachineConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose

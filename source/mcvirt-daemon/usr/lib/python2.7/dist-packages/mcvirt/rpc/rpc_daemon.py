@@ -47,7 +47,7 @@ from mcvirt.utils import get_hostname, ensure_hostname_consistent
 from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.daemon_lock import DaemonLock
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.thread.auto_start_watchdog import AutoStartWatchdog

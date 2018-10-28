@@ -20,7 +20,7 @@
 from mcvirt.auth.user_types.user_base import UserBase
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.exceptions import (UserAlreadyHasPermissionError,
                                UserDoesNotHavePermissionError)

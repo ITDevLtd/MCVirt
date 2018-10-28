@@ -23,7 +23,7 @@ import string
 from binascii import hexlify
 from pbkdf2 import crypt
 
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.exceptions import UserDoesNotExistException, InvalidUserTypeException
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.argument_validator import ArgumentValidator

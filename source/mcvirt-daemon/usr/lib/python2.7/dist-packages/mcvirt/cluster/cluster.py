@@ -30,7 +30,7 @@ from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
                                CouldNotConnectToNodeException, InaccessibleNodeException,
                                MissingConfigurationException, NodeVersionMismatch,
                                MCVirtTypeError, InvalidStorageConfiguration)
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.auth.user_types.connection_user import ConnectionUser
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.client.rpc import Connection

@@ -1,6 +1,6 @@
 """Provide base class for configuration files"""
 
-# Copyright (c) 2014 - I.T. Dev Ltd
+# Copyright (c) 2018 - Matt Comben
 #
 # This file is part of MCVirt.
 #
@@ -39,12 +39,7 @@ class Base(PyroObject):
     GIT = '/usr/bin/git'
 
     def __init__(self):
-        """Set member variables and obtains libvirt domain object"""
-        raise NotImplementedError
-
-    @staticmethod
-    def get_config_path(vm_name):
-        """Provide the path of the VM-specific configuration file"""
+        """Set member variables"""
         raise NotImplementedError
 
     def get_config(self):
@@ -64,11 +59,10 @@ class Base(PyroObject):
     @Expose(locking=True)
     def manual_update_config(self, config, reason=''):
         """Provide an exposed method for updating the config"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
-        Base._writeJSON(config, self.config_file)
-        self.config = config
-        self.gitAdd(reason)
-        self.setConfigPermissions()
+        def set_config(origin_config):
+            origin_config.clear()
+            origin_config.update(config)
+        self.update_config(set_config, reason)
 
     def update_config(self, callback_function, reason=''):
         """Write a provided configuration back to the configuration file."""
@@ -195,38 +189,7 @@ class Base(PyroObject):
             except Exception:
                 pass
 
-    def gitMove(self, src, dest, message=''):
-        """Move git directory, commit and push"""
-        if self._checkGitRepo():
-            session_obj = self._get_registered_object('mcvirt_session')
-            username = ''
-            user = None
-            if session_obj:
-                try:
-                    user = session_obj.get_proxy_user_object()
-                except UserDoesNotExistException:
-                    pass
-            if user:
-                username = session_obj.get_proxy_user_object().get_username()
-            message += "\nUser: %s\nNode: %s" % (username, get_hostname())
-
-            # Perform git move
-            System.runCommand(['git', 'mv', src, dest])
-
-            # Attempt to commit and push changes
-            try:
-                System.runCommand([self.GIT, 'commit', '-m', message],
-                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
-                System.runCommand([self.GIT,
-                                   'push'],
-                                  raise_exception_on_failure=False,
-                                  cwd=DirectoryLocation.BASE_STORAGE_DIR)
-            except Exception:
-                pass
-        else:
-            shutil.move(src, dest)
-
-    def gitRemove(self, message=''):
+    def gitRemove(self, message='', custom_file=None):
         """Remove and commits a configuration file"""
         if self._checkGitRepo():
             session_obj = self._get_registered_object('mcvirt_session')

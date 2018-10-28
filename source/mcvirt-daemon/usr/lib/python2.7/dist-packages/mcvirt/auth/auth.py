@@ -21,7 +21,7 @@ import os
 import Pyro4
 from texttable import Texttable
 
-from mcvirt.config.mcvirt_config import MCVirtConfig
+from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
 from mcvirt.exceptions import (UserNotPresentInGroup, InsufficientPermissionsException,
                                UnprivilegedUserException, InvalidPermissionGroupException,
                                DuplicatePermissionException,
