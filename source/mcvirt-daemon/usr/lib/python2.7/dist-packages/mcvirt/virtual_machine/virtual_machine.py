@@ -677,7 +677,7 @@ class VirtualMachine(PyroObject):
                 (self.get_name(), self.getCloneParent()))
 
         # Remove VM from MCVirt configuration
-        VirtualMachineConfig(self).delete()
+        self.get_config_object().delete()
 
         vm_factory = self._get_registered_object('virtual_machine_factory')
         if self.get_name() in vm_factory.CACHED_OBJECTS:
