@@ -23,7 +23,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
-from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 
 
 class Network(PyroObject):

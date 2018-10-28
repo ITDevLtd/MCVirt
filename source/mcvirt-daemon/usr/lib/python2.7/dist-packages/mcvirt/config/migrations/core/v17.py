@@ -53,3 +53,4 @@ def migrate(config_obj, config):
     if config['drbd']['secret'] == '':
         config['drbd']['secret'] = None
     config['drbd']['enabled'] = bool(config['drbd']['enabled'])
+

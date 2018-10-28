@@ -19,28 +19,22 @@ import os
 
 from mcvirt.exceptions import (ConfigFileCouldNotBeFoundException,
                                IntermediateUpgradeRequiredError)
-from mcvirt.config.base_subparser import BaseSubparser
-from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
+from mcvirt.config.base_subconfig import BaseSubconfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.constants import (AutoStartStates,
                               LockStates)
 import mcvirt.config.migrations.virtual_machine as migrations
 
 
-class VirtualMachine(BaseSubparser):
+class VirtualMachine(BaseSubconfig):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     SUBTREE_ARRAY = ['virtual_machines']
 
     def __init__(self, vm_object):
-        """Sets member variables and obtains libvirt domain object"""
+        """Sets member variables"""
         self.vm_object = vm_object
-        if not os.path.isfile(self.config_file):
-            raise ConfigFileCouldNotBeFoundException(
-                'Could not find config file for %s' % vm_object.get_name()
-            )
-
-        # Perform upgrade of configuration
-        self.upgrade()
+        super(VirtualMachine, self).__init__()
 
     def _get_config_key(self):
         """Get the key for the config"""

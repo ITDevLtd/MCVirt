@@ -17,13 +17,18 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from mcvirt.config.mcvirt import MCVirtConfig
+from mcvirt.config.core import Core
 
 
-class BaseSubconfig(MCVirtConfig):
+class BaseSubconfig(Core):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     SUBTREE_ARRAY = []
+
+    def __init__(self):
+        """Perform upgrade"""
+        # If performing an upgrade has been specified, do so
+        self.upgrade()
 
     def _get_config_key(self):
         """Get the key for the config, default to no key, which will be skipped"""
@@ -33,7 +38,7 @@ class BaseSubconfig(MCVirtConfig):
     def get_global_config(cls):
         """Obtain entire config for this object type"""
         # Get config from parent, which should be the whole config
-        parent_config = MCVirtConfig().get_config()
+        parent_config = Core().get_config()
 
         # Traverse the parent config, to get the sub config
         subconfig = parent_config
@@ -55,6 +60,8 @@ class BaseSubconfig(MCVirtConfig):
             # Traverse the parent config to get the subconfig
             subconfig = config
             for key_itx in self.__class__.SUBTREE_ARRAY + [self._get_config_key()]:
+                print subconfig
+                print key_itx
                 if key_itx:
                     subconfig = subconfig[key_itx]
 
@@ -79,7 +86,7 @@ class BaseSubconfig(MCVirtConfig):
             subconfig[id_] = config
 
         # Update MCVirt config with the new config
-        MCVirtConfig().update_config(
+        Core().update_config(
             add_config_to_parent_config,
             reason)
 

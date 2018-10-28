@@ -28,7 +28,7 @@ from mcvirt.exceptions import (GropuInUseError,
                                GroupAlreadyContainsPermissionError,
                                GroupDoesNotContainPermissionError)
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.argument_validator import ArgumentValidator
 
 

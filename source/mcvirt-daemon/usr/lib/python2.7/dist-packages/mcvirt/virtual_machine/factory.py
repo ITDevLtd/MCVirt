@@ -22,7 +22,7 @@ from enum import Enum
 
 from mcvirt.virtual_machine.virtual_machine import VirtualMachine
 from mcvirt.config.virtual_machine import VirtualMachine as VirtualMachineConfig
-from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
@@ -97,7 +97,7 @@ class Factory(PyroObject):
         ArgumentValidator.validate_hostname(vm_name)
         name_id_dict = {
             val['name']: key
-            for key, val in VirtualMachineConfig.get_global_config()
+            for key, val in VirtualMachineConfig.get_global_config().items()
         }
         if vm_name not in name_id_dict:
             raise VirtualMachineDoesNotExistException(
@@ -110,7 +110,7 @@ class Factory(PyroObject):
     def get_virtual_machine_by_id(self, vm_id):
         """Obtain a VM object, based on VM name"""
         # Validate VM ID
-        ArgumentValidator.validate_id(vm_id, self)
+        ArgumentValidator.validate_id(vm_id, VirtualMachine)
 
         # Determine if VM object has been cached
         if vm_id not in Factory.CACHED_OBJECTS:
@@ -199,14 +199,24 @@ class Factory(PyroObject):
         return table_output
 
     @Expose()
-    def check_exists(self, vm_name):
+    def check_exists(self, id_):
         """Determines if a VM exists, given a name"""
         try:
-            ArgumentValidator.validate_hostname(vm_name)
+            ArgumentValidator.validate_id(id_, VirtualMachine)
         except (MCVirtTypeError, InvalidVirtualMachineNameException):
             return False
 
-        return vm_name in self.getAllVmNames()
+        return id_ in self.get_all_vm_ids()
+
+    @Expose()
+    def check_exists_by_name(self, name):
+        """Determines if a VM exists, given a name"""
+        try:
+            ArgumentValidator.validate_hostname(name)
+        except (MCVirtTypeError, InvalidVirtualMachineNameException):
+            return False
+
+        return name in self.getAllVmNames()
 
     @Expose()
     def checkName(self, name, ignore_exists=False):
@@ -220,7 +230,7 @@ class Factory(PyroObject):
         if len(name) < 3:
             raise InvalidVirtualMachineNameException('VM Name must be at least 3 characters long')
 
-        if self.check_exists(name) and not ignore_exists:
+        if self.check_exists_by_name(name) and not ignore_exists:
             raise VmAlreadyExistsException('VM already exists')
 
         return True
@@ -403,7 +413,7 @@ class Factory(PyroObject):
                                                  ' is not initialised')
 
         # Determine if VM already exists
-        if self.check_exists(name):
+        if self.check_exists_by_name(name):
             raise VmAlreadyExistsException('Error: VM already exists')
 
         # Create directory for VM on the local and remote nodes

@@ -24,7 +24,7 @@ from mcvirt.rpc.expose_method import Expose, Transaction
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.auth.group.group import Group
 from mcvirt.argument_validator import ArgumentValidator
-from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.exceptions import (GroupAlreadyExistsError,
                                GroupDoesNotExistError)
 

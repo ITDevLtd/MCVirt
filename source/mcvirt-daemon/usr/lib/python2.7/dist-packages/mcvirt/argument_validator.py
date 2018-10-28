@@ -27,6 +27,23 @@ class ArgumentValidator(object):
     """Provide methods to validate argument values"""
 
     @staticmethod
+    def validate_id(id_, ref_obj):
+        """Verify that an ID is a valid format"""
+        id_parts = id_.split('-')
+
+        # Ensure that all parts of the ID are the correct length
+        if (len(id_parts) != 3 or 
+                id_parts[0] != ref_obj.get_id_code() or
+                len(id_parts[1]) != ref_obj.get_id_name_checksum_length() or
+                len(id_parts[2]) != ref_obj.get_id_date_checksum_length()):
+            raise MCVirtTypeError('Invalid Id')
+
+        # Ensure that ID only contains alphanumeric characters
+        disallowed = re.compile(r"[^A-Z\d]", re.IGNORECASE)
+        if disallowed.search(id_parts[1]) or disallowed.search(id_parts[2]):
+            raise MCVirtTypeError('Invalid Id')
+
+    @staticmethod
     def validate_hostname(hostname):
         """Validate a hostname"""
         exception_message = ('Hostname must only use alpha-numeric characters and dashes,'

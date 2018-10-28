@@ -41,7 +41,7 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                DeleteProtectionEnabledError)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
-from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.virtual_machine.disk_drive import DiskDrive
 from mcvirt.virtual_machine.usb_device import UsbDevice
 from mcvirt.config.virtual_machine import VirtualMachine as VirtualMachineConfig
@@ -72,14 +72,14 @@ class VirtualMachine(PyroObject):
         self.disk_drive_object = None
 
         # Check that the domain exists
-        if not virtual_machine_factory.check_exists(self.name):
+        if not virtual_machine_factory.check_exists(self._id):
             raise VirtualMachineDoesNotExistException(
                 'Error: Virtual Machine does not exist: %s' % self.name
             )
 
     @staticmethod
     def get_id_code():
-        """Return default Id code for object - should be overriden"""
+        """Return default Id code for object"""
         return 'vm'
 
     def initialise(self):
@@ -1266,7 +1266,8 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Ensure new VM name doesn't already exist
-        if self._get_registered_object('virtual_machine_factory').check_exists(clone_vm_name):
+        if self._get_registered_object(
+            'virtual_machine_factory').check_exists_by_name(clone_vm_name):
             raise VirtualMachineDoesNotExistException('VM %s already exists' % clone_vm_name)
 
         # Ensure VM is not a clone, as cloning a cloned VM will cause issues
@@ -1337,7 +1338,8 @@ class VirtualMachine(PyroObject):
             raise VmAlreadyStartedException('Can\'t duplicate running VM')
 
         # Ensure new VM name doesn't already exist
-        if self._get_registered_object('virtual_machine_factory').check_exists(duplicate_vm_name):
+        if self._get_registered_object(
+                'virtual_machine_factory').check_exists_by_name(duplicate_vm_name):
             raise VmAlreadyExistsException('VM already exists with name %s' % duplicate_vm_name)
 
         # Create new VM for clone, without hard disks

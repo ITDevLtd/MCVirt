@@ -24,7 +24,7 @@ import json
 from binascii import hexlify
 
 from mcvirt.exceptions import DrbdNotInstalledException, DrbdAlreadyEnabled
-from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject

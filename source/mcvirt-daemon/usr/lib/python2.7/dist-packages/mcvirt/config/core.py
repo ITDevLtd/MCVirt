@@ -23,10 +23,10 @@ from mcvirt.constants import (DirectoryLocation,
                               DEFAULT_STORAGE_NAME, DEFAULT_STORAGE_ID,
                               DEFAULT_USER_GROUP_ID, DEFAULT_OWNER_GROUP_ID)
 from mcvirt.utils import get_hostname
-from mcvirt.config.migrations.mcvirt import v17
+import mcvirt.config.migrations.core as migrations
 
 
-class MCVirt(Base):
+class Core(Base):
     """Provides operations to obtain and set the MCVirt
     configuration for a VM
     """
@@ -35,8 +35,6 @@ class MCVirt(Base):
 
     def __init__(self):
         """Set member variables and obtains libvirt domain object"""
-        self.config_file = DirectoryLocation.NODE_STORAGE_DIR + '/config.json'
-
         if not os.path.isdir(DirectoryLocation.BASE_STORAGE_DIR):
             self._createConfigDirectories()
 
@@ -45,6 +43,11 @@ class MCVirt(Base):
 
         # If performing an upgrade has been specified, do so
         self.upgrade()
+
+    @property
+    def config_file(self):
+        """Return the location of the config file"""
+        return DirectoryLocation.NODE_STORAGE_DIR + '/config.json'
 
     def _get_config_subtree_array(self):
         """Get a list of dict keys to traverse the parent config"""
@@ -175,4 +178,4 @@ class MCVirt(Base):
                 'Must upgrade to MCVirt v10.0.2 before upgrading to <=v11.0.0')
 
         if self._getVersion() < 17:
-            mcvirt.config.migrations.mcvirt.v17.migrate(self, config)
+            migrations.v17.migrate(self, config)

@@ -66,7 +66,7 @@ class Base(PyroObject):
 
     def update_config(self, callback_function, reason=''):
         """Write a provided configuration back to the configuration file."""
-        config = self.get_config()
+        config = Base.get_config(self)
         callback_function(config)
         Base._writeJSON(config, self.config_file)
         self.config = config
@@ -146,9 +146,8 @@ class Base(PyroObject):
                 config['version'] = self.CURRENT_VERSION
             self.update_config(
                 upgradeConfig,
-                'Updated configuration file \'%s\' from version \'%s\' to \'%s\'' %
-                (self.config_file,
-                 current_version,
+                'Updated configuration from version \'%s\' to \'%s\'' %
+                (current_version,
                  self.CURRENT_VERSION))
 
     def _getVersion(self):
@@ -220,11 +219,11 @@ class Base(PyroObject):
 
     def _checkGitRepo(self):
         """Clone the configuration repo, if necessary, and updates the repo"""
-        from mcvirt_config import MCVirtConfig
+        from mcvirt.config.core import Core
 
         # Only attempt to create a git repository if the git
         # URL has been set in the MCVirt configuration
-        mcvirt_config = MCVirtConfig().get_config()
+        mcvirt_config = Core().get_config()
         if mcvirt_config['git']['repo_domain'] == '':
             return False
 

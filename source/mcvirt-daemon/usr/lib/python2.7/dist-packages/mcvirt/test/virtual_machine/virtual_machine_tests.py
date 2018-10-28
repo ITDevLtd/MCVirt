@@ -104,7 +104,7 @@ class VirtualMachineTests(TestBase):
     def test_create(self, storage_type):
         """Test the creation of VMs through the argument parser"""
         # Ensure VM does not exist
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Create virtual machine using parser
         self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
@@ -117,7 +117,7 @@ class VirtualMachineTests(TestBase):
                                      storage_type))
 
         # Ensure VM exists
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Obtain VM object
         vm_object = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_1']['name'])
@@ -129,7 +129,7 @@ class VirtualMachineTests(TestBase):
         self.assertEqual(vm_object.getCPU(), self.test_vms['TEST_VM_1']['cpu_count'])
 
         # Ensure second VM does not exist
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_2']['name']))
+        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_2']['name']))
 
         # Create second VM
         self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_2']['name'] +
@@ -142,7 +142,7 @@ class VirtualMachineTests(TestBase):
                                      storage_type))
 
         # Ensure VM exists
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_2']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_2']['name']))
 
         # Obtain VM object
         vm_object_2 = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_2']['name'])
@@ -180,7 +180,7 @@ class VirtualMachineTests(TestBase):
         self.parser.parse_arguments('delete %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure VM has been deleted
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Ensure that VM directory does not exist
         self.assertFalse(os.path.exists(
@@ -319,7 +319,7 @@ class VirtualMachineTests(TestBase):
         invalid_vm_name = 'invalid.name+'
 
         # Ensure VM does not exist
-        self.assertFalse(self.vm_factory.check_exists(invalid_vm_name))
+        self.assertFalse(self.vm_factory.check_exists_by_name(invalid_vm_name))
 
         # Attempt to create VM and ensure exception is thrown
         with self.assertRaises(InvalidVirtualMachineNameException):
@@ -334,7 +334,7 @@ class VirtualMachineTests(TestBase):
                  'Local'))
 
         # Ensure VM has not been created
-        self.assertFalse(self.vm_factory.check_exists(invalid_vm_name))
+        self.assertFalse(self.vm_factory.check_exists_by_name(invalid_vm_name))
 
     def test_create_duplicate(self):
         """Attempt to create two VMs with the same name"""
@@ -348,7 +348,7 @@ class VirtualMachineTests(TestBase):
             ['Production'],
             storage_type='Local')
         self.rpc.annotate_object(test_vm_object)
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Attempt to create VM with duplicate name, ensuring that an exception is thrown
         with self.assertRaises(VmAlreadyExistsException):
@@ -362,7 +362,7 @@ class VirtualMachineTests(TestBase):
                                          'Local'))
 
         # Ensure original VM already exists
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Check memory amount of VM matches original VM
         self.assertEqual(test_vm_object.getRAM(), original_memory_allocation)
@@ -387,7 +387,7 @@ class VirtualMachineTests(TestBase):
                                          'Local'))
 
         # Ensure the VM has not been created
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Remove directory
         shutil.rmtree(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
@@ -533,7 +533,7 @@ class VirtualMachineTests(TestBase):
         test_vm_object.delete()
 
         # Ensure VM no longer exists
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
     def test_lock(self):
         """Exercise VM locking"""
@@ -576,7 +576,7 @@ class VirtualMachineTests(TestBase):
                                     ' --network %s' % self.test_vms['TEST_VM_1']['networks'][0])
 
         # Ensure that the VM exists
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
     @skip_drbd(True)
     def test_unspecified_storage_type_drbd(self):
@@ -744,4 +744,4 @@ class VirtualMachineTests(TestBase):
                 'delete %s' %
                 self.test_vms['TEST_VM_1']['name'])
 
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))

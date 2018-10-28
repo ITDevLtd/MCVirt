@@ -16,7 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 
-def migrate(config):
+def migrate(config_obj, config):
     """No migration required for release, as this
     is performed in the mcvirt_config release"""
     pass

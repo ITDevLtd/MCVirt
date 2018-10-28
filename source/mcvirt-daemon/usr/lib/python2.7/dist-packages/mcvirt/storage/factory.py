@@ -20,7 +20,7 @@ from texttable import Texttable
 from mcvirt.storage.lvm import Lvm
 from mcvirt.storage.file import File
 from mcvirt.storage.base import Base
-from mcvirt.config.mcvirt import MCVirt as MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.constants import DEFAULT_STORAGE_NAME, DEFAULT_STORAGE_ID
 from mcvirt.rpc.pyro_object import PyroObject

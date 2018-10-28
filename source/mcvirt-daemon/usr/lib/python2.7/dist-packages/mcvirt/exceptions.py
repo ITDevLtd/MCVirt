@@ -877,6 +877,14 @@ class DeleteProtectionEnabledError(MCVirtTypeError):
     pass
 
 
+class IntermediateUpgradeRequiredError(MCVirtException):
+    """An intermediate upgrade is required, as the migration
+    is not supported from this version
+    """
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)
