@@ -478,25 +478,11 @@ class Factory(PyroObject):
     def create_config(self, name, config_nodes, cpu_cores, memory_allocation,
                       graphics_driver):
         """Create required VM configs"""
-        # Create directory for VM
-        makedirs(VirtualMachine.get_vm_dir(name))
-
-        # Add VM to MCVirt configuration
-        def update_mcvirt_config(config):
-            """Add VM to global MCVirt config"""
-            config['virtual_machines'].append(name)
-        MCVirtConfig().update_config(
-            update_mcvirt_config,
-            'Adding new VM \'%s\' to global MCVirt configuration' %
-            name)
-
         VirtualMachineConfig.create(name, config_nodes, cpu_cores, memory_allocation,
                                     graphics_driver)
 
         # Obtain an object for the new VM, to use to create disks/network interfaces
-        vm_object = self.getVirtualMachineByName(name)
-        vm_object.get_config_object().gitAdd('Created VM \'%s\'' % vm_object.get_name())
-        return vm_object
+        return self.getVirtualMachineByName(name)
 
     def undo__create_config(self, name, *args, **kwargs):
         """Remove any directories or configs that were created for VM"""
