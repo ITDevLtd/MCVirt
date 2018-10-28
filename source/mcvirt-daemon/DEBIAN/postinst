@@ -6,3 +6,7 @@ update-rc.d mcvirtd defaults >/dev/null || exit $?
 
 # Build man page
 python /usr/lib/python2.7/dist-packages/mcvirt/build_man.py 
+
+# Start mcvirt ns and mcvirtd
+service mcvirt-ns start
+service mcvirtd start
