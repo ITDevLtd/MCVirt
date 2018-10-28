@@ -937,7 +937,8 @@ class VirtualMachine(PyroObject):
                 remote_vm.remote_update_config(attribute_path=attribute_path, value=value,
                                                reason=reason, local_only=True)
             cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(update_config_remote,
+            cluster.run_remote_command(
+                update_config_remote,
                 ignore_cluster_master=ignore_cluster_master)
 
     @staticmethod
@@ -1254,7 +1255,7 @@ class VirtualMachine(PyroObject):
 
         # Ensure new VM name doesn't already exist
         if self._get_registered_object(
-            'virtual_machine_factory').check_exists_by_name(clone_vm_name):
+                'virtual_machine_factory').check_exists_by_name(clone_vm_name):
             raise VirtualMachineDoesNotExistException('VM %s already exists' % clone_vm_name)
 
         # Ensure VM is not a clone, as cloning a cloned VM will cause issues

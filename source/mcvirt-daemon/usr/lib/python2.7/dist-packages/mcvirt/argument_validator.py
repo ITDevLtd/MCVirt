@@ -32,7 +32,7 @@ class ArgumentValidator(object):
         id_parts = id_.split('-')
 
         # Ensure that all parts of the ID are the correct length
-        if (len(id_parts) != 3 or 
+        if (len(id_parts) != 3 or
                 id_parts[0] != ref_obj.get_id_code() or
                 len(id_parts[1]) != ref_obj.get_id_name_checksum_length() or
                 len(id_parts[2]) != ref_obj.get_id_date_checksum_length()):
