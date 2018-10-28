@@ -432,11 +432,13 @@ class Factory(PyroObject):
                             (is_static is not None and not is_static))
                         else available_nodes)
 
+        id_ = VirtualMachine.generate_id(name)
+
         # Start transaction
         t = Transaction()
 
         vm_object = self.create_config(
-            name, config_nodes, cpu_cores, memory_allocation, graphics_driver,
+            id_, name, config_nodes, cpu_cores, memory_allocation, graphics_driver,
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
         if node == get_hostname():
@@ -475,15 +477,15 @@ class Factory(PyroObject):
         return vm_object
 
     @Expose(remote_nodes=True)
-    def create_config(self, name, config_nodes, cpu_cores, memory_allocation,
+    def create_config(self, id_, name, config_nodes, cpu_cores, memory_allocation,
                       graphics_driver):
         """Create required VM configs"""
-        VirtualMachineConfig.create(name, config_nodes, cpu_cores, memory_allocation,
+        VirtualMachineConfig.create(id_, name, config_nodes, cpu_cores, memory_allocation,
                                     graphics_driver)
 
         # Obtain an object for the new VM, to use to create disks/network interfaces
         return self.getVirtualMachineByName(name)
 
-    def undo__create_config(self, name, *args, **kwargs):
+    def undo__create_config(self, id_, name, *args, **kwargs):
         """Remove any directories or configs that were created for VM"""
-        pass
+        self.get_virtual_machine_by_id(id_).get_config_object().delete()

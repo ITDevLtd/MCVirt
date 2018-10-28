@@ -90,3 +90,17 @@ class BaseSubconfig(Core):
             add_config_to_parent_config,
             reason)
 
+    def delete(self):
+        """Remove config from parent config"""
+        config_key = self._get_config_key()
+
+        def remove_from_parent(config):
+            """Remove item from parent config"""
+            # Traverse down parent config to get parent dict
+            subconfig = config
+            for key_itx in self.__class__.SUBTREE_ARRAY:
+                subconfig = subconfig[key_itx]
+            del subconfig[config_key]
+        Core().update_config(
+            remove_from_parent,
+            'Removing object %s' % config_key)

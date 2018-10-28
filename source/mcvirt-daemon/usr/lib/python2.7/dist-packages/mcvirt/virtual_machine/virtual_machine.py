@@ -175,7 +175,7 @@ class VirtualMachine(PyroObject):
                 node_object = cluster.get_remote_node(node or self.getNode(),
                                                       set_cluster_master=set_cluster_master)
             remote_vm_factory = node_object.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.getVirtualMachineById(self.get_id())
+            remote_vm = remote_vm_factory.get_virtual_machine_by_id(self.get_id())
             node_object.annotate_object(remote_vm)
             return remote_vm
         else:
@@ -676,21 +676,8 @@ class VirtualMachine(PyroObject):
                 removeCloneChildConfig, 'Removed clone child \'%s\' from \'%s\'' %
                 (self.get_name(), self.getCloneParent()))
 
-        # Unless 'keep_config' has been passed as True, delete directory
-        # from VM storage
-        if not keep_config:
-            # Remove VM configuration file
-            self.get_config_object().gitRemove('VM \'%s\' has been removed' % self.name)
-            rmtree(VirtualMachine.get_vm_dir(self.name))
-
         # Remove VM from MCVirt configuration
-        def update_mcvirt_config(config):
-            """Remove VM from MCVirt config"""
-            config['virtual_machines'].remove(self.name)
-        MCVirtConfig().update_config(
-            update_mcvirt_config,
-            'Removed VM \'%s\' from global MCVirt config' %
-            self.name)
+        VirtualMachineConfig(self).delete()
 
         vm_factory = self._get_registered_object('virtual_machine_factory')
         if self.get_name() in vm_factory.CACHED_OBJECTS:
