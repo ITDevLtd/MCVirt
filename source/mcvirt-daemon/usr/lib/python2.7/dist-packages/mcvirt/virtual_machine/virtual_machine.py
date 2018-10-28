@@ -268,7 +268,7 @@ class VirtualMachine(PyroObject):
         try:
             # Get the domain object.
             return libvirt_connection.lookupByName(
-                self.name
+                self.get_name()
             )
         except libvirt.libvirtError, exc:
             # A libvirt error occured...
@@ -1495,12 +1495,12 @@ class VirtualMachine(PyroObject):
                  not set_node)):
             raise VmAlreadyRegisteredException(
                 'VM \'%s\' already registered on node: %s' %
-                (self.name, current_node))
+                (self.get_name(), current_node))
 
         if get_hostname() not in self.getAvailableNodes():
             raise UnsuitableNodeException(
                 'VM \'%s\' cannot be registered on node: %s' %
-                (self.name, get_hostname())
+                (self.get_name(), get_hostname())
             )
 
         # Ensure VM is unlocked
