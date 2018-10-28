@@ -138,7 +138,7 @@ class Factory(PyroObject):
 
         # Create cache key, based on name of VM, disk ID and storage type
         storage_type_key = storage_type or ''
-        cache_key = (vm_object.get_name(), disk_id, storage_type_key)
+        cache_key = (vm_object.get_id(), disk_id, storage_type_key)
 
         # If configuring overrides have been used, do not cache the object.
         disable_cache = (len(config))
