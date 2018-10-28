@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from mcvirt.config.core import Core as MCVirtConfig
+from mcvirt.config.storage import Storage as StorageConfig
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
@@ -217,20 +217,17 @@ class Base(PyroObject):
     @Expose(remote_nodes=True)
     def remove_config(self):
         # Remove VM from MCVirt configuration
-        def update_mcvirt_config(config):
-            """Remove object from mcvirt config"""
-            del config['storage_backends'][self._id]
-        MCVirtConfig().update_config(
-            update_mcvirt_config,
-            'Removed storage backend \'%s\' from global MCVirt config' %
-            self.name
-        )
+        self.get_config_object().delete()
 
         # Remove cached pyro object
         storage_factory = self._get_registered_object('storage_factory')
         if self._id in storage_factory.CACHED_OBJECTS:
             self.unregister_object()
             del storage_factory.CACHED_OBJECTS[self._id]
+
+    def get_config_object(self):
+        """Return the config object for the storage backend"""
+        return StorageConfig(self)
 
     @Expose()
     def get_config(self):
@@ -239,7 +236,7 @@ class Base(PyroObject):
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
-        return self._get_registered_object('storage_factory').get_config()[self._id]
+        return self.get_config_object().get_config()
 
     @Expose(locking=True)
     def set_location(self, new_location, node=None):
@@ -324,15 +321,7 @@ class Base(PyroObject):
 
     def update_config(self, callback, reason):
         """Update backend storage configuration"""
-        def update_mcvirt_config(config):
-            """Update MCVirt config by calling callback method"""
-            callback(
-                config[
-                    self._get_registered_object('storage_factory').STORAGE_CONFIG_KEY
-                ][self.id_]
-            )
-        mcvirt_config = self._get_registered_object('mcvirt_config')()
-        mcvirt_config.update_config(update_mcvirt_config, reason)
+        self.get_config_object().update_config(callback, reason)
 
     def ensure_available(self):
         """Ensure that the storage backend is currently available on the node"""
@@ -387,8 +376,9 @@ class Base(PyroObject):
         def update_config(config):
             """Update the storage backend config; removing the node"""
             del config['nodes'][node_name]
-        self.update_config(update_config,
-                           'Remove node %s from storage backend %s' % (node_name, self.name))
+        self.get_config_object().update_config(
+            update_config,
+            'Remove node %s from storage backend %s' % (node_name, self.name))
 
         # Perform on remote nodes
         if self._is_cluster_master:
