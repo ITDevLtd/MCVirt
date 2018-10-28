@@ -3,3 +3,6 @@
 # Update rc so that the daemons start on startup
 update-rc.d mcvirt-agent defaults >/dev/null || exit $?
 
+# Start mcvirt-agent
+service mcvirt-agent start
+
