@@ -470,7 +470,7 @@ class Function(PyroObject):
         # Iterate through nodes and undo
         for node in self.nodes:
             # Skip local node or if the function did not complete on the node
-            if node == get_hostname() or self.nodes[node]['complete']:
+            if node == get_hostname() or not self.nodes[node]['complete']:
                 continue
 
             # Run the remote undo method

@@ -19,7 +19,7 @@
 
 from mcvirt.config.storage import Storage as StorageConfig
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.expose_method import Expose, Transaction
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.utils import get_hostname
@@ -154,7 +154,7 @@ class Base(PyroObject):
         """Return the name of the identification volume"""
         return self.id_
 
-    def create_id_volume(self):
+    def create_id_volume(self, nodes=None):
         """Create identification volume on the storage backend"""
         # Obtain volume object for ID volume
         volume = self.get_volume(self._id_volume_name)
@@ -162,9 +162,10 @@ class Base(PyroObject):
         # If the storage backend is shared, then only needs to be created on
         # a single node (prefer local host if in list of nodes). If not shared,
         # ID volume will be created on all nodes
-        nodes = ([get_hostname()]
-                 if get_hostname() in self.nodes else
-                 [self.nodes[0]]) if self.shared else self.nodes
+        if nodes is None:
+            nodes = ([get_hostname()]
+                     if get_hostname() in self.nodes else
+                     [self.nodes[0]]) if self.shared else self.nodes
 
         try:
             # Create ID volume
@@ -183,7 +184,7 @@ class Base(PyroObject):
                 ('An error ocurred whilst verifying the storage backend: '
                  'A shared storage has been specified, but it is not'))
 
-    def delete_id_volume(self):
+    def delete_id_volume(self, nodes=None):
         """Delete the ID volume for the storage backend"""
         # Obtain volume object for ID volume
         volume = self.get_volume(self._id_volume_name)
@@ -191,9 +192,10 @@ class Base(PyroObject):
         # If the storage backend is shared, then only needs to be created on
         # a single node (prefer local host if in list of nodes). If not shared,
         # ID volume will be created on all nodes
-        nodes = ([get_hostname()]
-                 if get_hostname() in self.nodes else
-                 [self.nodes[0]]) if self.shared else self.nodes
+        if nodes is None:
+            nodes = ([get_hostname()]
+                     if get_hostname() in self.nodes else
+                     [self.nodes[0]]) if self.shared else self.nodes
 
         # Create ID volume
         volume.delete(nodes=nodes)
@@ -296,18 +298,30 @@ class Base(PyroObject):
                                                       location=location)
             cluster.run_remote_command(pre_check_remote, node=node_name)
 
+        t = Transaction()
+
+        config = {
+            'location': custom_location
+        }
+
         self.add_node_to_config(
-            node_name, custom_location,
+            node_name, config,
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
+        if not self.shared:
+            # Create ID volume
+            self.create_id_volume(nodes=[node_name])
+
+        t.finish()
+
     @Expose(locking=True, remote_nodes=True, undo_method='remove_node_from_config')
-    def add_node_to_config(self, node_name, custom_location):
+    def add_node_to_config(self, node_name, config):
         """Add node to storage backend config"""
-        def update_storage_backend_config(config):
+
+        def update_storage_backend_config(storage_config):
             """Add node to storage backend config"""
-            config['nodes'][node_name] = {
-                'location': custom_location
-            }
+            storage_config['nodes'][node_name] = config
+
         # Update the config on the local node
         self.update_config(
             update_storage_backend_config,
@@ -361,9 +375,11 @@ class Base(PyroObject):
         """Remove a node from the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
-        # Perform checks on cluster master
-        if self._is_cluster_master:
-            self.ensure_can_remove_node(node_name)
+        self.ensure_can_remove_node(node_name)
+
+        if not self.shared:
+            # Delete ID volume
+            self.delete_id_volume(nodes=[node_name])
 
         # Assuming that these checks have passed,
         # remove node from storage backend
@@ -371,12 +387,17 @@ class Base(PyroObject):
             node_name,
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
-    @Expose(locking=True, remote_nodes=True)
-    def remove_node_from_config(self, node_name):
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def remove_node_from_config(self, node_name, config=None, _f=None):
         """Add node to storage backend config"""
         def update_storage_backend_config(config):
             """Add node to storage backend config"""
+            # Add undo argument
+            _f.add_undo_argument(config=config['nodes'][node_name])
+
+            # Remove config
             del config['nodes'][node_name]
+
         # Update the config on the local node
         self.update_config(
             update_storage_backend_config,
