@@ -377,6 +377,8 @@ class Base(PyroObject):
 
         self.ensure_can_remove_node(node_name)
 
+        t = Transaction()
+
         if not self.shared:
             # Delete ID volume
             self.delete_id_volume(nodes=[node_name])
@@ -386,6 +388,8 @@ class Base(PyroObject):
         self.remove_node_from_config(
             node_name,
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+        t.finish()
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def remove_node_from_config(self, node_name, config=None, _f=None):
