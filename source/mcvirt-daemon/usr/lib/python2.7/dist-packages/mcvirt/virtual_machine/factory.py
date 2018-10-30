@@ -62,7 +62,7 @@ class Factory(PyroObject):
     def autostart(self, start_type=AutoStartStates.ON_POLL):
         """Autostart VMs"""
         Syslogger.logger().info('Starting autostart: %s' % start_type.name)
-        for vm in self.getAllVirtualMachines():
+        for vm in self.get_all_virtual_machines():
             try:
                     if (vm.isRegisteredLocally() and vm.is_stopped and
                             vm._get_autostart_state() in
@@ -131,7 +131,7 @@ class Factory(PyroObject):
         return Factory.CACHED_OBJECTS[vm_id]
 
     @Expose()
-    def getAllVirtualMachines(self, node=None):
+    def get_all_virtual_machines(self, node=None):
         """Return objects for all virtual machines"""
         return [self.get_virtual_machine_by_id(vm_id) for vm_id in self.get_all_vm_ids(node=node)]
 
@@ -189,7 +189,7 @@ class Factory(PyroObject):
         table.header(tuple(headers))
 
         # Iterate over VMs and add to list
-        for vm_object in sorted(self.getAllVirtualMachines(), key=lambda vm: vm.name):
+        for vm_object in sorted(self.get_all_virtual_machines(), key=lambda vm: vm.name):
             vm_row = [vm_object.get_name(), vm_object._getPowerState().name,
                       vm_object.getNode() or 'Unregistered']
             if include_ram:

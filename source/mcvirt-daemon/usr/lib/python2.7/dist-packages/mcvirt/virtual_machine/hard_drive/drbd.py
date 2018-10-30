@@ -226,18 +226,24 @@ class Drbd(Base):
     # The maximum number of storage devices for the current type
     MAXIMUM_DEVICES = 4
 
-    def __init__(self, drbd_minor=None, drbd_port=None, *args, **kwargs):
+    def __init__(self, id_):
         """Set member variables"""
         # Get Drbde configuration from disk configuration
-        self._sync_state = True
-        self._drbd_port = drbd_port
-        self._drbd_minor = drbd_minor
+        self._drbd_port = None
+        self._drbd_minor = None
         super(Drbd, self).__init__(*args, **kwargs)
 
-    @property
-    def config_properties(self):
-        """Return the disk object config items"""
-        return super(Drbd, self).config_properties + ['drbd_port', 'drbd_minor']
+    @classmethod
+    def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
+        """Generate config for hard drive"""
+        config = Base.generate_config(driver, storage_backend, nodes, base_volume_name)
+        config.update({
+            'nodes': nodes,
+            'drbd_minor': None,
+            'drbd_port': None,
+            'sync_state': True
+        })
+        return config
 
     @property
     def libvirt_device_type(self):
@@ -269,6 +275,12 @@ class Drbd(Base):
     def get_drbd_minor(self):
         """Obtain the DRBD minor ID"""
         return self.drbd_minor
+
+    @Expose()
+    def get_sync_state(self):
+        """Get sync state of the hard drive"""
+        # Do not cache this value
+        return self.get_config_object().get_config()['sync_state']
 
     @staticmethod
     def isAvailable(storage_factory, node_drdb):
@@ -383,11 +395,7 @@ class Drbd(Base):
         # TODO: Monitor Drbd status instead.
         time.sleep(5)
 
-        # Add to virtual machine
-        self._sync_state = True
-        self.addToVirtualMachine(
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True),
-            get_remote_object_kwargs={'registered': False})
+        self.setSyncState(True)
 
         # Overwrite data on peer
         self._drbdOverwritePeer()
@@ -921,26 +929,9 @@ class Drbd(Base):
             PERMISSIONS.SET_SYNC_STATE, self.vm_object
         )
 
-        def update_config(config):
-            """Set sync state in VM config"""
-            config['hard_disks'][self.disk_id]['sync_state'] = sync_state
-        self.vm_object.get_config_object().update_config(
-            update_config,
-            'Updated sync state of disk \'%s\' of \'%s\' to \'%s\'' %
-            (self.disk_id,
-             self.vm_object.get_name(),
-             sync_state))
-
-        # Update remote nodes
-        if self._is_cluster_master and update_remote:
-            cluster = self._get_registered_object('cluster')
-
-            def set_sync_state_remote(node):
-                """Set sync state on remote node"""
-                remote_disk = self.get_remote_object(node_object=node)
-                remote_disk.setSyncState(sync_state=sync_state)
-            cluster.run_remote_command(callback_method=set_sync_state_remote,
-                                       nodes=self.vm_object._get_remote_nodes())
+        self.update_config({'sync_state': sync_state},
+            'Update sync state of disk %s to %s' % (self.id_, sync_state)
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     @Expose()
     def verify(self):
@@ -1130,7 +1121,7 @@ class Drbd(Base):
             # will still be in use by DRBD
             Syslogger.logger().warning('Could not connect to remote node.')
 
-    def _getAvailableDrbdPort(self):
+    def _get_available_drbd_port(self):
         """Obtains the next available Drbd port"""
         # Obtain list of currently used Drbd ports
         node_drbd = self._get_registered_object('node_drbd')
@@ -1151,7 +1142,7 @@ class Drbd(Base):
 
         return available_port
 
-    def _getAvailableDrbdMinor(self):
+    def _get_available_drbd_minor(self):
         """Obtains the next available Drbd minor"""
         # Obtain list of currently used Drbd minors
         node_drbd = self._get_registered_object('node_drbd')
@@ -1181,16 +1172,42 @@ class Drbd(Base):
     @property
     def drbd_minor(self):
         """Returns the Drbd port assigned to the hard drive"""
-        if self._drbd_minor is None:
-            self._drbd_minor = self._getAvailableDrbdMinor()
+        if not self._drbd_minor:
+            # If the cached version is not set, attempt to obtain from
+            # config
+            self._drbd_minor = self.get_config_object().get_config()['drbd_minor']
+
+            # If the config version is null, generate one and write to config
+            if self._drbd_minor is None:
+                self._drbd_minor = self._get_available_drbd_minor()
+
+                # Update the hard drive config with the new minor
+                self.update_config(
+                    {'drbd_minor': self._drbd_minor},
+                    'Set DRBD Minor for disk: %s' % self.id_,
+                    nodes=self._get_registered_object('cluster').get_nodes(
+                        include_local=True))
 
         return self._drbd_minor
 
     @property
     def drbd_port(self):
         """Returns the Drbd port assigned to the hard drive"""
-        if self._drbd_port is None:
-            self._drbd_port = self._getAvailableDrbdPort()
+        if not self._drbd_port:
+            # If the cached version is not set, attempt to obtain from
+            # config
+            self._drbd_port = self.get_config_object().get_config()['drbd_port']
+
+            # If the config version is null, generate one and write to config
+            if self._drbd_port is None:
+                self._drbd_port = self._get_available_drbd_port()
+
+                # Update the hard drive config with the new minor
+                self.update_config(
+                    {'drbd_port': self._drbd_port},
+                    'Set DRBD port for disk: %s' % self.id_,
+                    nodes=self._get_registered_object('cluster').get_nodes(
+                        include_local=True))
 
         return self._drbd_port
 
@@ -1291,14 +1308,6 @@ class Drbd(Base):
 
         # Convert from float to int and return
         return int(bytes)
-
-    def _getMCVirtConfig(self):
-        """Returns the MCVirt hard drive configuration for the Drbd hard drive"""
-        config = super(Drbd, self)._getMCVirtConfig()
-        config['drbd_port'] = self.drbd_port
-        config['drbd_minor'] = self.drbd_minor
-        config['sync_state'] = self._sync_state
-        return config
 
     def get_backup_source_volume(self):
         """Retrun the source volume for snapshotting for backeups"""

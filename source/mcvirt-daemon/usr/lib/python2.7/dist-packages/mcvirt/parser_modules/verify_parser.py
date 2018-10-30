@@ -52,7 +52,7 @@ class VerifyParser(object):
             p_.rpc.annotate_object(vm_object)
             vm_objects = [vm_object]
         elif args.all:
-            vm_objects = vm_factory.getAllVirtualMachines()
+            vm_objects = vm_factory.get_all_virtual_machines()
 
         # Iterate over the VMs and check each disk
         failures = []

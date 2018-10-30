@@ -882,7 +882,7 @@ class VirtualMachine(PyroObject):
         self.ensureRegisteredLocally()
         # Determine if device attached to another VM
         for vm_object in self._get_registered_object(
-                'virtual_machine_factory').getAllVirtualMachines(node=self.getNode()):
+                'virtual_machine_factory').get_all_virtual_machines(node=self.getNode()):
             if (int(bus), int(device)) in [(dev.get_bus(), dev.get_device())
                                            for dev in vm_object.get_attached_usb_devices()]:
                 if vm_object.get_name() != self.get_name():

@@ -22,7 +22,7 @@ import mcvirt.config.migrations.hard_drive as migrations
 class HardDrive(BaseSubconfig):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    SUBTREE_ARRAY = ['storage_backends']
+    SUBTREE_ARRAY = ['hard_drives']
 
     def __init__(self, hard_drive_obj):
         """Sets member variables"""

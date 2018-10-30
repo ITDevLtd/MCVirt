@@ -220,7 +220,7 @@ class Group(PyroObject):
     def in_use(self):
         """Determine if there are any users in the group"""
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        for virtual_machine in [None] + vm_factory.getAllVirtualMachines():
+        for virtual_machine in [None] + vm_factory.get_all_virtual_machines():
             if self.get_users(virtual_machine=virtual_machine):
                 return True
 

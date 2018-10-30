@@ -289,14 +289,15 @@ class Factory(PyroObject):
             size, storage_type, nodes, storage_backend,
             nodes_predefined=nodes_predefined)
 
-        # Generate config for hard drive
-        config = self.getClass(storage_type).generate_confing(
-            driver=driver,
-            storage_backend=storage_backend,
-            nodes=nodes)
-
         # Genrate ID for hard drive
         id_ = self.getClass(storage_type).generate_id()
+
+        # Generate config for hard drive
+        config = self.getClass(storage_type).generate_config(
+            driver=driver,
+            storage_backend=storage_backend,
+            nodes=nodes,
+            base_volume_name='mcvirt-%s' % id_)
 
         # Create the config for the hard drive on all nodes
         cluster = self._get_registered_object('cluster')

@@ -19,7 +19,8 @@ import xml.etree.ElementTree as ET
 
 from mcvirt.exceptions import (ReachedMaximumStorageDevicesException,
                                StorageTypesCannotBeMixedException,
-                               UnknownStorageTypeException)
+                               UnknownStorageTypeException,
+                               HardDriveNotAttachedToVirtualMachineError)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
@@ -29,6 +30,7 @@ class Factory(PyroObject):
 
     CACHED_OBJECTS = {}
 
+    @Expose()
     def get_object(self, virtual_machine, attachment_id):
         """Obtain hard drive attachment object"""
         virtual_machine = self._convert_remote_object(virtual_machine)
@@ -46,6 +48,30 @@ class Factory(PyroObject):
 
         # Return the cached object
         return Factory.CACHED_OBJECTS[cache_id]
+
+    def get_objects_by_virtual_machine(self, virtual_machine):
+        """Obtain attachments by virtual machine"""
+        virtual_machine = self._convert_remote_object(virtual_machine)
+        attachment_ids = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
+        return [self.get_object(virtual_machine, id_) for id_ in attachment_ids]
+
+    def get_object_by_hard_drive(self, hard_drive, raise_on_failure=False):
+        """Obtain attachment by hard drive"""
+        hard_drive = self._convert_remote_object(hard_drive)
+
+        # Iterate over each virtual machine and each attachment on the VM
+        for vm in self._get_registered_object(
+                'virtual_machine_factory').get_all_virtual_machines():
+            for attachment in self.get_objects_by_virtual_machine(vm):
+                # If the hard drive ID matches the ID of the hard drive
+                # being searched for, return the attachment
+                if attachment.get_hard_drive_object() == hard_drive:
+                    return attachment
+
+        if raise_on_failure:
+            raise HardDriveNotAttachedToVirtualMachineError(
+                'Hard drive not attached to virtual machine')
+        return None
 
     @Expose(locking=True)
     def create(self, virtual_machine, hard_drive):
@@ -121,11 +147,15 @@ class Factory(PyroObject):
             if not str(attachment_id) in disks:
                 return attachment_id
 
+
 class HardDriveAttachment(PyroObject):
+    """Defines a link between a hard drive and a virtual machine"""
 
     def __init__(self, virtual_machine, attachment_id):
+        """Initialise member variables"""
         self.virtual_machine = virtual_machine
         self.attachment_id = attachment_id
+        self.hard_drive_id = None
 
     @property
     def _target_dev(self):
@@ -138,10 +168,17 @@ class HardDriveAttachment(PyroObject):
         vm_config = self.virtual_machine.get_config_object().get_config()
         return vm_config['hard_drives'][self.attachment_id]
 
+    def get_hard_drive_id(self):
+        """Obtain the hard rive ID"""
+        if self.hard_drive_id is None:
+            self.hard_drive_id = self.get_config()['hard_drive_id']
+
+        return self.hard_drive_id
+
     def get_hard_drive_object(self):
         """Get hard drive object"""
         hdd_factory = self._get_registered_object('hard_drive_factory')
-        return hdd_factory.getObject(self.get_config()['hard_drive_id'])
+        return hdd_factory.getObject(self.get_hard_drive_id())
 
     def delete(self):
         """Remove the hard drive attachment"""

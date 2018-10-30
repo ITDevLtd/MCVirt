@@ -28,13 +28,14 @@ from mcvirt.exceptions import (HardDriveDoesNotExistException,
                                ResyncNotSupportedException,
                                LogicalVolumeIsNotActiveException,
                                VolumeDoesNotExistError,
-                               VolumeAlreadyExistsError)
+                               VolumeAlreadyExistsError,
+                               InvalidStorageBackendError)
 from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.config.hard_drive import HardDrive as HardDriveConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import ReachedMaximumStorageDevicesException
-from mcvirt.utils import get_hostname
+from mcvirt.utils import get_hostname, dict_merge
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.constants import LockStates
@@ -71,9 +72,30 @@ class Base(PyroObject):
     def __init__(self, id_):
         """Set member variables"""
         self._id = id_
+        self._driver = None
+        self._storage_backend = None
+        self._base_volume_name = None
+
+    def __eq__(self, comp):
+        """Compare hard drive objects based on id"""
+        # Ensure class and name of object match
+        return ('__class__' in dir(comp) and
+                comp.__class__ == self.__class__ and
+                'id_' in dir(comp) and comp.id_ == self.id_)
 
     @staticmethod
-    def generate_confing()
+    def get_id_code():
+        """Return the ID code for the object"""
+        return 'hd'
+
+    @classmethod
+    def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
+        """Generate config for hard drive"""
+        return {
+            'driver': driver if driver else cls.DEFAULT_DRIVER,
+            'storage_backend': storage_backend.id_,
+            'base_volume_name': base_volume_name
+        }
 
     @property
     def id_(self):
@@ -82,16 +104,12 @@ class Base(PyroObject):
 
     @property
     def storage_backend(self):
-        """Return storage backend.
-        When object is initalised from config, this is
-        set to a string of the storage backend name.
-        When the get_storage_backend is run, it is
-        converted to a storage backend object.
-        When the config is saved, the storage backend
-        is saved as a string, which returns the name of
-        the storage backend.
-        """
-        # @TODO - NEEDS REWORK NOW
+        """Return the storage backend for the hard drive"""
+        if self._storage_backend is None:
+            storage_backend_id = self.get_config_object().get_config()['storage_backend']
+            self._storage_backend = self._get_registered_object(
+                'storage_factory').get_object(storage_backend_id)
+
         return self._storage_backend
 
     @property
@@ -107,17 +125,28 @@ class Base(PyroObject):
     @property
     def driver(self):
         """Return the disk drive driver name"""
+        # Get from config, if not cached
         if self._driver is None:
-            self._driver = self.DEFAULT_DRIVER
+            self._driver = self.get_config_object().get_config()['driver']
+
         return self._driver
 
+    @property
+    def base_volume_name(self):
+        """Return the disk drive driver name"""
+        # Get from config, if not cached
+        if self._base_volume_name is None:
+            self._base_volume_name = self.get_config_object().get_config()['base_volume_name']
+
+        return self._base_volume_name
+
     @Expose()
-    def get_vm_object(self):
+    def get_virtual_machine(self):
         """Obtain the VM object for the resource"""
-        # @TODO - NEEDS REWORK NOW
-        vm_name = self.vm_object.get_name()
-        return self._get_registered_object(
-            'virtual_machine_factory').get_virtual_machine_by_name(vm_name)
+        attachment = self._get_registered_object(
+            'hard_drive_attachment_factory').get_object_by_hard_drive(self)
+
+        return attachment.virtual_machine if attachment else None
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
@@ -138,12 +167,39 @@ class Base(PyroObject):
         self.get_storage_backend().ensure_available()
         if not self._check_exists():
             raise HardDriveDoesNotExistException(
-                'Disk %s for %s does not exist' %
-                (self.disk_id, self.vm_object.get_name()))
+                'Disk %s does not exist' % self.id_)
 
     def get_config_object(self):
         """Obtain the config object for the hard drive"""
         return HardDriveConfig(self.id_)
+
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def update_config(self, change_dict, reason, _f):
+        """Update hard drive config using dict"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+
+        def update_config(config):
+            """Update the MCVirt config"""
+            _f.add_undo_argument(original_config=dict(config))
+            dict_merge(config, change_dict)
+
+        self.get_config_object().update_config(update_config, reason)
+
+    @Expose()
+    def undo__update_config(self, change_dict, reason, _f, original_config=None):
+        """Undo config change"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+
+        def revert_config(config):
+            """Revert config"""
+            config = original_config
+
+        if original_config is not None:
+            self.get_config_object().update_config(
+                revert_config,
+                'Revert: %s' % reason)
 
     def is_static(self):
         """Determine if storage is static and VM cannot be
@@ -192,13 +248,17 @@ class Base(PyroObject):
         # @TODO - NEEDS REWORK NOW
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
-            self.vm_object
+            self.get_virtual_machine()
         )
 
         self._ensure_exists()
 
-        self.vm_object.ensureUnlocked()
-        self.vm_object.ensure_stopped()
+        if self.get_virtual_machine():
+            self.vm_object.ensureUnlocked()
+            self.vm_object.ensure_stopped()
+
+        # Remove the hard drive from the MCVirt VM configuration
+        self.removeFromVirtualMachine(nodes=nodes)
 
         # Remove backing storage
         self._removeStorage(local_only=local_only)
@@ -208,9 +268,6 @@ class Base(PyroObject):
         else:
             cluster = self._get_registered_object('cluster')
             nodes = cluster.get_nodes(include_local=True)
-
-        # Remove the hard drive from the MCVirt VM configuration
-        self.removeFromVirtualMachine(nodes=nodes)
 
     def duplicate(self, destination_vm_object, storage_backend=None):
         """Clone the hard drive and attach it to the new VM object"""
@@ -251,7 +308,6 @@ class Base(PyroObject):
     def isAvailable(node, node_drbd):
         """Returns whether the storage type is available on the node"""
         raise NotImplementedError
-
 
     def activate_volume(self, volume, perform_on_nodes=False):
         """Activates a logical volume on the node/cluster"""

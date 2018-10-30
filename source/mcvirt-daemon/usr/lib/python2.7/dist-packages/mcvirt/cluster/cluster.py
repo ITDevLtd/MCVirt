@@ -455,7 +455,7 @@ class Cluster(PyroObject):
         remote_virtual_machine_factory = remote_object.get_connection('virtual_machine_factory')
 
         # Obtain list of local VMs
-        for vm_object in virtual_machine_factory.getAllVirtualMachines():
+        for vm_object in virtual_machine_factory.get_all_virtual_machines():
             remote_virtual_machine_object = remote_virtual_machine_factory.create(
                 name=vm_object.get_name(), cpu_cores=vm_object.getCPU(),
                 memory_allocation=vm_object.getRAM(), hard_drives=[],
@@ -550,7 +550,7 @@ class Cluster(PyroObject):
         # Determine if there are any VMs on the remote node
         remote_virtual_machine_factory = remote_connection.get_connection(
             'virtual_machine_factory')
-        if len(remote_virtual_machine_factory.getAllVirtualMachines()):
+        if len(remote_virtual_machine_factory.get_all_virtual_machines()):
             raise RemoteObjectConflict(('Target node contains VMs.'
                                         ' These must be removed before adding to a cluster'))
 
@@ -576,7 +576,7 @@ class Cluster(PyroObject):
 
         # Check for any VMs that the node, to be removed, is available to
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        all_vm_objects = vm_factory.getAllVirtualMachines()
+        all_vm_objects = vm_factory.get_all_virtual_machines()
         for vm_object in all_vm_objects:
             vm_available_nodes = vm_object.getAvailableNodes()
             if len(vm_available_nodes) > 1 and node_name_to_remove in vm_available_nodes:

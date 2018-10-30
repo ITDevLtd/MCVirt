@@ -33,28 +33,10 @@ class Local(Base):
     MAXIMUM_DEVICES = 4
     CACHE_MODE = 'directsync'
 
-    def __init__(self, custom_disk_name=None, *args, **kwargs):
-        """Set member variables and obtains libvirt domain object"""
-        self._custom_disk_name = custom_disk_name
-        super(Local, self).__init__(*args, **kwargs)
-
     @property
     def disk_name(self):
         """Return disk name"""
-        if self.custom_disk_name:
-            return self.custom_disk_name
-        vm_name = self.vm_object.get_name()
-        return 'mcvirt_vm-%s-disk-%s' % (vm_name, self.disk_id)
-
-    @property
-    def custom_disk_name(self):
-        """Return custom disk name"""
-        return self._custom_disk_name
-
-    @property
-    def config_properties(self):
-        """Return the disk object config items"""
-        return super(Local, self).config_properties + ['custom_disk_name']
+        return self.base_volume_name
 
     @staticmethod
     def isAvailable(storage_factory, node_drdb):

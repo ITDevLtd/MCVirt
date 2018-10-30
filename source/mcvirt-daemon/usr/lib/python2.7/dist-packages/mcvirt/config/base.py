@@ -21,7 +21,6 @@ import json
 import os
 import stat
 import pwd
-import shutil
 
 from mcvirt.utils import get_hostname
 from mcvirt.system import System
@@ -35,7 +34,7 @@ from mcvirt.exceptions import UserDoesNotExistException
 class Base(PyroObject):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    CURRENT_VERSION = 17
+    CURRENT_VERSION = 18
     GIT = '/usr/bin/git'
 
     def __init__(self):

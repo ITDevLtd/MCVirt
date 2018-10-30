@@ -362,7 +362,7 @@ class Base(PyroObject):
         #  - Use this storage backend; and
         #  - This node is one of the available nodes
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
-        for virtual_machine in virtual_machine_factory.getAllVirtualMachines():
+        for virtual_machine in virtual_machine_factory.get_all_virtual_machines():
             used_storage_backends = [hdd.get_storage_backend()
                                      for hdd in virtual_machine.get_hard_drive_objects()]
             if (self in used_storage_backends and virtual_machine.is_static() and
@@ -442,7 +442,7 @@ class Base(PyroObject):
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
 
         # Iterate over all virtual machine and hard drive objects
-        for virtual_machine in virtual_machine_factory.getAllVirtualMachines(node=node):
+        for virtual_machine in virtual_machine_factory.get_all_virtual_machines(node=node):
             for hard_drive in virtual_machine.get_hard_drive_objects():
 
                 # If the hard drive object uses the current storage backend,
