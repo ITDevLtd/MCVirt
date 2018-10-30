@@ -145,14 +145,14 @@ class UpdateParser(object):
         p_.rpc.annotate_object(vm_object)
 
         if args.memory:
-            vm_object.updateRAM(args.memory)
+            vm_object.update_ram(args.memory)
             p_.print_status(
                 'RAM allocation will be changed to %s on next VM boot.' % args.memory
             )
 
         if args.cpu_count:
             old_cpu_count = vm_object.getCPU()
-            vm_object.updateCPU(args.cpu_count, old_value=old_cpu_count)
+            vm_object.update_cpu(args.cpu_count, old_value=old_cpu_count)
             p_.print_status(
                 'Number of virtual cores will be changed from %s to %s.' %
                 (old_cpu_count, args.cpu_count)
@@ -190,14 +190,16 @@ class UpdateParser(object):
                                       storage_type=args.storage_type,
                                       driver=args.hard_disk_driver)
         if args.delete_disk:
-            hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-            hard_drive_object = hard_drive_factory.getObject(vm_object, args.delete_disk)
+            hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
+            hard_drive_object = hard_drive_attachment_factory.get_object(
+                vm_object, args.delete_disk).get_hard_drive_object()
             p_.rpc.annotate_object(hard_drive_object)
             hard_drive_object.delete()
 
         if args.increase_disk and args.disk_id:
-            hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-            hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+            hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
+            hard_drive_object = hard_drive_attachment_factory.get_object(
+                vm_object, args.disk_id).get_hard_drive_object()
             p_.rpc.annotate_object(hard_drive_object)
             hard_drive_object.increase_size(args.increase_disk)
 

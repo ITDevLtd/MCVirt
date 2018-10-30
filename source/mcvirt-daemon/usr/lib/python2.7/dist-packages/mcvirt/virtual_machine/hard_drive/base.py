@@ -163,7 +163,7 @@ class Base(PyroObject):
 
         remote_hard_drive_factory = node_object.get_connection('hard_drive_factory')
 
-        hard_drive_object = remote_hard_drive_factory.getObject(self.id_)
+        hard_drive_object = remote_hard_drive_factory.get_object(self.id_)
         node_object.annotate_object(hard_drive_object)
         return hard_drive_object
 

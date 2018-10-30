@@ -63,9 +63,9 @@ class NetworkAdapter(PyroObject):
         vm_config = self.vm_object.get_config_object().get_config()
         return self.getMacAddress() in vm_config['network_interfaces']
 
-    def getLibvirtConfig(self):
+    def get_libvirt_config(self):
         """Returns a dict of the LibVirt configuration for the network interface"""
-        domain_config = self.vm_object.getLibvirtConfig()
+        domain_config = self.vm_object.get_libvirt_config()
         interface_config = domain_config.find(
             './devices/interface[@type="network"]/mac[@address="%s"]/..' %
             self.mac_address)

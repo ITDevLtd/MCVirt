@@ -181,10 +181,11 @@ class HardDriveAttachment(PyroObject):
 
         return self.hard_drive_id
 
+    @Expose()
     def get_hard_drive_object(self):
         """Get hard drive object"""
         hdd_factory = self._get_registered_object('hard_drive_factory')
-        return hdd_factory.getObject(self.get_hard_drive_id())
+        return hdd_factory.get_object(self.get_hard_drive_id())
 
     def delete(self):
         """Remove the hard drive attachment"""

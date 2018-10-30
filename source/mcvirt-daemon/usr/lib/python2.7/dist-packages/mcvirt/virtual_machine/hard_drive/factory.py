@@ -121,7 +121,7 @@ class Factory(PyroObject):
                 vm_object, attachment_id).get_hard_drive_object()
  
     @Expose()
-    def getObject(self, id_):
+    def get_object(self, id_):
         """Returns the storage object for a given disk"""
 
         if id_ not in Factory.CACHED_OBJECTS:
@@ -309,7 +309,7 @@ class Factory(PyroObject):
             nodes=cluster.get_nodes(include_local=True))
 
         # Obtain object, create actual volume
-        hdd_object = self.getObject(id_)
+        hdd_object = self.get_object(id_)
         hdd_object.create(size=size)
 
         # Attach to VM

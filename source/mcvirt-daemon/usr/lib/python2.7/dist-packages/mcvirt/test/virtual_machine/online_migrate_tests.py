@@ -82,11 +82,11 @@ class VirtualMachineLibvirtFail(VirtualMachine):
 
     LIBVIRT_FAILURE_MODE = LibvirtFailureMode.NORMAL_RUN
 
-    def _getLibvirtDomainObject(self, allow_remote=False):
+    def _get_libvirt_domain_object(self, allow_remote=False):
         """Obtains the libvirt domain object and, if specified, overrides the migrate3
         method to simulate different failure cases
         """
-        libvirt_object = super(VirtualMachineLibvirtFail, self)._getLibvirtDomainObject(
+        libvirt_object = super(VirtualMachineLibvirtFail, self)._get_libvirt_domain_object(
             allow_remote=False
         )
 

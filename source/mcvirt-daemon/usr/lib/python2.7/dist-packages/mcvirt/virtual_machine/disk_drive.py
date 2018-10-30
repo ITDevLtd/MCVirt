@@ -54,7 +54,7 @@ class DiskDrive(PyroObject):
         flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
 
         # Update the libvirt cdrom device
-        libvirt_object = self.vm_object._getLibvirtDomainObject()
+        libvirt_object = self.vm_object._get_libvirt_domain_object()
         if libvirt_object.updateDeviceFlags(cdrom_xml_string, flags):
             raise LibvirtException('An error occurred whilst attaching ISO')
 
@@ -74,13 +74,13 @@ class DiskDrive(PyroObject):
             flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
 
             # Update the libvirt cdrom device
-            if self.vm_object._getLibvirtDomainObject().updateDeviceFlags(cdrom_xml_string, flags):
+            if self.vm_object._get_libvirt_domain_object().updateDeviceFlags(cdrom_xml_string, flags):
                 raise LibvirtException('An error occurred whilst detaching ISO')
 
     def getCurrentDisk(self):
         """Returns the path of the disk currently attached to the VM"""
         # Import cdrom XML template
-        domain_config = self.vm_object.getLibvirtConfig()
+        domain_config = self.vm_object.get_libvirt_config()
         source_xml = domain_config.find('./devices/disk[@device="cdrom"]/source')
 
         if source_xml is not None:
