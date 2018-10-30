@@ -113,6 +113,7 @@ class Core(Base):
                     'nodes': {}
                 },
                 'virtual_machines': {},
+                'hard_drives': {},
                 'networks': {
                 },
                 'drbd': {
