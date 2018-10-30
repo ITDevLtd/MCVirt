@@ -59,7 +59,7 @@ class BackupParser(object):
         hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
         hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
         p_.rpc.annotate_object(hard_drive_object)
-        p_.print_status(hard_drive_object.createBackupSnapshot())
+        p_.print_status(hard_drive_object.create_backup_snapshot())
 
     def register_delete_snapshot(self):
         """Register delete snapshot parser"""
@@ -81,4 +81,4 @@ class BackupParser(object):
         p_.rpc.annotate_object(vm_object)
         hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
         hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
-        hard_drive_object.deleteBackupSnapshot()
+        hard_drive_object.delete_backup_snapshot()

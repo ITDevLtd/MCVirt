@@ -38,7 +38,8 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                InvalidModificationFlagException, MCVirtTypeError,
                                UsbDeviceAttachedToVirtualMachine, InvalidConfirmationCodeError,
                                DeleteProtectionAlreadyEnabledError, DeleteProtectionNotEnabledError,
-                               DeleteProtectionEnabledError, ReachedMaximumStorageDevicesException)
+                               DeleteProtectionEnabledError, ReachedMaximumStorageDevicesException,
+                               VirtualMachineNotRegisteredWithLibvirt)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
 from mcvirt.config.core import Core as MCVirtConfig
@@ -91,34 +92,6 @@ class VirtualMachine(PyroObject):
 
         # Otherwise return false
         return False
-
-    @Expose()
-    def set_v9_release_config(self, config):
-        """Update disk configurations with new storage backends
-        for v9 release
-        """
-        # Check permissions
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-
-        def update_config(vm_config):
-            """Update VM config"""
-            for disk_id in config.keys():
-                vm_config['hard_disks'][disk_id]['storage_backend'] = config[disk_id]
-                if 'custom_volume_group' in vm_config['hard_disks'][disk_id]:
-                    del vm_config['hard_disks'][disk_id]['custom_volume_group']
-        self.get_config_object().update_config(
-            update_config,
-            'Update storage backends for disks for v9 release')
-        if self._is_cluster_master:
-            def update_remote_node(connection):
-                """Update configuration of remote node"""
-                virtual_machine_factory = connection.get_connection('virtual_machine_factory')
-                virtual_machine = virtual_machine_factory.get_virtual_machine_by_name(
-                    self.get_name())
-                connection.annotate_object(virtual_machine)
-                virtual_machine.set_v9_release_config(config)
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(update_remote_node)
 
     def check_libvirt_config_update(self):
         """Determine if config updates need to be performed to libvirt"""
@@ -272,12 +245,18 @@ class VirtualMachine(PyroObject):
             if 'Domain not found: no domain with matching name' in str(exc):
                 # If the current session has a lock, then re-register with libvirt
                 if self._has_lock and auto_register and self.isRegisteredLocally():
-                    self._register(set_node=False, ignore_registered_locally=True)
-
-                    # Return with call from this method
-                    return self._getLibvirtDomainObject(allow_remote=allow_remote,
-                                                        auto_register=False)
-            raise
+                    try:
+                        self._register(set_node=False, ignore_registered_locally=True)
+                        # Return with call from this method
+                        return self._getLibvirtDomainObject(allow_remote=allow_remote,
+                                                            auto_register=False)
+                    except Exception, exc2:
+                        Syslogger.logger().error('Error whilst re-registering: %s' % str(exc2))
+                else:
+                    raise VirtualMachineNotRegisteredWithLibvirt(
+                        'Virtual machine is not registered with libvirt')
+            else:
+                raise
 
     @Expose()
     def get_libvirt_xml(self):
@@ -573,7 +552,7 @@ class VirtualMachine(PyroObject):
             for disk_object in sorted(disk_objects, key=lambda disk: disk.disk_id):
                 table.add_row(
                     (str(disk_object.disk_id),
-                     SizeConverter(disk_object.getSize()).to_string())
+                     SizeConverter(disk_object.get_size()).to_string())
                 )
         else:
             warnings += "No hard disks present on machine\n"
@@ -861,12 +840,13 @@ class VirtualMachine(PyroObject):
     @Expose()
     def get_hard_drive_objects(self):
         """Returns an array of disk objects for the disks attached to the VM"""
-        disks = self.get_config_object().get_config()['hard_disks']
+        attachments = self.get_config_object().get_config()['hard_drives']
         hard_drive_factory = self._get_registered_object('hard_drive_factory')
-        disk_objects = []
-        for disk_id in disks:
-            disk_objects.append(hard_drive_factory.getObject(self, disk_id))
-        return disk_objects
+        hard_drive_objects = []
+        for hard_drive_id in [attachment_conf['hard_drive_id']
+                              for attachment_conf in attachments.values()]:
+            hard_drive_objects.append(hard_drive_factory.getObject(hard_drive_id))
+        return hard_drive_objects
 
     def get_attached_usb_devices(self):
         libvirt_config = self.getLibvirtConfig()
@@ -1407,7 +1387,7 @@ class VirtualMachine(PyroObject):
         total_hdd_size = 0
         for disk_object in self.get_hard_drive_objects():
             storage_backend = disk_object.get_storage_backend()
-            total_hdd_size += disk_object.getSize()
+            total_hdd_size += disk_object.get_size()
         # Force check for 'Local' storage, as we're only specifying one node,
         # as otherwise the check will ensure that there is the additional space
         # on the remaining node.
@@ -1526,8 +1506,9 @@ class VirtualMachine(PyroObject):
         device_xml = domain_xml.find('./devices')
 
         # Add hard drive configurations
-        for hard_drive_object in self.get_hard_drive_objects():
-            drive_xml = hard_drive_object._generateLibvirtXml()
+        hard_drive_attachment_factory = self._get_registered_object('hard_drive_attachment_factory')
+        for hard_drive_object in hard_drive_attachment_factory.get_objects_by_virtual_machine():
+            drive_xml = hard_drive_object.generate_libvirt_xml()
             device_xml.append(drive_xml)
 
         # Add network adapter configurations
@@ -1578,7 +1559,11 @@ class VirtualMachine(PyroObject):
 
         # Remove VM from LibVirt
         try:
-            self._getLibvirtDomainObject().undefine()
+            self._getLibvirtDomainObject(auto_register=False).undefine()
+        except VirtualMachineNotRegisteredWithLibvirt:
+            Syslogger.logger().warn(
+                'VM not registered with libvirt whilst attempting to unregister: %s' %
+                self.get_name())
         except Exception:
             raise LibvirtException('Failed to delete VM from libvirt')
 

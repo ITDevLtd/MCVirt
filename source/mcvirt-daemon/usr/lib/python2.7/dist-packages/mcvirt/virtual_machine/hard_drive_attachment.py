@@ -20,7 +20,8 @@ import xml.etree.ElementTree as ET
 from mcvirt.exceptions import (ReachedMaximumStorageDevicesException,
                                StorageTypesCannotBeMixedException,
                                UnknownStorageTypeException,
-                               HardDriveNotAttachedToVirtualMachineError)
+                               HardDriveNotAttachedToVirtualMachineError,
+                               HardDriveAttachmentDoesNotExistError)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
@@ -39,6 +40,11 @@ class Factory(PyroObject):
 
         # Determine if VM object has been cached
         if cache_id not in Factory.CACHED_OBJECTS:
+            # Ensure that the attachment exists
+            if attachment_id not in virtual_machine.get_config_object.get_config()['hard_drives']:
+                raise HardDriveAttachmentDoesNotExistError(
+                    'Hard drive attachment does not exist')
+
             # If not, create object, register with pyro
             # and store in cached object dict
             hdd_attachment = HardDriveAttachment(virtual_machine, attachment_id)
@@ -130,7 +136,7 @@ class Factory(PyroObject):
         """
         virtual_machine = self._convert_remote_object(virtual_machine)
         attachment_id = 0
-        disks = virtual_machine.get_config_object().get_config()['hard_disks'].keys()
+        disks = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
         hdd_class = self._get_registered_object('hard_drive_factory').getClass(
             virtual_machine.getStorageType(), allow_base=True)
 
@@ -199,7 +205,7 @@ class HardDriveAttachment(PyroObject):
             update_vm_config,
             'Remove disk attachment from VM')
 
-    def _generate_libvirt_xml(self):
+    def generate_libvirt_xml(self):
         """Create a basic libvirt XML configuration for the connection to the disk"""
         hdd_object = self.get_hard_drive_object()
 
@@ -274,7 +280,7 @@ class HardDriveAttachment(PyroObject):
         """Register the hard drive with the Libvirt VM configuration"""
         def update_libvirt(domain_xml):
             """Add disk to libvirt config"""
-            drive_xml = self._generate_libvirt_xml()
+            drive_xml = self.generate_libvirt_xml()
             device_xml = domain_xml.find('./devices')
             device_xml.append(drive_xml)
 

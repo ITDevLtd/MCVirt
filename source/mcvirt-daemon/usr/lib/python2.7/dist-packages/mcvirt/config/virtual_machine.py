@@ -55,7 +55,7 @@ class VirtualMachine(BaseSubconfig):
                     'users': {},
                     'groups': {},
                 },
-                'hard_disks': {},
+                'hard_drives': {},
                 'storage_type': None,
                 'delete_protection': False,
                 'memory_allocation': memory_allocation,

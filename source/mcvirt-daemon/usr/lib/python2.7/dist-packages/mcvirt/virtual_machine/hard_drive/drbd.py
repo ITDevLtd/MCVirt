@@ -333,7 +333,7 @@ class Drbd(Base):
         self._ensure_exists()
         self._drbdSetSecondary()
 
-    def getSize(self):
+    def get_size(self):
         """Get the size of the disk (in MB)"""
         self._ensure_exists()
         return self.get_raw_volume().get_size()
@@ -489,7 +489,7 @@ class Drbd(Base):
                                               self.get_meta_volume().name)
 
     @Expose(locking=True)
-    def increaseSize(self, increase_size):
+    def increase_size(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM, self.vm_object
@@ -911,16 +911,10 @@ class Drbd(Base):
 
     def _isInSync(self):
         """Returns whether the last Drbd verification reported the
-           Drbd volume as in-sync"""
-        vm_config = self.vm_object.get_config_object().get_config()
-
-        # If the hard drive configuration exists, read the current state of the disk
-        if self.disk_id in vm_config['hard_disks']:
-            return vm_config['hard_disks'][self.disk_id]['sync_state']
-        else:
-            # Otherwise, if the hard drive configuration does not exist in the VM configuration,
-            # assume the disk is being created and is in-sync
-            return True
+        Drbd volume as in-sync
+        """
+        # @TODO Remove this method
+        return self.get_sync_state()
 
     @Expose(locking=True)
     def setSyncState(self, sync_state, update_remote=True):
@@ -929,8 +923,9 @@ class Drbd(Base):
             PERMISSIONS.SET_SYNC_STATE, self.vm_object
         )
 
-        self.update_config({'sync_state': sync_state},
-            'Update sync state of disk %s to %s' % (self.id_, sync_state)
+        self.update_config(
+            {'sync_state': sync_state},
+            'Update sync state of disk %s to %s' % (self.id_, sync_state),
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     @Expose()
@@ -1065,7 +1060,7 @@ class Drbd(Base):
         self._drbdDisconnect()
 
         # Obtain the size of the disk to be created
-        disk_size = self.getSize()
+        disk_size = self.get_size()
 
         # Create disk object for destination node
         dest_hdd_object = self.get_remote_object(node_object=dest_node_object,

@@ -48,7 +48,7 @@ class Local(Base):
         return self._get_volume(self.disk_name)
 
     @Expose(locking=True)
-    def increaseSize(self, increase_size):
+    def increase_size(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM, self.vm_object
@@ -83,7 +83,7 @@ class Local(Base):
         """Removes the backing logical volume"""
         self._get_data_volume().delete()
 
-    def getSize(self):
+    def get_size(self):
         """Gets the size of the disk (in MB)"""
         return self._get_data_volume().get_size()
 
@@ -92,7 +92,7 @@ class Local(Base):
         self._ensure_exists()
         new_disk = Local(vm_object=destination_vm_object, driver=self.driver,
                          disk_id=self.disk_id,
-                         storage_backend=self.get_storage_backend())
+                         storage_backend=self.storage_backend)
         self._register_object(new_disk)
 
         # Clone original volume to new volume
@@ -108,11 +108,6 @@ class Local(Base):
         in the VM configuration"""
         self._get_data_volume().create(size)
 
-        # Attach to VM and create disk object
-        self.addToVirtualMachine(
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True),
-            get_remote_object_kwargs={'registered': False})
-
     def activateDisk(self):
         """Starts the disk logical volume"""
         self._ensure_exists()
@@ -126,8 +121,9 @@ class Local(Base):
         """Perform pre-migration checks"""
         # @TODO Allow migration for shared disks - worth ensuring that the disks is actually
         # available on both nodes
-        if not self.get_storage_backend().shared:
-            raise CannotMigrateLocalDiskException('VMs using local disks cannot be migrated')
+        if not self.storage_backend.shared:
+            raise CannotMigrateLocalDiskException(
+                'VMs using local disks on a non-shared backend cannot be migrated')
 
     def _getDiskPath(self):
         """Returns the path of the raw disk image"""
@@ -136,11 +132,6 @@ class Local(Base):
     def _getDiskName(self):
         """Returns the name of a disk logical volume, for a given VM"""
         return self.disk_name
-
-    def _getMCVirtConfig(self):
-        """Returns the MCVirt hard drive configuration for the Local hard drive"""
-        # There are no configurations for the disk stored by MCVirt
-        return super(Local, self)._getMCVirtConfig()
 
     def get_backup_source_volume(self):
         """Retrun the source volume for snapshotting for backeups"""

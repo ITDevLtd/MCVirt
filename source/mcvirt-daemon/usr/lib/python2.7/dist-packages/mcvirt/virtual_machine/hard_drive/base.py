@@ -115,12 +115,12 @@ class Base(PyroObject):
     @property
     def libvirt_device_type(self):
         """Return the libvirt device type of the storage backend"""
-        return self.get_storage_backend().libvirt_device_type
+        return self.storage_backend.libvirt_device_type
 
     @property
     def libvirt_source_parameter(self):
         """Return the libvirt source parameter fro storage backend"""
-        return self.get_storage_backend().libvirt_source_parameter
+        return self.storage_backend.libvirt_source_parameter
 
     @property
     def driver(self):
@@ -140,11 +140,14 @@ class Base(PyroObject):
 
         return self._base_volume_name
 
-    @Expose()
+    def get_attachment_object(self):
+        """Obtain the VM object for the resource"""
+        return self._get_registered_object(
+            'hard_drive_attachment_factory').get_object_by_hard_drive(self)
+
     def get_virtual_machine(self):
         """Obtain the VM object for the resource"""
-        attachment = self._get_registered_object(
-            'hard_drive_attachment_factory').get_object_by_hard_drive(self)
+        attachment = self.get_attachment_object()
 
         return attachment.virtual_machine if attachment else None
 
@@ -164,14 +167,14 @@ class Base(PyroObject):
 
     def _ensure_exists(self):
         """Ensure the disk exists on the local node"""
-        self.get_storage_backend().ensure_available()
+        self.storage_backend.ensure_available()
         if not self._check_exists():
             raise HardDriveDoesNotExistException(
                 'Disk %s does not exist' % self.id_)
 
     def get_config_object(self):
         """Obtain the config object for the hard drive"""
-        return HardDriveConfig(self.id_)
+        return HardDriveConfig(self)
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def update_config(self, change_dict, reason, _f):
@@ -209,7 +212,7 @@ class Base(PyroObject):
         # shared or not. Shared storage will allow mean storage is available
         # to any node that supports it. Otherwise, the data is only on the node
         # that the storage was created on.
-        return self.get_storage_backend().is_static()
+        return self.storage_backend.is_static()
 
     @Expose(locking=True)
     def resync(self, source_node=None, auto_determine=False):
@@ -229,8 +232,8 @@ class Base(PyroObject):
         # disks already attached to the VM.
         # All disks attached to a VM must either be DRBD-based or not.
         # All storage backends used by a VM must shared the following attributes: type, shared
-        local_storage_backend = self.get_storage_backend()
-        compare_storage_backend = compare_hdd.get_storage_backend()
+        local_storage_backend = self.storage_backend
+        compare_storage_backend = compare_hdd.storage_backend
 
         if local_storage_backend.shared != compare_storage_backend.shared:
             raise InvalidStorageBackendError(
@@ -244,8 +247,8 @@ class Base(PyroObject):
     @Expose(locking=True)
     def delete(self, local_only=False):
         """Delete the logical volume for the disk"""
+        vm_object = self.get_virtual_machine()
         # Ensure that the user has permissions to add delete storage
-        # @TODO - NEEDS REWORK NOW
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.get_virtual_machine()
@@ -253,92 +256,68 @@ class Base(PyroObject):
 
         self._ensure_exists()
 
-        if self.get_virtual_machine():
-            self.vm_object.ensureUnlocked()
-            self.vm_object.ensure_stopped()
+        if vm_object:
+            vm_object.ensureUnlocked()
+            vm_object.ensure_stopped()
 
-        # Remove the hard drive from the MCVirt VM configuration
-        self.removeFromVirtualMachine(nodes=nodes)
+            if not local_only:
+                # Remove the hard drive from the MCVirt VM configuration
+                self.get_attachment_object().delete()
 
         # Remove backing storage
         self._removeStorage(local_only=local_only)
 
-        if local_only:
-            nodes = [get_hostname()]
-        else:
-            cluster = self._get_registered_object('cluster')
-            nodes = cluster.get_nodes(include_local=True)
-
     def duplicate(self, destination_vm_object, storage_backend=None):
         """Clone the hard drive and attach it to the new VM object"""
-        # @TODO - NEEDS REWORK NOW
         self._ensure_exists()
 
         if not storage_backend:
-            storage_backend = self.get_storage_backend()
+            storage_backend = self.storage_backend
 
         # Create new disk object, using the same type, size and disk_id
-        new_disk_object = self.__class__(vm_object=destination_vm_object, disk_id=self.disk_id,
-                                         driver=self.driver,
-                                         storage_backend=storage_backend)
-        # Register new disk object with pyro
-        self._register_object(new_disk_object)
-
-        # Create new disk
-        new_disk_object.create(self.getSize())
+        new_hdd = self._get_registered_object('hard_drive_factory').create(
+            size=self.get_size(), storage_type=self.get_type(),
+            driver=self.driver, storage_backend=storage_backend)
 
         # Get path of source and new disks
-        source_drbd_block_device = self._getDiskPath()
-        destination_drbd_block_device = new_disk_object._getDiskPath()
+        source_block_device = self._getDiskPath()
+        destination_block_device = new_hdd.getDiskPath()
 
         # Use dd to duplicate the old disk to the new disk
-        command_args = ('dd', 'if=%s' % source_drbd_block_device,
-                        'of=%s' % destination_drbd_block_device, 'bs=1M')
-        try:
-            System.runCommand(command_args)
-        except MCVirtCommandException, e:
-            new_disk_object.delete()
-            raise ExternalStorageCommandErrorException(
-                "Error whilst duplicating disk logical volume:\n" + str(e)
-            )
-
-        return new_disk_object
+        System.perform_dd(source=source_block_device,
+                          destination=destination_block_device,
+                          size=self.get_size())
+        return new_hdd
 
     @staticmethod
     def isAvailable(node, node_drbd):
         """Returns whether the storage type is available on the node"""
         raise NotImplementedError
 
-    def activate_volume(self, volume, perform_on_nodes=False):
+    @Expose(locking=True, remote_nodes=True)
+    def activate_volume(self, volume):
         """Activates a logical volume on the node/cluster"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
         # Obtain logical volume path
         volume.activate()
 
-        if perform_on_nodes and self._is_cluster_master:
-            def remote_command(node):
-                """Activate volume on remote node"""
-                remote_disk = self.get_remote_object(node_object=node, registered=False)
-                remote_disk.activate_volume(volume=volume)
-
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(callback_method=remote_command,
-                                       nodes=self.vm_object._get_remote_nodes())
-
     @Expose(locking=True)
-    def createBackupSnapshot(self):
+    def create_backup_snapshot(self):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""
-        # @TODO - NEEDS REWORK NOW
+        vm_object = self.get_virtual_machine()
         # Ensure the user has permission to delete snapshot backups
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
-            self.vm_object
+            self.get_virtual_machine()
         )
 
-        # Ensure VM is registered locally
-        self.vm_object.ensureRegisteredLocally()
+        if vm_object:
+            # Ensure VM is registered locally
+            vm_object.ensureRegisteredLocally()
 
-        # Lock the VM
-        self.vm_object._setLockState(LockStates.LOCKED)
+            # Lock the VM
+            vm_object._setLockState(LockStates.LOCKED)
 
         source_volume = self.get_backup_source_volume()
         backup_volume = self.get_backup_snapshot_volume()
@@ -346,35 +325,41 @@ class Base(PyroObject):
         try:
             source_volume.snapshot_volume(backup_volume, self.SNAPSHOT_SIZE)
         except VolumeAlreadyExistsError:
-            self.vm_object._setLockState(LockStates.UNLOCKED)
+            if vm_object:
+                vm_object._setLockState(LockStates.UNLOCKED)
             raise BackupSnapshotAlreadyExistsException('Backup snapshot already exists')
         except Exception:
-            self.vm_object._setLockState(LockStates.UNLCoKED)
+            if vm_object:
+                vm_object._setLockState(LockStates.UNLCoKED)
             raise
 
-        self.vm_object._setLockState(LockStates.UNLOCKED)
+        if vm_object:
+            vm_object._setLockState(LockStates.UNLOCKED)
+  
         return backup_volume.get_path()
 
     @Expose(locking=True)
-    def deleteBackupSnapshot(self):
+    def delete_backup_snapshot(self):
         """Deletes the backup snapshot for the disk and unlocks the VM"""
-        # @TODO - NEEDS REWORK NOW
+        vm_object = self.get_virtual_machine()
         # Ensure the user has permission to delete snapshot backups
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
-            self.vm_object
+            vm_object
         )
 
         try:
             self.get_backup_snapshot_volume().delete_volume()
         except VolumeDoesNotExistError:
-            self.vm_object._setLockState(LockStates.UNLOCKED)
+            if vm_object:
+                vm_object._setLockState(LockStates.UNLOCKED)
             raise BackupSnapshotDoesNotExistException(
                 'The backup snapshot does not exist'
             )
 
         # Unlock the VM
-        self.vm_object._setLockState(LockStates.UNLOCKED)
+        if vm_object:
+            vm_object._setLockState(LockStates.UNLOCKED)
 
     def get_backup_source_volume(self):
         """Retrun the source volume for snapshotting for backeups"""
@@ -385,7 +370,7 @@ class Base(PyroObject):
         raise NotImplementedError
 
     @Expose(locking=True)
-    def increaseSize(self, increase_size):
+    def increase_size(self, increase_size):
         """Increase the size of a VM hard drive, given the size to increase the drive by"""
         raise NotImplementedError
 
@@ -425,7 +410,7 @@ class Base(PyroObject):
         """Perform post tasks after a VM has performed an online migration"""
         raise NotImplementedError
 
-    def getSize(self):
+    def get_size(self):
         """Get the size of the disk (in bytes)"""
         raise NotImplementedError
 
@@ -441,8 +426,8 @@ class Base(PyroObject):
         """Return the disk configuration for the hard drive"""
         # @TODO - NEEDS REWORK NOW
         vm_config = self.vm_object.get_config_object().get_config()
-        if str(self.disk_id) in vm_config['hard_disks']:
-            return vm_config['hard_disks'][str(self.disk_id)]
+        if str(self.disk_id) in vm_config['hard_drives']:
+            return vm_config['hard_drives'][str(self.disk_id)]
         else:
             return {}
 
@@ -453,7 +438,6 @@ class Base(PyroObject):
     @Expose()
     def getDiskPath(self):
         """Exposed method for _getDiskPath"""
-        # @TODO - NEEDS REWORK NOW
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_CLUSTER,
             allow_indirect=True
@@ -464,15 +448,6 @@ class Base(PyroObject):
         """Return the path of the raw disk image"""
         raise NotImplementedError
 
-    def _getMCVirtConfig(self):
-        """Return the MCVirt configuration for the hard drive object"""
-        # @TODO - NEEDS REWORK NOW
-        config = {
-            'driver': self.driver,
-            'storage_backend': self.get_storage_backend().id_
-        }
-        return config
-
     def _getBackupLogicalVolume(self):
         """Return the storage device for the backup"""
         raise NotImplementedError
@@ -481,19 +456,6 @@ class Base(PyroObject):
         """Return the logical volume name for the backup snapshot"""
         raise NotImplementedError
 
-    def get_storage_backend(self):
-        """Return the storage backend object for the hard drive object"""
-        if (not self._storage_backend or
-                isinstance(self._storage_backend, str) or
-                isinstance(self._storage_backend, unicode)):
-            storage_backend_id = (self._storage_backend
-                                  if isinstance(self._storage_backend, str) else
-                                  self.getDiskConfig()['storage_backend'])
-            self._storage_backend = self._get_registered_object(
-                'storage_factory'
-            ).get_object(storage_backend_id)
-        return self._storage_backend
-
     def _get_volume(self, disk_name):
         """Return a storage object within the storage backend"""
-        return self.get_storage_backend().get_volume(disk_name)
+        return self.storage_backend.get_volume(disk_name)

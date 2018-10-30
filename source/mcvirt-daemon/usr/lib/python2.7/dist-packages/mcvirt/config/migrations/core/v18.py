@@ -24,7 +24,7 @@ def migrate(config_obj, config):
     # seperate hard drive objects
     hard_drive_dict = {}
     for vm_id, vm_config in config['virtual_machines'].items():
-        for hdd_attachment_id, vm_hdd_config in vm_config['hard_drives'].items():
+        for hdd_attachment_id, vm_hdd_config in vm_config['hard_disks'].items():
             # Get base volume name
             base_volume_name = (
                 vm_hdd_config['custom_disk_name']
@@ -59,10 +59,14 @@ def migrate(config_obj, config):
                 hard_drive_dict[hdd_id]['sync_state'] = vm_hdd_config['sync_state']
                 del vm_hdd_config['sync_state']
 
+            vm_hdd_config['hard_drive_id'] = hdd_id
+
             hard_drive_dict[hdd_id]['storage_type'] = vm_config['storage_type']
 
         # Remove old storage type config from VM
         del vm_config['storage_type']
+        vm_config['hard_drives'] = vm_config['hard_disks']
+        del vm_config['hard_disks']
 
     # Add new hard drive config to global config
     config['hard_drives'] = hard_drive_dict

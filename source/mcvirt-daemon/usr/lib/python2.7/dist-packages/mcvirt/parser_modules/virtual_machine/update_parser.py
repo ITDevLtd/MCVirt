@@ -199,7 +199,7 @@ class UpdateParser(object):
             hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
             hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
             p_.rpc.annotate_object(hard_drive_object)
-            hard_drive_object.increaseSize(args.increase_disk)
+            hard_drive_object.increase_size(args.increase_disk)
 
         if args.iso or args.iso is None:
             vm_object.update_iso(args.iso)

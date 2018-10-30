@@ -114,21 +114,24 @@ class Factory(PyroObject):
     CACHED_OBJECTS = {}
 
     @Expose()
-    def get_object_by_vm_and_disk_itx(self, vm_object, disk_itx):
-        pass
-
+    def get_object_by_vm_and_attachment_id(self, vm_object, attachment_id):
+        """Return the disk object based on virtual machine and attachment Id"""
+        return self._get_registered_object(
+            'hard_drive_attachment_factory').get_object(
+                vm_object, attachment_id).get_hard_drive_object()
+ 
     @Expose()
     def getObject(self, id_):
         """Returns the storage object for a given disk"""
 
         if id_ not in Factory.CACHED_OBJECTS:
-            base_hdd = Base(_id)
+            base_hdd = Base(id_)
             storage_type = base_hdd.get_type()
             hard_drive_object = self.getClass(storage_type)(id_)
             self._register_object(hard_drive_object)
-            Factory.CACHED_OBJECTS[cache_key] = hard_drive_object
+            Factory.CACHED_OBJECTS[id_] = hard_drive_object
 
-        return Factory.CACHED_OBJECTS[cache_key]
+        return Factory.CACHED_OBJECTS[id_]
 
     @Expose()
     def ensure_hdd_valid(self, size, storage_type, nodes, storage_backend, nodes_predefined=False):

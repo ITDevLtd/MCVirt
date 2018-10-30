@@ -199,7 +199,7 @@ class Factory(PyroObject):
             if include_disk:
                 hard_drive_size = 0
                 for disk_object in vm_object.get_hard_drive_objects():
-                    hard_drive_size += disk_object.getSize()
+                    hard_drive_size += disk_object.get_size()
                 vm_row.append(hard_drive_size)
             table.add_row(vm_row)
         table_output = table.draw()
