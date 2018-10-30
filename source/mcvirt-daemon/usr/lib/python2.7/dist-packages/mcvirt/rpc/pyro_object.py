@@ -110,6 +110,7 @@ class PyroObject(object):
 
     def _register_object(self, local_object, debug=True):
         """Register an object with the pyro daemon"""
+        return_value = False
         if self._is_pyro_initialised:
             try:
                 if debug:
@@ -117,9 +118,12 @@ class PyroObject(object):
             except Exception:
                 pass
             self._pyroDaemon.register(local_object)
+            return_value = True
 
         if '_pyro_server_ref' in dir(self):
             local_object._pyro_server_ref = self._pyro_server_ref
+
+        return return_value
 
     def _convert_remote_object(self, remote_object):
         """Return a local instance of a remote object"""

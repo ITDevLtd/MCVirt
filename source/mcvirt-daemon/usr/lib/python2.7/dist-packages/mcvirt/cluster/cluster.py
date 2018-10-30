@@ -694,10 +694,15 @@ class Cluster(PyroObject):
         """Get the MCVirt cluster configuration"""
         return MCVirtConfig().get_config()['cluster']
 
-    def get_node_config(self, node):
+    def get_node_config(self, node, include_local=False):
         """Return the configuration for a node"""
-        self.ensure_node_exists(node)
-        return self.get_cluster_config()['nodes'][node]
+        self.ensure_node_exists(node, include_local=True)
+        if node == get_hostname():
+            return {
+                'ip_address': self.get_cluster_ip_address()
+            }
+        else:
+            return self.get_cluster_config()['nodes'][node]
 
     @Expose()
     def get_nodes(self, return_all=False, include_local=False):

@@ -108,7 +108,7 @@ class Base(PyroObject):
         """Return the ID of the hard drive"""
         return self._id
 
-    @Expose()
+    @property
     def nodes(self):
         """Return nodes that the hard drive is on"""
         return self.get_config_object().get_config()['nodes']
@@ -201,7 +201,8 @@ class Base(PyroObject):
         self.get_config_object().update_config(update_config, reason)
 
     @Expose()
-    def undo__update_config(self, change_dict, reason, _f, original_config=None):
+    def undo__update_config(self, change_dict, reason, original_config=None,
+                            *args, **kwargs):
         """Undo config change"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)

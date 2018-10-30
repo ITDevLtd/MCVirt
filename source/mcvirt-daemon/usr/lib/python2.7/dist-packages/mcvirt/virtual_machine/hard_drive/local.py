@@ -55,8 +55,9 @@ class Local(Base):
     @Expose(locking=True)
     def increase_size(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
+        vm_object = self.get_virtual_machine()
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MODIFY_VM, self.vm_object
+            PERMISSIONS.MODIFY_VM, vm_object
         )
 
         # Convert disk size to bytes
@@ -68,11 +69,11 @@ class Local(Base):
         self._ensure_exists()
 
         # Ensure VM is stopped
-        if not self.vm_object.is_stopped:
+        if vm_object and not vm_object.is_stopped:
             raise VmAlreadyStartedException('VM must be stopped before increasing disk size')
 
         # Ensure that VM has not been cloned and is not a clone
-        if self.vm_object.getCloneParent() or self.vm_object.getCloneChildren():
+        if vm_object and vm_object.getCloneParent() or vm_object.getCloneChildren():
             raise VmIsCloneException('Cannot increase the disk of a cloned VM or a clone.')
 
         # Obtain volume for the disk and resize

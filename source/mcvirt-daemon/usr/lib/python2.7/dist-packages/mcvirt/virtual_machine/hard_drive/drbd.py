@@ -425,7 +425,7 @@ class Drbd(Base):
         # Disconnect and perform a 'down' on the Drbd volume on all nodes
         def disconnect_remote(node):
             """Disconnect DRBD on remote node"""
-            remote_disk = self.get_remote_object(node_object=node, registered=False)
+            remote_disk = self.get_remote_object(node_object=node)
             remote_disk.drbdDisconnect()
         cluster.run_remote_command(callback_method=disconnect_remote,
                                    nodes=remote_nodes)
@@ -433,7 +433,7 @@ class Drbd(Base):
 
         def drbd_down_remote(node):
             """Down DRBD on remote node"""
-            remote_disk = self.get_remote_object(node_object=node, registered=False)
+            remote_disk = self.get_remote_object(node_object=node)
             remote_disk.drbdDown()
         cluster.run_remote_command(callback_method=drbd_down_remote,
                                    nodes=remote_nodes)
@@ -442,7 +442,7 @@ class Drbd(Base):
         # Remove the Drbd configuration from all nodes
         def remote_config_remote(node):
             """Remove DRBD config from remote node"""
-            remote_disk = self.get_remote_object(node_object=node, registered=False)
+            remote_disk = self.get_remote_object(node_object=node)
             remote_disk.removeDrbdConfig()
         cluster.run_remote_command(callback_method=remote_config_remote,
                                    nodes=remote_nodes)
@@ -1244,16 +1244,9 @@ class Drbd(Base):
 
         # Add local node to the Drbd config
         cluster_object = self._get_registered_object('cluster')
-        node_template_conf = \
-            {
-                'name': get_hostname(),
-                'ip_address': cluster_object.get_cluster_ip_address()
-            }
-        drbd_config['nodes'].append(node_template_conf)
-
         # Add remote nodes to Drbd config
         for node in self.nodes:
-            node_config = cluster_object.get_node_config(node)
+            node_config = cluster_object.get_node_config(node, include_local=True)
             node_template_conf = \
                 {
                     'name': node,

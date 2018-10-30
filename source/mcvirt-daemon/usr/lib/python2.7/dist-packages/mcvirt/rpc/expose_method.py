@@ -73,13 +73,23 @@ class Transaction(object):
             # Tear down all transactions
             for transaction in Transaction.transactions:
                 # Delete each of the function objects
-                for func in self.functions:
-                    self.functions.remove(func)
+                for func in transaction.functions:
+                    transaction.functions.remove(func)
                     func.unregister(force=True)
                     del func
 
             # Reset list of transactions
             Transaction.transactions = []
+        else:
+            # Otherwise, remove this transaction
+            Syslogger.logger().debug('End of transaction')
+
+            # Delete each of the function objects
+            for func in self.functions:
+                self.functions.remove(func)
+                func.unregister(force=True)
+                del func
+            Transaction.transactions.remove(self)
 
     @classmethod
     def register_function(cls, function):
@@ -223,9 +233,6 @@ class Function(PyroObject):
         self.remote_method = remote_method
         self.remote_undo_method = remote_undo_method
 
-        # Register instance and functions with pyro
-        self.obj._register_object(self, debug=False)
-
     @property
     def convert_to_remote_object_in_args(self):
         """This object is registered with daemon in init and all required
@@ -258,6 +265,9 @@ class Function(PyroObject):
 
     def run(self):
         """Run the function"""
+        # Register instance and functions with pyro
+        self.obj._register_object(self, debug=False)
+
         # Pause the session timeout
         self._pause_user_session()
 

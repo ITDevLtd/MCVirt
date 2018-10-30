@@ -1592,7 +1592,8 @@ class VirtualMachine(PyroObject):
             Syslogger.logger().warn(
                 'VM not registered with libvirt whilst attempting to unregister: %s' %
                 self.get_name())
-        except Exception:
+        except Exception, exc:
+            Syslogger.logger().error('Libvirt error: %s' % str(exc))
             raise LibvirtException('Failed to delete VM from libvirt')
 
         # De-activate the disk objects
