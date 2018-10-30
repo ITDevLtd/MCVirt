@@ -731,7 +731,7 @@ class VirtualMachineTests(TestBase):
                 'update --disable-delete-protection %s %s' %
                 ('mv-tsettinu-trivcm', self.test_vms['TEST_VM_1']['name']))
 
-        self.assertTrue(test_vm_object.get_delete_protection_state())
+        self.assertFalse(test_vm_object.get_delete_protection_state())
 
     def test_delete_vm_with_delete_protection(self):
         """Attempt to delete a VM with delete protection enabled"""
