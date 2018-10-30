@@ -198,8 +198,9 @@ class HardDriveAttachment(PyroObject):
     @Expose(locking=True, remote_nodes=True)
     def remove_config(self):
         """Remove the config from the virtual machine"""
-        
+
         def update_vm_config(vm_config):
+            """Remove attachment config from VM"""
             del vm_config['hard_drives'][str(self.attachment_id)]
 
         self.virtual_machine.get_config_object().update_config(

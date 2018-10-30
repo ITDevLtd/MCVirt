@@ -337,7 +337,7 @@ class Base(PyroObject):
 
         if vm_object:
             vm_object._setLockState(LockStates.UNLOCKED)
-  
+
         return backup_volume.get_path()
 
     @Expose(locking=True)

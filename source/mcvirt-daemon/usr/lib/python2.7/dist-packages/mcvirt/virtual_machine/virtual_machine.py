@@ -253,8 +253,9 @@ class VirtualMachine(PyroObject):
                     try:
                         self._register(set_node=False)
                         # Return with call from this method
-                        return self._get_libvirt_domain_object(allow_remote=allow_remote,
-                                                            auto_register=False)
+                        return self._get_libvirt_domain_object(
+                            allow_remote=allow_remote,
+                            auto_register=False)
                     except Exception, exc2:
                         Syslogger.logger().error('Error whilst re-registering: %s' % str(exc2))
                 else:

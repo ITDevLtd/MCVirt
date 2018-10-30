@@ -145,7 +145,8 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_2']['name']))
 
         # Obtain VM object
-        vm_object_2 = self.vm_factory.get_virtual_machine_by_name(self.test_vms['TEST_VM_2']['name'])
+        vm_object_2 = self.vm_factory.get_virtual_machine_by_name(
+            self.test_vms['TEST_VM_2']['name'])
         self.rpc.annotate_object(vm_object_2)
         vm_object_2.delete()
 
@@ -616,7 +617,8 @@ class VirtualMachineTests(TestBase):
                                          'Local') +
                                         ' --hdd-driver %s' % disk_driver[0])
 
-            vm_object = self.vm_factory.get_virtual_machine_by_name(self.test_vms['TEST_VM_1']['name'])
+            vm_object = self.vm_factory.get_virtual_machine_by_name(
+                self.test_vms['TEST_VM_1']['name'])
             self.rpc.annotate_object(vm_object)
             domain_xml_string = vm_object.get_libvirt_xml()
             domain_config = ET.fromstring(domain_xml_string)

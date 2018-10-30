@@ -119,7 +119,7 @@ class Factory(PyroObject):
         return self._get_registered_object(
             'hard_drive_attachment_factory').get_object(
                 vm_object, attachment_id).get_hard_drive_object()
- 
+
     @Expose()
     def get_object(self, id_):
         """Returns the storage object for a given disk"""
