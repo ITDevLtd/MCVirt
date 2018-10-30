@@ -363,7 +363,7 @@ class Base(PyroObject):
         #  - This node is one of the available nodes
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
         for virtual_machine in virtual_machine_factory.get_all_virtual_machines():
-            used_storage_backends = [hdd.get_storage_backend()
+            used_storage_backends = [hdd.get_storage_backend
                                      for hdd in virtual_machine.get_hard_drive_objects()]
             if (self in used_storage_backends and virtual_machine.is_static() and
                     node_name in virtual_machine.getAvailableNodes()):
@@ -447,7 +447,7 @@ class Base(PyroObject):
 
                 # If the hard drive object uses the current storage backend,
                 # return True
-                if hard_drive.get_storage_backend() == self:
+                if hard_drive.get_storage_backend == self:
                     return True
 
         # If no matches have been found, return False
