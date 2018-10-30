@@ -33,6 +33,11 @@ class Local(Base):
     MAXIMUM_DEVICES = 4
     CACHE_MODE = 'directsync'
 
+    @classmethod
+    def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
+        """Generate config for hard drive"""
+        return cls.generate_config_base(driver, storage_backend, nodes, base_volume_name)
+
     @property
     def disk_name(self):
         """Return disk name"""
@@ -90,18 +95,22 @@ class Local(Base):
     def clone(self, destination_vm_object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
         self._ensure_exists()
-        new_disk = Local(vm_object=destination_vm_object, driver=self.driver,
-                         disk_id=self.disk_id,
-                         storage_backend=self.storage_backend)
-        self._register_object(new_disk)
+
+        # Create destination hard drive, without creating actual storage
+        hard_drive_factory = self._get_registered_object('hard_drive_factory')
+        new_hdd = hard_drive_factory.create(
+            size=self.get_size(), storage_type=self.get_type(),
+            driver=self.driver, storage_backend=self.storage_backend,
+            nodes=self.nodes, skip_create=True)
 
         # Clone original volume to new volume
-        self._get_data_volume().clone(new_disk._get_data_volume())
+        self._get_data_volume().clone(new_hdd._get_data_volume())
 
-        new_disk.addToVirtualMachine(
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True),
-            get_remote_object_kwargs={'registered': False})
-        return new_disk
+        # Register with dest virtual machine
+        self._get_registered_object('hard_drive_attachment_factory').create(
+            destination_vm_object, new_hdd)
+
+        return new_hdd
 
     def create(self, size):
         """Creates a new disk image, attaches the disk to the VM and records the disk

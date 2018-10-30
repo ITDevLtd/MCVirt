@@ -31,10 +31,21 @@ class Factory(PyroObject):
 
     CACHED_OBJECTS = {}
 
+    def get_remote_object(self,
+                          node=None,  # The name of the remote node to connect to
+                          node_object=None):  # Otherwise, pass a remote node connection
+        """Obtain an instance of the hard drive attachment factory on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
+
+        return node_object.get_connection('hard_drive_attachment_factory')
+
     @Expose()
     def get_object(self, virtual_machine, attachment_id):
         """Obtain hard drive attachment object"""
         virtual_machine = self._convert_remote_object(virtual_machine)
+        attachment_id = str(attachment_id)
 
         cache_id = (virtual_machine.id_, attachment_id)
 
@@ -115,6 +126,8 @@ class Factory(PyroObject):
     @Expose(locking=True, remote_nodes=True)
     def create_config(self, virtual_machine, attachment_id, config):
         """Add hard drive attachmenrt config to VM"""
+        virtual_machine = self._convert_remote_object(virtual_machine)
+        attachment_id = str(attachment_id)
 
         # Ensure that the user has permissions to modify VM
         self._get_registered_object('auth').assert_permission(
@@ -126,7 +139,7 @@ class Factory(PyroObject):
             """Add attachment config to VM config"""
             vm_config['hard_drives'][str(attachment_id)] = config
 
-        virtual_machine.get_vm_config().update_config(
+        virtual_machine.get_config_object().update_config(
             add_attachment_config,
             'Add hard drive attachment for %s' % virtual_machine.get_name())
 
@@ -162,6 +175,27 @@ class HardDriveAttachment(PyroObject):
         self.virtual_machine = virtual_machine
         self.attachment_id = attachment_id
         self.hard_drive_id = None
+
+    def get_remote_object(self,
+                          node=None,  # The name of the remote node to connect to
+                          node_object=None):  # Otherwise, pass a remote node connection
+        """Obtain an instance of the hard drive attachment factory on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
+
+        remote_virtual_machine_factory = node_object.get_connection('virtual_machine_factory')
+        remote_virtual_machine = remote_virtual_machine_factory.get_virtual_machine_by_id(
+            self.virtual_machine.id_)
+        node_object.annotate_object(remote_virtual_machine)
+
+        remote_hdd_attachment = node_object.get_connection(
+            'hard_drive_attachment_factory').get_object(
+                remote_virtual_machine, self.attachment_id)
+
+        node_object.annotate_object(remote_hdd_attachment)
+
+        return remote_hdd_attachment
 
     @property
     def _target_dev(self):

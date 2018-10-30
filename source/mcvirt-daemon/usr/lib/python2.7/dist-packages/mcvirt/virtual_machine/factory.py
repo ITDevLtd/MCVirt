@@ -65,18 +65,18 @@ class Factory(PyroObject):
         Syslogger.logger().info('Starting autostart: %s' % start_type.name)
         for vm in self.get_all_virtual_machines():
             try:
-                    if (vm.isRegisteredLocally() and vm.is_stopped and
-                            vm._get_autostart_state() in
-                            [AutoStartStates.ON_POLL, AutoStartStates.ON_BOOT] and
-                            (start_type == vm._get_autostart_state() or
-                             start_type == AutoStartStates.ON_BOOT)):
-                        try:
-                            Syslogger.logger().info('Autostarting: %s' % vm.get_name())
-                            vm.start()
-                            Syslogger.logger().info('Autostart successful: %s' % vm.get_name())
-                        except Exception, e:
-                            Syslogger.logger().error('Failed to autostart: %s: %s' %
-                                                     (vm.get_name(), str(e)))
+                if (vm.isRegisteredLocally() and vm.is_stopped and
+                        vm._get_autostart_state() in
+                        [AutoStartStates.ON_POLL, AutoStartStates.ON_BOOT] and
+                        (start_type == vm._get_autostart_state() or
+                         start_type == AutoStartStates.ON_BOOT)):
+                    try:
+                        Syslogger.logger().info('Autostarting: %s' % vm.get_name())
+                        vm.start()
+                        Syslogger.logger().info('Autostart successful: %s' % vm.get_name())
+                    except Exception, exc2:
+                        Syslogger.logger().error('Failed to autostart: %s: %s' %
+                                                 (vm.get_name(), str(exc2)))
             except Exception, exc:
                 Syslogger.logger().error('Failed to get VM state: %s: %s' % (
                     vm.get_name(), str(exc)))

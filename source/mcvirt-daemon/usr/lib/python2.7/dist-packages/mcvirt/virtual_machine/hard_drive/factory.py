@@ -133,6 +133,16 @@ class Factory(PyroObject):
 
         return Factory.CACHED_OBJECTS[id_]
 
+    def get_remote_object(self,
+                          node=None,  # The name of the remote node to connect to
+                          node_object=None):  # Otherwise, pass a remote node connection
+        """Obtain an instance of the hard drive factory on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
+
+        return node_object.get_connection('hard_drive_factory')
+
     @Expose()
     def ensure_hdd_valid(self, size, storage_type, nodes, storage_backend, nodes_predefined=False):
         """Ensures the HDD can be created on all nodes, and returns the storage type to be used."""
@@ -253,9 +263,9 @@ class Factory(PyroObject):
 
         return nodes, storage_type, storage_backend
 
-    @Expose(locking=True)
+    @Expose(locking=True, support_callback=True)
     def create(self, size, storage_type, driver, storage_backend=None,
-               nodes=None, vm_object=None):
+               nodes=None, skip_create=False, vm_object=None, _f=None):
         """Performs the creation of a hard drive, using a given storage type"""
         if vm_object is not None:
             vm_object = self._convert_remote_object(vm_object)
@@ -293,7 +303,8 @@ class Factory(PyroObject):
             nodes_predefined=nodes_predefined)
 
         # Genrate ID for hard drive
-        id_ = self.getClass(storage_type).generate_id()
+        id_ = self.getClass(storage_type).generate_id('whatshouldthisbe')
+        _f.add_undo_argument(id_=id_)
 
         # Generate config for hard drive
         config = self.getClass(storage_type).generate_config(
@@ -310,7 +321,9 @@ class Factory(PyroObject):
 
         # Obtain object, create actual volume
         hdd_object = self.get_object(id_)
-        hdd_object.create(size=size)
+
+        if not skip_create:
+            hdd_object.create(size=size)
 
         # Attach to VM
         if vm_object:
@@ -318,6 +331,13 @@ class Factory(PyroObject):
                 vm_object, hdd_object)
 
         return hdd_object
+
+    def undo__create(self, size, storage_type, driver, storage_backend=None,
+                     nodes=None, skip_create=False, vm_object=None, id_=None,
+                     _p=None):
+        """Undo create of the drive"""
+        hard_drive_object = self.get_object(id_)
+        hard_drive_object.delete()
 
     @Expose(locking=True, remote_nodes=True)
     def create_config(self, id_, config):

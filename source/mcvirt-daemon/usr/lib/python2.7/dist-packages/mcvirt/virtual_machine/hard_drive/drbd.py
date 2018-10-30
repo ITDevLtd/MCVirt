@@ -236,7 +236,7 @@ class Drbd(Base):
     @classmethod
     def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
         """Generate config for hard drive"""
-        config = Base.generate_config(driver, storage_backend, nodes, base_volume_name)
+        config = cls.generate_config_base(driver, storage_backend, nodes, base_volume_name)
         config.update({
             'drbd_minor': None,
             'drbd_port': None,
@@ -274,11 +274,6 @@ class Drbd(Base):
     def get_drbd_minor(self):
         """Obtain the DRBD minor ID"""
         return self.drbd_minor
-
-    @Expose()
-    def nodes(self):
-        """Return nodes that DRBD volume is using"""
-        return self.get_config_object().get_config()['nodes']
 
     @Expose()
     def get_sync_state(self):
@@ -348,7 +343,7 @@ class Drbd(Base):
         """
         # Ensure user has privileges to create a Drbd volume
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+            PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
 
         # Ensure Drbd is enabled on the host
         if not self._get_registered_object('node_drbd').is_enabled():
@@ -483,7 +478,7 @@ class Drbd(Base):
             raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
                                               self.get_raw_volume().name)
 
-        meta_sizes = self.get_meta_volume().get_size(nodes=self.vm_object.getAvailableNodes(),
+        meta_sizes = self.get_meta_volume().get_size(nodes=self.nodes,
                                                      return_dict=True)
         if meta_sizes.values()[0] != meta_sizes.values()[1]:
             raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
@@ -493,7 +488,7 @@ class Drbd(Base):
     def increase_size(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MODIFY_VM, self.vm_object
+            PERMISSIONS.MODIFY_VM, self.get_virtual_machine()
         )
 
         # Convert disk size to bytes
@@ -511,7 +506,7 @@ class Drbd(Base):
         # for the increased size (excluding meta data)
         # @TODO Also ensure there's enough free space for meta data
         free_space = self.storage_backend.get_free_space(
-            nodes=self.vm_object.getAvailableNodes(), return_dict=True)
+            nodes=self.nodes, return_dict=True)
 
         for node in free_space:
             if free_space[node] < increase_size:
@@ -531,7 +526,9 @@ class Drbd(Base):
         self._drbdDisconnect()
 
         # Obtain list of nodes
-        nodes = self.vm_object.getAvailableNodes()
+        nodes = self.nodes
+        remote_nodes = list(nodes)
+        remote_nodes.remove(get_hostname())
 
         # Increase size of RAW volume
         self.get_raw_volume().resize(increase_size,
@@ -555,7 +552,7 @@ class Drbd(Base):
             remote_disk = self.get_remote_object(node_object=node)
             remote_disk.drbd_resize()
         cluster.run_remote_command(callback_method=resize_drbd_remote,
-                                   nodes=self.vm_object._get_remote_nodes())
+                                   nodes=remote_nodes)
 
         # Ensure taht volumes are the same size after resize
         self._ensure_consistent_volumes_size()
@@ -681,6 +678,8 @@ class Drbd(Base):
 
         # Configure remote node(s)
         if self._is_cluster_master:
+            remote_nodes = self.nodes
+            remote_nodes.remove(get_hostname())
             cluster_instance = self._get_registered_object('cluster')
 
             def set_dual_primary_remote(node):
@@ -688,7 +687,7 @@ class Drbd(Base):
                 remote_disk = self.get_remote_object(node_object=node)
                 remote_disk.setTwoPrimariesConfig(allow=allow)
             cluster_instance.run_remote_command(callback_method=set_dual_primary_remote,
-                                                nodes=self.vm_object._get_remote_nodes())
+                                                nodes=remote_nodes)
 
     @Expose(locking=True)
     def drbdSetPrimary(self, *args, **kwargs):
@@ -797,7 +796,7 @@ class Drbd(Base):
     def drbdGetConnectionState(self):
         """Provide an exposed method for _drbdGetConnectionState"""
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+            PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
         connection_state = self._drbdGetConnectionState()
         return connection_state.name, connection_state.value
 
@@ -812,7 +811,7 @@ class Drbd(Base):
     def drbdGetDiskState(self):
         """Provide an exposed method for drbdGetDiskState"""
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+            PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
         local_state, remote_state = self._drbdGetDiskState()
         return (local_state.name, local_state.value), (remote_state.name, remote_state.value)
 
@@ -828,7 +827,7 @@ class Drbd(Base):
     def drbdGetRole(self):
         """Provide an exposed method for drbdGetRole"""
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+            PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
         local_state, remote_state = self._drbdGetRole()
         return (local_state.name, local_state.value), (remote_state.name, remote_state.value)
 
@@ -933,12 +932,12 @@ class Drbd(Base):
     def verify(self):
         """Performs a verification of a Drbd hard drive"""
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_DRBD, self.vm_object
+            PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine()
         )
 
-        if get_hostname() not in self.vm_object.getAvailableNodes():
+        if get_hostname() not in self.nodes:
             remote_object = self.get_remote_object(
-                node=(self.vm_object.getNode() or self.vm_object.getAvailableNodes()[0]))
+                node=self.nodes[0])
             return remote_object.verify()
 
         # Check Drbd state of disk
@@ -983,19 +982,19 @@ class Drbd(Base):
         """Perform a resync of a Drbd hard drive"""
         # Ensure user has privileges to create a Drbd volume
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_DRBD, self.vm_object)
+            PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
 
         # Obtain remote object is local node is not either of the
         # available nodes for the storage
-        if get_hostname() not in self.vm_object.getAvailableNodes():
+        if get_hostname() not in self.nodes:
             remote_object = self.get_remote_object(
-                node=(self.vm_object.getNode() or self.vm_object.getAvailableNodes()[0]))
+                node=self.nodes[0])
             return remote_object.resync(source_node=source_node, auto_determine=auto_determine)
 
         # If a source node has been defined, ensure it exists and auto_determine has not also
         # been passed
         if source_node:
-            if source_node not in self.vm_object.getAvailableNodes():
+            if source_node not in self.nodes:
                 raise InvalidNodesException('Invalid node name')
             if auto_determine:
                 raise TooManyParametersException(
@@ -1006,8 +1005,8 @@ class Drbd(Base):
                 raise ArgumentParserException(
                     'Either source_node or auto_determine must be specified'
                 )
-            elif self.vm_object.getNode():
-                source_node = self.vm_object.getNode()
+            elif self.get_virtual_machine().getNode():
+                source_node = self.get_virtual_machine().getNode()
             else:
                 raise VmNotRegistered('Cannot auto-determine node - VM is not registered')
 

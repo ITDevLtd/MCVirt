@@ -89,8 +89,12 @@ class Base(PyroObject):
         return 'hd'
 
     @classmethod
-    def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
+    def generate_config_base(cls, driver, storage_backend, nodes, base_volume_name):
         """Generate config for hard drive"""
+        # Needs to be named 'base', as method overrides cannot
+        # call this function without the cls changing to Base.
+        # Whereas they can call cls.generate_config_base and cls retains
+        # the class of the child class
         return {
             'nodes': nodes,
             'driver': driver if driver else cls.DEFAULT_DRIVER,
@@ -103,6 +107,11 @@ class Base(PyroObject):
     def id_(self):
         """Return the ID of the hard drive"""
         return self._id
+
+    @Expose()
+    def nodes(self):
+        """Return nodes that the hard drive is on"""
+        return self.get_config_object().get_config()['nodes']
 
     @property
     def storage_backend(self):
@@ -423,15 +432,6 @@ class Base(PyroObject):
     def _removeStorage(self, local_only=False, remove_raw=True):
         """Delete te underlying storage for the disk"""
         raise NotImplementedError
-
-    def getDiskConfig(self):
-        """Return the disk configuration for the hard drive"""
-        # @TODO - NEEDS REWORK NOW
-        vm_config = self.vm_object.get_config_object().get_config()
-        if str(self.disk_id) in vm_config['hard_drives']:
-            return vm_config['hard_drives'][str(self.disk_id)]
-        else:
-            return {}
 
     def get_libvirt_driver(self):
         """Return the libvirt name of the driver for the disk"""
