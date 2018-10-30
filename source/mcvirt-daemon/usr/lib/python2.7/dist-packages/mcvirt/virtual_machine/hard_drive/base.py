@@ -92,9 +92,11 @@ class Base(PyroObject):
     def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
         """Generate config for hard drive"""
         return {
+            'nodes': nodes,
             'driver': driver if driver else cls.DEFAULT_DRIVER,
             'storage_backend': storage_backend.id_,
-            'base_volume_name': base_volume_name
+            'base_volume_name': base_volume_name,
+            'storage_type': cls.__name__
         }
 
     @property
@@ -222,7 +224,7 @@ class Base(PyroObject):
     @Expose()
     def get_type(self):
         """Return the type of storage for the hard drive"""
-        return self.get_config_object().get_config()['type']
+        return self.get_config_object().get_config()['storage_type']
 
     def ensure_compatible(self, compare_hdd):
         """Ensure that two hard drive objects are compatible with

@@ -28,7 +28,8 @@ from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                ClusterNotInitialisedException, NodeDoesNotExistException,
                                VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException,
-                               MCVirtTypeError, VirtualMachineDoesNotExistException)
+                               MCVirtTypeError, VirtualMachineDoesNotExistException,
+                               VirtualMachineNotRegisteredWithLibvirt)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose, Transaction
 from mcvirt.utils import get_hostname
@@ -190,7 +191,15 @@ class Factory(PyroObject):
 
         # Iterate over VMs and add to list
         for vm_object in sorted(self.get_all_virtual_machines(), key=lambda vm: vm.name):
-            vm_row = [vm_object.get_name(), vm_object._getPowerState().name,
+            # Attempt to obtain power state, allowing
+            # for VM not being registered in libvirt
+            power_state = 'Unavailable (not registered)'
+            try:
+                power_state = vm_object._getPowerState().name
+            except VirtualMachineNotRegisteredWithLibvirt:
+                pass
+
+            vm_row = [vm_object.get_name(), power_state,
                       vm_object.getNode() or 'Unregistered']
             if include_ram:
                 vm_row.append(str(int(vm_object.getRAM()) / 1024) + 'MB')

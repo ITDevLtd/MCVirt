@@ -203,6 +203,11 @@ class VirtualMachine(PyroObject):
         """Return the ID of the VM"""
         return self._id
 
+    @property
+    def id_(self):
+        """Return ID"""
+        return self._id
+
     def is_static(self):
         """Determine if node is statically defined to given nodes.
         This applies to nodes that use DRBD storage or those that use
@@ -246,7 +251,7 @@ class VirtualMachine(PyroObject):
                 # If the current session has a lock, then re-register with libvirt
                 if self._has_lock and auto_register and self.isRegisteredLocally():
                     try:
-                        self._register(set_node=False, ignore_registered_locally=True)
+                        self._register(set_node=False)
                         # Return with call from this method
                         return self._getLibvirtDomainObject(allow_remote=allow_remote,
                                                             auto_register=False)
@@ -1456,19 +1461,15 @@ class VirtualMachine(PyroObject):
         )
         self._register()
 
-    def _register(self, set_node=True, ignore_registered_locally=False):
+    def _register(self, set_node=True):
         """Register a VM with LibVirt"""
         # Import domain XML template
         current_node = self.getNode()
 
         # Ensure that the current node is not set OR
-        # it is currently registered on the local node,
-        # has been explicitly allowed and node in config
-        # is not being set
-        if (current_node is not None and not
-                (ignore_registered_locally and
-                 current_node == get_hostname() and
-                 not set_node)):
+        # it is currently registered on the local node
+        if (current_node is not None and
+                current_node != get_hostname()):
             raise VmAlreadyRegisteredException(
                 'VM \'%s\' already registered on node: %s' %
                 (self.get_name(), current_node))
@@ -1507,7 +1508,7 @@ class VirtualMachine(PyroObject):
 
         # Add hard drive configurations
         hard_drive_attachment_factory = self._get_registered_object('hard_drive_attachment_factory')
-        for hard_drive_object in hard_drive_attachment_factory.get_objects_by_virtual_machine():
+        for hard_drive_object in hard_drive_attachment_factory.get_objects_by_virtual_machine(self):
             drive_xml = hard_drive_object.generate_libvirt_xml()
             device_xml.append(drive_xml)
 

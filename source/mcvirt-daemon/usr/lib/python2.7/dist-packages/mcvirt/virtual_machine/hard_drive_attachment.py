@@ -41,7 +41,7 @@ class Factory(PyroObject):
         # Determine if VM object has been cached
         if cache_id not in Factory.CACHED_OBJECTS:
             # Ensure that the attachment exists
-            if attachment_id not in virtual_machine.get_config_object.get_config()['hard_drives']:
+            if attachment_id not in virtual_machine.get_config_object().get_config()['hard_drives']:
                 raise HardDriveAttachmentDoesNotExistError(
                     'Hard drive attachment does not exist')
 

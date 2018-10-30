@@ -59,6 +59,8 @@ def migrate(config_obj, config):
                 hard_drive_dict[hdd_id]['sync_state'] = vm_hdd_config['sync_state']
                 del vm_hdd_config['sync_state']
 
+            hard_drive_dict[hdd_id]['nodes'] = vm_config['available_nodes']
+
             vm_hdd_config['hard_drive_id'] = hdd_id
 
             hard_drive_dict[hdd_id]['storage_type'] = vm_config['storage_type']
