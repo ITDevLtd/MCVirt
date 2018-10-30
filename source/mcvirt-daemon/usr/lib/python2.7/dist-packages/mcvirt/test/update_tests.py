@@ -106,7 +106,7 @@ class UpdateTests(TestBase):
 
         # Obtain VM XML
         vm_factory = self.RPC_DAEMON.DAEMON.registered_factories['virtual_machine_factory']
-        vm = vm_factory.getVirtualMachineByName('mcvirt-unittest-vm')
+        vm = vm_factory.get_virtual_machine_by_name('mcvirt-unittest-vm')
         xml = vm.getLibvirtConfig()
 
         # Check that <cpu> section is not in XML by default

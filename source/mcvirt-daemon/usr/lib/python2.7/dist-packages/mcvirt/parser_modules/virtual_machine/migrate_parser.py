@@ -64,7 +64,7 @@ class MigrateParser(object):
     def handle_migrate(self, p_, args):
         """Handle migration"""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-        vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+        vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
         if args.online_migration:
             vm_object.onlineMigrate(args.destination_node)

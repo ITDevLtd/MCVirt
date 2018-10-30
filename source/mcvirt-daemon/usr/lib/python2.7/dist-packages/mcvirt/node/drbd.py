@@ -176,7 +176,7 @@ class Drbd(PyroObject):
         vm_factory = self._get_registered_object('virtual_machine_factory')
         for vm_object in vm_factory.getAllVirtualMachines():
             if get_hostname() in vm_object.getAvailableNodes() or include_remote:
-                all_hard_drive_objects = vm_object.getHardDriveObjects()
+                all_hard_drive_objects = vm_object.get_hard_drive_objects()
 
                 for hard_drive_object in all_hard_drive_objects:
                     if hard_drive_object.get_type() is 'Drbd':

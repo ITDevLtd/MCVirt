@@ -47,7 +47,7 @@ class DrbdTests(TestBase):
         time.sleep(10)
 
         # Wait until the Drbd resource is synced
-        for disk_object in test_vm_object.getHardDriveObjects():
+        for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             wait_timeout = 6
             while disk_object.drbdGetConnectionState()[1] != DrbdConnectionState.CONNECTED.value:
@@ -62,12 +62,12 @@ class DrbdTests(TestBase):
         self.parser.parse_arguments('verify %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure the disks are in-sync
-        for disk_object in test_vm_object.getHardDriveObjects():
+        for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc_annotate_object(disk_object)
             self.assertTrue(disk_object._isInSync())
 
         # Obtain the Drbd raw volume for the VM and write random data to it
-        for disk_object in test_vm_object.getHardDriveObjects():
+        for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             drbd_raw_suffix = disk_object.DRBD_RAW_SUFFIX
             raw_logical_volume_name = disk_object._getLogicalVolumeName(drbd_raw_suffix)

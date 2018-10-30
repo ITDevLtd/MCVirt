@@ -42,6 +42,6 @@ class DuplicateParser(object):
     def handle_duplicate(self, p_, args):
         """Handle VM duplication"""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-        vm_object = vm_factory.getVirtualMachineByName(args.template)
+        vm_object = vm_factory.get_virtual_machine_by_name(args.template)
         p_.rpc.annotate_object(vm_object)
         vm_object.duplicate(args.vm_name, retain_mac=args.retain_mac)

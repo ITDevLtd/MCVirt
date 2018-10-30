@@ -16,31 +16,31 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from mcvirt.config.base_subconfig import BaseSubconfig
-import mcvirt.config.migrations.storage as migrations
+import mcvirt.config.migrations.hard_drive as migrations
 
 
-class Storage(BaseSubconfig):
+class HardDrive(BaseSubconfig):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
     SUBTREE_ARRAY = ['storage_backends']
 
-    def __init__(self, storage_obj):
+    def __init__(self, hard_drive_obj):
         """Sets member variables"""
-        self.storage_obj = storage_obj
-        super(Storage, self).__init__()
+        self.hard_drive_obj = hard_drive_obj
+        super(HardDrive, self).__init__()
 
     def _get_config_key(self):
         """Get the key for the config"""
-        return self.storage_obj.id_
+        return self.hard_drive_obj.id_
 
     @staticmethod
-    def create(storage_backend_id, config):
+    def create(hard_drive_id, config):
         """Add a storage backend config"""
 
         # Write the configuration to disk
-        Storage._add_config(
-            storage_backend_id, config,
-            'Add storage backend config: %s' % storage_backend_id)
+        HardDrive._add_config(
+            hard_drive_id, config,
+            'Add storage backend config: %s' % hard_drive_id)
 
     def _upgrade(self, config):
         """Perform an upgrade of the configuration file"""

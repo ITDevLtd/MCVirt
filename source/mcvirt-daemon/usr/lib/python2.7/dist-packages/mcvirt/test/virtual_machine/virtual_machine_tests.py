@@ -120,7 +120,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Obtain VM object
-        vm_object = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_1']['name'])
+        vm_object = self.vm_factory.get_virtual_machine_by_name(self.test_vms['TEST_VM_1']['name'])
         self.rpc.annotate_object(vm_object)
 
         # Check each of the attributes for VM
@@ -145,7 +145,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_2']['name']))
 
         # Obtain VM object
-        vm_object_2 = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_2']['name'])
+        vm_object_2 = self.vm_factory.get_virtual_machine_by_name(self.test_vms['TEST_VM_2']['name'])
         self.rpc.annotate_object(vm_object_2)
         vm_object_2.delete()
 
@@ -195,7 +195,7 @@ class VirtualMachineTests(TestBase):
         test_data = os.urandom(8)
 
         # Obtain the disk path for the VM and write random data to it
-        for disk_object in test_vm_parent.getHardDriveObjects():
+        for disk_object in test_vm_parent.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             fh = open(disk_object.getDiskPath(), 'w')
             fh.write(test_data)
@@ -207,13 +207,13 @@ class VirtualMachineTests(TestBase):
             (self.test_vms['TEST_VM_1']['name'],
              self.test_vms['TEST_VM_2']['name']))
 
-        test_vm_clone = self.vm_factory.getVirtualMachineByName(
+        test_vm_clone = self.vm_factory.get_virtual_machine_by_name(
             self.test_vms['TEST_VM_2']['name']
         )
         self.rpc.annotate_object(test_vm_clone)
 
         # Check data is present on target VM
-        for disk_object in test_vm_clone.getHardDriveObjects():
+        for disk_object in test_vm_clone.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             fh = open(disk_object.getDiskPath(), 'r')
             self.assertEqual(fh.read(8), test_data)
@@ -273,7 +273,7 @@ class VirtualMachineTests(TestBase):
         test_data = os.urandom(8)
 
         # Obtain the disk path for the VM and write random data to it
-        for disk_object in test_vm_parent.getHardDriveObjects():
+        for disk_object in test_vm_parent.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             fh = open(disk_object.getDiskPath(), 'w')
             fh.write(test_data)
@@ -284,13 +284,13 @@ class VirtualMachineTests(TestBase):
             'duplicate --template %s %s' %
             (self.test_vms['TEST_VM_1']['name'],
              self.test_vms['TEST_VM_2']['name']))
-        test_vm_duplicate = self.vm_factory.getVirtualMachineByName(
+        test_vm_duplicate = self.vm_factory.get_virtual_machine_by_name(
             self.test_vms['TEST_VM_2']['name']
         )
         self.rpc.annotate_object(test_vm_duplicate)
 
         # Check data is present on target VM
-        for disk_object in test_vm_duplicate.getHardDriveObjects():
+        for disk_object in test_vm_duplicate.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             fh = open(disk_object.getDiskPath(), 'r')
             self.assertEqual(fh.read(8), test_data)
@@ -495,7 +495,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(test_vm_object.isRegisteredLocally())
 
         # Monitor the hard drives until they are synced
-        for disk_object in test_vm_object.getHardDriveObjects():
+        for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             while (
                 disk_object.drbdGetDiskState() != (
@@ -616,7 +616,7 @@ class VirtualMachineTests(TestBase):
                                          'Local') +
                                         ' --hdd-driver %s' % disk_driver[0])
 
-            vm_object = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_1']['name'])
+            vm_object = self.vm_factory.get_virtual_machine_by_name(self.test_vms['TEST_VM_1']['name'])
             self.rpc.annotate_object(vm_object)
             domain_xml_string = vm_object.get_libvirt_xml()
             domain_config = ET.fromstring(domain_xml_string)

@@ -144,7 +144,7 @@ class NetworkAdapter(PyroObject):
             device_xml.remove(interface_xml)
             device_xml.append(self._generateLibvirtXml())
 
-        self.vm_object._editConfig(update_libvirt)
+        self.vm_object.update_libvirt_config(update_libvirt)
 
     @Expose(locking=True)
     def delete(self):
@@ -170,7 +170,7 @@ class NetworkAdapter(PyroObject):
 
             device_xml.remove(interface_xml)
 
-        self.vm_object._editConfig(update_libvirt)
+        self.vm_object.update_libvirt_config(update_libvirt)
 
         # Update the VM configuration
         def update_vm_config(config):

@@ -169,11 +169,11 @@ class TestBase(unittest.TestCase):
         virtual_machine_factory = cls.rpc.get_connection('virtual_machine_factory')
 
         if virtual_machine_factory.check_exists_by_name(vm_name):
-            vm_object = virtual_machine_factory.getVirtualMachineByName(vm_name)
+            vm_object = virtual_machine_factory.get_virtual_machine_by_name(vm_name)
             cls.rpc.annotate_object(vm_object)
 
             # Reset sync state for any Drbd disks
-            for disk_object in vm_object.getHardDriveObjects():
+            for disk_object in vm_object.get_hard_drive_objects():
                 cls.rpc.annotate_object(disk_object)
                 if disk_object.get_type() == 'Drbd':
                     disk_object.setSyncState(True)

@@ -164,7 +164,7 @@ class GroupParser(object):
 
         if args.virtual_machine:
             virtual_machine_factory = p_.rpc.get_connection('virtual_machine_factory')
-            virtual_machine = virtual_machine_factory.getVirtualMachineByName(args.virtual_machine)
+            virtual_machine = virtual_machine_factory.get_virtual_machine_by_name(args.virtual_machine)
             p_.rpc.annotate_object(virtual_machine)
         else:
             virtual_machine = None
@@ -199,7 +199,7 @@ class GroupParser(object):
 
         if args.virtual_machine:
             virtual_machine_factory = p_.rpc.get_connection('virtual_machine_factory')
-            virtual_machine = virtual_machine_factory.getVirtualMachineByName(args.virtual_machine)
+            virtual_machine = virtual_machine_factory.get_virtual_machine_by_name(args.virtual_machine)
             p_.rpc.annotate_object(virtual_machine)
         else:
             virtual_machine = None

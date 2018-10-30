@@ -92,7 +92,7 @@ class Factory(PyroObject):
         return node_object.get_connection('virtual_machine_factory')
 
     @Expose()
-    def getVirtualMachineByName(self, vm_name):
+    def get_virtual_machine_by_name(self, vm_name):
         """Obtain a VM object, based on VM name"""
         ArgumentValidator.validate_hostname(vm_name)
         name_id_dict = {
@@ -112,14 +112,21 @@ class Factory(PyroObject):
         # Validate VM ID
         ArgumentValidator.validate_id(vm_id, VirtualMachine)
 
+        # Check that the domain exists
+        if not self.check_exists(vm_id):
+            raise VirtualMachineDoesNotExistException(
+                'Error: Virtual Machine does not exist: %s' % vm_id
+            )
+
         # Determine if VM object has been cached
         if vm_id not in Factory.CACHED_OBJECTS:
             # If not, create object, register with pyro
             # and store in cached object dict
-            vm_object = VirtualMachine(self, vm_id)
+            vm_object = VirtualMachine(vm_id)
             self._register_object(vm_object)
             vm_object.initialise()
             Factory.CACHED_OBJECTS[vm_id] = vm_object
+
         # Return the cached object
         return Factory.CACHED_OBJECTS[vm_id]
 
@@ -191,7 +198,7 @@ class Factory(PyroObject):
                 vm_row.append(vm_object.getCPU())
             if include_disk:
                 hard_drive_size = 0
-                for disk_object in vm_object.getHardDriveObjects():
+                for disk_object in vm_object.get_hard_drive_objects():
                     hard_drive_size += disk_object.getSize()
                 vm_row.append(hard_drive_size)
             table.add_row(vm_row)
@@ -392,7 +399,7 @@ class Factory(PyroObject):
         hard_drive_factory = self._get_registered_object('hard_drive_factory')
         assert storage_type in [None] + [
             storage_type_itx.__name__ for storage_type_itx in self._get_registered_object(
-                'hard_drive_factory').getStorageTypes()
+                'hard_drive_factory').get_all_storage_types()
         ]
 
         # Obtain the hard drive driver enum from the name
@@ -484,7 +491,7 @@ class Factory(PyroObject):
                                     graphics_driver)
 
         # Obtain an object for the new VM, to use to create disks/network interfaces
-        return self.getVirtualMachineByName(name)
+        return self.get_virtual_machine_by_name(name)
 
     def undo__create_config(self, id_, name, *args, **kwargs):
         """Remove any directories or configs that were created for VM"""

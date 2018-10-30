@@ -464,7 +464,7 @@ class Cluster(PyroObject):
             remote_object.annotate_object(remote_virtual_machine_object)
 
             # Add each of the disks to the VM
-            for hard_disk in vm_object.getHardDriveObjects():
+            for hard_disk in vm_object.get_hard_drive_objects():
                 remote_hard_drive_object = hard_disk.get_remote_object(node_object=remote_object,
                                                                        registered=False)
                 remote_hard_drive_object.addToVirtualMachine()
@@ -597,7 +597,7 @@ class Cluster(PyroObject):
             """Remove VM from remote node"""
             if remote_connection is not None:
                 remote_vm_factory = remote_connection.get_connection('virtual_machine_factory')
-                remote_vm = remote_vm_factory.getVirtualMachineByName(vm_name)
+                remote_vm = remote_vm_factory.get_virtual_machine_by_name(vm_name)
                 remote_connection.annotate_object(remote_vm)
                 remote_vm.delete(local_only=True)
 

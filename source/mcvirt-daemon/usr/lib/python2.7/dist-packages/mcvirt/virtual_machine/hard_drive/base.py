@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import xml.etree.ElementTree as ET
 from enum import Enum
 
 from mcvirt.exceptions import (HardDriveDoesNotExistException,
@@ -31,6 +30,7 @@ from mcvirt.exceptions import (HardDriveDoesNotExistException,
                                VolumeDoesNotExistError,
                                VolumeAlreadyExistsError)
 from mcvirt.config.core import Core as MCVirtConfig
+from mcvirt.config.hard_drive import HardDrive as HardDriveConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import ReachedMaximumStorageDevicesException
@@ -68,23 +68,17 @@ class Base(PyroObject):
     # Cache mode - must be overidden
     CACHE_MODE = None
 
-    def __init__(self, vm_object, storage_backend=None, disk_id=None, driver=None):
+    def __init__(self, id_):
         """Set member variables"""
-        self._disk_id = disk_id
-        self._driver = driver
-        self._storage_backend = storage_backend
+        self._id = id_
 
-        self.vm_object = vm_object
-
-        # If the disk is configured on a VM, obtain
-        # the details from the VM configuration
-        for key, value in self.getDiskConfig().iteritems():
-            setattr(self, key, value)
+    @staticmethod
+    def generate_confing()
 
     @property
-    def config_properties(self):
-        """Return the disk object config items"""
-        return ['disk_id', 'driver', 'storage_backend']
+    def id_(self):
+        """Return the ID of the hard drive"""
+        return self._id
 
     @property
     def storage_backend(self):
@@ -97,6 +91,7 @@ class Base(PyroObject):
         is saved as a string, which returns the name of
         the storage backend.
         """
+        # @TODO - NEEDS REWORK NOW
         return self._storage_backend
 
     @property
@@ -109,30 +104,6 @@ class Base(PyroObject):
         """Return the libvirt source parameter fro storage backend"""
         return self.get_storage_backend().libvirt_source_parameter
 
-    def __setattr__(self, name, value):
-        """Override setattr to ensure that the value of
-        a disk config item is written to, rather than the
-        property method.
-        """
-        if name in self.config_properties:
-            name = '_%s' % name
-        return super(Base, self).__setattr__(name, value)
-
-    @property
-    def disk_id(self):
-        """Return the disk ID of the current disk, generating a new one
-        if there is not already one present
-        """
-        if self._disk_id is None:
-            self._disk_id = self._get_available_id()
-        return self._disk_id
-
-    @property
-    def _target_dev(self):
-        """Determine the target dev, based on the disk's ID"""
-        # Use ascii numbers to map 1 => a, 2 => b, etc...
-        return 'sd' + chr(96 + int(self.disk_id))
-
     @property
     def driver(self):
         """Return the disk drive driver name"""
@@ -143,66 +114,24 @@ class Base(PyroObject):
     @Expose()
     def get_vm_object(self):
         """Obtain the VM object for the resource"""
+        # @TODO - NEEDS REWORK NOW
         vm_name = self.vm_object.get_name()
         return self._get_registered_object(
-            'virtual_machine_factory').getVirtualMachineByName(vm_name)
+            'virtual_machine_factory').get_virtual_machine_by_name(vm_name)
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
-                          node_object=None,   # Otherwise, pass a remote node connection
-                          registered=True):  # If the hard drive can be setup
+                          node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the current hard drive object on a remote node"""
         cluster = self._get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
-        remote_vm_factory = node_object.get_connection('virtual_machine_factory')
-        remote_vm = remote_vm_factory.getVirtualMachineByName(self.vm_object.get_name())
-
         remote_hard_drive_factory = node_object.get_connection('hard_drive_factory')
 
-        kwargs = {
-            'vm_object': remote_vm,
-            'disk_id': self.disk_id
-        }
-        if not registered:
-            kwargs['storage_type'] = self.get_type()
-
-            for config in self.config_properties:
-                kwargs[config] = getattr(self, config)
-
-            remote_storage_factory = node_object.get_connection('storage_factory')
-            remote_storage_backend = remote_storage_factory.get_object(
-                self.get_storage_backend().id_
-            )
-            kwargs['storage_backend'] = remote_storage_backend
-
-        hard_drive_object = remote_hard_drive_factory.getObject(**kwargs)
+        hard_drive_object = remote_hard_drive_factory.getObject(self.id_)
         node_object.annotate_object(hard_drive_object)
         return hard_drive_object
-
-    def _get_available_id(self):
-        """Obtain the next available ID for the VM hard drive, by scanning the IDs
-        of disks attached to the VM
-        """
-        found_available_id = False
-        disk_id = 0
-        vm_config = self.vm_object.get_config_object().get_config()
-        disks = vm_config['hard_disks']
-
-        # Increment disk ID until a free ID is found
-        while not found_available_id:
-            disk_id += 1
-            if not str(disk_id) in disks:
-                found_available_id = True
-
-        # Check that the id is less than 4, as a VM can only have a maximum of 4 disks
-        if int(disk_id) > self.MAXIMUM_DEVICES:
-            raise ReachedMaximumStorageDevicesException(
-                'A maximum of %s hard drives can be mapped to a VM' %
-                self.MAXIMUM_DEVICES)
-
-        return disk_id
 
     def _ensure_exists(self):
         """Ensure the disk exists on the local node"""
@@ -211,6 +140,10 @@ class Base(PyroObject):
             raise HardDriveDoesNotExistException(
                 'Disk %s for %s does not exist' %
                 (self.disk_id, self.vm_object.get_name()))
+
+    def get_config_object(self):
+        """Obtain the config object for the hard drive"""
+        return HardDriveConfig(self.id_)
 
     def is_static(self):
         """Determine if storage is static and VM cannot be
@@ -230,12 +163,33 @@ class Base(PyroObject):
     @Expose()
     def get_type(self):
         """Return the type of storage for the hard drive"""
-        return self.__class__.__name__
+        return self.get_config_object().get_config()['type']
+
+    def ensure_compatible(self, compare_hdd):
+        """Ensure that two hard drive objects are compatible with
+        one another, allowing them to be attached to the same VM
+        """
+        # Ensure that the type of storage (storage type, storage backend shared etc.) matches
+        # disks already attached to the VM.
+        # All disks attached to a VM must either be DRBD-based or not.
+        # All storage backends used by a VM must shared the following attributes: type, shared
+        local_storage_backend = self.get_storage_backend()
+        compare_storage_backend = compare_hdd.get_storage_backend()
+
+        if local_storage_backend.shared != compare_storage_backend.shared:
+            raise InvalidStorageBackendError(
+                ('Storage backend for new disk must have the same shared '
+                 'status as current disks'))
+        elif local_storage_backend.storage_type != compare_storage_backend.storage_type:
+            raise InvalidStorageBackendError(
+                ('Storage backend for new disk must be the same type '
+                 'as current disks'))
 
     @Expose(locking=True)
     def delete(self, local_only=False):
         """Delete the logical volume for the disk"""
         # Ensure that the user has permissions to add delete storage
+        # @TODO - NEEDS REWORK NOW
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
@@ -260,6 +214,7 @@ class Base(PyroObject):
 
     def duplicate(self, destination_vm_object, storage_backend=None):
         """Clone the hard drive and attach it to the new VM object"""
+        # @TODO - NEEDS REWORK NOW
         self._ensure_exists()
 
         if not storage_backend:
@@ -292,115 +247,11 @@ class Base(PyroObject):
 
         return new_disk_object
 
-    @Expose(locking=True, remote_nodes=True, undo_method='removeFromVirtualMachine')
-    def addToVirtualMachine(self):
-        """Add the hard drive to the virtual machine,
-        and performs the base function on all nodes in the cluster
-        """
-        # Ensure that the user has permissions to modify VM
-        self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MODIFY_VM,
-            self.vm_object
-        )
-        # Update the libvirt domain XML configuration
-        if self.vm_object.isRegisteredLocally():
-            self._registerLibvirt()
-
-        # Update the VM storage config
-        self._setVmStorageType()
-
-        # Update VM config file
-        def add_disk_to_config(vm_config):
-            """Add disk to VM config"""
-            vm_config['hard_disks'][str(self.disk_id)] = self._getMCVirtConfig()
-
-        self.vm_object.get_config_object().update_config(
-            add_disk_to_config, 'Added disk \'%s\' to \'%s\'' %
-                                (self.disk_id, self.vm_object.get_name())
-        )
-
     @staticmethod
     def isAvailable(node, node_drbd):
         """Returns whether the storage type is available on the node"""
         raise NotImplementedError
 
-    @Expose(locking=True, remote_nodes=True)
-    def removeFromVirtualMachine(self):
-        """Remove the hard drive from a VM configuration and perform all nodes
-        in the cluster
-        """
-        # Ensure that the user has permissions to modify VM
-        self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MODIFY_VM,
-            self.vm_object
-        )
-        # If the VM that the hard drive is attached to is registered on the local
-        # node, remove the hard drive from the LibVirt configuration
-        if self.vm_object.isRegisteredLocally():
-            self._unregisterLibvirt()
-
-        # Update VM config file
-        def removeDiskFromConfig(vm_config):
-            """Remove disk from VM config"""
-            del vm_config['hard_disks'][str(self.disk_id)]
-
-        self.vm_object.get_config_object().update_config(
-            removeDiskFromConfig, 'Removed disk \'%s\' from \'%s\'' %
-            (self.disk_id, self.vm_object.get_name()))
-
-        # Unregister object and remove from factory cache
-        hdd_factory = self._get_registered_object('hard_drive_factory')
-        cache_key = (self.vm_object.get_id(), self.disk_id, self.get_type())
-        if cache_key in hdd_factory.CACHED_OBJECTS:
-            del hdd_factory.CACHED_OBJECTS[cache_key]
-        self.unregister_object()
-
-    def _unregisterLibvirt(self):
-        """Removes the hard drive from the LibVirt configuration for the VM"""
-        # Update the libvirt domain XML configuration
-        def update_libvirt(domain_xml):
-            """Update libvirt config"""
-            device_xml = domain_xml.find('./devices')
-            disk_xml = device_xml.find(
-                './disk/target[@dev="%s"]/..' %
-                self._target_dev)
-            device_xml.remove(disk_xml)
-
-        # Update libvirt configuration
-        self.vm_object._editConfig(update_libvirt)
-
-    def _registerLibvirt(self):
-        """Register the hard drive with the Libvirt VM configuration"""
-
-        def update_libvirt(domain_xml):
-            """Add disk to libvirt config"""
-            drive_xml = self._generateLibvirtXml()
-            device_xml = domain_xml.find('./devices')
-            device_xml.append(drive_xml)
-
-        # Update libvirt configuration
-        self.vm_object._editConfig(update_libvirt)
-
-    def _setVmStorageType(self):
-        """Set the VM configuration storage type to the current hard drive type"""
-        # Ensure VM has not already been configured with disks that
-        # do not match the type specified
-        number_of_disks = len(self.vm_object.getHardDriveObjects())
-        current_storage_type = self.vm_object.get_config_object(
-        ).get_config()['storage_type']
-        if current_storage_type != self.get_type():
-            if number_of_disks:
-                raise StorageTypesCannotBeMixedException(
-                    'The VM (%s) is already configured with %s disks' %
-                    (self.vm_object.get_name(), current_storage_type))
-
-            def update_storage_type_config(config):
-                """Update VM storage type"""
-                config['storage_type'] = self.get_type()
-            self.vm_object.get_config_object().update_config(
-                update_storage_type_config,
-                'Updated storage type for \'%s\' to \'%s\'' %
-                (self.vm_object.get_name(), self.get_type()))
 
     def activate_volume(self, volume, perform_on_nodes=False):
         """Activates a logical volume on the node/cluster"""
@@ -420,6 +271,7 @@ class Base(PyroObject):
     @Expose(locking=True)
     def createBackupSnapshot(self):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""
+        # @TODO - NEEDS REWORK NOW
         # Ensure the user has permission to delete snapshot backups
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
@@ -450,6 +302,7 @@ class Base(PyroObject):
     @Expose(locking=True)
     def deleteBackupSnapshot(self):
         """Deletes the backup snapshot for the disk and unlocks the VM"""
+        # @TODO - NEEDS REWORK NOW
         # Ensure the user has permission to delete snapshot backups
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
@@ -530,45 +383,24 @@ class Base(PyroObject):
 
     def getDiskConfig(self):
         """Return the disk configuration for the hard drive"""
+        # @TODO - NEEDS REWORK NOW
         vm_config = self.vm_object.get_config_object().get_config()
         if str(self.disk_id) in vm_config['hard_disks']:
             return vm_config['hard_disks'][str(self.disk_id)]
         else:
             return {}
 
-    def _generateLibvirtXml(self):
-        """Create a basic libvirt XML configuration for the connection to the disk"""
-        # Create the base disk XML element
-        device_xml = ET.Element('disk')
-        device_xml.set('type', self.libvirt_device_type)
-        device_xml.set('device', 'disk')
-
-        # Configure the interface driver to the disk
-        driver_xml = ET.SubElement(device_xml, 'driver')
-        driver_xml.set('name', 'qemu')
-        driver_xml.set('type', 'raw')
-        driver_xml.set('cache', self.CACHE_MODE)
-
-        # Configure the source of the disk
-        source_xml = ET.SubElement(device_xml, 'source')
-        source_xml.set(self.libvirt_source_parameter, self._getDiskPath())
-
-        # Configure the target
-        target_xml = ET.SubElement(device_xml, 'target')
-        target_xml.set('dev', '%s' % self._target_dev)
-        target_xml.set('bus', self._getLibvirtDriver())
-
-        return device_xml
-
-    def _getLibvirtDriver(self):
+    def get_libvirt_driver(self):
         """Return the libvirt name of the driver for the disk"""
         return Driver[self.driver].value
 
     @Expose()
     def getDiskPath(self):
         """Exposed method for _getDiskPath"""
+        # @TODO - NEEDS REWORK NOW
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_CLUSTER
+            PERMISSIONS.MANAGE_CLUSTER,
+            allow_indirect=True
         )
         return self._getDiskPath()
 
@@ -578,6 +410,7 @@ class Base(PyroObject):
 
     def _getMCVirtConfig(self):
         """Return the MCVirt configuration for the hard drive object"""
+        # @TODO - NEEDS REWORK NOW
         config = {
             'driver': self.driver,
             'storage_backend': self.get_storage_backend().id_
