@@ -276,12 +276,12 @@ class Base(PyroObject):
                 # Remove the hard drive from the MCVirt VM configuration
                 self.get_attachment_object().delete()
 
+        # Remove backing storage
+        self._removeStorage(local_only=local_only)
+
         # Remove config
         self.remove_config(
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
-
-        # Remove backing storage
-        self._removeStorage(local_only=local_only)
 
     @Expose(locking=True, remote_nodes=True)
     def remove_config(self):

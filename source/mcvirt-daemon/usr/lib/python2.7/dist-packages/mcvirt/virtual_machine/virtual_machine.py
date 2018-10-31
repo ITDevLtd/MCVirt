@@ -605,10 +605,10 @@ class VirtualMachine(PyroObject):
                 ('User does not have the required permission - '
                  'User must have MODIFY_VM permission or be the owner of the cloned VM')
             )
-        else:
-            # Manually set permission asserted, since we do a complex permission
-            # check, which doesn't explicitly use assert_permission
-            self._get_registered_object('auth').set_permission_asserted()
+
+        # Manually set permission asserted, since we do a complex permission
+        # check, which doesn't explicitly use assert_permission
+        self._get_registered_object('auth').set_permission_asserted()
 
         # Delete if delete protection is enabled
         if self.get_delete_protection_state():
@@ -627,14 +627,19 @@ class VirtualMachine(PyroObject):
 
         # Unless 'keep_disks' has been passed as True, delete disks associated
         # with VM
-        if (not keep_disks) and get_hostname() in self.getAvailableNodes():
-            for disk_object in self.get_hard_drive_objects():
-                disk_object.delete()
+        for hdd_attachment in self.get_hard_drive_attachments():
+            hdd = hdd_attachment.get_hard_drive_object()
 
-        if local_only or not self._is_cluster_master:
-            nodes = [get_hostname()]
-        else:
-            nodes = self._get_registered_object('cluster').get_nodes(include_local=True)
+            # Remove hard drive attachment
+            hdd_attachment.delete()
+
+            if not keep_disks:
+                hdd.delete()
+
+        nodes = ([get_hostname()]
+                 if local_only else
+                 self._get_registered_object('cluster').get_nodes(include_local=True))
+
         self.delete_config(nodes=nodes, keep_config=keep_config)
 
     @Expose(locking=True, remote_nodes=True)
