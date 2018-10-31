@@ -66,7 +66,7 @@ class WatchdogFactory(PyroObject):
         """Detect running VMs on local node and create watchdog daemon"""
         # Check all VMs
         for virtual_machine in self._get_registered_object(
-                'virtual_machine_factory').getAllVirtualMachines():
+                'virtual_machine_factory').get_all_virtual_machines():
 
             Syslogger.logger().debug('Registering watchdog for: %s' % virtual_machine.get_name())
             self.start_watchdog(virtual_machine)

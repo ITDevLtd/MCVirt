@@ -28,6 +28,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
 from mcvirt.iso.factory import Factory as IsoFactory
 from mcvirt.node.network.factory import Factory as NetworkFactory
+from mcvirt.virtual_machine.hard_drive_attachment import Factory as HardDriveAttachmentFactory
 from mcvirt.virtual_machine.hard_drive.factory import Factory as HardDriveFactory
 from mcvirt.auth.factory import Factory as UserFactory
 from mcvirt.auth.session import Session
@@ -311,6 +312,7 @@ class RpcNSMixinDaemon(object):
             [VirtualMachineFactory(), 'virtual_machine_factory'],
             [NetworkFactory(), 'network_factory'],
             [HardDriveFactory(), 'hard_drive_factory'],
+            [HardDriveAttachmentFactory(), 'hard_drive_attachment_factory'],
             [IsoFactory(), 'iso_factory'],
             [Auth(), 'auth'],
             [UserFactory(), 'user_factory'],

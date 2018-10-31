@@ -51,7 +51,7 @@ class WatchdogParser(object):
     def handle_enable(self, p_, args):
         """Handle watchdog enable"""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-        virtual_machine = vm_factory.getVirtualMachineByName(args.vm_name)
+        virtual_machine = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(virtual_machine)
         virtual_machine.set_watchdog_status(True)
         p_.print_status('Successfully enabled watchdog for VM: %s' % virtual_machine.get_name())
@@ -67,7 +67,7 @@ class WatchdogParser(object):
     def handle_disable(self, p_, args):
         """Handle disable watchdog"""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-        virtual_machine = vm_factory.getVirtualMachineByName(args.vm_name)
+        virtual_machine = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(virtual_machine)
         virtual_machine.set_watchdog_status(False)
         p_.print_status('Successfully disabled watchdog for VM: %s' % virtual_machine.get_name())
@@ -97,7 +97,7 @@ class WatchdogParser(object):
             p_.print_status('Set global default watchdog interval to %s' % args.interval)
         else:
             vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-            virtual_machine = vm_factory.getVirtualMachineByName(args.vm_name)
+            virtual_machine = vm_factory.get_virtual_machine_by_name(args.vm_name)
             p_.rpc.annotate_object(virtual_machine)
             interval = None if args.inherit_global else args.interval
             virtual_machine.set_watchdog_interval(interval)
@@ -137,7 +137,7 @@ class WatchdogParser(object):
             p_.print_status('Set global default reset fail count to %s' % args.count)
         else:
             vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-            virtual_machine = vm_factory.getVirtualMachineByName(args.vm_name)
+            virtual_machine = vm_factory.get_virtual_machine_by_name(args.vm_name)
             p_.rpc.annotate_object(virtual_machine)
             count = None if args.inherit_global else args.count
             virtual_machine.set_watchdog_reset_fail_count(count)
@@ -176,7 +176,7 @@ class WatchdogParser(object):
             p_.print_status('Set global default watchdog boot wait period to %s' % args.time)
         else:
             vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-            virtual_machine = vm_factory.getVirtualMachineByName(args.vm_name)
+            virtual_machine = vm_factory.get_virtual_machine_by_name(args.vm_name)
             p_.rpc.annotate_object(virtual_machine)
             wait_time = None if args.inherit_global else args.time
             virtual_machine.set_watchdog_boot_wait(wait_time)

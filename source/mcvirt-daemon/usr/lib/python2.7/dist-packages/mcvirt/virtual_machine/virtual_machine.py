@@ -38,7 +38,8 @@ from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermission
                                InvalidModificationFlagException, MCVirtTypeError,
                                UsbDeviceAttachedToVirtualMachine, InvalidConfirmationCodeError,
                                DeleteProtectionAlreadyEnabledError, DeleteProtectionNotEnabledError,
-                               DeleteProtectionEnabledError)
+                               DeleteProtectionEnabledError, ReachedMaximumStorageDevicesException,
+                               VirtualMachineNotRegisteredWithLibvirt)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
 from mcvirt.config.core import Core as MCVirtConfig
@@ -65,17 +66,11 @@ class VirtualMachine(PyroObject):
 
     OBJECT_TYPE = 'virtual machine'
 
-    def __init__(self, virtual_machine_factory, _id):
+    def __init__(self, _id):
         """Set member variables and obtains LibVirt domain object."""
         self._id = _id
         self.name = None
         self.disk_drive_object = None
-
-        # Check that the domain exists
-        if not virtual_machine_factory.check_exists(self._id):
-            raise VirtualMachineDoesNotExistException(
-                'Error: Virtual Machine does not exist: %s' % self._id
-            )
 
     @staticmethod
     def get_id_code():
@@ -97,34 +92,6 @@ class VirtualMachine(PyroObject):
 
         # Otherwise return false
         return False
-
-    @Expose()
-    def set_v9_release_config(self, config):
-        """Update disk configurations with new storage backends
-        for v9 release
-        """
-        # Check permissions
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
-
-        def update_config(vm_config):
-            """Update VM config"""
-            for disk_id in config.keys():
-                vm_config['hard_disks'][disk_id]['storage_backend'] = config[disk_id]
-                if 'custom_volume_group' in vm_config['hard_disks'][disk_id]:
-                    del vm_config['hard_disks'][disk_id]['custom_volume_group']
-        self.get_config_object().update_config(
-            update_config,
-            'Update storage backends for disks for v9 release')
-        if self._is_cluster_master:
-            def update_remote_node(connection):
-                """Update configuration of remote node"""
-                virtual_machine_factory = connection.get_connection('virtual_machine_factory')
-                virtual_machine = virtual_machine_factory.getVirtualMachineByName(
-                    self.get_name())
-                connection.annotate_object(virtual_machine)
-                virtual_machine.set_v9_release_config(config)
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(update_remote_node)
 
     def check_libvirt_config_update(self):
         """Determine if config updates need to be performed to libvirt"""
@@ -149,7 +116,7 @@ class VirtualMachine(PyroObject):
                 except Exception:
                     # If the VM was unregistered from libvirt during the
                     # config migration, set it as unregistered
-                    if self._getLibvirtDomainObject() is None:
+                    if self._get_libvirt_domain_object() is None:
                         self._setNode(None)
 
                     raise
@@ -210,7 +177,7 @@ class VirtualMachine(PyroObject):
         self.get_config_object().update_config(update_config, reason)
 
     @Expose()
-    def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
+    def undo__update_vm_config(self, change_dict, reason, _f=None, original_config=None):
         """Undo config change"""
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
@@ -236,13 +203,18 @@ class VirtualMachine(PyroObject):
         """Return the ID of the VM"""
         return self._id
 
+    @property
+    def id_(self):
+        """Return ID"""
+        return self._id
+
     def is_static(self):
         """Determine if node is statically defined to given nodes.
         This applies to nodes that use DRBD storage or those that use
         storage backends that is not shared
         """
         is_static = False
-        for disk in self.getHardDriveObjects():
+        for disk in self.get_hard_drive_objects():
             if disk.is_static():
                 is_static = True
 
@@ -253,7 +225,7 @@ class VirtualMachine(PyroObject):
 
         return is_static
 
-    def _getLibvirtDomainObject(self, allow_remote=False, auto_register=True):
+    def _get_libvirt_domain_object(self, allow_remote=False, auto_register=True):
         """Look up LibVirt domain object, based on VM name,
         and return object
         """
@@ -263,8 +235,10 @@ class VirtualMachine(PyroObject):
                     'libvirt_connector').get_connection(server=self.getNode())
             else:
                 raise VmRegisteredElsewhereException('Virtual machine is registered elsewhere')
-        else:
+        elif self.isRegisteredLocally():
             libvirt_connection = self._get_registered_object('libvirt_connector').get_connection()
+        else:
+            raise VmNotRegistered('VM is not registered')
         try:
             # Get the domain object.
             return libvirt_connection.lookupByName(
@@ -275,19 +249,26 @@ class VirtualMachine(PyroObject):
             # If the error is related to domain not existing...
             if 'Domain not found: no domain with matching name' in str(exc):
                 # If the current session has a lock, then re-register with libvirt
-                if self._has_lock and auto_register:
-                    self._register(set_node=False, ignore_registered_locally=True)
-
-                    # Return with call from this method
-                    return self._getLibvirtDomainObject(allow_remote=allow_remote,
-                                                        auto_register=False)
-            raise
+                if self._has_lock and auto_register and self.isRegisteredLocally():
+                    try:
+                        self._register(set_node=False)
+                        # Return with call from this method
+                        return self._get_libvirt_domain_object(
+                            allow_remote=allow_remote,
+                            auto_register=False)
+                    except Exception, exc2:
+                        Syslogger.logger().error('Error whilst re-registering: %s' % str(exc2))
+                else:
+                    raise VirtualMachineNotRegisteredWithLibvirt(
+                        'Virtual machine is not registered with libvirt')
+            else:
+                raise
 
     @Expose()
     def get_libvirt_xml(self):
         """Obtain domain XML from libvirt"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
-        return self._getLibvirtDomainObject().XMLDesc()
+        return self._get_libvirt_domain_object().XMLDesc()
 
     @property
     def is_running(self):
@@ -314,7 +295,7 @@ class VirtualMachine(PyroObject):
             if self._getPowerState() is PowerStates.RUNNING:
                 try:
                     # Stop the VM
-                    self._getLibvirtDomainObject().destroy()
+                    self._get_libvirt_domain_object().destroy()
                 except Exception, e:
                     raise LibvirtException('Failed to stop VM: %s' % e)
             else:
@@ -345,7 +326,7 @@ class VirtualMachine(PyroObject):
             if self._getPowerState() is PowerStates.RUNNING:
                 try:
                     # Shutdown the VM
-                    self._getLibvirtDomainObject().shutdown()
+                    self._get_libvirt_domain_object().shutdown()
                 except Exception, e:
                     raise LibvirtException('Failed to stop VM: %s' % e)
             else:
@@ -394,7 +375,7 @@ class VirtualMachine(PyroObject):
             # Take the oportunity to update libvirt config
             self.check_libvirt_config_update()
 
-            for disk_object in self.getHardDriveObjects():
+            for disk_object in self.get_hard_drive_objects():
                 disk_object.activateDisk()
 
             disk_drive_object = self.get_disk_drive()
@@ -413,7 +394,7 @@ class VirtualMachine(PyroObject):
 
             # Start the VM
             try:
-                self._getLibvirtDomainObject().create()
+                self._get_libvirt_domain_object().create()
             except Exception, e:
                 # Interogate exception to attempt to determine cause
                 # of failure
@@ -430,7 +411,7 @@ class VirtualMachine(PyroObject):
             cluster = self._get_registered_object('cluster')
             remote_node = cluster.get_remote_node(self.getNode())
             vm_factory = remote_node.get_connection('virtual_machine_factory')
-            remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
+            remote_vm = vm_factory.get_virtual_machine_by_name(self.get_name())
             remote_node.annotate_object(remote_vm)
             remote_vm.start(iso_name=iso_name)
 
@@ -479,7 +460,7 @@ class VirtualMachine(PyroObject):
             if self._getPowerState() is PowerStates.RUNNING:
                 try:
                     # Reset the VM
-                    self._getLibvirtDomainObject().reset()
+                    self._get_libvirt_domain_object().reset()
                 except Exception, e:
                     raise LibvirtException('Failed to reset VM: %s' % e)
             else:
@@ -500,7 +481,7 @@ class VirtualMachine(PyroObject):
         """Returns the power state of the VM in the form of a PowerStates enum"""
         if self.isRegistered():
             remote_libvirt = (self.isRegisteredRemotely() and not self._cluster_disabled)
-            libvirt_object = self._getLibvirtDomainObject(allow_remote=remote_libvirt)
+            libvirt_object = self._get_libvirt_domain_object(allow_remote=remote_libvirt)
             if libvirt_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING:
                 return PowerStates.RUNNING
             else:
@@ -525,7 +506,7 @@ class VirtualMachine(PyroObject):
             cluster = self._get_registered_object('cluster')
             remote_object = cluster.get_remote_node(self.getNode())
             remote_vm_factory = remote_object.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
+            remote_vm = remote_vm_factory.get_virtual_machine_by_name(self.get_name())
             remote_object.annotate_object(remote_vm)
             return remote_vm.getInfo()
 
@@ -571,13 +552,13 @@ class VirtualMachine(PyroObject):
             table.add_row(('ISO location', disk_name))
 
         # Get info for each disk
-        disk_objects = self.getHardDriveObjects()
+        disk_objects = self.get_hard_drive_objects()
         if len(disk_objects):
             table.add_row(('-- Disk ID --', '-- Disk Size --'))
             for disk_object in sorted(disk_objects, key=lambda disk: disk.disk_id):
                 table.add_row(
                     (str(disk_object.disk_id),
-                     SizeConverter(disk_object.getSize()).to_string())
+                     SizeConverter(disk_object.get_size()).to_string())
                 )
         else:
             warnings += "No hard disks present on machine\n"
@@ -647,7 +628,7 @@ class VirtualMachine(PyroObject):
         # Unless 'keep_disks' has been passed as True, delete disks associated
         # with VM
         if (not keep_disks) and get_hostname() in self.getAvailableNodes():
-            for disk_object in self.getHardDriveObjects():
+            for disk_object in self.get_hard_drive_objects():
                 disk_object.delete()
 
         if local_only or not self._is_cluster_master:
@@ -671,7 +652,7 @@ class VirtualMachine(PyroObject):
                 vm_config['clone_children'].remove(self.get_name())
 
             vm_factory = self._get_registered_object('virtual_machine_factory')
-            parent_vm_object = vm_factory.getVirtualMachineByName(self.getCloneParent())
+            parent_vm_object = vm_factory.get_virtual_machine_by_name(self.getCloneParent())
             parent_vm_object.get_config_object().update_config(
                 removeCloneChildConfig, 'Removed clone child \'%s\' from \'%s\'' %
                 (self.get_name(), self.getCloneParent()))
@@ -680,8 +661,8 @@ class VirtualMachine(PyroObject):
         self.get_config_object().delete()
 
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        if self.get_name() in vm_factory.CACHED_OBJECTS:
-            del vm_factory.CACHED_OBJECTS[self.get_name()]
+        if self.id_ in vm_factory.CACHED_OBJECTS:
+            del vm_factory.CACHED_OBJECTS[self.id_]
         self.unregister_object()
 
     @Expose()
@@ -690,7 +671,7 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['memory_allocation']
 
     @Expose(locking=True)
-    def updateRAM(self, memory_allocation):
+    def update_ram(self, memory_allocation):
         """Updates the amount of RAM allocated to a VM"""
         # Convert memory and disk sizes to bytes
         memory_allocation = (memory_allocation
@@ -702,7 +683,7 @@ class VirtualMachine(PyroObject):
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object(set_cluster_master=True)
-            return vm_object.updateRAM(memory_allocation)
+            return vm_object.update_ram(memory_allocation)
 
         self.ensureRegisteredLocally()
 
@@ -716,7 +697,7 @@ class VirtualMachine(PyroObject):
             domain_xml.find('./currentMemory').text = str(memory_allocation)
             domain_xml.find('./currentMemory').set('unit', 'KiB')
 
-        self._editConfig(update_libvirt)
+        self.update_libvirt_config(update_libvirt)
 
         # Update the MCVirt configuration
         self.update_config(['memory_allocation'], str(memory_allocation),
@@ -728,7 +709,7 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['cpu_cores']
 
     @Expose(locking=True)
-    def updateCPU(self, cpu_count, old_value):
+    def update_cpu(self, cpu_count, old_value):
         """Updates the number of CPU cores attached to a VM"""
         ArgumentValidator.validate_positive_integer(cpu_count)
         ArgumentValidator.validate_positive_integer(old_value)
@@ -738,7 +719,7 @@ class VirtualMachine(PyroObject):
 
         if self.isRegisteredRemotely():
             vm_object = self.get_remote_object(set_cluster_master=True)
-            return vm_object.updateCPU(cpu_count, old_value)
+            return vm_object.update_cpu(cpu_count, old_value)
 
         # Ensure cpu count is an interger, greater than 0
         try:
@@ -763,7 +744,7 @@ class VirtualMachine(PyroObject):
             def update_libvirt(domain_xml):
                 """Update RAM allocation and unit measurement"""
                 domain_xml.find('./vcpu').text = str(cpu_count)
-            self._editConfig(update_libvirt)
+            self.update_libvirt_config(update_libvirt)
 
         # Update the MCVirt configuration
         self.update_config(['cpu_cores'], str(cpu_count), 'CPU count has been changed to %s' %
@@ -793,7 +774,7 @@ class VirtualMachine(PyroObject):
                 cpu_section.append(model)
                 cpu_section.append(feature)
 
-        self._editConfig(update_libvirt)
+        self.update_libvirt_config(update_libvirt)
 
     @Expose()
     def get_modification_flags(self):
@@ -856,24 +837,26 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_disk_drive(self):
-        """Returns a disk drive object for the VM"""
+        """Return a disk drive object for the VM"""
         if not self.disk_drive_object:
             self.disk_drive_object = DiskDrive(self)
             self._register_object(self.disk_drive_object)
         return self.disk_drive_object
 
     @Expose()
-    def getHardDriveObjects(self):
-        """Returns an array of disk objects for the disks attached to the VM"""
-        disks = self.get_config_object().get_config()['hard_disks']
+    def get_hard_drive_objects(self):
+        """Return an array of disk objects for the disks attached to the VM"""
+        attachments = self.get_config_object().get_config()['hard_drives']
         hard_drive_factory = self._get_registered_object('hard_drive_factory')
-        disk_objects = []
-        for disk_id in disks:
-            disk_objects.append(hard_drive_factory.getObject(self, disk_id))
-        return disk_objects
+        hard_drive_objects = []
+        for hard_drive_id in [attachment_conf['hard_drive_id']
+                              for attachment_conf in attachments.values()]:
+            hard_drive_objects.append(hard_drive_factory.get_object(hard_drive_id))
+        return hard_drive_objects
 
     def get_attached_usb_devices(self):
-        libvirt_config = self.getLibvirtConfig()
+        """Get USB devices attached to the VM"""
+        libvirt_config = self.get_libvirt_config()
         device_list = []
         for device_config in libvirt_config.findall('./devices/hostdev[@type="usb"]'):
             device_address = device_config.find('./source/address')
@@ -883,10 +866,11 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def get_usb_device(self, bus, device):
+        """Get USB object attached to the VM"""
         self.ensureRegisteredLocally()
         # Determine if device attached to another VM
         for vm_object in self._get_registered_object(
-                'virtual_machine_factory').getAllVirtualMachines(node=self.getNode()):
+                'virtual_machine_factory').get_all_virtual_machines(node=self.getNode()):
             if (int(bus), int(device)) in [(dev.get_bus(), dev.get_device())
                                            for dev in vm_object.get_attached_usb_devices()]:
                 if vm_object.get_name() != self.get_name():
@@ -897,6 +881,7 @@ class VirtualMachine(PyroObject):
         return self._get_usb_device(bus, device)
 
     def _get_usb_device(self, bus, device):
+        """Get Usb Device object"""
         # Create USB device object, register with daemon and return
         usb_device_object = UsbDevice(bus=bus, device=device, virtual_machine=self)
         self._register_object(usb_device_object)
@@ -932,7 +917,7 @@ class VirtualMachine(PyroObject):
             def update_config_remote(remote_object):
                 """Update remote VM config"""
                 vm_factory = remote_object.get_connection('virtual_machine_factory')
-                remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
+                remote_vm = vm_factory.get_virtual_machine_by_name(self.get_name())
                 remote_object.annotate_object(remote_vm)
                 remote_vm.remote_update_config(attribute_path=attribute_path, value=value,
                                                reason=reason, local_only=True)
@@ -946,12 +931,12 @@ class VirtualMachine(PyroObject):
         """Return the storage directory for a given VM"""
         return DirectoryLocation.BASE_VM_STORAGE_DIR + '/' + name
 
-    def getLibvirtConfig(self):
-        """Returns an XML object of the libvirt configuration
+    def get_libvirt_config(self):
+        """Return an XML object of the libvirt configuration
         for the domain
         """
         domain_flags = (libvirt.VIR_DOMAIN_XML_INACTIVE + libvirt.VIR_DOMAIN_XML_SECURE)
-        domain_xml = ET.fromstring(self._getLibvirtDomainObject().XMLDesc(domain_flags))
+        domain_xml = ET.fromstring(self._get_libvirt_domain_object().XMLDesc(domain_flags))
         return domain_xml
 
     @Expose(locking=True)
@@ -960,15 +945,15 @@ class VirtualMachine(PyroObject):
         exposes the method
         """
         self._get_registered_object('auth').assert_user_type('ClusterUser')
-        return self._editConfig(*args, **kwargs)
+        return self.update_libvirt_config(*args, **kwargs)
 
-    def _editConfig(self, callback_function):
+    def update_libvirt_config(self, callback_function):
         """Provides an interface for updating the libvirt configuration, by obtaining
         the configuration, performing a callback function to perform changes on the
         configuration and pushing the configuration back into LibVirt
         """
         # Obtain VM XML
-        domain_xml = self.getLibvirtConfig()
+        domain_xml = self.get_libvirt_config()
 
         # Perform callback function to make changes to the XML
         callback_function(domain_xml)
@@ -1035,7 +1020,7 @@ class VirtualMachine(PyroObject):
         cluster = self._get_registered_object('cluster')
         remote = cluster.get_remote_node(destination_node_name)
         remote_vm_factory = remote.get_connection('virtual_machine_factory')
-        remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
+        remote_vm = remote_vm_factory.get_virtual_machine_by_name(self.get_name())
         remote.annotate_object(remote_vm)
         remote_vm.register()
 
@@ -1089,7 +1074,7 @@ class VirtualMachine(PyroObject):
             self._setNode(None)
 
             # Perform pre-migration tasks on disk objects
-            for disk_object in self.getHardDriveObjects():
+            for disk_object in self.get_hard_drive_objects():
                 disk_object.preOnlineMigration(destination_node)
 
             # Build migration flags
@@ -1105,7 +1090,7 @@ class VirtualMachine(PyroObject):
             )
 
             # Perform migration
-            libvirt_domain_object = self._getLibvirtDomainObject()
+            libvirt_domain_object = self._get_libvirt_domain_object()
             status = libvirt_domain_object.migrate3(
                 destination_libvirt_connection,
                 params={},
@@ -1116,7 +1101,7 @@ class VirtualMachine(PyroObject):
                 raise MigrationFailureExcpetion('Libvirt migration failed')
 
             # Perform post steps on hard disks and check disks
-            for disk_object in self.getHardDriveObjects():
+            for disk_object in self.get_hard_drive_objects():
                 disk_object.postOnlineMigration()
                 disk_object._checkDrbdStatus()
 
@@ -1130,7 +1115,7 @@ class VirtualMachine(PyroObject):
 
             if self.get_name() in factory.getAllVmNames(node=get_hostname()):
                 # Set Drbd on remote node to secondary
-                for disk_object in self.getHardDriveObjects():
+                for disk_object in self.get_hard_drive_objects():
                     remote_disk = disk_object.get_remote_object(remote_node=destination_node)
                     remote_disk.drbdSetSecondary()
 
@@ -1140,7 +1125,7 @@ class VirtualMachine(PyroObject):
             if self.get_name() in factory.getAllVmNames(node=destination_node_name):
                 # Otherwise, if VM is registered on remote node, set the
                 # local Drbd state to secondary
-                for disk_object in self.getHardDriveObjects():
+                for disk_object in self.get_hard_drive_objects():
                     sleep.sleep(10)
                     disk_object._drbdSetSecondary()
 
@@ -1148,7 +1133,7 @@ class VirtualMachine(PyroObject):
                 self._setNode(destination_node_name)
 
             # Reset disks
-            for disk_object in self.getHardDriveObjects():
+            for disk_object in self.get_hard_drive_objects():
                 # Reset dual-primary configuration
                 disk_object._setTwoPrimariesConfig(allow=False)
 
@@ -1192,7 +1177,7 @@ class VirtualMachine(PyroObject):
 
         # Checks the Drbd state of the disks and ensure that they are
         # in a suitable state to be migrated
-        for disk_object in self.getHardDriveObjects():
+        for disk_object in self.get_hard_drive_objects():
             disk_object.preMigrationChecks()
 
         # Check the remote node to ensure that the networks, that the VM is connected to,
@@ -1247,7 +1232,7 @@ class VirtualMachine(PyroObject):
             )
 
         # Determine if VM is running
-        if self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
+        if self._get_libvirt_domain_object().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
             raise VmAlreadyStartedException('Can\'t clone running VM')
 
         # Ensure VM is unlocked
@@ -1300,7 +1285,7 @@ class VirtualMachine(PyroObject):
         self._get_registered_object('auth').copy_permissions(self, new_vm_object)
 
         # Clone the hard drives of the VM
-        disk_objects = self.getHardDriveObjects()
+        disk_objects = self.get_hard_drive_objects()
         for disk_object in disk_objects:
             disk_object.clone(new_vm_object)
 
@@ -1322,7 +1307,7 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Determine if VM is running
-        if self._getLibvirtDomainObject().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
+        if self._get_libvirt_domain_object().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
             raise VmAlreadyStartedException('Can\'t duplicate running VM')
 
         # Ensure new VM name doesn't already exist
@@ -1350,7 +1335,7 @@ class VirtualMachine(PyroObject):
         self._get_registered_object('auth').copy_permissions(self, new_vm_object)
 
         # Clone the hard drives of the VM
-        disk_objects = self.getHardDriveObjects()
+        disk_objects = self.get_hard_drive_objects()
         for disk_object in disk_objects:
             disk_object.duplicate(new_vm_object, storage_backend=storage_backend)
 
@@ -1409,9 +1394,9 @@ class VirtualMachine(PyroObject):
         # Ensure that the destination node will support the volume
         storage_backend = None
         total_hdd_size = 0
-        for disk_object in self.getHardDriveObjects():
-            storage_backend = disk_object.get_storage_backend()
-            total_hdd_size += disk_object.getSize()
+        for disk_object in self.get_hard_drive_objects():
+            storage_backend = disk_object.storage_backend
+            total_hdd_size += disk_object.get_size()
         # Force check for 'Local' storage, as we're only specifying one node,
         # as otherwise the check will ensure that there is the additional space
         # on the remaining node.
@@ -1430,7 +1415,7 @@ class VirtualMachine(PyroObject):
                            (self.get_name(), source_node, destination_node))
 
         # Move each of the attached disks to the remote node
-        for disk_object in self.getHardDriveObjects():
+        for disk_object in self.get_hard_drive_objects():
             disk_object.move(source_node=source_node, destination_node=destination_node)
 
         # If the VM is a Local VM, unregister it from the local node
@@ -1441,7 +1426,7 @@ class VirtualMachine(PyroObject):
         if self.getStorageType() == 'Local':
             remote_node = cluster_instance.get_remote_node(destination_node)
             remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.getVirtualMachineByName(self.get_name())
+            remote_vm = remote_vm_factory.get_virtual_machine_by_name(self.get_name())
             remote_node.annotate_object(remote_vm)
             remote_vm.register()
 
@@ -1455,7 +1440,7 @@ class VirtualMachine(PyroObject):
         # Determine if VM is registered, and obtain libvirt uuid
         if self.isRegistered():
             domain_xml = ET.fromstring(
-                self._getLibvirtDomainObject().XMLDesc(
+                self._get_libvirt_domain_object().XMLDesc(
                     libvirt.VIR_DOMAIN_XML_SECURE
                 )
             )
@@ -1473,26 +1458,24 @@ class VirtualMachine(PyroObject):
         return None
 
     @Expose(locking=True)
-    def register(self):
+    def register(self, node=None):
         """Public method for permforming VM register"""
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.SET_VM_NODE, self
         )
-        self._register()
+        self._register(node=node)
 
-    def _register(self, set_node=True, ignore_registered_locally=False):
+    @Expose(locking=True, expose=False, undo_method='_unregister')
+    def _register(self, set_node=True, node=None):
         """Register a VM with LibVirt"""
         # Import domain XML template
         current_node = self.getNode()
+        node = get_hostname() if node is None else node
 
         # Ensure that the current node is not set OR
-        # it is currently registered on the local node,
-        # has been explicitly allowed and node in config
-        # is not being set
-        if (current_node is not None and not
-                (ignore_registered_locally and
-                 current_node == get_hostname() and
-                 not set_node)):
+        # it is currently registered on the local node
+        if (current_node is not None and
+                current_node != node):
             raise VmAlreadyRegisteredException(
                 'VM \'%s\' already registered on node: %s' %
                 (self.get_name(), current_node))
@@ -1500,14 +1483,34 @@ class VirtualMachine(PyroObject):
         if get_hostname() not in self.getAvailableNodes():
             raise UnsuitableNodeException(
                 'VM \'%s\' cannot be registered on node: %s' %
-                (self.get_name(), get_hostname())
+                (self.get_name(), node)
             )
 
         # Ensure VM is unlocked
         self.ensureUnlocked()
 
+        self.register_on_node(nodes=[node])
+
+        if set_node:
+            # Mark VM as being hosted on this machine
+            self._setNode(node)
+
+        # If UUID was initially not found, re-obtain it, to store
+        # the UUID generated by Libvirt
+        self.get_uuid()
+
+        self.apply_cpu_flags()
+
+    @Expose(locking=True, remote_nodes=True)
+    def register_on_node(self):
+        """Perform actual registration on node"""
+        self._get_registered_object('auth').assert_user_type(
+            'ClusterUser',
+            allow_indirect=True
+        )
+
         # Activate hard disks
-        for disk_object in self.getHardDriveObjects():
+        for disk_object in self.get_hard_drive_objects():
             # Activate on local node
             disk_object.activateDisk()
 
@@ -1530,8 +1533,11 @@ class VirtualMachine(PyroObject):
         device_xml = domain_xml.find('./devices')
 
         # Add hard drive configurations
-        for hard_drive_object in self.getHardDriveObjects():
-            drive_xml = hard_drive_object._generateLibvirtXml()
+        hard_drive_attachment_factory = self._get_registered_object(
+            'hard_drive_attachment_factory')
+        for hard_drive_object in hard_drive_attachment_factory.get_objects_by_virtual_machine(
+                self):
+            drive_xml = hard_drive_object.generate_libvirt_xml()
             device_xml.append(drive_xml)
 
         # Add network adapter configurations
@@ -1554,17 +1560,7 @@ class VirtualMachine(PyroObject):
                 pass
             raise LibvirtException('Error: An error occurred whilst registering VM')
 
-        if set_node:
-            # Mark VM as being hosted on this machine
-            self._setNode(get_hostname())
-
-        # If UUID was initially not found, re-obtain it, to store
-        # the UUID generated by Libvirt
-        self.get_uuid()
-
-        self.apply_cpu_flags()
-
-    @Expose(locking=True, remote_nodes=True)
+    @Expose(locking=True, undo_method='_register')
     def unregister(self):
         """Public method for permforming VM unregister"""
         self._get_registered_object('auth').assert_permission(
@@ -1572,31 +1568,37 @@ class VirtualMachine(PyroObject):
         )
         self._unregister()
 
-    def _unregister(self):
+    @Expose(expose=False)
+    def _unregister(self, *args, **kwrags):
         """Unregister the VM from the local node"""
         # Ensure VM is unlocked
         self.ensureUnlocked()
 
-        # Ensure VM is registered locally
-        self.ensureRegisteredLocally()
+        # Ensure VM is registered
+        self.ensureRegistered()
 
-        # Remove VM from LibVirt
-        try:
-            self._getLibvirtDomainObject().undefine()
-        except Exception:
-            raise LibvirtException('Failed to delete VM from libvirt')
-
-        # De-activate the disk objects
-        for disk_object in self.getHardDriveObjects():
-            disk_object.deactivateDisk()
+        self.unregister_on_node(nodes=[self.getNode()])
 
         # Remove node from VM configuration
         self._setNode(None)
 
-    def setNode(self, node):
-        self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.SET_VM_NODE, self
-        )
+    @Expose(locking=True, remote_nodes=True)
+    def unregister_on_node(self):
+        """Perform actual unregistration"""
+        # Remove VM from LibVirt
+        try:
+            self._get_libvirt_domain_object(auto_register=False).undefine()
+        except VirtualMachineNotRegisteredWithLibvirt:
+            Syslogger.logger().warn(
+                'VM not registered with libvirt whilst attempting to unregister: %s' %
+                self.get_name())
+        except Exception, exc:
+            Syslogger.logger().error('Libvirt error: %s' % str(exc))
+            raise LibvirtException('Failed to delete VM from libvirt')
+
+        # De-activate the disk objects
+        for disk_object in self.get_hard_drive_objects():
+            disk_object.deactivateDisk()
 
     @Expose(locking=True)
     def setNodeRemote(self, node):
@@ -1609,24 +1611,10 @@ class VirtualMachine(PyroObject):
 
     def _setNode(self, node):
         """Sets the node of the VM"""
-        if self._is_cluster_master:
-            # Update remote nodes
-            def set_node_remote(remote_connection):
-                """Set VM node on remote nodes"""
-                vm_factory = remote_connection.get_connection('virtual_machine_factory')
-                remote_vm = vm_factory.getVirtualMachineByName(self.get_name())
-                remote_connection.annotate_object(remote_vm)
-                remote_vm.setNodeRemote(node)
-            cluster = self._get_registered_object('cluster')
-            cluster.run_remote_command(set_node_remote)
-
-        # Update the node in the VM configuration
-        def update_vm_conf(config):
-            """Update node in VM config"""
-            config['node'] = node
-        self.get_config_object().update_config(
-            update_vm_conf, 'Changing node for VM \'%s\' to \'%s\'' %
-            (self.get_name(), node))
+        self.update_vm_config(
+            {'node': node},
+            'Update node for %s to %s' % (self.get_name(), node),
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     def _get_remote_nodes(self):
         """Returns a list of remote available nodes"""
@@ -1683,7 +1671,7 @@ class VirtualMachine(PyroObject):
         cluster = self._get_registered_object('cluster')
 
         # Obtain list of required network and storage backends
-        storage_backends = [hdd.get_storage_backend() for hdd in self.getHardDriveObjects()]
+        storage_backends = [hdd.get_storage_backend for hdd in self.get_hard_drive_objects()]
         network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         networks = [network_adapter.get_network_object() for network_adapter in network_adapters]
@@ -1716,7 +1704,7 @@ class VirtualMachine(PyroObject):
         if self._getPowerState() is not PowerStates.RUNNING:
             raise VmAlreadyStoppedException('The VM is not running')
         domain_xml = ET.fromstring(
-            self._getLibvirtDomainObject().XMLDesc(
+            self._get_libvirt_domain_object().XMLDesc(
                 libvirt.VIR_DOMAIN_XML_SECURE
             )
         )
@@ -1735,7 +1723,7 @@ class VirtualMachine(PyroObject):
         if self._getPowerState() is not PowerStates.RUNNING:
             raise VmAlreadyStoppedException('The VM is not running')
         domain_xml = ET.fromstring(
-            self._getLibvirtDomainObject().XMLDesc(
+            self._get_libvirt_domain_object().XMLDesc(
                 libvirt.VIR_DOMAIN_XML_SECURE
             )
         )
@@ -1962,7 +1950,7 @@ class VirtualMachine(PyroObject):
                 # Append new XML configuration onto OS section of domain XML
                 os_xml.append(new_boot_xml_object)
 
-        self._editConfig(update_libvirt)
+        self.update_libvirt_config(update_libvirt)
 
     @Expose(locking=True)
     def update_graphics_driver(self, driver):
@@ -1990,7 +1978,7 @@ class VirtualMachine(PyroObject):
                 """Update graphics in libvirt config"""
                 domain_xml.find('./devices/video/model').set('type', driver)
 
-            self._editConfig(update_libvirt)
+            self.update_libvirt_config(update_libvirt)
 
     def getGraphicsDriver(self):
         """Returns the graphics driver for this VM"""

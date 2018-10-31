@@ -113,6 +113,7 @@ class Core(Base):
                     'nodes': {}
                 },
                 'virtual_machines': {},
+                'hard_drives': {},
                 'networks': {
                 },
                 'drbd': {
@@ -179,3 +180,6 @@ class Core(Base):
 
         if self._getVersion() < 17:
             migrations.v17.migrate(self, config)
+
+        if self._getVersion() < 18:
+            migrations.v18.migrate(self, config)

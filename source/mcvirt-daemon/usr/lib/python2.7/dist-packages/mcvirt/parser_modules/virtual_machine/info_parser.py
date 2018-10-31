@@ -55,7 +55,7 @@ class InfoParser(object):
             p_.parser.error('Must provide a VM Name')
         if args.vm_name:
             vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
             p_.rpc.annotate_object(vm_object)
             if args.vnc_port:
                 p_.print_status(vm_object.getVncPort())

@@ -42,7 +42,7 @@ rpc = Connection(username=config['username'], password=config['password'])
 hard_drive_factory = rpc.get_connection('hard_drive_factory')
 
 # Obtain hard drive object and set sync state
-hard_drive_object = hard_drive_factory.getDrbdObjectByResourceName(
+hard_drive_object = hard_drive_factory.get_drbd_object_by_resource_name(
     drbd_resource
 )
 rpc.annotate_object(hard_drive_object)

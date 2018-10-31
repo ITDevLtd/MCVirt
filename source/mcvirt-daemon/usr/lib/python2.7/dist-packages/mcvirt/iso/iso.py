@@ -116,7 +116,7 @@ class Iso(PyroObject):
         """Determine if the ISO is currently in use by a VM"""
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
         for vm_name in virtual_machine_factory.getAllVmNames(node=get_hostname()):
-            vm_object = virtual_machine_factory.getVirtualMachineByName(vm_name)
+            vm_object = virtual_machine_factory.get_virtual_machine_by_name(vm_name)
             disk_drive_object = vm_object.get_disk_drive()
             vm_current_iso = disk_drive_object.getCurrentDisk()
 

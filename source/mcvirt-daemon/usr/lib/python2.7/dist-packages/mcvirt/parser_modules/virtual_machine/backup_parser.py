@@ -54,12 +54,13 @@ class BackupParser(object):
     def handle_create_snapshot(self, p_, args):
         """Handle create snapshot"""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-        vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+        vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
-        hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-        hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+        hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
+        hard_drive_object = hard_drive_attachment_factory.get_object(
+            vm_object, args.disk_id).get_hard_drive_object()
         p_.rpc.annotate_object(hard_drive_object)
-        p_.print_status(hard_drive_object.createBackupSnapshot())
+        p_.print_status(hard_drive_object.create_backup_snapshot())
 
     def register_delete_snapshot(self):
         """Register delete snapshot parser"""
@@ -77,8 +78,10 @@ class BackupParser(object):
     def handle_delete_snapshot(self, p_, args):
         """Handle delete snapshot"""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-        vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+        vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
-        hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-        hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
-        hard_drive_object.deleteBackupSnapshot()
+        hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
+        hard_drive_object = hard_drive_attachment_factory.get_object(
+            vm_object, args.disk_id).get_hard_drive_object()
+        p_.rpc.annotate_object(hard_drive_object)
+        hard_drive_object.delete_backup_snapshot()

@@ -28,7 +28,8 @@ from mcvirt.exceptions import (InvalidNodesException, DrbdNotEnabledOnNode,
                                InvalidVirtualMachineNameException, VmAlreadyExistsException,
                                ClusterNotInitialisedException, NodeDoesNotExistException,
                                VmDirectoryAlreadyExistsException, InvalidGraphicsDriverException,
-                               MCVirtTypeError, VirtualMachineDoesNotExistException)
+                               MCVirtTypeError, VirtualMachineDoesNotExistException,
+                               VirtualMachineNotRegisteredWithLibvirt)
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose, Transaction
 from mcvirt.utils import get_hostname
@@ -62,20 +63,20 @@ class Factory(PyroObject):
     def autostart(self, start_type=AutoStartStates.ON_POLL):
         """Autostart VMs"""
         Syslogger.logger().info('Starting autostart: %s' % start_type.name)
-        for vm in self.getAllVirtualMachines():
+        for vm in self.get_all_virtual_machines():
             try:
-                    if (vm.isRegisteredLocally() and vm.is_stopped and
-                            vm._get_autostart_state() in
-                            [AutoStartStates.ON_POLL, AutoStartStates.ON_BOOT] and
-                            (start_type == vm._get_autostart_state() or
-                             start_type == AutoStartStates.ON_BOOT)):
-                        try:
-                            Syslogger.logger().info('Autostarting: %s' % vm.get_name())
-                            vm.start()
-                            Syslogger.logger().info('Autostart successful: %s' % vm.get_name())
-                        except Exception, e:
-                            Syslogger.logger().error('Failed to autostart: %s: %s' %
-                                                     (vm.get_name(), str(e)))
+                if (vm.isRegisteredLocally() and vm.is_stopped and
+                        vm._get_autostart_state() in
+                        [AutoStartStates.ON_POLL, AutoStartStates.ON_BOOT] and
+                        (start_type == vm._get_autostart_state() or
+                         start_type == AutoStartStates.ON_BOOT)):
+                    try:
+                        Syslogger.logger().info('Autostarting: %s' % vm.get_name())
+                        vm.start()
+                        Syslogger.logger().info('Autostart successful: %s' % vm.get_name())
+                    except Exception, exc2:
+                        Syslogger.logger().error('Failed to autostart: %s: %s' %
+                                                 (vm.get_name(), str(exc2)))
             except Exception, exc:
                 Syslogger.logger().error('Failed to get VM state: %s: %s' % (
                     vm.get_name(), str(exc)))
@@ -92,7 +93,7 @@ class Factory(PyroObject):
         return node_object.get_connection('virtual_machine_factory')
 
     @Expose()
-    def getVirtualMachineByName(self, vm_name):
+    def get_virtual_machine_by_name(self, vm_name):
         """Obtain a VM object, based on VM name"""
         ArgumentValidator.validate_hostname(vm_name)
         name_id_dict = {
@@ -112,19 +113,26 @@ class Factory(PyroObject):
         # Validate VM ID
         ArgumentValidator.validate_id(vm_id, VirtualMachine)
 
+        # Check that the domain exists
+        if not self.check_exists(vm_id):
+            raise VirtualMachineDoesNotExistException(
+                'Error: Virtual Machine does not exist: %s' % vm_id
+            )
+
         # Determine if VM object has been cached
         if vm_id not in Factory.CACHED_OBJECTS:
             # If not, create object, register with pyro
             # and store in cached object dict
-            vm_object = VirtualMachine(self, vm_id)
+            vm_object = VirtualMachine(vm_id)
             self._register_object(vm_object)
             vm_object.initialise()
             Factory.CACHED_OBJECTS[vm_id] = vm_object
+
         # Return the cached object
         return Factory.CACHED_OBJECTS[vm_id]
 
     @Expose()
-    def getAllVirtualMachines(self, node=None):
+    def get_all_virtual_machines(self, node=None):
         """Return objects for all virtual machines"""
         return [self.get_virtual_machine_by_id(vm_id) for vm_id in self.get_all_vm_ids(node=node)]
 
@@ -182,8 +190,16 @@ class Factory(PyroObject):
         table.header(tuple(headers))
 
         # Iterate over VMs and add to list
-        for vm_object in sorted(self.getAllVirtualMachines(), key=lambda vm: vm.name):
-            vm_row = [vm_object.get_name(), vm_object._getPowerState().name,
+        for vm_object in sorted(self.get_all_virtual_machines(), key=lambda vm: vm.name):
+            # Attempt to obtain power state, allowing
+            # for VM not being registered in libvirt
+            power_state = 'Unavailable (not registered)'
+            try:
+                power_state = vm_object._getPowerState().name
+            except VirtualMachineNotRegisteredWithLibvirt:
+                pass
+
+            vm_row = [vm_object.get_name(), power_state,
                       vm_object.getNode() or 'Unregistered']
             if include_ram:
                 vm_row.append(str(int(vm_object.getRAM()) / 1024) + 'MB')
@@ -191,8 +207,8 @@ class Factory(PyroObject):
                 vm_row.append(vm_object.getCPU())
             if include_disk:
                 hard_drive_size = 0
-                for disk_object in vm_object.getHardDriveObjects():
-                    hard_drive_size += disk_object.getSize()
+                for disk_object in vm_object.get_hard_drive_objects():
+                    hard_drive_size += disk_object.get_size()
                 vm_row.append(hard_drive_size)
             table.add_row(vm_row)
         table_output = table.draw()
@@ -392,7 +408,7 @@ class Factory(PyroObject):
         hard_drive_factory = self._get_registered_object('hard_drive_factory')
         assert storage_type in [None] + [
             storage_type_itx.__name__ for storage_type_itx in self._get_registered_object(
-                'hard_drive_factory').getStorageTypes()
+                'hard_drive_factory').get_all_storage_types()
         ]
 
         # Obtain the hard drive driver enum from the name
@@ -484,7 +500,7 @@ class Factory(PyroObject):
                                     graphics_driver)
 
         # Obtain an object for the new VM, to use to create disks/network interfaces
-        return self.getVirtualMachineByName(name)
+        return self.get_virtual_machine_by_name(name)
 
     def undo__create_config(self, id_, name, *args, **kwargs):
         """Remove any directories or configs that were created for VM"""

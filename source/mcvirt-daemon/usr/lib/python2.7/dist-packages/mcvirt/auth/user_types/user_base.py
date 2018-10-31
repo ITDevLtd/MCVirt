@@ -224,7 +224,7 @@ class UserBase(PyroObject):
             virtual_machines = [self._convert_remote_object(virtual_machine)]
         elif all_virtual_machines:
             virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
-            virtual_machines = virtual_machine_factory.getAllVirtualMachines()
+            virtual_machines = virtual_machine_factory.get_all_virtual_machines()
         else:
             virtual_machines = []
 
@@ -281,7 +281,7 @@ class UserBase(PyroObject):
             auth_object.delete_superuser(self)
         group_factory = self._get_registered_object('group_factory')
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
-        for virtual_machine in [None] + virtual_machine_factory.getAllVirtualMachines():
+        for virtual_machine in [None] + virtual_machine_factory.get_all_virtual_machines():
             for group in group_factory.get_all():
                 if self.get_username() in group.get_users(virtual_machine=virtual_machine):
                     group.remove_user(user=self, virtual_machine=virtual_machine)

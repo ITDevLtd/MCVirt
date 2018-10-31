@@ -455,7 +455,7 @@ class Cluster(PyroObject):
         remote_virtual_machine_factory = remote_object.get_connection('virtual_machine_factory')
 
         # Obtain list of local VMs
-        for vm_object in virtual_machine_factory.getAllVirtualMachines():
+        for vm_object in virtual_machine_factory.get_all_virtual_machines():
             remote_virtual_machine_object = remote_virtual_machine_factory.create(
                 name=vm_object.get_name(), cpu_cores=vm_object.getCPU(),
                 memory_allocation=vm_object.getRAM(), hard_drives=[],
@@ -464,7 +464,7 @@ class Cluster(PyroObject):
             remote_object.annotate_object(remote_virtual_machine_object)
 
             # Add each of the disks to the VM
-            for hard_disk in vm_object.getHardDriveObjects():
+            for hard_disk in vm_object.get_hard_drive_objects():
                 remote_hard_drive_object = hard_disk.get_remote_object(node_object=remote_object,
                                                                        registered=False)
                 remote_hard_drive_object.addToVirtualMachine()
@@ -550,7 +550,7 @@ class Cluster(PyroObject):
         # Determine if there are any VMs on the remote node
         remote_virtual_machine_factory = remote_connection.get_connection(
             'virtual_machine_factory')
-        if len(remote_virtual_machine_factory.getAllVirtualMachines()):
+        if len(remote_virtual_machine_factory.get_all_virtual_machines()):
             raise RemoteObjectConflict(('Target node contains VMs.'
                                         ' These must be removed before adding to a cluster'))
 
@@ -576,7 +576,7 @@ class Cluster(PyroObject):
 
         # Check for any VMs that the node, to be removed, is available to
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        all_vm_objects = vm_factory.getAllVirtualMachines()
+        all_vm_objects = vm_factory.get_all_virtual_machines()
         for vm_object in all_vm_objects:
             vm_available_nodes = vm_object.getAvailableNodes()
             if len(vm_available_nodes) > 1 and node_name_to_remove in vm_available_nodes:
@@ -597,7 +597,7 @@ class Cluster(PyroObject):
             """Remove VM from remote node"""
             if remote_connection is not None:
                 remote_vm_factory = remote_connection.get_connection('virtual_machine_factory')
-                remote_vm = remote_vm_factory.getVirtualMachineByName(vm_name)
+                remote_vm = remote_vm_factory.get_virtual_machine_by_name(vm_name)
                 remote_connection.annotate_object(remote_vm)
                 remote_vm.delete(local_only=True)
 
@@ -694,10 +694,15 @@ class Cluster(PyroObject):
         """Get the MCVirt cluster configuration"""
         return MCVirtConfig().get_config()['cluster']
 
-    def get_node_config(self, node):
+    def get_node_config(self, node, include_local=False):
         """Return the configuration for a node"""
-        self.ensure_node_exists(node)
-        return self.get_cluster_config()['nodes'][node]
+        self.ensure_node_exists(node, include_local=True)
+        if node == get_hostname():
+            return {
+                'ip_address': self.get_cluster_ip_address()
+            }
+        else:
+            return self.get_cluster_config()['nodes'][node]
 
     @Expose()
     def get_nodes(self, return_all=False, include_local=False):

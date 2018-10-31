@@ -40,7 +40,7 @@ class StartParser(object):
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         for vm_name in args.vm_names:
             try:
-                vm_object = vm_factory.getVirtualMachineByName(vm_name)
+                vm_object = vm_factory.get_virtual_machine_by_name(vm_name)
                 p_.rpc.annotate_object(vm_object)
                 vm_object.start(iso_name=args.iso)
                 p_.print_status('Successfully started VM %s' % vm_name)

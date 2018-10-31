@@ -89,7 +89,7 @@ class Network(PyroObject):
 
         # Iterate over all VMs and determine if any use the network to be deleted
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
-        for vm_object in virtual_machine_factory.getAllVirtualMachines():
+        for vm_object in virtual_machine_factory.get_all_virtual_machines():
 
             # Iterate over each network interface for the VM and determine if it
             # is connected to this network

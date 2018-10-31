@@ -15,4 +15,4 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from . import v17
+from . import v17, v18

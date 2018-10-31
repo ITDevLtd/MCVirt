@@ -51,9 +51,10 @@ class ResyncParser(object):
     def handle_resync(self, p_, args):
         """Handle resync"""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-        vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
-        hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-        disk_object = hard_drive_factory.getObject(vm_object, args.disk_id)
-        p_.rpc.annotate_object(disk_object)
-        disk_object.resync(source_node=args.resync_node,
-                           auto_determine=args.resync_auto_determine)
+        vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
+        hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
+        hard_drive_object = hard_drive_attachment_factory.get_object(
+            vm_object, args.disk_id).get_hard_drive_object()
+        p_.rpc.annotate_object(hard_drive_object)
+        hard_drive_object.resync(source_node=args.resync_node,
+                                 auto_determine=args.resync_auto_determine)
