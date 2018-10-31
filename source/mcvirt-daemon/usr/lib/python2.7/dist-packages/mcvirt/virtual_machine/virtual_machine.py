@@ -1671,7 +1671,7 @@ class VirtualMachine(PyroObject):
         cluster = self._get_registered_object('cluster')
 
         # Obtain list of required network and storage backends
-        storage_backends = [hdd.get_storage_backend for hdd in self.get_hard_drive_objects()]
+        storage_backends = [hdd.storage_backend for hdd in self.get_hard_drive_objects()]
         network_adapter_factory = self._get_registered_object('network_adapter_factory')
         network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
         networks = [network_adapter.get_network_object() for network_adapter in network_adapters]
