@@ -104,6 +104,11 @@ class Base(PyroObject):
         """Return the ID of the hard drive"""
         return self._id
 
+    @Expose()
+    def get_id(self):
+        """Return ID"""
+        return self.id_
+
     @property
     def nodes(self):
         """Return nodes that the hard drive is on"""

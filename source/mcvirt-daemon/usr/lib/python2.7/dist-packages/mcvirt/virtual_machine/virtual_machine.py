@@ -201,7 +201,7 @@ class VirtualMachine(PyroObject):
     @Expose()
     def get_id(self):
         """Return the ID of the VM"""
-        return self._id
+        return self.id_
 
     @property
     def id_(self):

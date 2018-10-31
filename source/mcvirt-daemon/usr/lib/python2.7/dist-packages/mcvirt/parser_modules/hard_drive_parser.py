@@ -112,7 +112,8 @@ class HardDriveParser(object):
         """Register parser to import hard drive"""
         self.import_parser = self.subparser.add_parser(
             'import',
-            help='Import a hard drive into MCVirt',
+            help=('Import a hard drive into MCVirt. '
+                  'Note: This only works for \'Local\'-based hard drives'),
             parents=[self.parent_parser]
         )
         self.import_parser.set_defaults(func=self.handle_import)
@@ -123,7 +124,8 @@ class HardDriveParser(object):
         self.import_parser.add_argument(
             'storage_backend_id', metavar='Storage Backend ID', type=str,
             help='Storage backend ID that the hard drive is in')
-        self.import_parser.add_argument('--virtual-machine',
+        self.import_parser.add_argument(
+            '--virtual-machine',
             metavar='Virtual Machine Name', type=str,
             help='Name of the virtual machine to attach the new hard drive to (optional)',
             required=False, default=None)
@@ -143,6 +145,8 @@ class HardDriveParser(object):
 
         hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
         hdd_object = hard_drive_factory.import_(
-            base_volume_name=args.base_volume_name,
+            base_volume_name=args.volume_name,
             storage_backend=storage_backend,
             virtual_machine=virtual_machine)
+        p_.rpc.annotate_object(hdd_object)
+        p_.print_status('Created hard drive: %s' % hdd_object.get_id())

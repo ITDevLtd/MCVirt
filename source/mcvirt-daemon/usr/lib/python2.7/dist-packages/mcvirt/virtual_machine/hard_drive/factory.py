@@ -351,14 +351,14 @@ class Factory(PyroObject):
     def import_(self, base_volume_name, storage_backend, node=None,
                 driver=None, virtual_machine=None):
         """Import a local disk"""
-        if vm_object:
-            vm_object = self._convert_remote_object(vm_object)
+        if virtual_machine:
+            virtual_machine = self._convert_remote_object(virtual_machine)
         storage_backend = self._convert_remote_object(storage_backend)
 
         # Ensure that the user has permissions to add create storage
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
-            vm_object
+            virtual_machine
         )
 
         if node is None:
@@ -375,16 +375,16 @@ class Factory(PyroObject):
         t = Transaction()
 
         self.create_config(
-            vm_object, id_, config,
+            virtual_machine, id_, config,
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
         hdd_object = self.get_object(id_)
         hdd_object.ensure_exists()
 
         # Attach to VM
-        if vm_object:
+        if virtual_machine:
             self._get_registered_object('hard_drive_attachment_factory').create(
-                vm_object, hdd_object)
+                virtual_machine, hdd_object)
 
         t.finish()
 
