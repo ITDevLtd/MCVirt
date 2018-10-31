@@ -41,6 +41,7 @@ class HardDriveParser(object):
         self.register_list()
         self.register_attach()
         self.register_detach()
+        self.register_import()
 
     def register_list(self):
         """Register network list parser"""
@@ -84,10 +85,10 @@ class HardDriveParser(object):
         hard_drive_attachment_factory.create(virtual_machine, hard_drive)
 
     def register_detach(self):
-        """Register parser to handle network deletions"""
+        """Register parser to handle hard drive detaching from VM"""
         self.detach_parser = self.subparser.add_parser(
             'detach',
-            help='Delete a network on the MCVirt host',
+            help='Detach a hard drive from a virtual machine',
             parents=[self.parent_parser]
         )
         self.detach_parser.set_defaults(func=self.handle_detach)
@@ -96,7 +97,7 @@ class HardDriveParser(object):
             help='ID of the hard drive to be detached from virtual machine')
 
     def handle_detach(self, p_, args):
-        """Handle network deletion"""
+        """Handle hard drive detach"""
         hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
         hard_drive = hard_drive_factory.get_object(args.hard_drive_id)
         p_.rpc.annotate_object(hard_drive)
@@ -106,3 +107,42 @@ class HardDriveParser(object):
             hard_drive, raise_on_failure=True)
         p_.rpc.annotate_object(attachment)
         attachment.delete()
+
+    def register_import(self):
+        """Register parser to import hard drive"""
+        self.import_parser = self.subparser.add_parser(
+            'import',
+            help='Import a hard drive into MCVirt',
+            parents=[self.parent_parser]
+        )
+        self.import_parser.set_defaults(func=self.handle_import)
+        self.import_parser.add_argument(
+            'volume_name', metavar='Volume Name', type=str,
+            help=('Name of volume (within the storage backend,'
+                  ' e.g. logical volume name or raw filename)'))
+        self.import_parser.add_argument(
+            'storage_backend_id', metavar='Storage Backend ID', type=str,
+            help='Storage backend ID that the hard drive is in')
+        self.import_parser.add_argument('--virtual-machine',
+            metavar='Virtual Machine Name', type=str,
+            help='Name of the virtual machine to attach the new hard drive to (optional)',
+            required=False, default=None)
+
+    def handle_import(self, p_, args):
+        """Perform hard drive import"""
+        if args.virtual_machine:
+            vm_factory = p_.rpc.get_connection('virtual_machine_factory')
+            virtual_machine = vm_factory.get_virtual_machine_by_name(args.virtual_machine)
+            p_.rpc.annotate_object(virtual_machine)
+        else:
+            virtual_machine = None
+
+        storage_factory = p_.rpc.get_connection('storage_factory')
+        storage_backend = storage_factory.get_object(args.storage_backend_id)
+        p_.rpc.annotate_object(storage_backend)
+
+        hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
+        hdd_object = hard_drive_factory.import_(
+            base_volume_name=args.base_volume_name,
+            storage_backend=storage_backend,
+            virtual_machine=virtual_machine)

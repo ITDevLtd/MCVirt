@@ -36,7 +36,20 @@ class Local(Base):
     @classmethod
     def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
         """Generate config for hard drive"""
-        return cls.generate_config_base(driver, storage_backend, nodes, base_volume_name)
+        # If the storage backend is shared, re-assign nodes to a
+        # None value, as it will be obtained by the storage backend
+        if storage_backend.shared:
+            nodes = None
+        return super(Local, cls).generate_config(driver, storage_backend, nodes, base_volume_name)
+
+    @property
+    def nodes(self):
+        """Return nodes that the hard drive is on"""
+        # If storage backend is shared, return the nodes
+        # that it is attached to
+        if self.storage_backend.shared:
+            return self.storage_backend.nodes
+        return self.get_config_object().get_config()['nodes']
 
     @property
     def disk_name(self):
@@ -57,7 +70,7 @@ class Local(Base):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         vm_object = self.get_virtual_machine()
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MODIFY_VM, vm_object
+            PERMISSIONS.MODIFY_HARD_DRIVE, vm_object
         )
 
         # Convert disk size to bytes
@@ -66,7 +79,7 @@ class Local(Base):
                          SizeConverter.from_string(increase_size, storage=True).to_bytes())
 
         # Ensure disk exists
-        self._ensure_exists()
+        self.ensure_exists()
 
         # Ensure VM is stopped
         if vm_object and not vm_object.is_stopped:
@@ -95,7 +108,7 @@ class Local(Base):
 
     def clone(self, destination_vm_object):
         """Clone a VM, using snapshotting, attaching it to the new VM object"""
-        self._ensure_exists()
+        self.ensure_exists()
 
         # Create destination hard drive, without creating actual storage
         hard_drive_factory = self._get_registered_object('hard_drive_factory')
@@ -120,7 +133,7 @@ class Local(Base):
 
     def activateDisk(self):
         """Starts the disk logical volume"""
-        self._ensure_exists()
+        self.ensure_exists()
         self._get_data_volume().activate()
 
     def deactivateDisk(self):

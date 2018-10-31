@@ -236,7 +236,7 @@ class Drbd(Base):
     @classmethod
     def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
         """Generate config for hard drive"""
-        config = cls.generate_config_base(driver, storage_backend, nodes, base_volume_name)
+        config = super(Drbd, cls).generate_config(driver, storage_backend, nodes, base_volume_name)
         config.update({
             'drbd_minor': None,
             'drbd_port': None,
@@ -314,7 +314,7 @@ class Drbd(Base):
     def activateDisk(self):
         """Ensure that the disk is ready to be used by a VM on the local node"""
         self.storage_backend.ensure_available()
-        self._ensure_exists()
+        self.ensure_exists()
 
         # Ensure that meta and data volumes are active
         self.get_raw_volume().ensure_active()
@@ -329,12 +329,12 @@ class Drbd(Base):
 
     def deactivateDisk(self):
         """Mark Drbd volume as secondary"""
-        self._ensure_exists()
+        self.ensure_exists()
         self._drbdSetSecondary()
 
     def get_size(self):
         """Get the size of the disk (in MB)"""
-        self._ensure_exists()
+        self.ensure_exists()
         return self.get_raw_volume().get_size()
 
     def create(self, size):
@@ -416,7 +416,7 @@ class Drbd(Base):
     def _removeStorage(self, local_only=False, remove_raw=True):
         """Removes the backing storage for the Drbd hard drive"""
         # @TODO Use transaction and pass nodes to each function
-        self._ensure_exists()
+        self.ensure_exists()
         cluster = self._get_registered_object('cluster')
         all_nodes = [get_hostname()] if local_only else self.nodes
         remote_nodes = list(all_nodes)
@@ -488,7 +488,7 @@ class Drbd(Base):
     def increase_size(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MODIFY_VM, self.get_virtual_machine()
+            PERMISSIONS.MODIFY_HARD_DRIVE, self.get_virtual_machine()
         )
 
         # Convert disk size to bytes

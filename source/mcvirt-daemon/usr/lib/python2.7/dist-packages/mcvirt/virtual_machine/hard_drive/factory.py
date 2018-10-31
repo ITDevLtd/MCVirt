@@ -105,7 +105,7 @@ from mcvirt.config.hard_drive import HardDrive as HardDriveConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname, get_all_submodules
-from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.expose_method import Expose, Transaction
 from mcvirt.size_converter import SizeConverter
 
 
@@ -283,7 +283,7 @@ class Factory(PyroObject):
 
         # Ensure that the user has permissions to add create storage
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MODIFY_VM,
+            PERMISSIONS.MODIFY_HARD_DRIVE,
             vm_object
         )
 
@@ -317,10 +317,12 @@ class Factory(PyroObject):
             nodes=nodes,
             base_volume_name='mcvirt-%s' % id_)
 
+        t = Transaction()
+
         # Create the config for the hard drive on all nodes
         cluster = self._get_registered_object('cluster')
         self.create_config(
-            id_, config,
+            vm_object, id_, config,
             nodes=cluster.get_nodes(include_local=True))
 
         # Obtain object, create actual volume
@@ -334,6 +336,8 @@ class Factory(PyroObject):
             self._get_registered_object('hard_drive_attachment_factory').create(
                 vm_object, hdd_object)
 
+        t.finish()
+
         return hdd_object
 
     def undo__create(self, size, storage_type, driver, storage_backend=None,
@@ -343,10 +347,68 @@ class Factory(PyroObject):
         hard_drive_object = self.get_object(id_)
         hard_drive_object.delete()
 
+    @Expose(locking=True)
+    def import_(self, base_volume_name, storage_backend, node=None,
+                driver=None, virtual_machine=None):
+        """Import a local disk"""
+        if vm_object:
+            vm_object = self._convert_remote_object(vm_object)
+        storage_backend = self._convert_remote_object(storage_backend)
+
+        # Ensure that the user has permissions to add create storage
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_HARD_DRIVE,
+            vm_object
+        )
+
+        if node is None:
+            node = get_hostname()
+
+        storage_type = 'Local'
+        id_ = self.getClass(storage_type).generate_id('whatshouldthisbe')
+        config = self.getClass(storage_type).generate_config(
+            driver=driver,
+            storage_backend=storage_backend,
+            nodes=[node],
+            base_volume_name=base_volume_name)
+
+        t = Transaction()
+
+        self.create_config(
+            vm_object, id_, config,
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+        hdd_object = self.get_object(id_)
+        hdd_object.ensure_exists()
+
+        # Attach to VM
+        if vm_object:
+            self._get_registered_object('hard_drive_attachment_factory').create(
+                vm_object, hdd_object)
+
+        t.finish()
+
+        return hdd_object
+
     @Expose(locking=True, remote_nodes=True)
-    def create_config(self, id_, config):
+    def create_config(self, vm_object, id_, config):
         """Create the hard drive config"""
+        # Ensure that the user has permissions to add create storage
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_HARD_DRIVE,
+            vm_object
+        )
         HardDriveConfig.create(id_, config)
+
+    @Expose(locking=True)
+    def undo__create_config(self, vm_object, id_, config):
+        """Undo creating VM object"""
+        # Ensure that the user has permissions to add create storage
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_HARD_DRIVE,
+            vm_object
+        )
+        self.get_object(id_).get_config_object().delete()
 
     def _get_available_storage_types(self):
         """Returns a list of storage types that are available on the node"""
