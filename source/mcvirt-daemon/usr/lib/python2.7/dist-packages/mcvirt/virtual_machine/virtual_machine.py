@@ -1208,7 +1208,10 @@ class VirtualMachine(PyroObject):
     @Expose()
     def getStorageType(self):
         """Returns the storage type of the VM"""
-        return self.get_config_object().get_config()['storage_type']
+        for hdd in self.get_hard_drive_objects():
+            return hdd.get_type()
+
+        return None
 
     @Expose(locking=True)
     def clone(self, clone_vm_name, retain_mac=False):
