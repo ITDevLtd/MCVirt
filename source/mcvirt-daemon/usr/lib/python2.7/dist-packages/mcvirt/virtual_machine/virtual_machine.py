@@ -851,13 +851,15 @@ class VirtualMachine(PyroObject):
     @Expose()
     def get_hard_drive_objects(self):
         """Return an array of disk objects for the disks attached to the VM"""
-        attachments = self.get_config_object().get_config()['hard_drives']
-        hard_drive_factory = self._get_registered_object('hard_drive_factory')
-        hard_drive_objects = []
-        for hard_drive_id in [attachment_conf['hard_drive_id']
-                              for attachment_conf in attachments.values()]:
-            hard_drive_objects.append(hard_drive_factory.get_object(hard_drive_id))
-        return hard_drive_objects
+        return [attachment.get_hard_drive_object()
+                for attachment in self.get_hard_drive_attachments()]
+
+    @Expose()
+    def get_hard_drive_attachments(self):
+        """Return an array of hard drive attachments for the VM"""
+        hard_drive_attachment_factory = self._get_registered_object(
+            'hard_drive_attachment_factory')
+        return hard_drive_attachment_factory.get_objects_by_virtual_machine(self)
 
     def get_attached_usb_devices(self):
         """Get USB devices attached to the VM"""
