@@ -90,10 +90,14 @@
 #########################################################################################
 """
 
+from texttable import Texttable
+
 from mcvirt.exceptions import (UnknownStorageTypeException, HardDriveDoesNotExistException,
                                InsufficientSpaceException, StorageBackendNotAvailableOnNode,
                                UnknownStorageBackendException, InvalidNodesException,
-                               InvalidStorageBackendError)
+                               InvalidStorageBackendError, VolumeDoesNotExistError,
+                               HardDriveDoesNotExistException,
+                               StorageBackendDoesNotExist)
 from mcvirt.virtual_machine.hard_drive.local import Local
 from mcvirt.virtual_machine.hard_drive.drbd import Drbd
 from mcvirt.virtual_machine.hard_drive.base import Base
@@ -357,6 +361,43 @@ class Factory(PyroObject):
     def get_all_storage_types(self):
         """Returns the available storage types that MCVirt provides"""
         return get_all_submodules(Base)
+
+    @Expose()
+    def get_hard_drive_list_table(self):
+        """Return a table of hard drives"""
+        # Manually set permissions asserted, as this function can
+        # run high privilege calls, but doesn't not require
+        # permission checking
+        self._get_registered_object('auth').set_permission_asserted()
+
+        # Create table and set headings
+        table = Texttable()
+        table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        table.header(('ID', 'Size', 'Type', 'Storage Backend', 'Virtual Machine'))
+        table.set_cols_width((50, 15, 15, 50, 20))
+
+        # Obtain hard ives and add to table
+        for hard_drive_obj in self.get_all():
+            vm_object = hard_drive_obj.get_virtual_machine()
+            hdd_type = ''
+            storage_backend_id = 'Storage backend does not exist'
+            try:
+                storage_backend_id = hard_drive_obj.storage_backend.id_
+                hdd_type = hard_drive_obj.get_type()
+                hdd_size = SizeConverter(hard_drive_obj.get_size()).to_string()
+            except (VolumeDoesNotExistError,
+                    HardDriveDoesNotExistException,
+                    StorageBackendDoesNotExist), exc:
+                hdd_size = str(exc)
+
+            table.add_row((hard_drive_obj.id_, hdd_size,
+                           hdd_type, storage_backend_id,
+                           vm_object.get_name() if vm_object else 'Not attached'))
+        return table.draw()
+
+    def get_all(self):
+        """Return all hard drive objects"""
+        return [self.get_object(id_) for id_ in HardDriveConfig.get_global_config().keys()]
 
     def getClass(self, storage_type, allow_base=False):
         """Obtains the hard drive class for a given storage type"""
