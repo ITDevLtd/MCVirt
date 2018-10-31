@@ -1,0 +1,194 @@
+# Copyright (c) 2018 - I.T. Dev Ltd
+#
+# This file is part of MCVirt.
+#
+# MCVirt is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# MCVirt is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
+
+from enum import Enum
+import Pyro4
+
+from mcvirt.thread.repeat_timer import RepeatTimer
+from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.syslogger import Syslogger
+from mcvirt.argument_validator import ArgumentValidator
+from mcvirt.config.core import Core as MCVirtConfig
+from mcvirt.rpc.expose_method import Expose
+from mcvirt.utils import dict_merge
+from mcvirt.auth.permissions import PERMISSIONS
+
+
+class StatisticsFactory(PyroObject):
+    """Object to configure and create statistics daemons"""
+
+    def __init__(self):
+        """Intialise state of statisticss"""
+        self.statistics_agents = {}
+
+    def get_remote_object(self,
+                          node=None,     # The name of the remote node to connect to
+                          node_object=None):   # Otherwise, pass a remote node connection
+        """Obtain an instance of the statistics factory on a remote node"""
+        cluster = self._get_registered_object('cluster')
+        if node_object is None:
+            node_object = cluster.get_remote_node(node)
+
+        return node_object.get_connection('statistics_factory')
+
+    def initialise(self):
+        """Detect running VMs on local node and create statistics agents"""
+        # Check all VMs
+        for virtual_machine in self._get_registered_object(
+                'virtual_machine_factory').get_all_virtual_machines():
+
+            Syslogger.logger().debug('Registering statistics daemon for: %s' % virtual_machine.get_name())
+            self.start_statistics(virtual_machine)
+
+    def start_statistics(self, virtual_machine):
+        """Create statistics agents and start"""
+        stats = self.get_statistics_agent(virtual_machine)
+        stats.initialise()
+
+    def stop_statistics(self, virtual_machine):
+        """Stop statistics"""
+        stats = self.get_statistics_agent(virtual_machine)
+        stats.cancel()
+
+    def get_statistics_agent(self, virtual_machine):
+        """Get a statistics obect for a given virtual machine"""
+        if virtual_machine.get_name() not in self.statistics_agents:
+            self.statistics_agents[virtual_machine.get_name()] = StatisticsAgent(virtual_machine)
+        return self.statistics_agents[virtual_machine.get_name()]
+
+    def cancel(self):
+        """Stop all threads"""
+        for stats_agent in self.statistics_agents.values():
+            stats_agent.repeat = False
+            stats_agent.cancel()
+
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def update_statistics_config(self, change_dict, reason, _f):
+        """Update global statistics config using dict"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+
+        def update_config(config):
+            """Update mcvirt config"""
+            _f.add_undo_argument(original_config=dict(config['statistics']))
+            dict_merge(config['statistics'], change_dict)
+
+        MCVirtConfig().update_config(update_config, reason)
+
+    @Expose(locking=True)
+    def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
+        """Undo config change"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
+                                                             allow_indirect=True)
+
+        def revert_config(config):
+            """Revert config"""
+            config['statistics'] = original_config
+
+        if original_config is not None:
+            MCVirtConfig().update_config('Revert: %s' % reason, revert_config)
+
+    @Expose(locking=True)
+    def set_global_interval(self, interval):
+        """Set global default statistics check interval"""
+        ArgumentValidator.validate_positive_integer(interval)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
+
+        self.update_statistics_config(
+            change_dict={'interval': interval},
+            reason='Update global statistics interval',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True)
+    def set_global_reset_fail_count(self, count):
+        """Set global default statistics reset fail count"""
+        ArgumentValidator.validate_positive_integer(count)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
+
+        self.update_statistics_config(
+            change_dict={'reset_fail_count': count},
+            reason='Update global statistics reset fail count',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True)
+    def set_global_boot_wait(self, wait):
+        """Set the global default boot wait period"""
+        ArgumentValidator.validate_positive_integer(wait)
+
+        # Check permissions
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
+
+        self.update_statistics_config(
+            change_dict={'boot_wait': wait},
+            reason='Update global statistics boot wait period',
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+
+class StatisticsAgent(RepeatTimer):
+    """Statistics agent timer thread for checking VM stats"""
+
+    def __init__(self, virtual_machine, *args, **kwargs):
+        """Store virtual machine"""
+        self.virtual_machine = virtual_machine
+        super(StatisticsAgent, self).__init__(*args, **kwargs)
+
+    @property
+    def interval(self):
+        """Return the timer interval"""
+        # @TODO This will be slow
+        return MCVirtConfig().get_config()['statistics']['interval']
+
+    def run(self):
+        """Perform statistics check"""
+        Syslogger.logger().debug('Statistics daemon checking: %s' %
+                                 self.virtual_machine.get_name())
+        Pyro4.current_context.INTERNAL_REQUEST = True
+
+        # Ensure that VM is registered locally, running and watchog is enabled
+        if not (self.virtual_machine.isRegisteredLocally() and
+                self.virtual_machine.is_running):
+            Syslogger.logger().error(
+                'Statistics daemon not run: %s' %
+                self.virtual_machine.get_name())
+            return
+
+        agent_conn = self.virtual_machine.get_agent_connection()
+
+        def get_stats(conn):
+            """Send request to agent and ensure it responds"""
+            conn.write('stats\n')
+            return conn.readline().strip()
+
+        resp = None
+        try:
+            resp = agent_conn.wait_lock(get_stats)
+        except Exception, e:
+            Syslogger.logger().error(e)
+
+        # DO STUFF!!
+        Syslogger.logger().debug(resp)
+
+        Pyro4.current_context.INTERNAL_REQUEST = False
+        Syslogger.logger().debug('Statistics daemon complete: %s' %
+                                 self.virtual_machine.get_name())
