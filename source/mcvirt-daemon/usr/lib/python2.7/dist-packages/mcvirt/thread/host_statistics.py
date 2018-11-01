@@ -26,7 +26,7 @@ from mcvirt.os_stats import OSStats
 
 
 class HostStatistics(RepeatTimer):
-    """Object to perform regular checks to determine that VMs are running"""
+    """Object to perform regular cpu and memory stats gathering on host"""
 
     def __init__(self, *args, **kwargs):
         self._cpu_usage = 0
@@ -50,7 +50,7 @@ class HostStatistics(RepeatTimer):
 
     @Expose()
     def get_autostart_interval(self):
-        """Return the autostart interval for the node"""
+        """Return the statistics interval for the node"""
         return self._get_registered_object('mcvirt_config')().get_config()['statistics']['interval']
 
     def cancel(self):
@@ -59,7 +59,7 @@ class HostStatistics(RepeatTimer):
         self.timer.cancel()
 
     def run(self):
-        """Perform ON_POLL autostart"""
+        """Obtain CPU and memory statistics"""
         Pyro4.current_context.INTERNAL_REQUEST = True
         self._cpu_usage = OSStats.get_cpu_usage()
         self._memory_usage = OSStats.get_ram_usage() 
