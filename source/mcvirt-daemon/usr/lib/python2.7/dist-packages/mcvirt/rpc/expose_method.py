@@ -305,8 +305,9 @@ class Function(PyroObject):
         except Exception:
             # Also try-catch the tear-down
             try:
-                # Notify that the transaction that the functino has failed
-                Transaction.function_failed(self)
+                if self.obj._is_cluster_master:
+                    # Notify that the transaction that the functino has failed
+                    Transaction.function_failed(self)
             except Exception:
                 # Reset user session after the command is
                 # complete
@@ -320,7 +321,8 @@ class Function(PyroObject):
             self._reset_user_session()
 
             # Print info about command execution failure
-            Syslogger.logger().debug('Expose failure: %s' % str(self.nodes))
+            Syslogger.logger().error('Expose failure: %s' % str(self.nodes))
+            Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
 
             # Re-raise exception
             raise

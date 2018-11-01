@@ -236,11 +236,11 @@ class Factory(PyroObject):
         # Create table and add headers
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('Name', 'Type', 'Location', 'Nodes', 'Shared', 'Free Space'))
+        table.header(('Name', 'Type', 'Location', 'Nodes', 'Shared', 'Free Space', 'ID'))
 
         # Set column alignment and widths
-        table.set_cols_width((15, 5, 30, 70, 6, 9))
-        table.set_cols_align(('l', 'l', 'l', 'l', 'l', 'l'))
+        table.set_cols_width((15, 5, 30, 70, 6, 15, 50))
+        table.set_cols_align(('l', 'l', 'l', 'l', 'l', 'l', 'l'))
 
         for storage_backend in self.get_all():
             table.add_row((
@@ -249,7 +249,8 @@ class Factory(PyroObject):
                 storage_backend.get_location(),
                 ', '.join(storage_backend.nodes),
                 str(storage_backend.shared),
-                SizeConverter(storage_backend.get_free_space()).to_string()
+                SizeConverter(storage_backend.get_free_space()).to_string(),
+                storage_backend.id_
             ))
         return table.draw()
 

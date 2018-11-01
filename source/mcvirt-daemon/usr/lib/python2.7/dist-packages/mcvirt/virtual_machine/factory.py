@@ -174,6 +174,11 @@ class Factory(PyroObject):
     @Expose()
     def listVms(self, include_ram=False, include_cpu=False, include_disk=False):
         """Lists the VMs that are currently on the host"""
+        # Manually set permissions asserted, as this function can
+        # run high privilege calls, but doesn't not require
+        # permission checking
+        self._get_registered_object('auth').set_permission_asserted()
+
         # Create base table
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
@@ -202,14 +207,14 @@ class Factory(PyroObject):
             vm_row = [vm_object.get_name(), power_state,
                       vm_object.getNode() or 'Unregistered']
             if include_ram:
-                vm_row.append(str(int(vm_object.getRAM()) / 1024) + 'MB')
+                vm_row.append(SizeConverter(vm_object.getRAM()).to_string())
             if include_cpu:
                 vm_row.append(vm_object.getCPU())
             if include_disk:
                 hard_drive_size = 0
                 for disk_object in vm_object.get_hard_drive_objects():
                     hard_drive_size += disk_object.get_size()
-                vm_row.append(hard_drive_size)
+                vm_row.append(SizeConverter(hard_drive_size).to_string())
             table.add_row(vm_row)
         table_output = table.draw()
         return table_output

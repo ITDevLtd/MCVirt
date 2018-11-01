@@ -72,6 +72,7 @@ class Factory(PyroObject):
         attachment_ids = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
         return [self.get_object(virtual_machine, id_) for id_ in attachment_ids]
 
+    @Expose()
     def get_object_by_hard_drive(self, hard_drive, raise_on_failure=False):
         """Obtain attachment by hard drive"""
         hard_drive = self._convert_remote_object(hard_drive)
@@ -95,18 +96,19 @@ class Factory(PyroObject):
         """Create attachment"""
         virtual_machine = self._convert_remote_object(virtual_machine)
         hard_drive = self._convert_remote_object(hard_drive)
-        attachment_id = self._get_available_attachment_id(virtual_machine)
-
-        # Ensure that the new disk matches the same 'shared' and 'storage' type as the
-        # new disk
-        for vm_hdd in virtual_machine.get_hard_drive_objects():
-            hard_drive.ensure_compatible(vm_hdd)
 
         # Ensure that the user has permissions to modify VM
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             virtual_machine
         )
+
+        attachment_id = self._get_available_attachment_id(virtual_machine)
+
+        # Ensure that the new disk matches the same 'shared' and 'storage' type as the
+        # new disk
+        for vm_hdd in virtual_machine.get_hard_drive_objects():
+            hard_drive.ensure_compatible(vm_hdd)
 
         config = {
             'hard_drive_id': hard_drive.id_
@@ -221,8 +223,15 @@ class HardDriveAttachment(PyroObject):
         hdd_factory = self._get_registered_object('hard_drive_factory')
         return hdd_factory.get_object(self.get_hard_drive_id())
 
+    @Expose(locking=True)
     def delete(self):
         """Remove the hard drive attachment"""
+        # Ensure that the user has permissions to add delete storage
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MODIFY_VM,
+            self.virtual_machine
+        )
+
         self.remove_from_virtual_machine()
         cluster = self._get_registered_object('cluster')
         self.remove_config(nodes=cluster.get_nodes(include_local=True))

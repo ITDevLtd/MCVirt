@@ -89,12 +89,8 @@ class Base(PyroObject):
         return 'hd'
 
     @classmethod
-    def generate_config_base(cls, driver, storage_backend, nodes, base_volume_name):
+    def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
         """Generate config for hard drive"""
-        # Needs to be named 'base', as method overrides cannot
-        # call this function without the cls changing to Base.
-        # Whereas they can call cls.generate_config_base and cls retains
-        # the class of the child class
         return {
             'nodes': nodes,
             'driver': driver if driver else cls.DEFAULT_DRIVER,
@@ -107,6 +103,11 @@ class Base(PyroObject):
     def id_(self):
         """Return the ID of the hard drive"""
         return self._id
+
+    @Expose()
+    def get_id(self):
+        """Return ID"""
+        return self.id_
 
     @property
     def nodes(self):
@@ -176,7 +177,7 @@ class Base(PyroObject):
         node_object.annotate_object(hard_drive_object)
         return hard_drive_object
 
-    def _ensure_exists(self):
+    def ensure_exists(self):
         """Ensure the disk exists on the local node"""
         self.storage_backend.ensure_available()
         if not self._check_exists():
@@ -262,11 +263,11 @@ class Base(PyroObject):
         vm_object = self.get_virtual_machine()
         # Ensure that the user has permissions to add delete storage
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MODIFY_VM,
+            PERMISSIONS.MODIFY_HARD_DRIVE,
             self.get_virtual_machine()
         )
 
-        self._ensure_exists()
+        self.ensure_exists()
 
         if vm_object:
             vm_object.ensureUnlocked()
@@ -279,9 +280,18 @@ class Base(PyroObject):
         # Remove backing storage
         self._removeStorage(local_only=local_only)
 
+        # Remove config
+        self.remove_config(
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+    @Expose(locking=True, remote_nodes=True)
+    def remove_config(self):
+        """Remove hard drive config"""
+        self.get_config_object().delete()
+
     def duplicate(self, destination_vm_object, storage_backend=None):
         """Clone the hard drive and attach it to the new VM object"""
-        self._ensure_exists()
+        self.ensure_exists()
 
         if not storage_backend:
             storage_backend = self.storage_backend

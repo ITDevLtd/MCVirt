@@ -15,4 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from . import v17, v18, v19
+
+def migrate(config_obj, config):
+    """Migrate v18"""
+    # Update permissions, adding new MODIFY_HARD_DRIVE permission
+    # where the MODIFY_VM permission was previously assigned
+    for group_id in config['groups']:
+        if 'MODIFY_VM' in config['groups'][group_id]['permissions']:
+            config['groups'][group_id]['permissions'].append('MODIFY_HARD_DRIVE')

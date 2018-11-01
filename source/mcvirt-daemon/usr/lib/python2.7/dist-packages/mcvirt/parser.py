@@ -39,6 +39,7 @@ from mcvirt.parser_modules.virtual_machine.migrate_parser import MigrateParser
 from mcvirt.parser_modules.virtual_machine.info_parser import InfoParser
 from mcvirt.parser_modules.permission_parser import PermissionParser
 from mcvirt.parser_modules.network_parser import NetworkParser
+from mcvirt.parser_modules.hard_drive_parser import HardDriveParser
 from mcvirt.parser_modules.group_parser import GroupParser
 from mcvirt.parser_modules.user_parser import UserParser
 from mcvirt.parser_modules.virtual_machine.list_parser import ListParser
@@ -170,6 +171,8 @@ class Parser(object):
         ClusterParser(self.subparsers, self.parent_parser)
 
         StorageParser(self.subparsers, self.parent_parser)
+
+        HardDriveParser(self.subparsers, self.parent_parser)
 
         # Create subparser for commands relating to the local node configuration
         NodeParser(self.subparsers, self.parent_parser)

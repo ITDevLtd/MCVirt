@@ -236,7 +236,7 @@ class Drbd(Base):
     @classmethod
     def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
         """Generate config for hard drive"""
-        config = cls.generate_config_base(driver, storage_backend, nodes, base_volume_name)
+        config = super(Drbd, cls).generate_config(driver, storage_backend, nodes, base_volume_name)
         config.update({
             'drbd_minor': None,
             'drbd_port': None,
@@ -266,14 +266,46 @@ class Drbd(Base):
         return self.resource_name
 
     @Expose()
-    def get_drbd_port(self):
+    def get_drbd_port(self, generate=True):
         """Obtain the DRBD port"""
-        return self.drbd_port
+        if not self._drbd_port:
+            # If the cached version is not set, attempt to obtain from
+            # config
+            self._drbd_port = self.get_config_object().get_config()['drbd_port']
+
+            # If the config version is null, generate one and write to config
+            if self._drbd_port is None and generate:
+                self._drbd_port = self._get_available_drbd_port()
+
+                # Update the hard drive config with the new minor
+                self.update_config(
+                    {'drbd_port': self._drbd_port},
+                    'Set DRBD port for disk: %s' % self.id_,
+                    nodes=self._get_registered_object('cluster').get_nodes(
+                        include_local=True))
+
+        return self._drbd_port
 
     @Expose()
-    def get_drbd_minor(self):
+    def get_drbd_minor(self, generate=True):
         """Obtain the DRBD minor ID"""
-        return self.drbd_minor
+        if not self._drbd_minor:
+            # If the cached version is not set, attempt to obtain from
+            # config
+            self._drbd_minor = self.get_config_object().get_config()['drbd_minor']
+
+            # If the config version is null, generate one and write to config
+            if self._drbd_minor is None and generate:
+                self._drbd_minor = self._get_available_drbd_minor()
+
+                # Update the hard drive config with the new minor
+                self.update_config(
+                    {'drbd_minor': self._drbd_minor},
+                    'Set DRBD Minor for disk: %s' % self.id_,
+                    nodes=self._get_registered_object('cluster').get_nodes(
+                        include_local=True))
+
+        return self._drbd_minor
 
     @Expose()
     def get_sync_state(self):
@@ -314,7 +346,7 @@ class Drbd(Base):
     def activateDisk(self):
         """Ensure that the disk is ready to be used by a VM on the local node"""
         self.storage_backend.ensure_available()
-        self._ensure_exists()
+        self.ensure_exists()
 
         # Ensure that meta and data volumes are active
         self.get_raw_volume().ensure_active()
@@ -329,12 +361,12 @@ class Drbd(Base):
 
     def deactivateDisk(self):
         """Mark Drbd volume as secondary"""
-        self._ensure_exists()
+        self.ensure_exists()
         self._drbdSetSecondary()
 
     def get_size(self):
         """Get the size of the disk (in MB)"""
-        self._ensure_exists()
+        self.ensure_exists()
         return self.get_raw_volume().get_size()
 
     def create(self, size):
@@ -416,7 +448,7 @@ class Drbd(Base):
     def _removeStorage(self, local_only=False, remove_raw=True):
         """Removes the backing storage for the Drbd hard drive"""
         # @TODO Use transaction and pass nodes to each function
-        self._ensure_exists()
+        self.ensure_exists()
         cluster = self._get_registered_object('cluster')
         all_nodes = [get_hostname()] if local_only else self.nodes
         remote_nodes = list(all_nodes)
@@ -488,7 +520,7 @@ class Drbd(Base):
     def increase_size(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MODIFY_VM, self.get_virtual_machine()
+            PERMISSIONS.MODIFY_HARD_DRIVE, self.get_virtual_machine()
         )
 
         # Convert disk size to bytes
@@ -1166,45 +1198,13 @@ class Drbd(Base):
 
     @property
     def drbd_minor(self):
-        """Returns the Drbd port assigned to the hard drive"""
-        if not self._drbd_minor:
-            # If the cached version is not set, attempt to obtain from
-            # config
-            self._drbd_minor = self.get_config_object().get_config()['drbd_minor']
-
-            # If the config version is null, generate one and write to config
-            if self._drbd_minor is None:
-                self._drbd_minor = self._get_available_drbd_minor()
-
-                # Update the hard drive config with the new minor
-                self.update_config(
-                    {'drbd_minor': self._drbd_minor},
-                    'Set DRBD Minor for disk: %s' % self.id_,
-                    nodes=self._get_registered_object('cluster').get_nodes(
-                        include_local=True))
-
-        return self._drbd_minor
+        """Return the Drbd port assigned to the hard drive"""
+        return self.get_drbd_minor()
 
     @property
     def drbd_port(self):
-        """Returns the Drbd port assigned to the hard drive"""
-        if not self._drbd_port:
-            # If the cached version is not set, attempt to obtain from
-            # config
-            self._drbd_port = self.get_config_object().get_config()['drbd_port']
-
-            # If the config version is null, generate one and write to config
-            if self._drbd_port is None:
-                self._drbd_port = self._get_available_drbd_port()
-
-                # Update the hard drive config with the new minor
-                self.update_config(
-                    {'drbd_port': self._drbd_port},
-                    'Set DRBD port for disk: %s' % self.id_,
-                    nodes=self._get_registered_object('cluster').get_nodes(
-                        include_local=True))
-
-        return self._drbd_port
+        """Return the Drbd port assigned to the hard drive"""
+        return self.get_drbd_port()
 
     def _getDrbdDevice(self):
         """Returns the block object path for the Drbd volume"""
