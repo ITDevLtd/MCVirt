@@ -412,7 +412,7 @@ class VirtualMachineTests(TestBase):
         self.parser.parse_arguments('start %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure that it is running
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.RUNNING.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.RUNNING.value)
 
     def test_start_running_vm(self):
         """Attempt to start a running VM"""
@@ -464,7 +464,7 @@ class VirtualMachineTests(TestBase):
 
         # Start VM and ensure it is running
         test_vm_object.start()
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.RUNNING.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.RUNNING.value)
 
         # Use the argument parser to stop the VM
         self.parser.parse_arguments(
@@ -472,7 +472,7 @@ class VirtualMachineTests(TestBase):
             self.test_vms['TEST_VM_1']['name'])
 
         # Ensure the VM is stopped
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.STOPPED.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.STOPPED.value)
 
     def test_stop_stopped_vm(self):
         """Attempt to stop an already stopped VM"""
@@ -523,13 +523,13 @@ class VirtualMachineTests(TestBase):
         self.parser.parse_arguments('start %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure VM is running
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.RUNNING.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.RUNNING.value)
 
         # Attempt to stop the VM on the remote node
         self.parser.parse_arguments('stop %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure VM is stopped
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.STOPPED.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.STOPPED.value)
 
         # Delete VM
         test_vm_object.delete()

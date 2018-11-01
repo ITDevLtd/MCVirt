@@ -302,12 +302,12 @@ class VirtualMachine(PyroObject):
     @property
     def is_running(self):
         """Return True if VM is running"""
-        return self._getPowerState() is PowerStates.RUNNING
+        return self._get_power_state() is PowerStates.RUNNING
 
     @property
     def is_stopped(self):
         """Return true is VM is stopped"""
-        return self._getPowerState() is PowerStates.STOPPED
+        return self._get_power_state() is PowerStates.STOPPED
 
     @Expose(locking=True)
     def stop(self):
@@ -321,7 +321,7 @@ class VirtualMachine(PyroObject):
         # Determine if VM is registered on the local machine
         if self.isRegisteredLocally():
             # Determine if VM is running
-            if self._getPowerState() is PowerStates.RUNNING:
+            if self._get_power_state() is PowerStates.RUNNING:
                 try:
                     # Stop the VM
                     self._get_libvirt_domain_object().destroy()
@@ -352,7 +352,7 @@ class VirtualMachine(PyroObject):
         # Determine if VM is registered on the local machine
         if self.isRegisteredLocally():
             # Determine if VM is running
-            if self._getPowerState() is PowerStates.RUNNING:
+            if self._get_power_state() is PowerStates.RUNNING:
                 try:
                     # Shutdown the VM
                     self._get_libvirt_domain_object().shutdown()
@@ -370,7 +370,7 @@ class VirtualMachine(PyroObject):
 
     def ensure_stopped(self):
         """Ensure VM is stopped"""
-        if self._getPowerState() is not PowerStates.STOPPED:
+        if self._get_power_state() is not PowerStates.STOPPED:
             raise VmAlreadyStartedException('VM is not stopped')
 
     @Expose(locking=True)
@@ -398,7 +398,7 @@ class VirtualMachine(PyroObject):
                 raise CannotStartClonedVmException('Cloned VMs cannot be started')
 
             # Determine if VM is stopped
-            if self._getPowerState() is PowerStates.RUNNING:
+            if self._get_power_state() is PowerStates.RUNNING:
                 raise VmAlreadyStartedException('The VM is already running')
 
             # Take the oportunity to update libvirt config
@@ -413,12 +413,12 @@ class VirtualMachine(PyroObject):
                 # and adjust boot order to boot from ISO first
                 iso_factory = self._get_registered_object('iso_factory')
                 iso_object = iso_factory.get_iso_by_name(iso_name)
-                disk_drive_object.attachISO(iso_object)
+                disk_drive_object.attach_iso(iso_object)
                 self.setBootOrder(['cdrom', 'hd'])
             else:
                 # If not ISO was specified, remove any attached ISOs and change boot order
                 # to boot from HDD
-                disk_drive_object.removeISO()
+                disk_drive_object.remove_iso()
                 self.setBootOrder(['hd'])
 
             # Start the VM
@@ -462,18 +462,18 @@ class VirtualMachine(PyroObject):
 
         self.ensureRegisteredLocally()
         disk_drive = self.get_disk_drive()
-        live = (self._getPowerState() is PowerStates.RUNNING)
+        live = (self._get_power_state() is PowerStates.RUNNING)
         if iso_name:
             iso_factory = self._get_registered_object('iso_factory')
             iso_object = iso_factory.get_iso_by_name(iso_name)
-            disk_drive.attachISO(iso_object, live=live)
+            disk_drive.attach_iso(iso_object, live=live)
 
         else:
-            disk_drive.removeISO(live=live)
+            disk_drive.remove_iso(live=live)
 
     @Expose(locking=True)
     def reset(self):
-        """Resets the VM"""
+        """Reset the VM"""
         # Check the user has permission to start/stop VMs
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.CHANGE_VM_POWER_STATE,
@@ -486,7 +486,7 @@ class VirtualMachine(PyroObject):
         # Ensure VM is registered locally
         if self.isRegisteredLocally():
             # Determine if VM is running
-            if self._getPowerState() is PowerStates.RUNNING:
+            if self._get_power_state() is PowerStates.RUNNING:
                 try:
                     # Reset the VM
                     self._get_libvirt_domain_object().reset()
@@ -503,11 +503,12 @@ class VirtualMachine(PyroObject):
             )
 
     @Expose()
-    def getPowerState(self):
-        return self._getPowerState().value
+    def get_power_state(self):
+        """Return the value of current power state"""
+        return self._get_power_state().value
 
-    def _getPowerState(self):
-        """Returns the power state of the VM in the form of a PowerStates enum"""
+    def _get_power_state(self):
+        """Return the power state of the VM in the form of a PowerStates enum"""
         if self.isRegistered():
             remote_libvirt = (self.isRegisteredRemotely() and not self._cluster_disabled)
             libvirt_object = self._get_libvirt_domain_object(allow_remote=remote_libvirt)
@@ -520,7 +521,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def getInfo(self):
-        """Gets information about the current VM"""
+        """Get information about the current VM"""
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
@@ -546,7 +547,7 @@ class VirtualMachine(PyroObject):
         table.add_row(('Guest CPU Usage', self.get_guest_cpu_usage_text()))
         table.add_row(('Memory Allocation', SizeConverter(self.getRAM()).to_string()))
         table.add_row(('Guest Memory Usage', self.get_guest_memory_usage_text()))
-        table.add_row(('State', self._getPowerState().name))
+        table.add_row(('State', self._get_power_state().name))
         table.add_row(('Autostart', self._get_autostart_state().name))
         table.add_row(('Node', self.getNode()))
         table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
@@ -647,7 +648,7 @@ class VirtualMachine(PyroObject):
             raise DeleteProtectionEnabledError('VM is configured with delete protection')
 
         # Determine if VM is running
-        if self._is_cluster_master and self._getPowerState() == PowerStates.RUNNING:
+        if self._is_cluster_master and self._get_power_state() == PowerStates.RUNNING:
             raise VmAlreadyStartedException('Error: Can\'t delete running VM')
 
         # Ensure VM is unlocked
@@ -1039,7 +1040,7 @@ class VirtualMachine(PyroObject):
         self._preMigrationChecks(destination_node_name)
 
         # Check if VM is running
-        while self._getPowerState() is PowerStates.RUNNING:
+        while self._get_power_state() is PowerStates.RUNNING:
             # Unless the user has specified to wait for the VM to shutdown, throw an exception
             # if the VM is running
             if not wait_for_vm_shutdown:
@@ -1196,9 +1197,9 @@ class VirtualMachine(PyroObject):
             )
 
         # Ensure VM is running on the remote node
-        if self._getPowerState() is not PowerStates.RUNNING:
+        if self._get_power_state() is not PowerStates.RUNNING:
             raise VmStoppedException('VM is in unexpected %s power state after migration' %
-                                     self._getPowerState())
+                                     self._get_power_state())
 
     def _preMigrationChecks(self, destination_node_name):
         """Performs checks on the state of the VM to determine if is it suitable to
@@ -1238,7 +1239,7 @@ class VirtualMachine(PyroObject):
         disk_drive_object.preOnlineMigrationChecks(destination_node_name)
 
         # Ensure VM is powered on
-        if self._getPowerState() is not PowerStates.RUNNING:
+        if self._get_power_state() is not PowerStates.RUNNING:
             raise VmStoppedException(
                 'An online migration can only be performed on a running VM: %s' %
                 self.get_name()
@@ -1406,7 +1407,7 @@ class VirtualMachine(PyroObject):
 
             # If migrating a local VM, since the only instance of the storage will be moved,
             # ensure that the VM is stopped
-            if self._getPowerState() is not PowerStates.STOPPED:
+            if self._get_power_state() is not PowerStates.STOPPED:
                 raise VmRunningException('VM must be stopped before performing a move')
 
         # Perform checks on source and remote nodes
@@ -1743,7 +1744,7 @@ class VirtualMachine(PyroObject):
             self
         )
 
-        if self._getPowerState() is not PowerStates.RUNNING:
+        if self._get_power_state() is not PowerStates.RUNNING:
             raise VmAlreadyStoppedException('The VM is not running')
         domain_xml = ET.fromstring(
             self._get_libvirt_domain_object().XMLDesc(
@@ -1762,7 +1763,7 @@ class VirtualMachine(PyroObject):
 
     def get_host_agent_path(self):
         """Obtain the path of the serial interface for the VM on the host"""
-        if self._getPowerState() is not PowerStates.RUNNING:
+        if self._get_power_state() is not PowerStates.RUNNING:
             raise VmAlreadyStoppedException('The VM is not running')
         domain_xml = ET.fromstring(
             self._get_libvirt_domain_object().XMLDesc(

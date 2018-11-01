@@ -200,7 +200,7 @@ class Factory(PyroObject):
             # for VM not being registered in libvirt
             power_state = 'Unavailable (not registered)'
             try:
-                power_state = vm_object._getPowerState().name
+                power_state = vm_object._get_power_state().name
             except VirtualMachineNotRegisteredWithLibvirt:
                 pass
 

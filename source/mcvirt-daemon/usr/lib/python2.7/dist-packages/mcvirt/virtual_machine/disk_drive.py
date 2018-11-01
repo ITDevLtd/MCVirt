@@ -34,7 +34,7 @@ class DiskDrive(PyroObject):
         self.vm_object = self._convert_remote_object(vm_object)
 
     @Expose()
-    def attachISO(self, iso_object, live=False):
+    def attach_iso(self, iso_object, live=False):
         """Attaches an ISO image to the disk drive of the VM"""
         iso_object = self._convert_remote_object(iso_object)
 
@@ -58,7 +58,7 @@ class DiskDrive(PyroObject):
         if libvirt_object.updateDeviceFlags(cdrom_xml_string, flags):
             raise LibvirtException('An error occurred whilst attaching ISO')
 
-    def removeISO(self, live=False):
+    def remove_iso(self, live=False):
         """Removes ISO attached to the disk drive of a VM"""
 
         # Import cdrom XML template
