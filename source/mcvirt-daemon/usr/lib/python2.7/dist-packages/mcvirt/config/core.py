@@ -166,6 +166,11 @@ class Core(Base):
                     'reset_fail_count': 3,
                     # By default, wait 5 minutes for VM to boot
                     'boot_wait': 300
+                },
+                'statistics': {
+                    # Default to 60 seconds statistics daemon
+                    'interval': 60
+
                 }
             }
 
@@ -183,3 +188,9 @@ class Core(Base):
 
         if self._getVersion() < 18:
             migrations.v18.migrate(self, config)
+
+        if self._getVersion() < 19:
+            migrations.v19.migrate(self, config)
+
+        if self._getVersion() < 20:
+            migrations.v20.migrate(self, config)

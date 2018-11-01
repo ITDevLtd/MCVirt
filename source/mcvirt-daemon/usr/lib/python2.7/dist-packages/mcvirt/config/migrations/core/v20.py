@@ -15,4 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from . import v17, v18, v19, v20
+
+def migrate(config_obj, config):
+    """Migrate v18"""
+    # Add configuration for statics daemon
+    config['statistics'] = {
+        'interval': 60
+    }

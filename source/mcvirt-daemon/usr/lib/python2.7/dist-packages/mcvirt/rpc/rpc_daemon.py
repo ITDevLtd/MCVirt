@@ -53,6 +53,7 @@ from mcvirt.exceptions import AuthenticationError
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.thread.auto_start_watchdog import AutoStartWatchdog
 from mcvirt.thread.watchdog import WatchdogFactory
+from mcvirt.thread.statistics import StatisticsFactory
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
@@ -330,6 +331,7 @@ class RpcNSMixinDaemon(object):
             [MCVirtConfig, 'mcvirt_config'],
             [Session(), 'mcvirt_session'],
             [WatchdogFactory(), 'watchdog_factory'],
+            [StatisticsFactory(), 'statistics_factory'],
             [AutoStartWatchdog(), 'autostart_watchdog']
         ]
         for factory_object, name in registration_factories:
@@ -340,6 +342,8 @@ class RpcNSMixinDaemon(object):
         # Register timer objects that need cancelling during shutdown
         self.timer_objects.append(
             RpcNSMixinDaemon.DAEMON.registered_factories['watchdog_factory'])
+        self.timer_objects.append(
+            RpcNSMixinDaemon.DAEMON.registered_factories['statistics_factory'])
         self.timer_objects.append(
             RpcNSMixinDaemon.DAEMON.registered_factories['autostart_watchdog'])
 

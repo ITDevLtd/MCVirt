@@ -1,4 +1,4 @@
-# Copyright (c) 2018 - Matt Comben
+# Copyright (c) 2018 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
 #
@@ -15,4 +15,18 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from . import v17, v18, v19, v20
+from psutil import cpu_percent, virtual_memory
+
+
+class OSStats(object):
+    """Provide functions to obtain VM functions"""
+
+    @staticmethod
+    def get_cpu_usage():
+        """Obtain CPU usage statistics"""
+        return cpu_percent()
+
+    @staticmethod
+    def get_ram_usage():
+        """Get memory usage statistics"""
+        return virtual_memory().percent
