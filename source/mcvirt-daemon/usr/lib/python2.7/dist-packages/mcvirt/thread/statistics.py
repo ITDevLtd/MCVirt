@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import json
 from enum import Enum
 import Pyro4
 
@@ -186,14 +187,17 @@ class StatisticsAgent(RepeatTimer):
         except Exception, e:
             Syslogger.logger().error(e)
 
-        self.virtual_machine.current_guest_memory_usage = (
-            resp['memory_usage']
-            if 'memory_usage' in resp else
-            None)
-        self.virtual_machine.current_guest_cpu_usage = (
-            resp['cpu_usage']
-            if 'cpu_usage' in resp else
-            None)
+        if resp is not None:
+            resp = json.loads(resp)
+
+            self.virtual_machine.current_guest_memory_usage = (
+                resp['memory_usage']
+                if 'memory_usage' in resp else
+                None)
+            self.virtual_machine.current_guest_cpu_usage = (
+                resp['cpu_usage']
+                if 'cpu_usage' in resp else
+                None)
 
         Pyro4.current_context.INTERNAL_REQUEST = False
         Syslogger.logger().debug('Statistics daemon complete: %s' %

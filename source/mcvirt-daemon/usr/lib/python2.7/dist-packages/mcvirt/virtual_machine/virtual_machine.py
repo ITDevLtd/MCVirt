@@ -239,7 +239,7 @@ class VirtualMachine(PyroObject):
         if self.current_guest_memory_usage is None:
             return 'Agent not running'
         vm = self.get_remote_object()
-        return vm.get_guest_cpu_usage()
+        return '%s%%' % vm.get_guest_cpu_usage()
 
     @Expose()
     def get_guest_memory_usage(self):
@@ -253,7 +253,7 @@ class VirtualMachine(PyroObject):
         if self.current_guest_memory_usage is None:
             return 'Agent not running'
         vm = self.get_remote_object()
-        return vm.get_guest_memory_usage()
+        return '%s%%' % vm.get_guest_memory_usage()
 
     def _get_libvirt_domain_object(self, allow_remote=False, auto_register=True):
         """Look up LibVirt domain object, based on VM name,
@@ -584,14 +584,15 @@ class VirtualMachine(PyroObject):
             table.add_row(('ISO location', disk_name))
 
         # Get info for each disk
-        disk_objects = self.get_hard_drive_objects()
-        if len(disk_objects):
+        hdd_attachments = self.get_hard_drive_attachments()
+        if len(hdd_attachments):
             table.add_row(('-- Disk ID --', '-- Disk Size --'))
-            for disk_object in sorted(disk_objects, key=lambda disk: disk.disk_id):
-                table.add_row(
-                    (str(disk_object.disk_id),
-                     SizeConverter(disk_object.get_size()).to_string())
-                )
+            for attachment in sorted(hdd_attachments,
+                                     key=lambda attachment: attachment.attachment_id):
+                table.add_row((
+                    str(attachment.attachment_id),
+                    SizeConverter(
+                        attachment.get_hard_drive_object().get_size()).to_string()))
         else:
             warnings += "No hard disks present on machine\n"
 
