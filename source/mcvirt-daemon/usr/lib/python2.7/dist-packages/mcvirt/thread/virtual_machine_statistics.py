@@ -44,7 +44,7 @@ class VirtualMachineStatisticsFactory(PyroObject):
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
-        return node_object.get_connection('statistics_factory')
+        return node_object.get_connection('virtual_machine_statistics_factory')
 
     def initialise(self):
         """Detect running VMs on local node and create statistics agents"""
@@ -77,32 +77,6 @@ class VirtualMachineStatisticsFactory(PyroObject):
             stats_agent.repeat = False
             stats_agent.cancel()
 
-    @Expose(locking=True, remote_nodes=True, support_callback=True)
-    def update_statistics_config(self, change_dict, reason, _f):
-        """Update global statistics config using dict"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
-
-        def update_config(config):
-            """Update mcvirt config"""
-            _f.add_undo_argument(original_config=dict(config['statistics']))
-            dict_merge(config['statistics'], change_dict)
-
-        MCVirtConfig().update_config(update_config, reason)
-
-    @Expose(locking=True)
-    def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
-        """Undo config change"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
-
-        def revert_config(config):
-            """Revert config"""
-            config['statistics'] = original_config
-
-        if original_config is not None:
-            MCVirtConfig().update_config('Revert: %s' % reason, revert_config)
-
     @Expose(locking=True)
     def set_global_interval(self, interval):
         """Set global default statistics check interval"""
@@ -115,34 +89,6 @@ class VirtualMachineStatisticsFactory(PyroObject):
         self.update_statistics_config(
             change_dict={'interval': interval},
             reason='Update global statistics interval',
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
-
-    @Expose(locking=True)
-    def set_global_reset_fail_count(self, count):
-        """Set global default statistics reset fail count"""
-        ArgumentValidator.validate_positive_integer(count)
-
-        # Check permissions
-        self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
-
-        self.update_statistics_config(
-            change_dict={'reset_fail_count': count},
-            reason='Update global statistics reset fail count',
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
-
-    @Expose(locking=True)
-    def set_global_boot_wait(self, wait):
-        """Set the global default boot wait period"""
-        ArgumentValidator.validate_positive_integer(wait)
-
-        # Check permissions
-        self._get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
-
-        self.update_statistics_config(
-            change_dict={'boot_wait': wait},
-            reason='Update global statistics boot wait period',
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
 

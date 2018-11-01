@@ -88,23 +88,31 @@ class Cluster(PyroObject):
         """Print information about the nodes in the cluster"""
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('Node', 'IP Address', 'Status'))
+        table.header(('Node', 'IP Address', 'Status', 'CPU Usage', 'Memory Usage'))
         # Add this node to the table
-        table.add_row((get_hostname(),
-                       self.get_cluster_ip_address(),
-                       'Local'))
+        table.add_row((
+            get_hostname(),
+            self.get_cluster_ip_address(),
+            'Local',
+            self._get_registered_object('host_statistics').get_cpu_usage_string(),
+            self._get_registered_object('host_statistics').get_memory_usage_string()))
 
         # Add remote nodes
         for node in self.get_nodes(return_all=True):
             node_config = self.get_node_config(node)
             node_status = 'Unreachable'
+            cpu = ''
+            ram = ''
             try:
-                self.get_remote_node(node)
+                node_obj = self.get_remote_node(node)
+                remote_stats = node_obj.get_connection('host_statistics')
+                cpu = remote_stats.get_cpu_usage_string()
+                ram = remote_stats.get_memory_usage_string()
                 node_status = 'Connected'
             except CouldNotConnectToNodeException:
                 pass
             table.add_row((node, node_config['ip_address'],
-                           node_status))
+                           node_status, cpu, ram))
         return table.draw()
 
     def check_node_versions(self):
