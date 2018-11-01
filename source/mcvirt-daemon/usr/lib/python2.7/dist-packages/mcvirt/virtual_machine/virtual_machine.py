@@ -1,5 +1,5 @@
 """Provides virtual machine class."""
-
+# pylint: disable=
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -18,11 +18,10 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import xml.etree.ElementTree as ET
-from shutil import rmtree
-import libvirt
 from time import sleep
 from texttable import Texttable
 from enum import Enum
+import libvirt
 
 from mcvirt.constants import DirectoryLocation, PowerStates, LockStates, AutoStartStates
 from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermissionsException,
@@ -49,7 +48,7 @@ from mcvirt.config.virtual_machine import VirtualMachine as VirtualMachineConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.utils import get_hostname, convert_size_friendly
+from mcvirt.utils import get_hostname
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.utils import dict_merge
 from mcvirt.size_converter import SizeConverter

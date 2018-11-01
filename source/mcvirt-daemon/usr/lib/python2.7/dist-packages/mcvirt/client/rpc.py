@@ -1,4 +1,5 @@
 """Provide class for connecting to RPC daemon"""
+# pylint: disable=R0903,C0103,W0212,W0201,R0913
 
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
@@ -21,7 +22,6 @@ import Pyro4
 
 
 import mcvirt.exceptions  # Import necessary for Pyro # noqa
-from mcvirt.exceptions import AuthenticationError
 from mcvirt.utils import get_network_hostname
 from mcvirt.rpc.ssl_socket import SSLSocket
 from mcvirt.rpc.constants import Annotations
@@ -68,12 +68,13 @@ class Connection(object):
                                                  password=password)
             session_id = session_object._pyroHandshake[Annotations.SESSION_ID]
             return session_id
-        except Pyro4.errors.CommunicationError, e:
-            if 'refused' in str(e):
+        except Pyro4.errors.CommunicationError, exc:
+            if 'refused' in str(exc):
                 raise mcvirt.exceptions.InaccessibleNodeException('Error connecting to daemon')
-            elif 'Cannot connect to node' in str(e):
-                raise mcvirt.exceptions.InaccessibleNodeException(str(e))
-            raise AuthenticationError('Invalid username/password: %s' % str(e))
+            elif 'Cannot connect to node' in str(exc):
+                raise mcvirt.exceptions.InaccessibleNodeException(str(exc))
+            raise mcvirt.exceptions.AuthenticationError(
+                'Invalid username/password: %s' % str(exc))
         except Pyro4.errors.NamingError:
             raise mcvirt.exceptions.InaccessibleNodeException(
                 'MCVirt nameserver/daemon is not running on node %s' % self.__host
@@ -115,15 +116,18 @@ class Connection(object):
     def get_connection(self, object_name, password=None):
         """Obtain a connection from pyro for a given object"""
         # Obtain a connection to the name server on the localhost
-        ns = Pyro4.naming.locateNS(host=self.__host, port=self.NS_PORT, broadcast=False)
+        nameserver = Pyro4.naming.locateNS(host=self.__host,
+                                           port=self.NS_PORT, broadcast=False)
 
         class AuthProxy(Pyro4.Proxy):
+            """Create an auth proxy that appends specfic handshake data"""
 
             def _pyroValidateHandshake(self, data):  # Override upstream # noqa
+                """Override upstream handshake"""
                 self._pyroHandshake[Annotations.SESSION_ID] = data
 
         # Create a Proxy object, using the overriden Proxy class and return.
-        proxy = AuthProxy(ns.lookup(object_name))
+        proxy = AuthProxy(nameserver.lookup(object_name))
         proxy._pyroHandshake = self._get_auth_obj(password=password)
         proxy._pyroBind()
         return proxy

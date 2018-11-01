@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# pylint: disable=C0103
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.

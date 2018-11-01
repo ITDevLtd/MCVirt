@@ -82,30 +82,41 @@ def lock_log_and_call(callback, args, kwargs, instance_method, object_type):
     response = None
     try:
         response = callback(*args, **kwargs)
-    except MCVirtException as e:
+    except MCVirtException, exc:
         Syslogger.logger().error('An internal MCVirt exception occurred in lock')
         Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
         if log:
-            log.finish_error(e)
+            log.finish_error(exc)
+
+        # Attempt to release lock if it was locked
         if requires_lock:
-            if lock.locked():
+            try:
                 lock.release()
+            except Exception:
+                pass
             Pyro4.current_context.has_lock = False
+
+        # Re-raise exception
         raise
-    except Exception as e:
+
+    except Exception, exc:
         Syslogger.logger().error('Unknown exception occurred in lock')
         Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
         if log:
-            log.finish_error_unknown(e)
+            log.finish_error_unknown(exc)
         if requires_lock:
-            if lock.locked():
+            try:
                 lock.release()
+            except Exception:
+                pass
             Pyro4.current_context.has_lock = False
         raise
     if log:
         log.finish_success()
     if requires_lock:
-        if lock.locked():
+        try:
             lock.release()
+        except Exception:
+            pass
         Pyro4.current_context.has_lock = False
     return response
