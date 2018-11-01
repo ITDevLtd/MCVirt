@@ -1151,7 +1151,7 @@ class VirtualMachine(PyroObject):
         except Exception:
             # Wait 10 seconds before performing the tear-down, as Drbd
             # will hold the block device open for a short period
-            sleep.sleep(10)
+            sleep(10)
 
             if self.get_name() in factory.getAllVmNames(node=get_hostname()):
                 # Set Drbd on remote node to secondary
@@ -1166,7 +1166,7 @@ class VirtualMachine(PyroObject):
                 # Otherwise, if VM is registered on remote node, set the
                 # local Drbd state to secondary
                 for disk_object in self.get_hard_drive_objects():
-                    sleep.sleep(10)
+                    sleep(10)
                     disk_object._drbdSetSecondary()
 
                 # Register VM as being registered on the local node
