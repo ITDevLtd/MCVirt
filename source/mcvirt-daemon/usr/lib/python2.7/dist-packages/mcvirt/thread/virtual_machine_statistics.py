@@ -52,7 +52,8 @@ class VirtualMachineStatisticsFactory(PyroObject):
         for virtual_machine in self._get_registered_object(
                 'virtual_machine_factory').get_all_virtual_machines():
 
-            Syslogger.logger().debug('Registering statistics daemon for: %s' % virtual_machine.get_name())
+            Syslogger.logger().debug('Registering statistics daemon for: %s' %
+                                     virtual_machine.get_name())
             self.start_statistics(virtual_machine)
 
     def start_statistics(self, virtual_machine):
@@ -68,7 +69,8 @@ class VirtualMachineStatisticsFactory(PyroObject):
     def get_statistics_agent(self, virtual_machine):
         """Get a statistics obect for a given virtual machine"""
         if virtual_machine.get_name() not in self.statistics_agents:
-            self.statistics_agents[virtual_machine.get_name()] = VirtualMachineStatisticsAgent(virtual_machine)
+            self.statistics_agents[
+                virtual_machine.get_name()] = VirtualMachineStatisticsAgent(virtual_machine)
         return self.statistics_agents[virtual_machine.get_name()]
 
     def cancel(self):

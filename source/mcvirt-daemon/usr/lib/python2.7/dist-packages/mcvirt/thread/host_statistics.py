@@ -51,7 +51,8 @@ class HostStatistics(RepeatTimer):
     @Expose()
     def get_autostart_interval(self):
         """Return the statistics interval for the node"""
-        return self._get_registered_object('mcvirt_config')().get_config()['statistics']['interval']
+        return self._get_registered_object(
+            'mcvirt_config')().get_config()['statistics']['interval']
 
     def cancel(self):
         """Cancel timer"""
@@ -62,5 +63,5 @@ class HostStatistics(RepeatTimer):
         """Obtain CPU and memory statistics"""
         Pyro4.current_context.INTERNAL_REQUEST = True
         self._cpu_usage = OSStats.get_cpu_usage()
-        self._memory_usage = OSStats.get_ram_usage() 
+        self._memory_usage = OSStats.get_ram_usage()
         Pyro4.current_context.INTERNAL_REQUEST = False
