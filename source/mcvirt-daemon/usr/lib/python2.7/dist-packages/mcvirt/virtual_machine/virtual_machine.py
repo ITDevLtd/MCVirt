@@ -71,6 +71,8 @@ class VirtualMachine(PyroObject):
         self._id = _id
         self.name = None
         self.disk_drive_object = None
+        self.current_guest_memory_usage = None
+        self.current_guest_cpu_usage = None
 
     @staticmethod
     def get_id_code():
@@ -224,6 +226,34 @@ class VirtualMachine(PyroObject):
             is_static = True
 
         return is_static
+
+    @Expose()
+    def get_guest_cpu_usage(self):
+        """Return value for cpu usage"""
+        return self.current_guest_cpu_usage
+
+    def get_guest_cpu_usage_text(self):
+        """Obtain text for cpu usage"""
+        if not self.isRegistered() or not self.is_running:
+            return 'Not running'
+        if self.current_guest_memory_usage is None:
+            return 'Agent not running'
+        vm = self.get_remote_object()
+        return vm.get_guest_cpu_usage()
+
+    @Expose()
+    def get_guest_memory_usage(self):
+        """Return value for memory usage"""
+        return self.current_guest_memory_usage
+
+    def get_guest_memory_usage_text(self):
+        """Obtain text for memory usage"""
+        if not self.isRegistered() or not self.is_running:
+            return 'Not running'
+        if self.current_guest_memory_usage is None:
+            return 'Agent not running'
+        vm = self.get_remote_object()
+        return vm.get_guest_memory_usage()
 
     def _get_libvirt_domain_object(self, allow_remote=False, auto_register=True):
         """Look up LibVirt domain object, based on VM name,
@@ -514,7 +544,9 @@ class VirtualMachine(PyroObject):
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.add_row(('Name', self.get_name()))
         table.add_row(('CPU Cores', self.getCPU()))
+        table.add_row(('Guest CPU Usage', self.get_guest_cpu_usage_text()))
         table.add_row(('Memory Allocation', SizeConverter(self.getRAM()).to_string()))
+        table.add_row(('Guest Memory Usage', self.get_guest_memory_usage_text()))
         table.add_row(('State', self._getPowerState().name))
         table.add_row(('Autostart', self._get_autostart_state().name))
         table.add_row(('Node', self.getNode()))

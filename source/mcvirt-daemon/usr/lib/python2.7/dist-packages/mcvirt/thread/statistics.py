@@ -186,8 +186,14 @@ class StatisticsAgent(RepeatTimer):
         except Exception, e:
             Syslogger.logger().error(e)
 
-        # DO STUFF!!
-        Syslogger.logger().debug(resp)
+        self.virtual_machine.current_guest_memory_usage = (
+            resp['memory_usage']
+            if 'memory_usage' in resp else
+            None)
+        self.virtual_machine.current_guest_cpu_usage = (
+            resp['cpu_usage']
+            if 'cpu_usage' in resp else
+            None)
 
         Pyro4.current_context.INTERNAL_REQUEST = False
         Syslogger.logger().debug('Statistics daemon complete: %s' %
