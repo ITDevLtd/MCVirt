@@ -29,7 +29,7 @@ from mcvirt.utils import dict_merge
 from mcvirt.auth.permissions import PERMISSIONS
 
 
-class StatisticsFactory(PyroObject):
+class VirtualMachineStatisticsFactory(PyroObject):
     """Object to configure and create statistics daemons"""
 
     def __init__(self):
@@ -68,7 +68,7 @@ class StatisticsFactory(PyroObject):
     def get_statistics_agent(self, virtual_machine):
         """Get a statistics obect for a given virtual machine"""
         if virtual_machine.get_name() not in self.statistics_agents:
-            self.statistics_agents[virtual_machine.get_name()] = StatisticsAgent(virtual_machine)
+            self.statistics_agents[virtual_machine.get_name()] = VirtualMachineStatisticsAgent(virtual_machine)
         return self.statistics_agents[virtual_machine.get_name()]
 
     def cancel(self):
@@ -146,13 +146,13 @@ class StatisticsFactory(PyroObject):
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
 
-class StatisticsAgent(RepeatTimer):
+class VirtualMachineStatisticsAgent(RepeatTimer):
     """Statistics agent timer thread for checking VM stats"""
 
     def __init__(self, virtual_machine, *args, **kwargs):
         """Store virtual machine"""
         self.virtual_machine = virtual_machine
-        super(StatisticsAgent, self).__init__(*args, **kwargs)
+        super(VirtualMachineStatisticsAgent, self).__init__(*args, **kwargs)
 
     @property
     def interval(self):
