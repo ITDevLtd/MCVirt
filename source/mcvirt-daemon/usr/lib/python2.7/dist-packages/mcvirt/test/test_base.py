@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -183,7 +184,7 @@ class TestBase(unittest.TestCase):
                 vm_object.register()
 
             # Stop the VM if it is running
-            if vm_object.getPowerState() == PowerStates.RUNNING.value:
+            if vm_object.get_power_state() == PowerStates.RUNNING.value:
                 vm_object.stop()
 
             if vm_object.getLockState() is LockStates.LOCKED.value:

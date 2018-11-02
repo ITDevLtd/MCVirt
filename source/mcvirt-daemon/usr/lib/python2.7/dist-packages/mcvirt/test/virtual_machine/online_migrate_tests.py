@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -314,7 +315,7 @@ class OnlineMigrateTests(TestBase):
 
         # Ensure the VM is still registered on the local node and in a running state
         self.assertEqual(self.local_vm_object.getNode(), get_hostname())
-        self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING.value)
+        self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING.value)
 
         # Ensure that the VM is registered with the local libvirt instance and not on the remote
         # libvirt instance
@@ -358,7 +359,7 @@ class OnlineMigrateTests(TestBase):
         # Ensure the VM is still registered on the remote node and in a running state
         self.assertEqual(self.local_vm_object.getNode(),
                          self.local_vm_object._get_remote_nodes()[0])
-        self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING)
+        self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING)
 
         # Ensure that the VM is registered with the remote libvirt instance and not on the local
         # libvirt instance
@@ -400,7 +401,7 @@ class OnlineMigrateTests(TestBase):
 
         # Ensure the VM is still registered on the local node and in a running state
         self.assertEqual(self.local_vm_object.getNode(), get_hostname())
-        self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING)
+        self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING)
 
     @skip_drbd(True)
     def test_migrate_stopped_vm(self):
@@ -426,7 +427,7 @@ class OnlineMigrateTests(TestBase):
         # Ensure the VM is still registered on the remote node and in a running state
         self.assertEqual(self.local_vm_object.getNode(),
                          self.local_vm_object._get_remote_nodes()[0])
-        self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING.value)
+        self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING.value)
 
         # Ensure that the VM is registered with the remote libvirt instance and not on the local
         # libvirt instance

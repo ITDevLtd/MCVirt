@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# pylint: skip-file
+# flake8: noqa
 #
 # mcvirt documentation build configuration file, created by
 # sphinx-quickstart on Tue Aug 25 15:41:43 2015.

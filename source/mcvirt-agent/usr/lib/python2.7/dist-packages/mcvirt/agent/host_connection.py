@@ -57,6 +57,5 @@ class HostConnection(object):
                 'cpu_usage': OSStats.get_cpu_usage(),
                 'memory_usage': OSStats.get_ram_usage()
             }) + '\n')
-        
-        conn.flush()
 
+        conn.flush()
