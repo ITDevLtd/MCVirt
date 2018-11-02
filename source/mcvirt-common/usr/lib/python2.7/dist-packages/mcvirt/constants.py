@@ -34,6 +34,7 @@ class DirectoryLocation(object):
     LOCK_FILE = LOCK_FILE_DIR + '/lock'
     LOG_FILE = '/var/log/mcvirt.log'
     DRBD_HOOK_CONFIG = NODE_STORAGE_DIR + '/drbd-hook-config.json'
+    SQLITE_DATABASE = NODE_STORAGE_DIR + '/database.db'
 
 
 class LockStates(Enum):
