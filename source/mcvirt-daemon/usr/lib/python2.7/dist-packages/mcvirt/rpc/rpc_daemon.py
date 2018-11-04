@@ -289,7 +289,6 @@ class RpcNSMixinDaemon(object):
     def shutdown(self, signum, frame):
         """Shutdown Pyro Daemon"""
         Syslogger.logger().error('Received signal: %s' % signum)
-        del Pyro4.CERTIFICATE_GENERATOR_FACTORY
         for timer in self.timer_objects:
             Syslogger.logger().info('Shutting down timer: %s' % timer)
             try:
