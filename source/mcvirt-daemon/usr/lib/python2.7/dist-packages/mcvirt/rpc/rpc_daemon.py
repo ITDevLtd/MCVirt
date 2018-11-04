@@ -23,7 +23,7 @@ import signal
 import types
 import time
 
-from mcvirt.database import DatabaseFactory
+from mcvirt.database import DatabaseFactory, StatisticsSync
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.virtual_machine.factory import Factory as VirtualMachineFactory
@@ -333,6 +333,7 @@ class RpcNSMixinDaemon(object):
             [LdapFactory(), 'ldap_factory'],
             [MCVirtConfig, 'mcvirt_config'],
             [Session(), 'mcvirt_session'],
+            [StatisticsSync(), 'statistics_sync'],
             [WatchdogFactory(), 'watchdog_factory'],
             [VirtualMachineStatisticsFactory(), 'virtual_machine_statistics_factory'],
             [HostStatistics(), 'host_statistics'],
@@ -344,6 +345,8 @@ class RpcNSMixinDaemon(object):
         Expose.SESSION_OBJECT = RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session']
 
         # Register timer objects that need cancelling during shutdown
+        self.timer_objects.append(
+            RpcNSMixinDaemon.DAEMON.registered_factories['statistics_sync'])
         self.timer_objects.append(
             RpcNSMixinDaemon.DAEMON.registered_factories['watchdog_factory'])
         self.timer_objects.append(

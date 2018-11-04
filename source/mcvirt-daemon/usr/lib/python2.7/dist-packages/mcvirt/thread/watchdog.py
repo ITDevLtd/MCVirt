@@ -203,7 +203,7 @@ class Watchdog(RepeatTimer):
                 self.virtual_machine.isRegisteredLocally() and
                 self.virtual_machine.is_running):
             self.set_state(WATCHDOG_STATES.NOT_SUITABLE)
-            Syslogger.logger().error(
+            Syslogger.logger().info(
                 'Watchdog not run: %s' %
                 self.virtual_machine.get_name())
             return

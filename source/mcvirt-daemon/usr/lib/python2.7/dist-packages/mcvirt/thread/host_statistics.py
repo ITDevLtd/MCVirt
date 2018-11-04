@@ -59,11 +59,6 @@ class HostStatistics(RepeatTimer):
         return self._get_registered_object(
             'mcvirt_config')().get_config()['statistics']['interval']
 
-    def cancel(self):
-        """Cancel timer"""
-        self.repeat = False
-        self.timer.cancel()
-
     def insert_into_stat_db(self):
         """Add statistics to statistics database"""
         db_factory = self._get_registered_object('database_factory')
