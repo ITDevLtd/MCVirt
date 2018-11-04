@@ -179,7 +179,8 @@ class DatabaseFactory(PyroObject):
                 # If local data is newer than remote data,
                 # push the changes
                 if local_latest > remote_latest:
-                    Syslogger.logger().info('Syncing stats from %s to %s for %s %s' %
+                    Syslogger.logger().info(
+                        'Syncing stats from %s to %s for %s %s' %
                         (remote_latest, local_latest, node, vm.id_))
                     push_data = self.get_statistics(device_type=device_type,
                                                     device_id=device_id,
