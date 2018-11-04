@@ -29,7 +29,7 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.exceptions import (DatabaseClassAlreadyInstanciatedError,
                                DoNotHaveDatabaseConnectionLockError,
                                UnableToObtainDatabaseLockError)
-from mcvirt.constants import DirectoryLocation
+from mcvirt.constants import DirectoryLocation, StatisticsDeviceType
 from . import schema_migrations as migrations
 from mcvirt.syslogger import Syslogger
 from mcvirt.thread.repeat_timer import RepeatTimer
@@ -113,6 +113,82 @@ class DatabaseFactory(PyroObject):
         if schema_version < migrations.SCHEMA_VERSION:
             migrations.update_schema_version(db_inst)
 
+    @Expose()
+    def get_latest_stat(self, device_type, device_id):
+        """Obtain latest statistics date"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+        local_latest = None
+        with self.get_locking_connection(perform_sync=False) as db_inst:
+            res = db_inst.cursor.execute(
+                """SELECT max(stat_date) FROM stats WHERE device_type=? AND device_id=?""",
+                (device_type, device_id))
+            local_latest = res.fetchone()
+            if local_latest:
+                local_latest = local_latest[0]
+        return local_latest if local_latest else 0
+
+    def get_statistics(self, device_type, device_id, from_date):
+        """Obtain ist of statistics from a given date"""
+        data_set = []
+        with self.get_locking_connection(perform_sync=False) as db_inst:
+            res = db_inst.cursor.execute(
+                """SELECT stat_date, stat_value, stat_type FROM stats
+                   WHERE device_type=? AND device_id=? AND stat_date > ?""",
+                (device_type, device_id, from_date))
+            for stat in res:
+                data_set.append(list(stat))
+        return data_set
+
+    @Expose()
+    def import_statistics(self, device_type, device_id, stats):
+        """Import stats into local db"""
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
+        for stat in stats:
+            stat.append(device_type)
+            stat.append(device_id)
+        with self.get_locking_connection(perform_sync=False) as db_inst:
+            db_inst.cursor.executemany(
+                """INSERT INTO stats(stat_date, stat_value, stat_type, device_type, device_id)
+                   VALUES(?, ?, ?, ?, ?)""",
+                stats)
+
+    def sync(self):
+        """Syncronise all local data with remote nodes"""
+        # @TODO This is just waiting for a dead lock
+        # Need to implement global cluster lock
+
+        virtual_machines = self._get_registered_object(
+            'virtual_machine_factory').get_all_virtual_machines()
+        cluster = self._get_registered_object('cluster')
+        for node in cluster.get_nodes():
+            node_object = cluster.get_remote_node(node)
+            remote_db_fact = node_object.get_connection('database_factory')
+
+            for device_id, device_type in (
+                    [(vm.id_, StatisticsDeviceType.VIRTUAL_MACHINE.value)
+                     for vm in virtual_machines] +
+                    [(node, StatisticsDeviceType.HOST.value)
+                     for node in cluster.get_nodes(return_all=True,
+                                                   include_local=True)]):
+
+                local_latest = self.get_latest_stat(device_type, device_id)
+
+                remote_latest = remote_db_fact.get_latest_stat(device_type,
+                                                               device_id)
+
+                # If local data is newer than remote data,
+                # push the changes
+                if local_latest > remote_latest:
+                    Syslogger.logger().info('Syncing stats from %s to %s for %s %s' %
+                        (remote_latest, local_latest, node, vm.id_))
+                    push_data = self.get_statistics(device_type=device_type,
+                                                    device_id=device_id,
+                                                    from_date=remote_latest)
+                    remote_db_fact.import_statistics(device_type=device_type,
+                                                     device_id=device_id,
+                                                     stats=push_data)
+                    Syslogger.logger().info('Complete single stat sync')
+
 
 class DatabaseConnection(PyroObject):
     """Provide a locking connecftion to the sqlite database object"""
@@ -157,9 +233,6 @@ class DatabaseConnection(PyroObject):
         """Return DB object"""
         return self._sqlite_object
 
-    def sync(self):
-        pass
-
     @property
     def cursor(self):
         """Obtain the cursor"""
@@ -172,29 +245,38 @@ class DatabaseConnection(PyroObject):
 class StatisticsSync(RepeatTimer):
     """Object to perform regular statistics syncronisation between nodes"""
 
-    DEFAULT_TIMEOUT_WAIT_PERIOD = 5
-    MAXIMUM_WAIT_PERIOD = 30
+    DEFAULT_TIMEOUT_WAIT_PERIOD = 30
+    MAXIMUM_WAIT_PERIOD = 120
 
     def __init__(self, *args, **kwargs):
         self.original_timer_start = None
         self.last_timer_notify = None
         super(StatisticsSync, self).__init__(*args, **kwargs)
 
-    @Expose()
-    def get_cpu_usage_string(self):
-        """Return CPU usage in %"""
-        return '%s%%' % self._cpu_usage
-
-    @Expose()
-    def get_memory_usage_string(self):
-        """Return memory usage in %"""
-        return '%s%%' % self._memory_usage
-
     @property
     def interval(self):
         """Return the timer interval"""
         if self.original_timer_start is None:
-            return None
+            return float(0)
+
+        # If the last timer notify has been increased
+        # and has not reached the maximimum timeout
+        # period, then re-start the timer for the new
+        # notify period
+        now = datetime.now()
+        new_notify_timeout = (self.last_timer_notify +
+                              timedelta(seconds=self.DEFAULT_TIMEOUT_WAIT_PERIOD))
+        max_notify_timeout = (self.original_timer_start +
+                              timedelta(seconds=self.MAXIMUM_WAIT_PERIOD))
+        new_timer_timeout_dt = min(new_notify_timeout, max_notify_timeout)
+        if now < new_timer_timeout_dt:
+            new_interval = new_timer_timeout_dt - now
+            new_interval_seconds = (float(new_interval.seconds) +
+                                    (new_interval.microseconds / 1000000.0))
+        else:
+            new_interval_seconds = float(0)
+
+        return new_interval_seconds
 
     def notify(self):
         """Notify timer, either start or increasing last notify
@@ -212,23 +294,12 @@ class StatisticsSync(RepeatTimer):
     def repeat_run(self):
         """Re-start timer once run has complete"""
         # Timer has come to an end...
-        # If the last timer notify has been increased
-        # and has not reached the maximimum timeout
-        # period, then re-start the timer for the new
-        # notify period
-        now = datetime.now()
-        new_notify_timeout = (self.last_timer_notify +
-                              timedelta(seconds=self.DEFAULT_TIMEOUT_WAIT_PERIOD))
-        max_notify_timeout = (self.original_timer_start +
-                              timedelta(seconds=self.MAXIMUM_WAIT_PERIOD))
-        new_timer_timeout_dt = min(new_notify_timeout, max_notify_timeout)
-        if now < new_timer_timeout_dt:
-            new_interval = new_timer_timeout_dt - now
-            new_interval_seconds = (float(new_interval.seconds) +
-                                    (new_interval.microseconds / 1000000.0))
-
+        # If the thread has been notified, start new timer
+        # and return
+        new_interval = self.interval
+        if new_interval:
             # Start new timer
-            self.timer = Timer(new_interval_seconds, self.repeat_run)
+            self.timer = Timer(new_interval, self.repeat_run)
             self.timer.start()
             return
 
@@ -251,9 +322,7 @@ class StatisticsSync(RepeatTimer):
         Pyro4.current_context.INTERNAL_REQUEST = True
         Syslogger.logger().debug('Starting stats sync')
 
-        with self._get_registered_object('database_factory').get_locking_connection(
-                perform_sync=False) as db_inst:
-            db_inst.sync()
+        self._get_registered_object('database_factory').sync()
 
         Syslogger.logger().debug('Completed stats sync')
 
