@@ -289,6 +289,7 @@ class RpcNSMixinDaemon(object):
     def shutdown(self, signum, frame):
         """Shutdown Pyro Daemon"""
         Syslogger.logger().error('Received signal: %s' % signum)
+        del Pyro4.CERTIFICATE_GENERATOR_FACTORY
         for timer in self.timer_objects:
             Syslogger.logger().info('Shutting down timer: %s' % timer)
             try:
@@ -341,6 +342,9 @@ class RpcNSMixinDaemon(object):
         ]
         for factory_object, name in registration_factories:
             self.register(factory_object, objectId=name, force=True)
+
+        Pyro4.CERTIFICATE_GENERATOR_FACTORY = RpcNSMixinDaemon.DAEMON.registered_factories[
+            'certificate_generator_factory']
 
         Expose.SESSION_OBJECT = RpcNSMixinDaemon.DAEMON.registered_factories['mcvirt_session']
 
