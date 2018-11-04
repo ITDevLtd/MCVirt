@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import Pyro4
 from Pyro4 import socketutil
 import ssl
 import socket
@@ -57,7 +58,10 @@ class SSLSocket(object):
             ssl_context = ssl.create_default_context()
             ssl_context.set_ciphers(SSLSocket.CIPHERS)
 
-        cert_gen_factory = CertificateGeneratorFactory()
+        if 'CERTIFICATE_GENERATOR_FACTORY' in dir(Pyro4):
+            cert_gen_factory = Pyro4.CERTIFICATE_GENERATOR_FACTORY
+        else:
+            cert_gen_factory = CertificateGeneratorFactory()
         if server_side:
             cert_gen = cert_gen_factory.get_cert_generator(server='localhost')
             cert_gen.check_certificates(check_client=False)

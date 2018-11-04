@@ -903,6 +903,24 @@ class VirtualMachineNotRegisteredWithLibvirt(MCVirtException):
     pass
 
 
+class DatabaseClassAlreadyInstanciatedError(MCVirtException):
+    """Database class already instanciated"""
+
+    pass
+
+
+class DoNotHaveDatabaseConnectionLockError(MCVirtException):
+    """Do not have DB connection lock"""
+
+    pass
+
+
+class UnableToObtainDatabaseLockError(MCVirtException):
+    """Obtain to obtain database lock"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)

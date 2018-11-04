@@ -16,7 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import json
-from enum import Enum
+from datetime import datetime
 import Pyro4
 
 from mcvirt.thread.repeat_timer import RepeatTimer
@@ -27,6 +27,8 @@ from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import dict_merge
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.constants import (StatisticsDeviceType,
+                              StatisticsStatType)
 
 
 class VirtualMachineStatisticsFactory(PyroObject):
@@ -69,8 +71,9 @@ class VirtualMachineStatisticsFactory(PyroObject):
     def get_statistics_agent(self, virtual_machine):
         """Get a statistics obect for a given virtual machine"""
         if virtual_machine.get_name() not in self.statistics_agents:
-            self.statistics_agents[
-                virtual_machine.get_name()] = VirtualMachineStatisticsAgent(virtual_machine)
+            stats_agent = VirtualMachineStatisticsAgent(virtual_machine)
+            self._register_object(stats_agent)
+            self.statistics_agents[virtual_machine.get_name()] = stats_agent
         return self.statistics_agents[virtual_machine.get_name()]
 
     def cancel(self):
@@ -108,6 +111,29 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         # @TODO This will be slow
         return MCVirtConfig().get_config()['statistics']['interval']
 
+    def insert_into_stat_db(self):
+        """Add statistics to statistics database"""
+        db_factory = self._get_registered_object('database_factory')
+        db_rows = [
+            (StatisticsDeviceType.VIRTUAL_MACHINE.value,
+             self.virtual_machine.id_,
+             StatisticsStatType.CPU_USAGE.value,
+             self.virtual_machine.current_guest_cpu_usage,
+             "{:%s}".format(datetime.now())),
+
+            (StatisticsDeviceType.VIRTUAL_MACHINE.value,
+             self.virtual_machine.id_,
+             StatisticsStatType.MEMORY_USAGE.value,
+             self.virtual_machine.current_guest_memory_usage,
+             "{:%s}".format(datetime.now()))
+        ]
+        with db_factory.get_locking_connection() as db_inst:
+            db_inst.cursor.executemany(
+                """INSERT INTO stats(
+                    device_type, device_id, stat_type, stat_value, stat_date
+                ) VALUES(?, ?, ?, ?, ?)""",
+                db_rows)
+
     def run(self):
         """Perform statistics check"""
         Syslogger.logger().debug('Statistics daemon checking: %s' %
@@ -117,7 +143,7 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         # Ensure that VM is registered locally, running and watchog is enabled
         if not (self.virtual_machine.isRegisteredLocally() and
                 self.virtual_machine.is_running):
-            Syslogger.logger().error(
+            Syslogger.logger().info(
                 'Statistics daemon not run: %s' %
                 self.virtual_machine.get_name())
             return
@@ -146,6 +172,8 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
                 resp['cpu_usage']
                 if 'cpu_usage' in resp else
                 None)
+
+        self.insert_into_stat_db()
 
         Pyro4.current_context.INTERNAL_REQUEST = False
         Syslogger.logger().debug('Statistics daemon complete: %s' %

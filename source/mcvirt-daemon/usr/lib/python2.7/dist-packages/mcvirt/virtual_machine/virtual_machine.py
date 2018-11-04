@@ -109,11 +109,11 @@ class VirtualMachine(PyroObject):
                     self._unregister()
                     self._register()
 
-                    # Update VM config with new applied version
-                    def update_config(config):
-                        """Update applied version with config version"""
-                        config['applied_version'] = config['version']
-                    self.get_config_object().update_config(update_config, 'Update applied version')
+                    self.update_vm_config(
+                        {'applied_version': config['version']},
+                        'Update applied version',
+                        nodes=self._get_registered_object('cluster').get_nodes(
+                            include_local=True))
                 except Exception:
                     # If the VM was unregistered from libvirt during the
                     # config migration, set it as unregistered

@@ -83,8 +83,8 @@ class TestBase(unittest.TestCase):
                     'cpu_count': 1,
                     'memory_allocation': '100MB',
                     'memory_allocation_bytes': 100000000,
-                    'disk_size': ['100MiB'],
-                    'disk_size_bytes': [104857600],
+                    'disk_size': ['10MiB'],
+                    'disk_size_bytes': [10485760],
                     'networks': ['Production']
                 },
                 'TEST_VM_2':
