@@ -117,7 +117,7 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         # Ensure that VM is registered locally, running and watchog is enabled
         if not (self.virtual_machine.isRegisteredLocally() and
                 self.virtual_machine.is_running):
-            Syslogger.logger().error(
+            Syslogger.logger().info(
                 'Statistics daemon not run: %s' %
                 self.virtual_machine.get_name())
             return

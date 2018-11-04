@@ -71,6 +71,18 @@ class AgentSerialConfig(object):
     AGENT_PORT_PATH = "/dev/%s" % AGENT_PORT
 
 
+class StatisticsDeviceType(Enum):
+    """Statistics device type"""
+    HOST = 1
+    VIRTUAL_MACHINE = 2
+
+
+class StatisticsStatType(Enum):
+    """Statistics stat type"""
+    CPU_USAGE = 1
+    MEMORY_USAGE = 2
+
+
 # Name of the default storage backend, used during upgrade
 # from pre-v9.0.0 installations
 DEFAULT_STORAGE_NAME = 'default'

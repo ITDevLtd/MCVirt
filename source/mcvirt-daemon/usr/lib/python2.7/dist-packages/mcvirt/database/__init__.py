@@ -31,7 +31,7 @@ from . import schema_migrations as migrations
 from mcvirt.syslogger import Syslogger
 
 
-class Database(PyroObject):
+class DatabaseFactory(PyroObject):
     """Provide functionality to obtain locked database connection,
     database syncronisation and creation
     """
@@ -46,11 +46,9 @@ class Database(PyroObject):
 
     def __init__(self):
         """Obtain singleton lock and create connection to DB"""
-        if not Database.SINGLETON_LOCK.acquire(False):
+        if not DatabaseFactory.SINGLETON_LOCK.acquire(False):
             raise DatabaseClassAlreadyInstanciatedError(
                 'Database class has already been instanciated')
-
-        self._sqlite_object = sqlite3.connect(DirectoryLocation.SQLITE_DATABASE)
 
     def initialise(self):
         """Perform DB migration"""
@@ -61,10 +59,8 @@ class Database(PyroObject):
         """On object delection, wait for connection to clear
         and remove sqlite object and singleton lock
         """
-        # Remove sqlite object and perform garbage collection
-        del self._sqlite_object
         gc.collect()
-        Database.SINGLETON_LOCK.release()
+        DatabaseFactory.SINGLETON_LOCK.release()
 
     def get_locking_connection(self):
         """Obtain instance of database connection"""
@@ -72,17 +68,17 @@ class Database(PyroObject):
 
     def get_sqlite_object(self):
         """Retrun the SQLite database object"""
-        return self._sqlite_object
+        return sqlite3.connect(DirectoryLocation.SQLITE_DATABASE)
 
     @staticmethod
     def obtain_db_conn_lock():
         """Obtain database connection lock"""
-        return Database.CONNECTION_LOCK.acquire()
+        return DatabaseFactory.CONNECTION_LOCK.acquire()
 
     @staticmethod
     def release_db_conn_lock():
         """Release datbase connection lock"""
-        Database.CONNECTION_LOCK.release()
+        DatabaseFactory.CONNECTION_LOCK.release()
 
     def _get_schema_version(self, db_inst):
         """Get database schema version"""
@@ -118,11 +114,12 @@ class DatabaseConnection(object):
     def __init__(self, database):
         """Obtain the database connection"""
         self.has_lock = False
-        self.database = database
+        self._database = database
+        self._sqlite_object = self._database.get_sqlite_object()
 
     def __enter__(self):
         """Obtain connection lock"""
-        if not self.database.obtain_db_conn_lock():
+        if not self._database.obtain_db_conn_lock():
             raise UnableToObtainDatabaseLockError('Unable to obtain database lock')
         self.has_lock = True
         return self
@@ -131,22 +128,28 @@ class DatabaseConnection(object):
         """Release lock"""
         # If an exception was raised, rollback the DB changes
         if exc_type is not None:
-            self.database.get_sqlite_object().rollback()
+            Syslogger.logger().error('Error during db lock: %s' % traceback)
+            self.get_db_object().rollback()
 
         # Otherwise, commit changes
         else:
-            self.database.get_sqlite_object().commit()
+            self.get_db_object().commit()
 
         # Release lock and remove reference to database object
-        self.database.release_db_conn_lock()
+        self._database.release_db_conn_lock()
+        del self._sqlite_object
         self.has_lock = False
-        self.database = None
+        self._database = None
+
+    def get_db_object(self):
+        """Return DB object"""
+        return self._sqlite_object
 
     @property
     def cursor(self):
         """Obtain the cursor"""
         if self.has_lock:
-            return self.database.get_sqlite_object().cursor()
+            return self.get_db_object().cursor()
         raise DoNotHaveDatabaseConnectionLockError(
             'Do not have database connection lock')
 

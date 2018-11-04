@@ -15,14 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+from datetime import datetime
 import Pyro4
 
 from mcvirt.thread.repeat_timer import RepeatTimer
-from mcvirt.constants import AutoStartStates
+from mcvirt.constants import (AutoStartStates,
+                              StatisticsDeviceType,
+                              StatisticsStatType)
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.os_stats import OSStats
+from mcvirt.syslogger import Syslogger
+from mcvirt.utils import get_hostname
 
 
 class HostStatistics(RepeatTimer):
@@ -59,9 +64,32 @@ class HostStatistics(RepeatTimer):
         self.repeat = False
         self.timer.cancel()
 
+    def insert_into_stat_db(self):
+        """Add statistics to statistics database"""
+        db_factory = self._get_registered_object('database_factory')
+        db_rows = [
+            (StatisticsDeviceType.HOST.value, get_hostname(),
+             StatisticsStatType.CPU_USAGE.value, self._cpu_usage,
+             "{:%s}".format(datetime.now())),
+
+            (StatisticsDeviceType.HOST.value, get_hostname(),
+             StatisticsStatType.MEMORY_USAGE.value, self._memory_usage,
+             "{:%s}".format(datetime.now()))
+        ]
+        with db_factory.get_locking_connection() as db_inst:
+            db_inst.cursor.executemany(
+                """INSERT INTO stats(
+                    device_type, device_id, stat_type, stat_value, stat_date
+                ) VALUES(?, ?, ?, ?, ?)""",
+                db_rows)
+
     def run(self):
         """Obtain CPU and memory statistics"""
         Pyro4.current_context.INTERNAL_REQUEST = True
+        Syslogger.logger().debug('Starting host stats gathering')
         self._cpu_usage = OSStats.get_cpu_usage()
         self._memory_usage = OSStats.get_ram_usage()
+        self.insert_into_stat_db()
+        Syslogger.logger().debug('Completed host stats gathering')
+
         Pyro4.current_context.INTERNAL_REQUEST = False
