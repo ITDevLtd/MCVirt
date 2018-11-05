@@ -62,7 +62,7 @@ class HostConnection(object):
         elif msg == 'version':
             conn.write(VERSION + '\n')
 
-        else:
+        elif msg:
             # Default to outputting %%
             conn.write('%%%%\n')
 
