@@ -150,14 +150,9 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
 
         agent_conn = self.virtual_machine.get_agent_connection()
 
-        def get_stats(conn):
-            """Send request to agent and ensure it responds"""
-            conn.write('stats\n')
-            return conn.readline().strip()
-
         resp = None
         try:
-            resp = agent_conn.wait_lock(get_stats)
+            resp = agent_conn.wait_lock(command='stats')
         except Exception, e:
             Syslogger.logger().error(e)
 

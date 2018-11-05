@@ -21,8 +21,10 @@ from threading import Lock, Condition
 from serial import Serial
 
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.exceptions import TimeoutExceededSerialLockError
+from mcvirt.exceptions import (TimeoutExceededSerialLockError,
+                               UnknownAgentCommandRun)
 from mcvirt.constants import AgentSerialConfig
+from mcvirt.version import VERSION
 
 
 class AgentConnection(PyroObject):
@@ -45,7 +47,12 @@ class AgentConnection(PyroObject):
 
         return AgentConnection.LOCKS[cache_key]
 
-    def wait_lock(self, callback):
+    def check_agent_version(self):
+        """Check the version of the agent"""
+        resp = self.wait_lock(command='version')
+        return resp, VERSION
+
+    def wait_lock(self, callback=None, command=None):
         """Wait for lock"""
         # @TODO Replace with 'with' statement
         # Get lock and condition object
@@ -57,11 +64,28 @@ class AgentConnection(PyroObject):
             # pass to callback
             conn = self.get_serial_connection()
             try:
-                resp = callback(conn)
+                # If callback was provided, run this
+                # with serial command
+                if callback:
+                    resp = callback(conn)
+
+                # Otherwise, if single command was provided to run,
+                # run this
+                elif command:
+                    conn.write('%s\n' % command)
+                    resp = conn.readline().strip()
+
             except Exception:
                 conn.close()
                 raise
+
             conn.close()
+
+            # If response indicates that command was not found, raise
+            # an exception
+            if resp == '%%%%':
+                raise UnknownAgentCommandRun('Agent did not understand command')
+
             return resp
 
     def get_serial_connection(self):

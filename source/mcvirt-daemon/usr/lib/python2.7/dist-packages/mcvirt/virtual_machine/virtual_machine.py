@@ -519,6 +519,26 @@ class VirtualMachine(PyroObject):
         else:
             return PowerStates.UNKNOWN
 
+    @Expose()
+    def get_agent_version_check_string(self):
+        """Check agent version"""
+        if not self.isRegistered():
+            return 'VM is not registered'
+
+        if self.isRegisteredRemotely():
+            vm = self.get_remote_object()
+            agent_version, host_version = vm.get_agent_version_check_string()
+        else:
+            try:
+                agent_version, host_version = self.get_agent_connection().check_agent_version()
+            except Exception, exc:
+                return str(exc)
+
+        if agent_version != host_version:
+            return 'Agent Version: %s\nHost Version: %s' % (agent_version, host_version)
+        else:
+            return 'Up-to-date: %s' % agent_version
+
     @Expose(locking=True)
     def getInfo(self):
         """Get information about the current VM"""
@@ -557,6 +577,7 @@ class VirtualMachine(PyroObject):
                                              'Disabled')))
         table.add_row(('UUID', self.get_uuid()))
         table.add_row(('Graphics Driver', self.getGraphicsDriver()))
+        table.add_row(('Agent version', self.get_agent_version_check_string()))
 
         # Display clone children, if they exist
         clone_children = self.getCloneChildren()
