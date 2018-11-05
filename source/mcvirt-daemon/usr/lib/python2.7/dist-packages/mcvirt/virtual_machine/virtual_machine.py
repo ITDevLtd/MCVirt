@@ -414,12 +414,12 @@ class VirtualMachine(PyroObject):
                 iso_factory = self._get_registered_object('iso_factory')
                 iso_object = iso_factory.get_iso_by_name(iso_name)
                 disk_drive_object.attach_iso(iso_object)
-                self.setBootOrder(['cdrom', 'hd'])
+                self.set_boot_order(['cdrom', 'hd'])
             else:
                 # If not ISO was specified, remove any attached ISOs and change boot order
                 # to boot from HDD
                 disk_drive_object.remove_iso()
-                self.setBootOrder(['hd'])
+                self.set_boot_order(['hd'])
 
             # Start the VM
             try:
@@ -576,7 +576,7 @@ class VirtualMachine(PyroObject):
                                              if self.get_delete_protection_state() else
                                              'Disabled')))
         table.add_row(('UUID', self.get_uuid()))
-        table.add_row(('Graphics Driver', self.getGraphicsDriver()))
+        table.add_row(('Graphics Driver', self.get_graphics_driver()))
         table.add_row(('Agent version', self.get_agent_version_check_string()))
 
         # Display clone children, if they exist
@@ -1592,7 +1592,7 @@ class VirtualMachine(PyroObject):
         domain_xml.find('./memory').text = '%s' % str(self.getRAM())
         domain_xml.find('./memory').set('unit', 'b')
         domain_xml.find('./vcpu').text = str(self.getCPU())
-        domain_xml.find('./devices/video/model').set('type', self.getGraphicsDriver())
+        domain_xml.find('./devices/video/model').set('type', self.get_graphics_driver())
 
         device_xml = domain_xml.find('./devices')
 
@@ -1994,7 +1994,7 @@ class VirtualMachine(PyroObject):
             reason='Disable deletion protection',
             nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
-    def setBootOrder(self, boot_devices):
+    def set_boot_order(self, boot_devices):
         """Sets the boot devices and the order in which devices are booted from"""
 
         def update_libvirt(domain_xml):
@@ -2044,6 +2044,45 @@ class VirtualMachine(PyroObject):
 
             self.update_libvirt_config(update_libvirt)
 
-    def getGraphicsDriver(self):
+    def get_graphics_driver(self):
         """Returns the graphics driver for this VM"""
         return self.get_config_object().get_config()['graphics_driver']
+
+    def create_snapshot(self):
+        """Create snapshot of the virtual machine"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_VM_SNAPSHOTS, self)
+
+        # If there is a single disk, and the storage backend
+        # supports it, then the snapshot can
+        # be performed whilst the VM is running.
+        # However, if there are multiple disks or the
+        # disk cannot handle online snapshotting, then
+        # the VM must be stopped.
+        hard_disks = self.get_hard_drive_objects()
+        if (len(hard_disks) > 1 or
+                (hard_disks and
+                 not hard_disks[0].supports_online_snapshot)):
+            raise VmRunningException(
+                'Virtual machine must be stopped before snapshotting.\n'
+                'Virtual machine has multiple hard drives and/or'
+                ' hard drive storage backend does not support'
+                ' online snapshotting.')
+
+    def delete_snapshot(self, snapshot_id):
+        """Delete a snapshot"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_VM_SNAPSHOTS, self)
+
+    def revert_snapshot(self, snapshot_id):
+        """Revert the state to a snapshot"""
+        self._get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_VM_SNAPSHOTS, self)
+
+        # Virtual machine must be stopped
+        if not self.is_stopped:
+            raise Exception()
+
+    def get_sapshots(self):
+        """Get virtual machine snapshots"""
+        pass

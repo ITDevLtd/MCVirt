@@ -152,6 +152,18 @@ class Base(PyroObject):
 
         return self._base_volume_name
 
+    @property
+    def supports_snapshot(self):
+        """Whether the hard drive supports snapshotting"""
+        # Default to False
+        return False
+
+    @property
+    def supports_online_snapshot(self):
+        """Whether the hard drive supports online snapshotting"""
+        # Default to False
+        return False
+
     def get_attachment_object(self):
         """Obtain the VM object for the resource"""
         return self._get_registered_object(
@@ -345,14 +357,14 @@ class Base(PyroObject):
         backup_volume = self.get_backup_snapshot_volume()
 
         try:
-            source_volume.snapshot_volume(backup_volume, self.SNAPSHOT_SIZE)
+            source_volume.snapshot(backup_volume, self.SNAPSHOT_SIZE)
         except VolumeAlreadyExistsError:
             if vm_object:
                 vm_object._setLockState(LockStates.UNLOCKED)
             raise BackupSnapshotAlreadyExistsException('Backup snapshot already exists')
         except Exception:
             if vm_object:
-                vm_object._setLockState(LockStates.UNLCoKED)
+                vm_object._setLockState(LockStates.UNLOCKED)
             raise
 
         if vm_object:
@@ -371,7 +383,7 @@ class Base(PyroObject):
         )
 
         try:
-            self.get_backup_snapshot_volume().delete_volume()
+            self.get_backup_snapshot_volume().delete()
         except VolumeDoesNotExistError:
             if vm_object:
                 vm_object._setLockState(LockStates.UNLOCKED)
