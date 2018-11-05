@@ -142,7 +142,7 @@ class TimeoutLock(object):
         """Attempt ot aquire lock"""
         if not self._waitLock():
             raise TimeoutExceededSerialLockError(
-                'Timeout exceeded whilst waiting for serial lock')
+                'Timeout exceeded whilst waiting for agent communications')
 
     def release(self):
         """Release lock object"""
