@@ -21,6 +21,7 @@ from serial import Serial
 
 from mcvirt.constants import AgentSerialConfig
 from mcvirt.os_stats import OSStats
+from mcvirt.version import VERSION
 
 
 class HostConnection(object):
@@ -57,5 +58,12 @@ class HostConnection(object):
                 'cpu_usage': OSStats.get_cpu_usage(),
                 'memory_usage': OSStats.get_ram_usage()
             }) + '\n')
+        # Return JSON file
+        elif msg == 'version':
+            conn.write(VERSION + '\n')
+
+        elif msg:
+            # Default to outputting %%
+            conn.write('%%%%\n')
 
         conn.flush()

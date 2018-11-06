@@ -213,14 +213,9 @@ class Watchdog(RepeatTimer):
 
         agent_conn = self.virtual_machine.get_agent_connection()
 
-        def ping_agent(conn):
-            """Send request to agent and ensure it responds"""
-            conn.write('ping\n')
-            return conn.readline().strip()
-
         resp = None
         try:
-            resp = agent_conn.wait_lock(ping_agent)
+            resp = agent_conn.wait_lock(command='ping')
         except Exception, e:
             Syslogger.logger().error(e)
 
