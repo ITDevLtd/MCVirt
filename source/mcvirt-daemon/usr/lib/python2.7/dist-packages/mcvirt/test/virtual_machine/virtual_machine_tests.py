@@ -377,22 +377,24 @@ class VirtualMachineTests(TestBase):
         # Create the directory for the VM
         os.makedirs(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
 
-        # Attempt to create VM, expecting an exception for the directory already existing
-        with self.assertRaises(VmDirectoryAlreadyExistsException):
-            self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
-                                        ' --cpu-count %s --disk-size %s --memory %s' %
-                                        (self.test_vms['TEST_VM_1']['cpu_count'],
-                                         self.test_vms['TEST_VM_1']['disk_size'][0],
-                                         self.test_vms['TEST_VM_1']['memory_allocation']) +
-                                        ' --network %s --storage-type %s' %
-                                        (self.test_vms['TEST_VM_1']['networks'][0],
-                                         'Local'))
+        try:
+            # Attempt to create VM, expecting an exception for the directory already existing
+            with self.assertRaises(VmDirectoryAlreadyExistsException):
+                self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
+                                            ' --cpu-count %s --disk-size %s --memory %s' %
+                                            (self.test_vms['TEST_VM_1']['cpu_count'],
+                                             self.test_vms['TEST_VM_1']['disk_size'][0],
+                                             self.test_vms['TEST_VM_1']['memory_allocation']) +
+                                            ' --network %s --storage-type %s' %
+                                            (self.test_vms['TEST_VM_1']['networks'][0],
+                                             'Local'))
 
-        # Ensure the VM has not been created
-        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
+            # Ensure the VM has not been created
+            self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
-        # Remove directory
-        shutil.rmtree(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
+        finally:
+            # Remove directory
+            shutil.rmtree(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
 
     def test_start_local(self):
         """Perform the test_start test with Local storage"""
