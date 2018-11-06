@@ -25,6 +25,7 @@ from mcvirt.exceptions import (ReachedMaximumStorageDevicesException,
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.utils import get_hostname
 
 
 class Factory(PyroObject):
@@ -224,7 +225,7 @@ class HardDriveAttachment(PyroObject):
         return hdd_factory.get_object(self.get_hard_drive_id())
 
     @Expose(locking=True)
-    def delete(self):
+    def delete(self, local_only=False):
         """Remove the hard drive attachment"""
         # Ensure that the user has permissions to add delete storage
         self._get_registered_object('auth').assert_permission(
@@ -233,6 +234,7 @@ class HardDriveAttachment(PyroObject):
         )
 
         self.remove_from_virtual_machine()
+        nodes = [get_hostname()] if local_only else cluster.get_nodes(include_local=True)
         cluster = self._get_registered_object('cluster')
         self.remove_config(nodes=cluster.get_nodes(include_local=True))
         del Factory.CACHED_OBJECTS[(self.virtual_machine.id_, self.attachment_id)]

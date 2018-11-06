@@ -276,25 +276,27 @@ class Base(PyroObject):
         # Ensure that the user has permissions to add delete storage
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
-            self.get_virtual_machine()
+            vm_object
         )
 
-        self.ensure_exists()
+        if get_hostname() in self.nodes:
+            self.ensure_exists()
 
         if vm_object:
             vm_object.ensureUnlocked()
             vm_object.ensure_stopped()
 
-            if not local_only:
-                # Remove the hard drive from the MCVirt VM configuration
-                self.get_attachment_object().delete()
+            # Remove the hard drive from the MCVirt VM configuration
+            self.get_attachment_object().delete(local_only=local_only)
 
         # Remove backing storage
         self._removeStorage(local_only=local_only)
 
         # Remove config
-        self.remove_config(
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+        nodes = [get_hostname()] if local_only else self._get_registered_object(
+            'cluster').get_nodes(include_local=True)
+
+        self.remove_config(nodes=nodes)
 
     @Expose(locking=True, remote_nodes=True)
     def remove_config(self):

@@ -685,10 +685,10 @@ class VirtualMachine(PyroObject):
             hdd = hdd_attachment.get_hard_drive_object()
 
             # Remove hard drive attachment
-            hdd_attachment.delete()
+            hdd_attachment.delete(local_only=local_only)
 
             if not keep_disks:
-                hdd.delete()
+                hdd.delete(local_only=local_only)
 
         nodes = ([get_hostname()]
                  if local_only else
