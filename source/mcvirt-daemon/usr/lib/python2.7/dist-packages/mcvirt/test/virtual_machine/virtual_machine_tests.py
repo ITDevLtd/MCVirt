@@ -775,6 +775,10 @@ class VirtualMachineTests(TestBase):
         # Assert that the backup lock is now in place
         self.assertEqual(test_vm_object.getLockState(), 1)
 
+        # Ensure that parser gave one line output with the path of the snapshot
+        self.assertEqual(len(self.parser.print_output), 1)
+        self.assertEqual()
+
     def test_delete_backup_snapshot(self):
         pass
 

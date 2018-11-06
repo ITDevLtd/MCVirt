@@ -31,6 +31,8 @@ from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
                                MissingConfigurationException, NodeVersionMismatch,
                                MCVirtTypeError, InvalidStorageConfiguration)
 from mcvirt.config.core import Core as MCVirtConfig
+from mcvirt.config.virtual_machine import VirtualMachine as VirtualMachineConfig
+from mcvirt.config.hard_drive import HardDrive as HardDriveConfig
 from mcvirt.auth.user_types.connection_user import ConnectionUser
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.client.rpc import Connection
@@ -458,46 +460,19 @@ class Cluster(PyroObject):
 
     def sync_virtual_machines(self, remote_object):
         """Duplicate the VM configurations on the local node onto the remote node"""
-        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
-        network_adapter_factory = self._get_registered_object('network_adapter_factory')
-        remote_virtual_machine_factory = remote_object.get_connection('virtual_machine_factory')
+        # Syncronise hard drive configurations and virtual machine configurations
+        hard_drive_config = HardDriveConfig.get_global_config()
+        virtual_machine_config = VirtualMachineConfig.get_global_config()
 
-        # Obtain list of local VMs
-        for vm_object in virtual_machine_factory.get_all_virtual_machines():
-            remote_virtual_machine_object = remote_virtual_machine_factory.create(
-                name=vm_object.get_name(), cpu_cores=vm_object.getCPU(),
-                memory_allocation=vm_object.getRAM(), hard_drives=[],
-                node=vm_object.getNode(), available_nodes=vm_object.getAvailableNodes()
-            )
-            remote_object.annotate_object(remote_virtual_machine_object)
+        remote_mcvirt_config_obj = remote_object.get_connection('mcvirt_config')
+        remote_config = remote_mcvirt_config_obj.get_config_remote()
+        remote_config['hard_drives'] = hard_drive_config
+        remote_config['virtual_machines'] = virtual_machine_config
 
-            # Add each of the disks to the VM
-            for hard_disk in vm_object.get_hard_drive_objects():
-                remote_hard_drive_object = hard_disk.get_remote_object(node_object=remote_object,
-                                                                       registered=False)
-                remote_hard_drive_object.addToVirtualMachine()
-
-            remote_network_factory = remote_object.get_connection('network_factory')
-            remote_network_adapter_factory = remote_object.get_connection(
-                'network_adapter_factory'
-            )
-            network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(
-                vm_object
-            )
-            for network_adapter in network_adapters:
-                # Add network adapters to VM
-                remote_network = remote_network_factory.get_network_by_name(
-                    network_adapter.getConnectedNetwork())
-                remote_network_adapter_factory.create(remote_virtual_machine_object,
-                                                      remote_network,
-                                                      mac_address=network_adapter.getMacAddress())
-
-            # Sync permissions to VM on remote node
-            remote_virtual_machine_object.setPermissionConfig(
-                vm_object.get_config_object().getPermissionConfig())
-
-            # Set the VM node
-            remote_virtual_machine_object.setNodeRemote(vm_object.getNode())
+        # Update hard drive and virtual machinie configuration to remote node
+        remote_mcvirt_config_obj.manual_update_config(remote_config,
+                                                      ('Update HDD/VM configuration after'
+                                                       ' joining node to cluster.'))
 
     def sync_config(self, remote_connection):
         """Sync MCVirt configuration"""
@@ -519,7 +494,7 @@ class Cluster(PyroObject):
         # Ensure that the remote node has no cluster nodes
         remote_cluster = remote_connection.get_connection('cluster')
         if len(remote_cluster.get_nodes(return_all=True)):
-            raise RemoteObjectConflict('Remote node already has nodes attached')
+            raise RemoteObjectConflict('Remote node already part of a cluster')
 
         # Get local and remote storage factories
         storage_factory = self._get_registered_object('storage_factory')
@@ -717,6 +692,17 @@ class Cluster(PyroObject):
         """Return an array of node configurations"""
         cluster_config = self.get_cluster_config()
         nodes = cluster_config['nodes'].keys()
+
+        # If requesting nodes (not return_all) and is not
+        # the cluster master, just return the local node
+        if not return_all and not self._is_cluster_master:
+            Syslogger.logger().warn(
+                'Requesting cluster get_nodes: is not cluster master and '
+                'is not return_all')
+            return [get_hostname()]
+
+        # @TODO This is meant to remove non-working nodes, but
+        # is only checking node name string!
         if self._cluster_disabled and not return_all:
             for node in nodes:
                 if not node:
