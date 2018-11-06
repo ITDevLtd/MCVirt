@@ -80,6 +80,12 @@ class VirtualMachineTests(TestBase):
         suite.addTest(VirtualMachineTests('test_disable_delete_protection_already_disabled'))
         suite.addTest(VirtualMachineTests('test_delete_vm_with_delete_protection'))
 
+        # Backup snapshot
+        suite.addTest(VirtualMachineTests('test_create_backup_snapshot'))
+        suite.addTest(VirtualMachineTests('test_delete_backup_snapshot'))
+        suite.addTest(VirtualMachineTests('test_create_second_backup_snapshot'))
+        suite.addTest(VirtualMachineTests('test_delete_non_exist_backup_snapshot'))
+
         # # Add tests for Drbd
         suite.addTest(VirtualMachineTests('test_create_drbd'))
         suite.addTest(VirtualMachineTests('test_delete_drbd'))
@@ -750,3 +756,30 @@ class VirtualMachineTests(TestBase):
                 self.test_vms['TEST_VM_1']['name'])
 
         self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
+
+    def test_create_backup_snapshot(self):
+        """Create VM backup snapshot"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Reset parser output
+        self.parser.print_output = []
+
+        # Assert that the VM is unlocked
+        self.assertEqual(test_vm_object.getLockState(), 0)
+
+        # Create backup snapshot using parser.
+        self.parser.parse_arguments(
+            'backup create-snapshot %s' %
+            self.test_vms['TEST_VM_1']['name'])
+
+        # Assert that the backup lock is now in place
+        self.assertEqual(test_vm_object.getLockState(), 1)
+
+    def test_delete_backup_snapshot(self):
+        pass
+
+    def test_create_second_backup_snapshot(self):
+        pass
+
+    def test_delete_non_exist_backup_snapshot(self):
+        pass

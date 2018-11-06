@@ -73,6 +73,7 @@ class Parser(object):
 
     def __init__(self, verbose=True):
         """Configure the argument parser object."""
+        self.print_output = []
         self.username = None
         self.session_id = None
         self.rpc = None
@@ -202,6 +203,8 @@ class Parser(object):
         """Print if the user has specified that the parser should print statuses."""
         if self.verbose:
             print status
+        else:
+            self.print_output.append(status)
 
     def check_ignore_failed(self, args):
         """Check ignore failed"""

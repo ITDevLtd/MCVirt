@@ -1133,9 +1133,6 @@ class VirtualMachine(PyroObject):
                 destination_node_name
             )
 
-            # Clear the VM node configuration
-            self._setNode(None)
-
             # Perform pre-migration tasks on disk objects
             for disk_object in self.get_hard_drive_objects():
                 disk_object.preOnlineMigration(destination_node)
@@ -1152,8 +1149,13 @@ class VirtualMachine(PyroObject):
                 libvirt.VIR_MIGRATE_ABORT_ON_ERROR
             )
 
-            # Perform migration
+            # Obtain libvirt domain object
             libvirt_domain_object = self._get_libvirt_domain_object()
+
+            # Clear the VM node configuration
+            self._setNode(None)
+
+            # Perform migration
             status = libvirt_domain_object.migrate3(
                 destination_libvirt_connection,
                 params={},
@@ -1179,7 +1181,7 @@ class VirtualMachine(PyroObject):
             if self.get_name() in factory.getAllVmNames(node=get_hostname()):
                 # Set Drbd on remote node to secondary
                 for disk_object in self.get_hard_drive_objects():
-                    remote_disk = disk_object.get_remote_object(remote_node=destination_node)
+                    remote_disk = disk_object.get_remote_object(node_object=destination_node)
                     remote_disk.drbdSetSecondary()
 
                 # Re-register VM as being registered on the local node
