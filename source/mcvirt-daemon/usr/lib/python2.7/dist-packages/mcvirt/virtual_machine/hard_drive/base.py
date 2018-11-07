@@ -189,8 +189,12 @@ class Base(PyroObject):
         node_object.annotate_object(hard_drive_object)
         return hard_drive_object
 
+    @Expose(remote_nodes=True)
     def ensure_exists(self):
         """Ensure the disk exists on the local node"""
+        self._get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         self.storage_backend.ensure_available()
         if not self._check_exists():
             raise HardDriveDoesNotExistException(
@@ -279,8 +283,11 @@ class Base(PyroObject):
             vm_object
         )
 
-        if get_hostname() in self.nodes:
-            self.ensure_exists()
+        # If the storage backend is available on one to more nodes,
+        # ensure that the hard drive exists. Prefer local host
+        check_node = get_hostname() if get_hostname() in self.nodes else self.nodes[0]
+        if self._is_cluster_master or check_node == get_hostname():
+            self.ensure_exists(nodes=[check_node])
 
         if vm_object:
             vm_object.ensureUnlocked()

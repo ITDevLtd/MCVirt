@@ -18,6 +18,7 @@
 
 import unittest
 import os
+import re
 import shutil
 import xml.etree.ElementTree as ET
 import tempfile
@@ -41,6 +42,7 @@ from mcvirt.exceptions import (InvalidVirtualMachineNameException,
                                DeleteProtectionAlreadyEnabledError,
                                InvalidConfirmationCodeError,
                                DeleteProtectionEnabledError,
+                               BackupSnapshotDoesNotExistException,
                                DeleteProtectionNotEnabledError)
 from mcvirt.test.test_base import TestBase, skip_drbd
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdDiskState
@@ -764,12 +766,20 @@ class VirtualMachineTests(TestBase):
         # Reset parser output
         self.parser.print_output = []
 
+        test_data = os.urandom(8)
+
+        # Obtain the disk path for the VM and write random data to it
+        for disk_object in test_vm_object.get_hard_drive_objects():
+            self.rpc.annotate_object(disk_object)
+            with open(disk_object.getDiskPath(), 'w') as fh:
+                fh.write(test_data)
+
         # Assert that the VM is unlocked
         self.assertEqual(test_vm_object.getLockState(), 0)
 
         # Create backup snapshot using parser.
         self.parser.parse_arguments(
-            'backup create-snapshot %s' %
+            'backup create-snapshot %s --disk-id 1' %
             self.test_vms['TEST_VM_1']['name'])
 
         # Assert that the backup lock is now in place
@@ -777,13 +787,93 @@ class VirtualMachineTests(TestBase):
 
         # Ensure that parser gave one line output with the path of the snapshot
         self.assertEqual(len(self.parser.print_output), 1)
-        self.assertEqual()
+        self.assertTrue(re.match(r'\/dev\/.*/mcvirt-hd-.*_snapshot', self.parser.print_output[0]))
+
+        # Check data is present on snapshot
+        with open(self.parser.print_output[0], 'r') as fh:
+            self.assertEqual(fh.read(8), test_data)
+
+        # Write some altereted data to original volume
+        altereted_test_data = os.urandom(8)
+        for disk_object in test_vm_object.get_hard_drive_objects():
+            self.rpc.annotate_object(disk_object)
+            with open(disk_object.getDiskPath(), 'w') as fh:
+                fh.write(altereted_test_data)
+
+        # Ensure that snapshot data has not changed
+        with open(self.parser.print_output[0], 'r') as fh:
+            self.assertEqual(fh.read(8), test_data)
 
     def test_delete_backup_snapshot(self):
-        pass
+        """Delete a backup snapshot from a VM"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Create snapshot
+        hard_drive_attachment_factory = self.rpc.get_connection('hard_drive_attachment_factory')
+        hard_drive_attachment = hard_drive_attachment_factory.get_object(
+            test_vm_object, 1)
+        self.rpc.annotate_object(hard_drive_attachment)
+        hard_drive_object = hard_drive_attachment.get_hard_drive_object()
+        self.rpc.annotate_object(hard_drive_object)
+        snapshot_path = hard_drive_object.create_backup_snapshot()
+
+        # Ensure that VM is locked and snapshot exists
+        self.assertTrue(os.path.exists(snapshot_path))
+        self.assertEqual(test_vm_object.getLockState(), 1)
+
+        # Delete snapshot using parser
+        self.parser.parse_arguments(
+            'backup delete-snapshot %s --disk-id 1' %
+            self.test_vms['TEST_VM_1']['name'])
+
+        # Ensure that VM is now unlocked and snapshot is no longer present
+        self.assertFalse(os.path.exists(snapshot_path))
+        self.assertEqual(test_vm_object.getLockState(), 0)
 
     def test_create_second_backup_snapshot(self):
-        pass
+        """Attempt to create a backup snapshot for a VM that already has one"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Create snapshot
+        hard_drive_attachment_factory = self.rpc.get_connection('hard_drive_attachment_factory')
+        hard_drive_attachment = hard_drive_attachment_factory.get_object(
+            test_vm_object, 1)
+        self.rpc.annotate_object(hard_drive_attachment)
+        hard_drive_object = hard_drive_attachment.get_hard_drive_object()
+        self.rpc.annotate_object(hard_drive_object)
+        snapshot_path = hard_drive_object.create_backup_snapshot()
+
+        # Ensure that VM is locked and snapshot exists
+        self.assertTrue(os.path.exists(snapshot_path))
+        self.assertEqual(test_vm_object.getLockState(), 1)
+
+        with self.assertRaises(VirtualMachineLockException):
+            # Create backup snapshot using parser.
+            self.parser.parse_arguments(
+                'backup create-snapshot %s --disk-id 1' %
+                self.test_vms['TEST_VM_1']['name'])
+
+        # Remove lock and attempt to create a second snapshot
+        self.parser.parse_arguments('lock --unlock %s' % test_vm_object.get_name())
+
+        # @TODO Test create new snapshot, which should raise exception (does't currently)
+
 
     def test_delete_non_exist_backup_snapshot(self):
-        pass
+        """Attempt to delete a snapshot when it doens't exist"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Lock the VM first
+        # @TODO should to have to do this
+        self.parser.parse_arguments('lock --lock %s' % test_vm_object.get_name())
+
+        self.assertEqual(test_vm_object.getLockState(), 1)
+
+        with self.assertRaises(BackupSnapshotDoesNotExistException):
+            # Delete snapshot using parser
+            self.parser.parse_arguments(
+                'backup delete-snapshot %s --disk-id 1' %
+                self.test_vms['TEST_VM_1']['name'])
+
+        # Ensure that VM still locked
+        #self.assertEqual(test_vm_object.getLockState(), 1)
