@@ -398,7 +398,8 @@ class VirtualMachineTests(TestBase):
                                              'Local'))
 
             # Ensure the VM has not been created
-            self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
+            self.assertFalse(self.vm_factory.check_exists_by_name(
+                self.test_vms['TEST_VM_1']['name']))
 
         finally:
             # Remove directory
@@ -858,7 +859,6 @@ class VirtualMachineTests(TestBase):
 
         # @TODO Test create new snapshot, which should raise exception (does't currently)
 
-
     def test_delete_non_exist_backup_snapshot(self):
         """Attempt to delete a snapshot when it doens't exist"""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
@@ -876,4 +876,4 @@ class VirtualMachineTests(TestBase):
                 self.test_vms['TEST_VM_1']['name'])
 
         # Ensure that VM still locked
-        #self.assertEqual(test_vm_object.getLockState(), 1)
+        # self.assertEqual(test_vm_object.getLockState(), 1)
