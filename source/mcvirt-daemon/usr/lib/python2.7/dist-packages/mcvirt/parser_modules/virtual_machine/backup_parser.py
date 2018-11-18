@@ -50,6 +50,8 @@ class BackupParser(object):
             '--disk-id', dest='disk_id', metavar='Disk Id', type=int, required=True,
             help='The ID of the disk to manage the backup snapshot of'
         )
+        self.create_snapshot_parser.add_argument(
+            'vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     def handle_create_snapshot(self, p_, args):
         """Handle create snapshot"""
@@ -57,8 +59,10 @@ class BackupParser(object):
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
         hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
-        hard_drive_object = hard_drive_attachment_factory.get_object(
-            vm_object, args.disk_id).get_hard_drive_object()
+        hard_drive_attachment = hard_drive_attachment_factory.get_object(
+            vm_object, args.disk_id)
+        p_.rpc.annotate_object(hard_drive_attachment)
+        hard_drive_object = hard_drive_attachment.get_hard_drive_object()
         p_.rpc.annotate_object(hard_drive_object)
         p_.print_status(hard_drive_object.create_backup_snapshot())
 
@@ -74,6 +78,8 @@ class BackupParser(object):
             '--disk-id', dest='disk_id', metavar='Disk Id', type=int, required=True,
             help='The ID of the disk to manage the backup snapshot of'
         )
+        self.delete_snapshot_parser.add_argument(
+            'vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     def handle_delete_snapshot(self, p_, args):
         """Handle delete snapshot"""
@@ -81,7 +87,9 @@ class BackupParser(object):
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
         hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
-        hard_drive_object = hard_drive_attachment_factory.get_object(
-            vm_object, args.disk_id).get_hard_drive_object()
+        hard_drive_attachment = hard_drive_attachment_factory.get_object(
+            vm_object, args.disk_id)
+        p_.rpc.annotate_object(hard_drive_attachment)
+        hard_drive_object = hard_drive_attachment.get_hard_drive_object()
         p_.rpc.annotate_object(hard_drive_object)
         hard_drive_object.delete_backup_snapshot()

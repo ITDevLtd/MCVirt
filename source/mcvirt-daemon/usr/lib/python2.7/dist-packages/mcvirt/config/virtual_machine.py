@@ -73,6 +73,7 @@ class VirtualMachine(BaseSubconfig):
                 'agent': {
                     'connection_timeout': None
                 },
+                'snapshots': [],
                 'watchdog': {
                     'enabled': False,
                     'interval': None,
@@ -96,3 +97,6 @@ class VirtualMachine(BaseSubconfig):
         if self._getVersion() < 17:
             # Name parameter added in MCVirtConfig object, due to change of VM dir
             migrations.v17.migrate(self, config)
+
+        if self._getVersion() < 21:
+            migrations.v21.migrate(self, config)

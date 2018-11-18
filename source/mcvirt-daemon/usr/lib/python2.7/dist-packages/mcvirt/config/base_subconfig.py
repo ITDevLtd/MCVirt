@@ -18,6 +18,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from mcvirt.config.core import Core
+from mcvirt.rpc.expose_method import Expose
 
 
 class BaseSubconfig(Core):
@@ -47,6 +48,21 @@ class BaseSubconfig(Core):
 
         # Return the sub config
         return subconfig
+
+    @Expose()
+    @classmethod
+    def set_global_config(cls, config):
+        """Set global config"""
+        cls._get_registered_object('auth').assert_user_type('ClusterUser')
+
+        def update_config(parent_config):
+            """Update parent config"""
+            subconfig = parent_config
+            for key_itx in cls.SUBTREE_ARRAY[:-1]:
+                subconfig = subconfig[key_itx]
+            subconfig[cls.SUBTREE_ARRAY[-1]] = config
+
+        Core().update_config(update_config, 'Update config')
 
     def get_config(self):
         """Get the config for the object."""
