@@ -178,7 +178,7 @@ class Cluster(PyroObject):
         if socket.gethostbyname(get_hostname()).startswith('127.'):
             raise MissingConfigurationException(('Node hostname %s resolves to the localhost.'
                                                  ' Instead it should resolve to the cluster'
-                                                 ' IP address'))
+                                                 ' IP address') % get_hostname())
         resolve_ip = socket.gethostbyname(get_hostname())
         if resolve_ip != cluster_ip:
             raise MissingConfigurationException(('The local hostname (%s) should resolve the'
