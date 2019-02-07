@@ -5,7 +5,7 @@ set -e
 echo () {
 	/bin/echo
 	/bin/echo ==========================================================
-	/bin/echo $@
+	/bin/echo -e $@
 	/bin/echo ==========================================================
 }
 
@@ -54,3 +54,14 @@ pushd $TEMP_DIR
 
 popd
 rm -rf $TEMP_DIR
+
+echo '(Re)Starting MCVirt Nameserver'
+server mcvirt-ns restart
+
+echo '(Re)Starting MCVirt Daemon'
+service mcvirtd restart
+
+echo Finished Installation
+
+echo Default Credentials:\\nUsername: mjc\\nPassword: password\\n\\nTest:\\n\\n    mcvirt list\\n
+
