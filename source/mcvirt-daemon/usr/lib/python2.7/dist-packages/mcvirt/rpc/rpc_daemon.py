@@ -87,7 +87,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         Pyro4.current_context.cluster_master = True
         Pyro4.current_context.PERMISSION_ASSERTED = False
 
-        self.registered_factories['cluster'].set_context_defaultS()
+        self.registered_factories['cluster'].set_context_defaults()
 
     def handshake__authenticate_user(self, data):
         """Authenticate user with either password or session ID"""
