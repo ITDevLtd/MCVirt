@@ -108,10 +108,11 @@ class Cluster(PyroObject):
             ram = ''
             try:
                 node_obj = self.get_remote_node(node)
-                remote_stats = node_obj.get_connection('host_statistics')
-                cpu = remote_stats.get_cpu_usage_string()
-                ram = remote_stats.get_memory_usage_string()
-                node_status = 'Connected'
+                if node_obj is not None:
+                    remote_stats = node_obj.get_connection('host_statistics')
+                    cpu = remote_stats.get_cpu_usage_string()
+                    ram = remote_stats.get_memory_usage_string()
+                    node_status = 'Connected'
             except CouldNotConnectToNodeException:
                 pass
             table.add_row((node, node_config['ip_address'],
