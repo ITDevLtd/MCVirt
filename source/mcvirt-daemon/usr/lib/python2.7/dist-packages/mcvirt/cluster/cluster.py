@@ -690,7 +690,7 @@ class Cluster(PyroObject):
         else:
             return self.get_cluster_config()['nodes'][node]
 
-    def set_context_default(self):
+    def set_context_defaults(self):
         """Set the cluster-specific pyro default context"""
         # Reset list of failing nodes, as this state is only
         # persisted for a single connection.
