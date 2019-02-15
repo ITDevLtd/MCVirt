@@ -32,7 +32,7 @@ PERMISSIONS = Enum('PERMISSIONS', ['CHANGE_VM_POWER_STATE', 'CREATE_VM', 'MODIFY
                                    'MANAGE_ISO', 'MANAGE_STORAGE_BACKEND',
                                    'MANAGE_STORAGE_VOLUME', 'MANAGE_GROUPS',
                                    'MANAGE_GROUP_MEMBERS', 'MANAGE_GLOBAL_WATCHDOG',
-                                   'MODIFY_HARD_DRIVE'])
+                                   'MODIFY_HARD_DRIVE', 'MANAGE_VM_SNAPSHOTS'])
 
 PERMISSION_DESCRIPTIONS = {
     'CHANGE_VM_POWER_STATE': ('Power on, power off, reset and shutdown (ACPI) '
@@ -63,5 +63,6 @@ PERMISSION_DESCRIPTIONS = {
     'MANAGE_GROUPS': 'Create, delete and modify permissions groups',
     'MANAGE_GROUP_MEMBERS': 'Add/remove users from permission groups',
     'MANAGE_GLOBAL_WATCHDOG': 'Manage the global configuration for watchdog',
-    'MODIFY_HARD_DRIVE': 'Manage hard drives and VM association'
+    'MODIFY_HARD_DRIVE': 'Manage hard drives and VM association',
+    'MANAGE_VM_SNAPSHOTS': 'Manage virtual machine snapshots'
 }

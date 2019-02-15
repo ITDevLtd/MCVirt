@@ -152,6 +152,18 @@ class Base(PyroObject):
 
         return self._base_volume_name
 
+    @property
+    def supports_snapshot(self):
+        """Whether the hard drive supports snapshotting"""
+        # Default to False
+        return False
+
+    @property
+    def supports_online_snapshot(self):
+        """Whether the hard drive supports online snapshotting"""
+        # Default to False
+        return False
+
     def get_attachment_object(self):
         """Obtain the VM object for the resource"""
         return self._get_registered_object(
@@ -177,8 +189,12 @@ class Base(PyroObject):
         node_object.annotate_object(hard_drive_object)
         return hard_drive_object
 
+    @Expose(remote_nodes=True)
     def ensure_exists(self):
         """Ensure the disk exists on the local node"""
+        self._get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         self.storage_backend.ensure_available()
         if not self._check_exists():
             raise HardDriveDoesNotExistException(
@@ -264,25 +280,30 @@ class Base(PyroObject):
         # Ensure that the user has permissions to add delete storage
         self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
-            self.get_virtual_machine()
+            vm_object
         )
 
-        self.ensure_exists()
+        # If the storage backend is available on one to more nodes,
+        # ensure that the hard drive exists. Prefer local host
+        check_node = get_hostname() if get_hostname() in self.nodes else self.nodes[0]
+        if self._is_cluster_master or check_node == get_hostname():
+            self.ensure_exists(nodes=[check_node])
 
         if vm_object:
             vm_object.ensureUnlocked()
             vm_object.ensure_stopped()
 
-            if not local_only:
-                # Remove the hard drive from the MCVirt VM configuration
-                self.get_attachment_object().delete()
+            # Remove the hard drive from the MCVirt VM configuration
+            self.get_attachment_object().delete(local_only=local_only)
 
         # Remove backing storage
         self._removeStorage(local_only=local_only)
 
         # Remove config
-        self.remove_config(
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+        nodes = [get_hostname()] if local_only else self._get_registered_object(
+            'cluster').get_nodes(include_local=True)
+
+        self.remove_config(nodes=nodes)
 
     @Expose(locking=True, remote_nodes=True)
     def remove_config(self):
@@ -345,18 +366,15 @@ class Base(PyroObject):
         backup_volume = self.get_backup_snapshot_volume()
 
         try:
-            source_volume.snapshot_volume(backup_volume, self.SNAPSHOT_SIZE)
+            source_volume.snapshot(backup_volume, self.SNAPSHOT_SIZE)
         except VolumeAlreadyExistsError:
             if vm_object:
                 vm_object._setLockState(LockStates.UNLOCKED)
             raise BackupSnapshotAlreadyExistsException('Backup snapshot already exists')
         except Exception:
             if vm_object:
-                vm_object._setLockState(LockStates.UNLCoKED)
+                vm_object._setLockState(LockStates.UNLOCKED)
             raise
-
-        if vm_object:
-            vm_object._setLockState(LockStates.UNLOCKED)
 
         return backup_volume.get_path()
 
@@ -371,7 +389,7 @@ class Base(PyroObject):
         )
 
         try:
-            self.get_backup_snapshot_volume().delete_volume()
+            self.get_backup_snapshot_volume().delete()
         except VolumeDoesNotExistError:
             if vm_object:
                 vm_object._setLockState(LockStates.UNLOCKED)

@@ -15,6 +15,12 @@ MCVirt is a utility for managing virtual machines, supporting the following tech
 
 MCVirt is implemented in Python, using the `libvirt virtualisation library <http://libvirt.org>`_.
 
+MASTER BRANCH WARNING
+============
+The master branch generally continues the current development of an upcoming release.
+
+Use the releases to obtain the latest stable release
+
 Getting started
 ===============
 

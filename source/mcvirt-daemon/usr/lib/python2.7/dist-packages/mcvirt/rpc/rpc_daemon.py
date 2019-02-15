@@ -50,6 +50,8 @@ from mcvirt.rpc.constants import Annotations
 from mcvirt.syslogger import Syslogger
 from mcvirt.rpc.daemon_lock import DaemonLock
 from mcvirt.config.core import Core as MCVirtConfig
+from mcvirt.config.virtual_machine import VirtualMachine as VirtualMachineConfig
+from mcvirt.config.hard_drive import HardDrive as HardDriveConfig
 from mcvirt.exceptions import AuthenticationError
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.thread.auto_start_watchdog import AutoStartWatchdog
@@ -84,6 +86,8 @@ class BaseRpcDaemon(Pyro4.Daemon):
         Pyro4.current_context.has_lock = False
         Pyro4.current_context.cluster_master = True
         Pyro4.current_context.PERMISSION_ASSERTED = False
+
+        self.registered_factories['cluster'].set_context_defaults()
 
     def handshake__authenticate_user(self, data):
         """Authenticate user with either password or session ID"""
@@ -332,6 +336,8 @@ class RpcNSMixinDaemon(object):
             [LibvirtConnector(), 'libvirt_connector'],
             [LdapFactory(), 'ldap_factory'],
             [MCVirtConfig, 'mcvirt_config'],
+            [HardDriveConfig, 'hard_drive_config'],
+            [VirtualMachineConfig, 'virtual_machine_config'],
             [Session(), 'mcvirt_session'],
             [StatisticsSync(), 'statistics_sync'],
             [WatchdogFactory(), 'watchdog_factory'],

@@ -16,4 +16,6 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 
-from . import v17, v21
+def migrate(config_obj, config):
+    """Add snapshots config to virtual machine"""
+    config['snapshots'] = []

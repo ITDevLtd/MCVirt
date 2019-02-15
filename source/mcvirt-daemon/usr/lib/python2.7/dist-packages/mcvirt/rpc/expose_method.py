@@ -89,7 +89,10 @@ class Transaction(object):
                 self.functions.remove(func)
                 func.unregister(force=True)
                 del func
-            Transaction.transactions.remove(self)
+
+            # @TODO HOW CAN THIS NO LONGER BE IN THE LIST?
+            if self in Transaction.transactions:
+                Transaction.transactions.remove(self)
 
     @classmethod
     def register_function(cls, function):

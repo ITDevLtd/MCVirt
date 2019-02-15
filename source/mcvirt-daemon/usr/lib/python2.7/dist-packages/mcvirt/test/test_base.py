@@ -179,6 +179,9 @@ class TestBase(unittest.TestCase):
                 if disk_object.get_type() == 'Drbd':
                     disk_object.setSyncState(True)
 
+            if vm_object.getLockState() is LockStates.LOCKED.value:
+                vm_object.setLockState(LockStates.UNLOCKED.value)
+
             if not vm_object.isRegistered():
                 # Manually register VM on local node
                 vm_object.register()
@@ -186,9 +189,6 @@ class TestBase(unittest.TestCase):
             # Stop the VM if it is running
             if vm_object.get_power_state() == PowerStates.RUNNING.value:
                 vm_object.stop()
-
-            if vm_object.getLockState() is LockStates.LOCKED.value:
-                vm_object.setLockState(LockStates.UNLOCKED.value)
 
             if vm_object.get_delete_protection_state():
                 vm_object.disable_delete_protection(vm_name[::-1])
