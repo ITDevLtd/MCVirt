@@ -663,6 +663,9 @@ class Drbd(Base):
 
         return self._drbdDisconnect(*args, **kwargs)
 
+    @Expose(locking=True, expose=False, remote_nodes=True,
+            remote_method='drbdDisconnect', undo_method='_drbdConnect',
+            remote_undo_method='drbdConnect')
     def _drbdDisconnect(self):
         """Performs a Drbd 'disconnect' on the hard drive Drbd resource"""
         System.runCommand([NodeDrbd.DrbdADM, 'disconnect', self.resource_name])
@@ -1091,12 +1094,21 @@ class Drbd(Base):
         # Disconnect the local Drbd volume
         self._drbdDisconnect()
 
+        # Replace node in hard disk config, ready for DRBD config regeneration
+        nodes = self.nodes
+        nodes.remove(source_node)
+        nodes.append(destination_node)
+        self.update_config(
+            {'nodes': nodes},
+            'Update nodes for disk: %s' % self.id_,
+            nodes=self._get_registered_object('cluster').get_nodes(
+                include_local=True))
+
         # Obtain the size of the disk to be created
         disk_size = self.get_size()
 
         # Create disk object for destination node
-        dest_hdd_object = self.get_remote_object(node_object=dest_node_object,
-                                                 registered=False)
+        dest_hdd_object = self.get_remote_object(node_object=dest_node_object)
 
         # Create the storage on the destination node
         dest_raw_volume = dest_hdd_object.get_raw_volume()

@@ -42,6 +42,7 @@ class HardDriveParser(object):
         self.register_attach()
         self.register_detach()
         self.register_import()
+        self.register_delete()
 
     def register_list(self):
         """Register network list parser"""
@@ -150,3 +151,23 @@ class HardDriveParser(object):
             virtual_machine=virtual_machine)
         p_.rpc.annotate_object(hdd_object)
         p_.print_status('Created hard drive: %s' % hdd_object.get_id())
+
+
+    def register_delete(self):
+        """Register parser to handle hard drive deletion"""
+        self.delete_parser = self.subparser.add_parser(
+            'delete',
+            help='Delete a hard drive',
+            parents=[self.parent_parser]
+        )
+        self.delete_parser.set_defaults(func=self.handle_delete)
+        self.delete_parser.add_argument(
+            'hard_drive_id', metavar='Hard Drive Id', type=str,
+            help='ID of the hard drive to be deleted')
+
+    def handle_delete(self, p_, args):
+        """Handle hard drive deletion"""
+        hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
+        hard_drive = hard_drive_factory.get_object(args.hard_drive_id)
+        p_.rpc.annotate_object(hard_drive)
+        hard_drive.delete()

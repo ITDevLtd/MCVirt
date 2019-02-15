@@ -19,9 +19,10 @@
 
 import json
 import base64
-
 import socket
 from texttable import Texttable
+
+import Pyro4
 
 from mcvirt.utils import get_hostname
 from mcvirt.exceptions import (NodeAlreadyPresent, NodeDoesNotExistException,
@@ -107,10 +108,11 @@ class Cluster(PyroObject):
             ram = ''
             try:
                 node_obj = self.get_remote_node(node)
-                remote_stats = node_obj.get_connection('host_statistics')
-                cpu = remote_stats.get_cpu_usage_string()
-                ram = remote_stats.get_memory_usage_string()
-                node_status = 'Connected'
+                if node_obj is not None:
+                    remote_stats = node_obj.get_connection('host_statistics')
+                    cpu = remote_stats.get_cpu_usage_string()
+                    ram = remote_stats.get_memory_usage_string()
+                    node_status = 'Connected'
             except CouldNotConnectToNodeException:
                 pass
             table.add_row((node, node_config['ip_address'],
@@ -178,7 +180,7 @@ class Cluster(PyroObject):
         if socket.gethostbyname(get_hostname()).startswith('127.'):
             raise MissingConfigurationException(('Node hostname %s resolves to the localhost.'
                                                  ' Instead it should resolve to the cluster'
-                                                 ' IP address'))
+                                                 ' IP address') % get_hostname())
         resolve_ip = socket.gethostbyname(get_hostname())
         if resolve_ip != cluster_ip:
             raise MissingConfigurationException(('The local hostname (%s) should resolve the'
@@ -669,6 +671,7 @@ class Cluster(PyroObject):
                                          (node, str(exc)))
                 raise InaccessibleNodeException('Cannot connect to node \'%s\'' % node)
             else:
+                self.add_inaccessible_node(node)
                 Syslogger.logger().error('Cannot connect to node: %s (Ignored)' % node)
             node_object = None
         return node_object
@@ -687,6 +690,29 @@ class Cluster(PyroObject):
         else:
             return self.get_cluster_config()['nodes'][node]
 
+    def set_context_defaults(self):
+        """Set the cluster-specific pyro default context"""
+        # Reset list of failing nodes, as this state is only
+        # persisted for a single connection.
+        Pyro4.current_context.inaccessible_nodes = []
+
+    @property
+    def inaccessible_nodes(self):
+        """Return list of inaccessible nodes"""
+        if self._is_pyro_initialised:
+            return Pyro4.current_context.inaccessible_nodes
+        else:
+            return []
+
+    def add_inaccessible_node(self, node):
+        """Add node to list of inaccessible nodes"""
+        if self._is_pyro_initialised:
+            if node not in self.inaccessible_nodes:
+                Pyro4.current_context.inaccessible_nodes.append(node)
+        else:
+            Syslogger.logger().warn(
+                'Could not register inaccessible node as Pyro is not initialised')
+
     @Expose()
     def get_nodes(self, return_all=False, include_local=False):
         """Return an array of node configurations"""
@@ -694,18 +720,20 @@ class Cluster(PyroObject):
         nodes = cluster_config['nodes'].keys()
 
         # If requesting nodes (not return_all) and is not
-        # the cluster master, just return the local node
+        # the cluster master, just return the local node.
+        # This assumes that return_all is being used for configuration,
+        # so without it, it's being assumed that the response
+        # is being used for executing a command on a remote node,
+        # which shouldn't be performed if not the cluster master
         if not return_all and not self._is_cluster_master:
             Syslogger.logger().warn(
                 'Requesting cluster get_nodes: is not cluster master and '
                 'is not return_all')
             return [get_hostname()]
 
-        # @TODO This is meant to remove non-working nodes, but
-        # is only checking node name string!
         if self._cluster_disabled and not return_all:
-            for node in nodes:
-                if not node:
+            for node in self.inaccessible_nodes:
+                if node in nodes:
                     nodes.remove(node)
         if include_local:
             nodes.append(get_hostname())
