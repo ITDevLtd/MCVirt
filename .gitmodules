@@ -1,0 +1,3 @@
+[submodule "pyro4"]
+	path = pyro4
+	url = https://github.com/matthewjohn/pyro4
