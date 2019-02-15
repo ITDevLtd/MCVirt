@@ -22,6 +22,7 @@ from mcvirt.constants import AutoStartStates
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.auth.permissions import PERMISSIONS
+from mcvirt.syslogger import Syslogger
 
 
 class AutoStartWatchdog(RepeatTimer):
@@ -70,16 +71,14 @@ class AutoStartWatchdog(RepeatTimer):
                 self.repeat = True
                 self.repeat_run()
 
-    def cancel(self):
-        """Cancel timer"""
-        self.repeat = False
-        self.timer.cancel()
-
     def initialise(self):
         """Perform the ON_BOOT autostart and start timer"""
         Pyro4.current_context.INTERNAL_REQUEST = True
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        vm_factory.autostart(AutoStartStates.ON_BOOT)
+        try:
+            vm_factory.autostart(AutoStartStates.ON_BOOT)
+        except Exception, exc:
+            Syslogger.logger().error('Error during autostart ON_BOOT: %s' % str(exc))
         Pyro4.current_context.INTERNAL_REQUEST = False
         super(AutoStartWatchdog, self).initialise()
 
@@ -87,5 +86,8 @@ class AutoStartWatchdog(RepeatTimer):
         """Perform ON_POLL autostart"""
         Pyro4.current_context.INTERNAL_REQUEST = True
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        vm_factory.autostart(AutoStartStates.ON_POLL)
+        try:
+            vm_factory.autostart(AutoStartStates.ON_POLL)
+        except Exception, exc:
+            Syslogger.logger().error('Error during autostart ON_POLL : %s' % str(exc))
         Pyro4.current_context.INTERNAL_REQUEST = False

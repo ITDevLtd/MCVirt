@@ -22,7 +22,7 @@ from mcvirt.thread.repeat_timer import RepeatTimer
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.syslogger import Syslogger
 from mcvirt.argument_validator import ArgumentValidator
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import dict_merge
 from mcvirt.auth.permissions import PERMISSIONS
@@ -66,7 +66,7 @@ class WatchdogFactory(PyroObject):
         """Detect running VMs on local node and create watchdog daemon"""
         # Check all VMs
         for virtual_machine in self._get_registered_object(
-                'virtual_machine_factory').getAllVirtualMachines():
+                'virtual_machine_factory').get_all_virtual_machines():
 
             Syslogger.logger().debug('Registering watchdog for: %s' % virtual_machine.get_name())
             self.start_watchdog(virtual_machine)
@@ -203,7 +203,7 @@ class Watchdog(RepeatTimer):
                 self.virtual_machine.isRegisteredLocally() and
                 self.virtual_machine.is_running):
             self.set_state(WATCHDOG_STATES.NOT_SUITABLE)
-            Syslogger.logger().error(
+            Syslogger.logger().info(
                 'Watchdog not run: %s' %
                 self.virtual_machine.get_name())
             return
@@ -213,14 +213,9 @@ class Watchdog(RepeatTimer):
 
         agent_conn = self.virtual_machine.get_agent_connection()
 
-        def ping_agent(conn):
-            """Send request to agent and ensure it responds"""
-            conn.write('ping\n')
-            return conn.readline().strip()
-
         resp = None
         try:
-            resp = agent_conn.wait_lock(ping_agent)
+            resp = agent_conn.wait_lock(command='ping')
         except Exception, e:
             Syslogger.logger().error(e)
 

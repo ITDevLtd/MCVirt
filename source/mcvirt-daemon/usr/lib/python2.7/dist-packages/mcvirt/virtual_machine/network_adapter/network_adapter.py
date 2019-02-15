@@ -63,9 +63,9 @@ class NetworkAdapter(PyroObject):
         vm_config = self.vm_object.get_config_object().get_config()
         return self.getMacAddress() in vm_config['network_interfaces']
 
-    def getLibvirtConfig(self):
+    def get_libvirt_config(self):
         """Returns a dict of the LibVirt configuration for the network interface"""
-        domain_config = self.vm_object.getLibvirtConfig()
+        domain_config = self.vm_object.get_libvirt_config()
         interface_config = domain_config.find(
             './devices/interface[@type="network"]/mac[@address="%s"]/..' %
             self.mac_address)
@@ -144,7 +144,7 @@ class NetworkAdapter(PyroObject):
             device_xml.remove(interface_xml)
             device_xml.append(self._generateLibvirtXml())
 
-        self.vm_object._editConfig(update_libvirt)
+        self.vm_object.update_libvirt_config(update_libvirt)
 
     @Expose(locking=True)
     def delete(self):
@@ -170,7 +170,7 @@ class NetworkAdapter(PyroObject):
 
             device_xml.remove(interface_xml)
 
-        self.vm_object._editConfig(update_libvirt)
+        self.vm_object.update_libvirt_config(update_libvirt)
 
         # Update the VM configuration
         def update_vm_config(config):

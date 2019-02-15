@@ -1,6 +1,6 @@
 """Provide base class for configuration files"""
 
-# Copyright (c) 2014 - I.T. Dev Ltd
+# Copyright (c) 2018 - Matt Comben
 #
 # This file is part of MCVirt.
 #
@@ -31,19 +31,14 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.exceptions import UserDoesNotExistException
 
 
-class ConfigFile(PyroObject):
+class Base(PyroObject):
     """Provides operations to obtain and set the MCVirt configuration for a VM"""
 
-    CURRENT_VERSION = 15
+    CURRENT_VERSION = 21
     GIT = '/usr/bin/git'
 
     def __init__(self):
-        """Set member variables and obtains libvirt domain object"""
-        raise NotImplementedError
-
-    @staticmethod
-    def get_config_path(vm_name):
-        """Provide the path of the VM-specific configuration file"""
+        """Set member variables"""
         raise NotImplementedError
 
     def get_config(self):
@@ -63,18 +58,16 @@ class ConfigFile(PyroObject):
     @Expose(locking=True)
     def manual_update_config(self, config, reason=''):
         """Provide an exposed method for updating the config"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
-        ConfigFile._writeJSON(config, self.config_file)
-        self.config = config
-        self.gitAdd(reason)
-        self.setConfigPermissions()
+        def set_config(origin_config):
+            origin_config.clear()
+            origin_config.update(config)
+        self.update_config(set_config, reason)
 
     def update_config(self, callback_function, reason=''):
         """Write a provided configuration back to the configuration file."""
-        config = self.get_config()
+        config = Base.get_config(self)
         callback_function(config)
-        ConfigFile._writeJSON(config, self.config_file)
-        self.config = config
+        Base._writeJSON(config, self.config_file)
         self.gitAdd(reason)
         self.setConfigPermissions()
 
@@ -151,9 +144,8 @@ class ConfigFile(PyroObject):
                 config['version'] = self.CURRENT_VERSION
             self.update_config(
                 upgradeConfig,
-                'Updated configuration file \'%s\' from version \'%s\' to \'%s\'' %
-                (self.config_file,
-                 current_version,
+                'Updated configuration from version \'%s\' to \'%s\'' %
+                (current_version,
                  self.CURRENT_VERSION))
 
     def _getVersion(self):
@@ -194,10 +186,9 @@ class ConfigFile(PyroObject):
             except Exception:
                 pass
 
-    def gitRemove(self, message=''):
+    def gitRemove(self, message='', custom_file=None):
         """Remove and commits a configuration file"""
         if self._checkGitRepo():
-            session_obj = self._get_registered_object('mcvirt_session')
             session_obj = self._get_registered_object('mcvirt_session')
             username = ''
             user = None
@@ -226,11 +217,11 @@ class ConfigFile(PyroObject):
 
     def _checkGitRepo(self):
         """Clone the configuration repo, if necessary, and updates the repo"""
-        from mcvirt_config import MCVirtConfig
+        from mcvirt.config.core import Core
 
         # Only attempt to create a git repository if the git
         # URL has been set in the MCVirt configuration
-        mcvirt_config = MCVirtConfig().get_config()
+        mcvirt_config = Core().get_config()
         if mcvirt_config['git']['repo_domain'] == '':
             return False
 

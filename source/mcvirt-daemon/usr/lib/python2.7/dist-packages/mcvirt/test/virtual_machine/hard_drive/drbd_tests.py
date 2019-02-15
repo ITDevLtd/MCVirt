@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -40,14 +41,14 @@ class DrbdTests(TestBase):
         """Test the Drbd verification for both in-sync and out-of-sync Drbd volumes"""
         # Create Virtual machine
         test_vm_object = self.create_vm('TEST_VM_1', 'Drbd')
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Wait for 10 seconds after creation to ensure that Drbd
         # goes into connection -> Resyncing state
         time.sleep(10)
 
         # Wait until the Drbd resource is synced
-        for disk_object in test_vm_object.getHardDriveObjects():
+        for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             wait_timeout = 6
             while disk_object.drbdGetConnectionState()[1] != DrbdConnectionState.CONNECTED.value:
@@ -62,12 +63,12 @@ class DrbdTests(TestBase):
         self.parser.parse_arguments('verify %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure the disks are in-sync
-        for disk_object in test_vm_object.getHardDriveObjects():
+        for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc_annotate_object(disk_object)
             self.assertTrue(disk_object._isInSync())
 
         # Obtain the Drbd raw volume for the VM and write random data to it
-        for disk_object in test_vm_object.getHardDriveObjects():
+        for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             drbd_raw_suffix = disk_object.DRBD_RAW_SUFFIX
             raw_logical_volume_name = disk_object._getLogicalVolumeName(drbd_raw_suffix)

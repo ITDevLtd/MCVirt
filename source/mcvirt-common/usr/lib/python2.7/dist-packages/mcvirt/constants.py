@@ -34,6 +34,7 @@ class DirectoryLocation(object):
     LOCK_FILE = LOCK_FILE_DIR + '/lock'
     LOG_FILE = '/var/log/mcvirt.log'
     DRBD_HOOK_CONFIG = NODE_STORAGE_DIR + '/drbd-hook-config.json'
+    SQLITE_DATABASE = NODE_STORAGE_DIR + '/database.db'
 
 
 class LockStates(Enum):
@@ -68,6 +69,18 @@ class AgentSerialConfig(object):
     # Agent Port
     AGENT_PORT = "ttyS0"
     AGENT_PORT_PATH = "/dev/%s" % AGENT_PORT
+
+
+class StatisticsDeviceType(Enum):
+    """Statistics device type"""
+    HOST = 1
+    VIRTUAL_MACHINE = 2
+
+
+class StatisticsStatType(Enum):
+    """Statistics stat type"""
+    CPU_USAGE = 1
+    MEMORY_USAGE = 2
 
 
 # Name of the default storage backend, used during upgrade

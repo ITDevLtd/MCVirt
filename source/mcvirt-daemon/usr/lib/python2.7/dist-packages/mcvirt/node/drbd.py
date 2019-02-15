@@ -24,7 +24,7 @@ import json
 from binascii import hexlify
 
 from mcvirt.exceptions import DrbdNotInstalledException, DrbdAlreadyEnabled
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
@@ -130,28 +130,13 @@ class Drbd(PyroObject):
         # Update the local configuration
         def update_config(config):
             """Enable DRBD in local MCVirt config"""
-            config['drbd']['enabled'] = 1
+            config['drbd']['enabled'] = True
         MCVirtConfig().update_config(update_config, 'Enabled Drbd')
 
     def get_config(self):
         """Return the global Drbd configuration"""
         mcvirt_config = MCVirtConfig()
-        if 'drbd' in mcvirt_config.get_config().keys():
-            return mcvirt_config.get_config()['drbd']
-        else:
-            return self.get_default_config()
-
-    @staticmethod
-    def get_default_config():
-        """Return the default configuration for DRBD"""
-        default_config = \
-            {
-                'enabled': 0,
-                'secret': '',
-                'sync_rate': '10M',
-                'protocol': 'C'
-            }
-        return default_config
+        return mcvirt_config.get_config()['drbd']
 
     def generate_config(self):
         """Generate the Drbd configuration"""
@@ -188,62 +173,65 @@ class Drbd(PyroObject):
     def get_all_drbd_hard_drive_object(self, include_remote=False):
         """Obtain all hard drive objects that are backed by DRBD"""
         hard_drive_objects = []
-        vm_factory = self._get_registered_object('virtual_machine_factory')
-        for vm_object in vm_factory.getAllVirtualMachines():
-            if get_hostname() in vm_object.getAvailableNodes() or include_remote:
-                all_hard_drive_objects = vm_object.getHardDriveObjects()
-
-                for hard_drive_object in all_hard_drive_objects:
-                    if hard_drive_object.get_type() is 'Drbd':
-                        hard_drive_objects.append(hard_drive_object)
+        hdd_factory = self._get_registered_object('hard_drive_factory')
+        for hdd_object in hdd_factory.get_all():
+            if ((get_hostname() in hdd_object.nodes or include_remote) and
+                    hdd_object.get_type() == 'Drbd'):
+                hard_drive_objects.append(hdd_object)
 
         return hard_drive_objects
 
     def get_used_drbd_ports(self):
         """Return a list of used Drbd ports"""
-        return [hdd.drbd_port for hdd in self.get_all_drbd_hard_drive_object(include_remote=True)]
+        return [hdd.get_drbd_port(generate=False)
+                for hdd in self.get_all_drbd_hard_drive_object(include_remote=True)]
 
     def get_used_drbd_minors(self):
         """Return a list of used Drbd minor IDs"""
-        return [hdd.drbd_minor for hdd in self.get_all_drbd_hard_drive_object(include_remote=True)]
+        return [hdd.get_drbd_minor(generate=False)
+                for hdd in self.get_all_drbd_hard_drive_object(include_remote=True)]
 
     @Expose()
     def list(self):
         """List the Drbd volumes and statuses"""
+        # Manually set permissions asserted, as this function can
+        # run high privilege calls, but doesn't not require
+        # permission checking
+        self._get_registered_object('auth').set_permission_asserted()
+
         # Create table and add headers
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('Volume Name', 'VM', 'Minor', 'Port', 'Role', 'Connection State',
+        table.header(('Volume Name', 'Minor', 'Port', 'Role', 'Connection State',
                       'Disk State', 'Sync Status'))
 
         # Set column alignment and widths
-        table.set_cols_width((30, 20, 5, 5, 20, 20, 20, 13))
-        table.set_cols_align(('l', 'l', 'c', 'c', 'l', 'c', 'l', 'c'))
+        table.set_cols_width((30, 5, 5, 20, 20, 20, 13))
+        table.set_cols_align(('l', 'c', 'c', 'l', 'c', 'l', 'c'))
 
         # Iterate over Drbd objects, adding to the table
         for drbd_object in self.get_all_drbd_hard_drive_object(True):
             remote_node = None
-            if not drbd_object.get_vm_object().isRegisteredLocally():
-                node_name = drbd_object.get_vm_object().getNode()
-                available_nodes = drbd_object.get_vm_object().getAvailableNodes()
+            if not (drbd_object.get_virtual_machine() and
+                    drbd_object.get_virtual_machine().isRegisteredLocally()):
+                node_name = (drbd_object.get_virtual_machine().getNode()
+                             if drbd_object.get_virtual_machine() else
+                             None)
+                available_nodes = drbd_object.nodes
                 if node_name is None:
                     node_name, sec_remote_node_name = available_nodes
                 else:
                     available_nodes.remove(node_name)
                     sec_remote_node_name = available_nodes[0]
-                drbd_object, remote_node = drbd_object.get_remote_object(
-                    node_name=drbd_object.get_vm_object().getNode(), return_node=True
-                )
+                # drbd_object, remote_node = drbd_object.get_remote_object(
+                #     node_name=drbd_object.get_vm_object().getNode(), return_node=True
+                # )
             else:
                 node_name = 'Local'
                 sec_remote_node_name = 'Remote'
-            vm_object = drbd_object.get_vm_object()
-            if remote_node is not None:
-                remote_node.annotate_object(vm_object)
             table.add_row((drbd_object.get_resource_name(),
-                           vm_object.get_name(),
-                           drbd_object.get_drbd_minor(),
-                           drbd_object.get_drbd_port(),
+                           drbd_object.drbd_minor,
+                           drbd_object.drbd_port,
                            '%s: %s, %s: %s' % (node_name, drbd_object.drbdGetRole()[0][0],
                                                sec_remote_node_name,
                                                drbd_object.drbdGetRole()[1][0]),

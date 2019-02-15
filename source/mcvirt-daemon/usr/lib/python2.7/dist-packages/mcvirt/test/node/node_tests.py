@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -18,7 +19,7 @@
 import unittest
 
 from mcvirt.exceptions import MCVirtTypeError
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.test.test_base import TestBase
 
 

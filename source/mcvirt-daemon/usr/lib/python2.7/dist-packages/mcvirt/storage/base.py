@@ -17,12 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-import hashlib
-import datetime
-
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.storage import Storage as StorageConfig
 from mcvirt.rpc.pyro_object import PyroObject
-from mcvirt.rpc.expose_method import Expose
+from mcvirt.rpc.expose_method import Expose, Transaction
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.utils import get_hostname
@@ -45,6 +42,21 @@ from mcvirt.system import System
 class Base(PyroObject):
     """Provides base functionality for storage backends"""
 
+    @staticmethod
+    def get_id_code():
+        """Return the ID code for the object"""
+        return 'sb'
+
+    @staticmethod
+    def get_id_name_checksum_length():
+        """Return the lenght of the name checksum to use in the ID"""
+        return 16
+
+    @staticmethod
+    def get_id_date_checksum_length():
+        """Return the lenght of the name checksum to use in the ID"""
+        return 24
+
     @classmethod
     def check_permissions(cls, libvirt_config, directory):
         """Method to check permissions of directory"""
@@ -56,15 +68,6 @@ class Base(PyroObject):
         # Ensure that all nodes specified are valid
         for node in config['nodes']:
             cluster.ensure_node_exists(node, include_local=True)
-
-    @classmethod
-    def generate_id(cls, name):
-        """Generate ID for storage backend"""
-        # Generate sha sum of name and sha sum of
-        # current datetime
-        name_checksum = hashlib.sha512(name).hexdigest()
-        date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
-        return 'sb-%s-%s' % (name_checksum[0:16], date_checksum[0:24])
 
     @classmethod
     def node_pre_check(cls, cluster, libvirt_config, location):
@@ -151,7 +154,7 @@ class Base(PyroObject):
         """Return the name of the identification volume"""
         return self.id_
 
-    def create_id_volume(self):
+    def create_id_volume(self, nodes=None):
         """Create identification volume on the storage backend"""
         # Obtain volume object for ID volume
         volume = self.get_volume(self._id_volume_name)
@@ -159,9 +162,10 @@ class Base(PyroObject):
         # If the storage backend is shared, then only needs to be created on
         # a single node (prefer local host if in list of nodes). If not shared,
         # ID volume will be created on all nodes
-        nodes = ([get_hostname()]
-                 if get_hostname() in self.nodes else
-                 [self.nodes[0]]) if self.shared else self.nodes
+        if nodes is None:
+            nodes = ([get_hostname()]
+                     if get_hostname() in self.nodes else
+                     [self.nodes[0]]) if self.shared else self.nodes
 
         try:
             # Create ID volume
@@ -180,7 +184,7 @@ class Base(PyroObject):
                 ('An error ocurred whilst verifying the storage backend: '
                  'A shared storage has been specified, but it is not'))
 
-    def delete_id_volume(self):
+    def delete_id_volume(self, nodes=None):
         """Delete the ID volume for the storage backend"""
         # Obtain volume object for ID volume
         volume = self.get_volume(self._id_volume_name)
@@ -188,9 +192,10 @@ class Base(PyroObject):
         # If the storage backend is shared, then only needs to be created on
         # a single node (prefer local host if in list of nodes). If not shared,
         # ID volume will be created on all nodes
-        nodes = ([get_hostname()]
-                 if get_hostname() in self.nodes else
-                 [self.nodes[0]]) if self.shared else self.nodes
+        if nodes is None:
+            nodes = ([get_hostname()]
+                     if get_hostname() in self.nodes else
+                     [self.nodes[0]]) if self.shared else self.nodes
 
         # Create ID volume
         volume.delete(nodes=nodes)
@@ -214,20 +219,17 @@ class Base(PyroObject):
     @Expose(remote_nodes=True)
     def remove_config(self):
         # Remove VM from MCVirt configuration
-        def update_mcvirt_config(config):
-            """Remove object from mcvirt config"""
-            del config['storage_backends'][self._id]
-        MCVirtConfig().update_config(
-            update_mcvirt_config,
-            'Removed storage backend \'%s\' from global MCVirt config' %
-            self.name
-        )
+        self.get_config_object().delete()
 
         # Remove cached pyro object
         storage_factory = self._get_registered_object('storage_factory')
         if self._id in storage_factory.CACHED_OBJECTS:
             self.unregister_object()
             del storage_factory.CACHED_OBJECTS[self._id]
+
+    def get_config_object(self):
+        """Return the config object for the storage backend"""
+        return StorageConfig(self)
 
     @Expose()
     def get_config(self):
@@ -236,7 +238,7 @@ class Base(PyroObject):
         self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
-        return self._get_registered_object('storage_factory').get_config()[self._id]
+        return self.get_config_object().get_config()
 
     @Expose(locking=True)
     def set_location(self, new_location, node=None):
@@ -278,58 +280,56 @@ class Base(PyroObject):
         # Ensure node is not already attached to storage backend
         if node_name in self.nodes:
             raise NodeAlreadyConfiguredInStorageBackend(
-                'Node already configured in storage backend: %s %s' % node_name, self.name
+                'Node already configured in storage backend: %s %s' % (node_name, self.name)
             )
 
         cluster = self._get_registered_object('cluster')
 
-        # If adding local node to cluster
-        if self._is_cluster_master:
-            if node_name == get_hostname():
+        if node_name == get_hostname():
+            # Ensure that the requested volume exists
+            storage_factory = self._get_registered_object('storage_factory')
+            storage_factory.node_pre_check(storage_type=self.storage_type,
+                                           location=location)
+        else:
+            def pre_check_remote(connection):
+                """Perform pre check on remote node"""
+                remote_storage_factory = connection.get_connection('storage_factory')
+                remote_storage_factory.node_pre_check(storage_type=self.storage_type,
+                                                      location=location)
+            cluster.run_remote_command(pre_check_remote, node=node_name)
 
-                # Ensure that the requested volume exists
-                storage_factory = self._get_registered_object('storage_factory')
-                storage_factory.node_pre_check(storage_type=self.storage_type,
-                                               location=location)
-            else:
-                def pre_check_remote(connection):
-                    """Perform pre check on remote node"""
-                    remote_storage_factory = connection.get_connection('storage_factory')
-                    remote_storage_factory.node_pre_check(storage_type=self.storage_type,
-                                                          location=location)
-                cluster.run_remote_command(pre_check_remote, node=node_name)
+        t = Transaction()
 
-        def update_storage_backend_config(config):
+        config = {
+            'location': custom_location
+        }
+
+        self.add_node_to_config(
+            node_name, config,
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+
+        if not self.shared:
+            # Create ID volume
+            self.create_id_volume(nodes=[node_name])
+
+        t.finish()
+
+    @Expose(locking=True, remote_nodes=True, undo_method='remove_node_from_config')
+    def add_node_to_config(self, node_name, config):
+        """Add node to storage backend config"""
+
+        def update_storage_backend_config(storage_config):
             """Add node to storage backend config"""
-            config['nodes'][node_name] = {
-                'location': custom_location
-            }
+            storage_config['nodes'][node_name] = config
+
         # Update the config on the local node
         self.update_config(
             update_storage_backend_config,
             'Add node %s to storage backend %s' % (node_name, self.name))
 
-        if self._is_cluster_master:
-            # Perform this function on remote nodes
-            def update_remote_mcvirt_config(connection):
-                """Update MCVirt config on remote node"""
-                remote_storage_backend = self.get_remote_object(node_object=connection)
-                remote_storage_backend.add_node(node_name=node_name,
-                                                custom_location=custom_location)
-
-            cluster.run_remote_command(update_remote_mcvirt_config)
-
     def update_config(self, callback, reason):
         """Update backend storage configuration"""
-        def update_mcvirt_config(config):
-            """Update MCVirt config by calling callback method"""
-            callback(
-                config[
-                    self._get_registered_object('storage_factory').STORAGE_CONFIG_KEY
-                ][self.id_]
-            )
-        mcvirt_config = self._get_registered_object('mcvirt_config')()
-        mcvirt_config.update_config(update_mcvirt_config, reason)
+        self.get_config_object().update_config(callback, reason)
 
     def ensure_available(self):
         """Ensure that the storage backend is currently available on the node"""
@@ -362,9 +362,9 @@ class Base(PyroObject):
         #  - Use this storage backend; and
         #  - This node is one of the available nodes
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
-        for virtual_machine in virtual_machine_factory.getAllVirtualMachines():
-            used_storage_backends = [hdd.get_storage_backend()
-                                     for hdd in virtual_machine.getHardDriveObjects()]
+        for virtual_machine in virtual_machine_factory.get_all_virtual_machines():
+            used_storage_backends = [hdd.storage_backend
+                                     for hdd in virtual_machine.get_hard_drive_objects()]
             if (self in used_storage_backends and virtual_machine.is_static() and
                     node_name in virtual_machine.getAvailableNodes()):
                 raise NodeUsedByStaticVirtualMachine(
@@ -375,26 +375,37 @@ class Base(PyroObject):
         """Remove a node from the storage backend"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
-        # Perform checks on cluster master
-        if self._is_cluster_master:
-            self.ensure_can_remove_node(node_name)
+        self.ensure_can_remove_node(node_name)
+
+        t = Transaction()
+
+        if not self.shared:
+            # Delete ID volume
+            self.delete_id_volume(nodes=[node_name])
 
         # Assuming that these checks have passed,
         # remove node from storage backend
-        def update_config(config):
-            """Update the storage backend config; removing the node"""
-            del config['nodes'][node_name]
-        self.update_config(update_config,
-                           'Remove node %s from storage backend %s' % (node_name, self.name))
+        self.remove_node_from_config(
+            node_name,
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
-        # Perform on remote nodes
-        if self._is_cluster_master:
-            def remove_node_remote(connection):
-                """Update shared status of remote nodes"""
-                remote_storage_backend = self.get_remote_object(node_object=connection)
-                remote_storage_backend.remove_node(node_name)
-            self._get_registered_object('cluster').run_remote_command(
-                remove_node_remote)
+        t.finish()
+
+    @Expose(locking=True, remote_nodes=True, support_callback=True)
+    def remove_node_from_config(self, node_name, config=None, _f=None):
+        """Add node to storage backend config"""
+        def update_storage_backend_config(config):
+            """Add node to storage backend config"""
+            # Add undo argument
+            _f.add_undo_argument(config=config['nodes'][node_name])
+
+            # Remove config
+            del config['nodes'][node_name]
+
+        # Update the config on the local node
+        self.update_config(
+            update_storage_backend_config,
+            'Remove node %s to storage backend %s' % (node_name, self.name))
 
     @Expose(locking=True)
     def set_shared(self, shared):
@@ -431,12 +442,12 @@ class Base(PyroObject):
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
 
         # Iterate over all virtual machine and hard drive objects
-        for virtual_machine in virtual_machine_factory.getAllVirtualMachines(node=node):
-            for hard_drive in virtual_machine.getHardDriveObjects():
+        for virtual_machine in virtual_machine_factory.get_all_virtual_machines(node=node):
+            for hard_drive in virtual_machine.get_hard_drive_objects():
 
                 # If the hard drive object uses the current storage backend,
                 # return True
-                if hard_drive.get_storage_backend() == self:
+                if hard_drive.storage_backend == self:
                     return True
 
         # If no matches have been found, return False

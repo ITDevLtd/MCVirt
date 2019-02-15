@@ -28,21 +28,17 @@ from mcvirt.exceptions import (GropuInUseError,
                                GroupAlreadyContainsPermissionError,
                                GroupDoesNotContainPermissionError)
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.argument_validator import ArgumentValidator
 
 
 class Group(PyroObject):
     """Object for groups"""
 
-    @classmethod
-    def generate_id(cls, name):
-        """Generate ID for group"""
-        # Generate sha sum of name and sha sum of
-        # current datetime
-        name_checksum = hashlib.sha512(name).hexdigest()
-        date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
-        return 'gp-%s-%s' % (name_checksum[0:18], date_checksum[0:22])
+    @staticmethod
+    def get_id_code():
+        """Return the ID code for the object"""
+        return 'gp'
 
     def __init__(self, id_):
         """Setup member variables"""
@@ -224,7 +220,7 @@ class Group(PyroObject):
     def in_use(self):
         """Determine if there are any users in the group"""
         vm_factory = self._get_registered_object('virtual_machine_factory')
-        for virtual_machine in [None] + vm_factory.getAllVirtualMachines():
+        for virtual_machine in [None] + vm_factory.get_all_virtual_machines():
             if self.get_users(virtual_machine=virtual_machine):
                 return True
 

@@ -23,6 +23,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
+from mcvirt.config.core import Core as MCVirtConfig
 
 
 class Network(PyroObject):
@@ -35,7 +36,6 @@ class Network(PyroObject):
     @staticmethod
     def get_network_config():
         """Return the network configuration for the node"""
-        from mcvirt.mcvirt_config import MCVirtConfig
         mcvirt_config = MCVirtConfig().get_config()
         return mcvirt_config['networks']
 
@@ -71,7 +71,6 @@ class Network(PyroObject):
         def update_config(config):
             """Delete network from MCVirt config"""
             del config['networks'][self.get_name()]
-        from mcvirt.mcvirt_config import MCVirtConfig
         MCVirtConfig().update_config(update_config, 'Deleted network \'%s\'' % self.get_name())
 
         if self._is_cluster_master:
@@ -90,7 +89,7 @@ class Network(PyroObject):
 
         # Iterate over all VMs and determine if any use the network to be deleted
         virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
-        for vm_object in virtual_machine_factory.getAllVirtualMachines():
+        for vm_object in virtual_machine_factory.get_all_virtual_machines():
 
             # Iterate over each network interface for the VM and determine if it
             # is connected to this network

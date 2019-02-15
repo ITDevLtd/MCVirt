@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -106,8 +107,8 @@ class UpdateTests(TestBase):
 
         # Obtain VM XML
         vm_factory = self.RPC_DAEMON.DAEMON.registered_factories['virtual_machine_factory']
-        vm = vm_factory.getVirtualMachineByName('mcvirt-unittest-vm')
-        xml = vm.getLibvirtConfig()
+        vm = vm_factory.get_virtual_machine_by_name('mcvirt-unittest-vm')
+        xml = vm.get_libvirt_config()
 
         # Check that <cpu> section is not in XML by default
         self.assertEqual(xml.find('./cpu'), None)
@@ -116,7 +117,7 @@ class UpdateTests(TestBase):
         self.parser.parse_arguments('update %s --add-flag windows' %
                                     self.test_vms['TEST_VM_1']['name'])
 
-        xml = vm.getLibvirtConfig()
+        xml = vm.get_libvirt_config()
 
         # Check CPU section exists
         cpu_section = xml.find('./cpu')
@@ -141,5 +142,5 @@ class UpdateTests(TestBase):
                                     self.test_vms['TEST_VM_1']['name'])
 
         # Check that <cpu> section is now not present
-        xml = vm.getLibvirtConfig()
+        xml = vm.get_libvirt_config()
         self.assertEqual(xml.find('./cpu'), None)

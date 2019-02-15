@@ -853,6 +853,80 @@ class SizeNotIntegerBytesError(MCVirtException):
     pass
 
 
+class InvalidConfirmationCodeError(MCVirtException):
+    """Confirmation code is not correct"""
+
+    pass
+
+
+class DeleteProtectionAlreadyEnabledError(MCVirtException):
+    """Delete protection is already enabled"""
+
+    pass
+
+
+class DeleteProtectionNotEnabledError(MCVirtException):
+    """Delete protection is not enabled on the VM"""
+
+    pass
+
+
+class DeleteProtectionEnabledError(MCVirtTypeError):
+    """Delete protection is enabled on the VM"""
+
+    pass
+
+
+class IntermediateUpgradeRequiredError(MCVirtException):
+    """An intermediate upgrade is required, as the migration
+    is not supported from this version
+    """
+
+    pass
+
+
+class HardDriveNotAttachedToVirtualMachineError(MCVirtException):
+    """Hard drive is not attached to a virtual machine"""
+
+    pass
+
+
+class HardDriveAttachmentDoesNotExistError(MCVirtException):
+    """Hard drive attachment does not exist"""
+
+    pass
+
+
+class VirtualMachineNotRegisteredWithLibvirt(MCVirtException):
+    """Virtual machine is not registered with libvirt"""
+
+    pass
+
+
+class DatabaseClassAlreadyInstanciatedError(MCVirtException):
+    """Database class already instanciated"""
+
+    pass
+
+
+class DoNotHaveDatabaseConnectionLockError(MCVirtException):
+    """Do not have DB connection lock"""
+
+    pass
+
+
+class UnableToObtainDatabaseLockError(MCVirtException):
+    """Obtain to obtain database lock"""
+
+    pass
+
+
+class UnknownAgentCommandRun(MCVirtException):
+    """Agent run command was not known"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)

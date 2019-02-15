@@ -47,18 +47,18 @@ class VerifyParser(object):
         """Hanlde verify"""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         if args.vm_name:
-            vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+            vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
             # @TODO remove this line
             p_.rpc.annotate_object(vm_object)
             vm_objects = [vm_object]
         elif args.all:
-            vm_objects = vm_factory.getAllVirtualMachines()
+            vm_objects = vm_factory.get_all_virtual_machines()
 
         # Iterate over the VMs and check each disk
         failures = []
         for vm_object in vm_objects:
             p_.rpc.annotate_object(vm_object)
-            for disk_object in vm_object.getHardDriveObjects():
+            for disk_object in vm_object.get_hard_drive_objects():
                 p_.rpc.annotate_object(disk_object)
                 if disk_object.get_type() == 'Drbd':
                     # Catch any exceptions due to the Drbd volume not being in-sync

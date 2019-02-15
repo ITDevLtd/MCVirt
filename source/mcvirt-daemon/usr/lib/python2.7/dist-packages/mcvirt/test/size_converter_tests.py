@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2018 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.

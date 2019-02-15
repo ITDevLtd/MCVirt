@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -65,10 +66,13 @@ class LibvirtConnectorUnitTest(LibvirtConnector):
 class VirtualMachineFactoryUnitTest(VirtualMachineFactory):
 
     @Expose()
-    def getVirtualMachineByName(self, vm_name):
+    def get_virtual_machine_by_id(self, vm_id):
         """Obtain a VM object, based on VM name"""
-        vm_object = VirtualMachineLibvirtFail(self, vm_name)
+        # If not, create object, register with pyro
+        # and store in cached object dict
+        vm_object = VirtualMachineLibvirtFail(vm_id)
         self._register_object(vm_object)
+        vm_object.initialise()
         return vm_object
 
 
@@ -79,11 +83,11 @@ class VirtualMachineLibvirtFail(VirtualMachine):
 
     LIBVIRT_FAILURE_MODE = LibvirtFailureMode.NORMAL_RUN
 
-    def _getLibvirtDomainObject(self, allow_remote=False):
+    def _get_libvirt_domain_object(self, allow_remote=False):
         """Obtains the libvirt domain object and, if specified, overrides the migrate3
         method to simulate different failure cases
         """
-        libvirt_object = super(VirtualMachineLibvirtFail, self)._getLibvirtDomainObject(
+        libvirt_object = super(VirtualMachineLibvirtFail, self)._get_libvirt_domain_object(
             allow_remote=False
         )
 
@@ -164,13 +168,13 @@ class OnlineMigrateTests(TestBase):
         self.test_iso_path = '%s/%s' % (DirectoryLocation.ISO_STORAGE_DIR, self.test_iso)
 
         self.test_vm_object = self.create_vm('TEST_VM_1', 'Drbd')
-        self.local_vm_object = vm_factory.getVirtualMachineByName(
+        self.local_vm_object = vm_factory.get_virtual_machine_by_name(
             self.test_vms['TEST_VM_1']['name']
         )
 
         # Wait until the Drbd resource is synced
         time.sleep(5)
-        for disk_object in self.local_vm_object.getHardDriveObjects():
+        for disk_object in self.local_vm_object.get_hard_drive_objects():
             wait_timeout = 6
             while disk_object.drbdGetConnectionState()[1] != DrbdConnectionState.CONNECTED.value:
                 # If the Drbd volume has not connected within 1 minute, throw an exception
@@ -239,7 +243,7 @@ class OnlineMigrateTests(TestBase):
     @skip_drbd(True)
     def test_migrate_drbd_not_connected(self):
         """Attempts to migrate a VM whilst Drbd is not connected"""
-        for disk_object in self.local_vm_object.getHardDriveObjects():
+        for disk_object in self.local_vm_object.get_hard_drive_objects():
             disk_object._drbdDisconnect()
 
         with self.assertRaises(DrbdStateException):
@@ -311,7 +315,7 @@ class OnlineMigrateTests(TestBase):
 
         # Ensure the VM is still registered on the local node and in a running state
         self.assertEqual(self.local_vm_object.getNode(), get_hostname())
-        self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING.value)
+        self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING.value)
 
         # Ensure that the VM is registered with the local libvirt instance and not on the remote
         # libvirt instance
@@ -325,7 +329,7 @@ class OnlineMigrateTests(TestBase):
         )
 
         # Ensure Drbd disks are in a valid state
-        for disk_object in self.local_vm_object.getHardDriveObjects():
+        for disk_object in self.local_vm_object.get_hard_drive_objects():
             # Check that the disk is shown as not in-sync
             with self.assertRaises(DrbdVolumeNotInSyncException):
                 disk_object._checkDrbdStatus()
@@ -355,7 +359,7 @@ class OnlineMigrateTests(TestBase):
         # Ensure the VM is still registered on the remote node and in a running state
         self.assertEqual(self.local_vm_object.getNode(),
                          self.local_vm_object._get_remote_nodes()[0])
-        self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING)
+        self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING)
 
         # Ensure that the VM is registered with the remote libvirt instance and not on the local
         # libvirt instance
@@ -369,7 +373,7 @@ class OnlineMigrateTests(TestBase):
         )
 
         # Ensure Drbd disks are in a valid state
-        for disk_object in self.local_vm_object.getHardDriveObjects():
+        for disk_object in self.local_vm_object.get_hard_drive_objects():
             # Check that the disk is shown as not in-sync
             with self.assertRaises(DrbdVolumeNotInSyncException):
                 disk_object._checkDrbdStatus()
@@ -397,7 +401,7 @@ class OnlineMigrateTests(TestBase):
 
         # Ensure the VM is still registered on the local node and in a running state
         self.assertEqual(self.local_vm_object.getNode(), get_hostname())
-        self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING)
+        self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING)
 
     @skip_drbd(True)
     def test_migrate_stopped_vm(self):
@@ -423,7 +427,7 @@ class OnlineMigrateTests(TestBase):
         # Ensure the VM is still registered on the remote node and in a running state
         self.assertEqual(self.local_vm_object.getNode(),
                          self.local_vm_object._get_remote_nodes()[0])
-        self.assertEqual(self.local_vm_object.getPowerState(), PowerStates.RUNNING.value)
+        self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING.value)
 
         # Ensure that the VM is registered with the remote libvirt instance and not on the local
         # libvirt instance
@@ -437,7 +441,7 @@ class OnlineMigrateTests(TestBase):
         )
 
         # Ensure Drbd disks are in a valid state
-        for disk_object in self.local_vm_object.getHardDriveObjects():
+        for disk_object in self.local_vm_object.get_hard_drive_objects():
             # Check that the disk is shown as not in-sync
             disk_object._checkDrbdStatus()
 

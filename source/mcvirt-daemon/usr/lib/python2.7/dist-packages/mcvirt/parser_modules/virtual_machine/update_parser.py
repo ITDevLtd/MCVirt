@@ -125,23 +125,34 @@ class UpdateParser(object):
         self.update_parser.add_argument('--remove-flag', help='Remove VM modification flag',
                                         dest='remove_flags', action='append')
 
+        self.delete_protection_mutual_group = self.update_parser.add_mutually_exclusive_group(
+            required=False)
+        self.delete_protection_mutual_group.add_argument(
+            '--enable-delete-protection', dest='enable_delete_protection',
+            action='store_true',
+            help='Enable VM delete protection.')
+        self.delete_protection_mutual_group.add_argument(
+            '--disable-delete-protection', type=str,
+            dest='disable_delete_protection',
+            help='Disable VM delete protection. Must provide name of VM in reverse.')
+
     def handle_update(self, p_, args):
         """Handle VM update"""
         if bool(args.change_network) != bool(args.new_network):
             raise ArgumentParserException('--new-network must be used with --change-network')
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-        vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+        vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
 
         if args.memory:
-            vm_object.updateRAM(args.memory)
+            vm_object.update_ram(args.memory)
             p_.print_status(
                 'RAM allocation will be changed to %s on next VM boot.' % args.memory
             )
 
         if args.cpu_count:
             old_cpu_count = vm_object.getCPU()
-            vm_object.updateCPU(args.cpu_count, old_value=old_cpu_count)
+            vm_object.update_cpu(args.cpu_count, old_value=old_cpu_count)
             p_.print_status(
                 'Number of virtual cores will be changed from %s to %s.' %
                 (old_cpu_count, args.cpu_count)
@@ -179,16 +190,18 @@ class UpdateParser(object):
                                       storage_type=args.storage_type,
                                       driver=args.hard_disk_driver)
         if args.delete_disk:
-            hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-            hard_drive_object = hard_drive_factory.getObject(vm_object, args.delete_disk)
+            hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
+            hard_drive_object = hard_drive_attachment_factory.get_object(
+                vm_object, args.delete_disk).get_hard_drive_object()
             p_.rpc.annotate_object(hard_drive_object)
             hard_drive_object.delete()
 
         if args.increase_disk and args.disk_id:
-            hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-            hard_drive_object = hard_drive_factory.getObject(vm_object, args.disk_id)
+            hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
+            hard_drive_object = hard_drive_attachment_factory.get_object(
+                vm_object, args.disk_id).get_hard_drive_object()
             p_.rpc.annotate_object(hard_drive_object)
-            hard_drive_object.increaseSize(args.increase_disk)
+            hard_drive_object.increase_size(args.increase_disk)
 
         if args.iso or args.iso is None:
             vm_object.update_iso(args.iso)
@@ -218,3 +231,9 @@ class UpdateParser(object):
             vm_object.update_modification_flags(add_flags=add_flags, remove_flags=remove_flags)
             flags_str = ", ".join(vm_object.get_modification_flags())
             p_.print_status('Modification flags set to: %s' % (flags_str or 'None'))
+
+        if args.enable_delete_protection:
+            vm_object.enable_delete_protection()
+
+        if args.disable_delete_protection:
+            vm_object.disable_delete_protection(args.disable_delete_protection)

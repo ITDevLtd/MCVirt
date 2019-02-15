@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -17,6 +18,7 @@
 
 import unittest
 import os
+import re
 import shutil
 import xml.etree.ElementTree as ET
 import tempfile
@@ -36,7 +38,12 @@ from mcvirt.exceptions import (InvalidVirtualMachineNameException,
                                NetworkDoesNotExistException,
                                DrbdStateException,
                                DrbdNotEnabledOnNode,
-                               UnknownStorageTypeException)
+                               UnknownStorageTypeException,
+                               DeleteProtectionAlreadyEnabledError,
+                               InvalidConfirmationCodeError,
+                               DeleteProtectionEnabledError,
+                               BackupSnapshotDoesNotExistException,
+                               DeleteProtectionNotEnabledError)
 from mcvirt.test.test_base import TestBase, skip_drbd
 from mcvirt.virtual_machine.hard_drive.drbd import DrbdDiskState
 
@@ -67,6 +74,20 @@ class VirtualMachineTests(TestBase):
         suite.addTest(VirtualMachineTests('test_create_alternative_driver'))
         suite.addTest(VirtualMachineTests('test_live_iso_change'))
 
+        # Disable protection tests
+        suite.addTest(VirtualMachineTests('test_enable_delete_protection'))
+        suite.addTest(VirtualMachineTests('test_enable_delete_protection_already_enabled'))
+        suite.addTest(VirtualMachineTests('test_disable_delete_protection'))
+        suite.addTest(VirtualMachineTests('test_disable_delete_protection_incorrect_check'))
+        suite.addTest(VirtualMachineTests('test_disable_delete_protection_already_disabled'))
+        suite.addTest(VirtualMachineTests('test_delete_vm_with_delete_protection'))
+
+        # Backup snapshot
+        suite.addTest(VirtualMachineTests('test_create_backup_snapshot'))
+        suite.addTest(VirtualMachineTests('test_delete_backup_snapshot'))
+        suite.addTest(VirtualMachineTests('test_create_second_backup_snapshot'))
+        suite.addTest(VirtualMachineTests('test_delete_non_exist_backup_snapshot'))
+
         # # Add tests for Drbd
         suite.addTest(VirtualMachineTests('test_create_drbd'))
         suite.addTest(VirtualMachineTests('test_delete_drbd'))
@@ -92,7 +113,7 @@ class VirtualMachineTests(TestBase):
     def test_create(self, storage_type):
         """Test the creation of VMs through the argument parser"""
         # Ensure VM does not exist
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Create virtual machine using parser
         self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
@@ -105,10 +126,10 @@ class VirtualMachineTests(TestBase):
                                      storage_type))
 
         # Ensure VM exists
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Obtain VM object
-        vm_object = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_1']['name'])
+        vm_object = self.vm_factory.get_virtual_machine_by_name(self.test_vms['TEST_VM_1']['name'])
         self.rpc.annotate_object(vm_object)
 
         # Check each of the attributes for VM
@@ -117,7 +138,7 @@ class VirtualMachineTests(TestBase):
         self.assertEqual(vm_object.getCPU(), self.test_vms['TEST_VM_1']['cpu_count'])
 
         # Ensure second VM does not exist
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_2']['name']))
+        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_2']['name']))
 
         # Create second VM
         self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_2']['name'] +
@@ -130,10 +151,11 @@ class VirtualMachineTests(TestBase):
                                      storage_type))
 
         # Ensure VM exists
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_2']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_2']['name']))
 
         # Obtain VM object
-        vm_object_2 = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_2']['name'])
+        vm_object_2 = self.vm_factory.get_virtual_machine_by_name(
+            self.test_vms['TEST_VM_2']['name'])
         self.rpc.annotate_object(vm_object_2)
         vm_object_2.delete()
 
@@ -168,7 +190,7 @@ class VirtualMachineTests(TestBase):
         self.parser.parse_arguments('delete %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure VM has been deleted
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Ensure that VM directory does not exist
         self.assertFalse(os.path.exists(
@@ -183,7 +205,7 @@ class VirtualMachineTests(TestBase):
         test_data = os.urandom(8)
 
         # Obtain the disk path for the VM and write random data to it
-        for disk_object in test_vm_parent.getHardDriveObjects():
+        for disk_object in test_vm_parent.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             fh = open(disk_object.getDiskPath(), 'w')
             fh.write(test_data)
@@ -195,13 +217,13 @@ class VirtualMachineTests(TestBase):
             (self.test_vms['TEST_VM_1']['name'],
              self.test_vms['TEST_VM_2']['name']))
 
-        test_vm_clone = self.vm_factory.getVirtualMachineByName(
+        test_vm_clone = self.vm_factory.get_virtual_machine_by_name(
             self.test_vms['TEST_VM_2']['name']
         )
         self.rpc.annotate_object(test_vm_clone)
 
         # Check data is present on target VM
-        for disk_object in test_vm_clone.getHardDriveObjects():
+        for disk_object in test_vm_clone.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             fh = open(disk_object.getDiskPath(), 'r')
             self.assertEqual(fh.read(8), test_data)
@@ -261,7 +283,7 @@ class VirtualMachineTests(TestBase):
         test_data = os.urandom(8)
 
         # Obtain the disk path for the VM and write random data to it
-        for disk_object in test_vm_parent.getHardDriveObjects():
+        for disk_object in test_vm_parent.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             fh = open(disk_object.getDiskPath(), 'w')
             fh.write(test_data)
@@ -272,13 +294,13 @@ class VirtualMachineTests(TestBase):
             'duplicate --template %s %s' %
             (self.test_vms['TEST_VM_1']['name'],
              self.test_vms['TEST_VM_2']['name']))
-        test_vm_duplicate = self.vm_factory.getVirtualMachineByName(
+        test_vm_duplicate = self.vm_factory.get_virtual_machine_by_name(
             self.test_vms['TEST_VM_2']['name']
         )
         self.rpc.annotate_object(test_vm_duplicate)
 
         # Check data is present on target VM
-        for disk_object in test_vm_duplicate.getHardDriveObjects():
+        for disk_object in test_vm_duplicate.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             fh = open(disk_object.getDiskPath(), 'r')
             self.assertEqual(fh.read(8), test_data)
@@ -307,7 +329,7 @@ class VirtualMachineTests(TestBase):
         invalid_vm_name = 'invalid.name+'
 
         # Ensure VM does not exist
-        self.assertFalse(self.vm_factory.check_exists(invalid_vm_name))
+        self.assertFalse(self.vm_factory.check_exists_by_name(invalid_vm_name))
 
         # Attempt to create VM and ensure exception is thrown
         with self.assertRaises(InvalidVirtualMachineNameException):
@@ -322,7 +344,7 @@ class VirtualMachineTests(TestBase):
                  'Local'))
 
         # Ensure VM has not been created
-        self.assertFalse(self.vm_factory.check_exists(invalid_vm_name))
+        self.assertFalse(self.vm_factory.check_exists_by_name(invalid_vm_name))
 
     def test_create_duplicate(self):
         """Attempt to create two VMs with the same name"""
@@ -336,7 +358,7 @@ class VirtualMachineTests(TestBase):
             ['Production'],
             storage_type='Local')
         self.rpc.annotate_object(test_vm_object)
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Attempt to create VM with duplicate name, ensuring that an exception is thrown
         with self.assertRaises(VmAlreadyExistsException):
@@ -350,7 +372,7 @@ class VirtualMachineTests(TestBase):
                                          'Local'))
 
         # Ensure original VM already exists
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
         # Check memory amount of VM matches original VM
         self.assertEqual(test_vm_object.getRAM(), original_memory_allocation)
@@ -363,22 +385,25 @@ class VirtualMachineTests(TestBase):
         # Create the directory for the VM
         os.makedirs(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
 
-        # Attempt to create VM, expecting an exception for the directory already existing
-        with self.assertRaises(VmDirectoryAlreadyExistsException):
-            self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
-                                        ' --cpu-count %s --disk-size %s --memory %s' %
-                                        (self.test_vms['TEST_VM_1']['cpu_count'],
-                                         self.test_vms['TEST_VM_1']['disk_size'][0],
-                                         self.test_vms['TEST_VM_1']['memory_allocation']) +
-                                        ' --network %s --storage-type %s' %
-                                        (self.test_vms['TEST_VM_1']['networks'][0],
-                                         'Local'))
+        try:
+            # Attempt to create VM, expecting an exception for the directory already existing
+            with self.assertRaises(VmDirectoryAlreadyExistsException):
+                self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
+                                            ' --cpu-count %s --disk-size %s --memory %s' %
+                                            (self.test_vms['TEST_VM_1']['cpu_count'],
+                                             self.test_vms['TEST_VM_1']['disk_size'][0],
+                                             self.test_vms['TEST_VM_1']['memory_allocation']) +
+                                            ' --network %s --storage-type %s' %
+                                            (self.test_vms['TEST_VM_1']['networks'][0],
+                                             'Local'))
 
-        # Ensure the VM has not been created
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+            # Ensure the VM has not been created
+            self.assertFalse(self.vm_factory.check_exists_by_name(
+                self.test_vms['TEST_VM_1']['name']))
 
-        # Remove directory
-        shutil.rmtree(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
+        finally:
+            # Remove directory
+            shutil.rmtree(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
 
     def test_start_local(self):
         """Perform the test_start test with Local storage"""
@@ -398,7 +423,7 @@ class VirtualMachineTests(TestBase):
         self.parser.parse_arguments('start %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure that it is running
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.RUNNING.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.RUNNING.value)
 
     def test_start_running_vm(self):
         """Attempt to start a running VM"""
@@ -450,7 +475,7 @@ class VirtualMachineTests(TestBase):
 
         # Start VM and ensure it is running
         test_vm_object.start()
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.RUNNING.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.RUNNING.value)
 
         # Use the argument parser to stop the VM
         self.parser.parse_arguments(
@@ -458,7 +483,7 @@ class VirtualMachineTests(TestBase):
             self.test_vms['TEST_VM_1']['name'])
 
         # Ensure the VM is stopped
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.STOPPED.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.STOPPED.value)
 
     def test_stop_stopped_vm(self):
         """Attempt to stop an already stopped VM"""
@@ -483,7 +508,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(test_vm_object.isRegisteredLocally())
 
         # Monitor the hard drives until they are synced
-        for disk_object in test_vm_object.getHardDriveObjects():
+        for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
             while (
                 disk_object.drbdGetDiskState() != (
@@ -509,19 +534,19 @@ class VirtualMachineTests(TestBase):
         self.parser.parse_arguments('start %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure VM is running
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.RUNNING.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.RUNNING.value)
 
         # Attempt to stop the VM on the remote node
         self.parser.parse_arguments('stop %s' % self.test_vms['TEST_VM_1']['name'])
 
         # Ensure VM is stopped
-        self.assertTrue(test_vm_object.getPowerState() is PowerStates.STOPPED.value)
+        self.assertTrue(test_vm_object.get_power_state() is PowerStates.STOPPED.value)
 
         # Delete VM
         test_vm_object.delete()
 
         # Ensure VM no longer exists
-        self.assertFalse(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
     def test_lock(self):
         """Exercise VM locking"""
@@ -564,7 +589,7 @@ class VirtualMachineTests(TestBase):
                                     ' --network %s' % self.test_vms['TEST_VM_1']['networks'][0])
 
         # Ensure that the VM exists
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms['TEST_VM_1']['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
     @skip_drbd(True)
     def test_unspecified_storage_type_drbd(self):
@@ -604,7 +629,8 @@ class VirtualMachineTests(TestBase):
                                          'Local') +
                                         ' --hdd-driver %s' % disk_driver[0])
 
-            vm_object = self.vm_factory.getVirtualMachineByName(self.test_vms['TEST_VM_1']['name'])
+            vm_object = self.vm_factory.get_virtual_machine_by_name(
+                self.test_vms['TEST_VM_1']['name'])
             self.rpc.annotate_object(vm_object)
             domain_xml_string = vm_object.get_libvirt_xml()
             domain_config = ET.fromstring(domain_xml_string)
@@ -647,3 +673,207 @@ class VirtualMachineTests(TestBase):
 
         test_vm_object.stop()
         test_vm_object.delete()
+
+    def test_enable_delete_protection(self):
+        """Enable delete protection on a VM"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Ensure that delete protection is disabled
+        self.assertFalse(test_vm_object.get_delete_protection_state())
+
+        self.parser.parse_arguments(
+            'update --enable-delete-protection %s' %
+            self.test_vms['TEST_VM_1']['name'])
+
+        self.assertTrue(test_vm_object.get_delete_protection_state())
+
+    def test_enable_delete_protection_already_enabled(self):
+        """Attempt to enable delete protection on a VM that it is already enabled on"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Enable delete protection on VM
+        test_vm_object.enable_delete_protection()
+        self.assertTrue(test_vm_object.get_delete_protection_state())
+
+        with self.assertRaises(DeleteProtectionAlreadyEnabledError):
+            self.parser.parse_arguments(
+                'update --enable-delete-protection %s' %
+                self.test_vms['TEST_VM_1']['name'])
+
+        self.assertTrue(test_vm_object.get_delete_protection_state())
+
+    def test_disable_delete_protection(self):
+        """Disable delete protection on a VM"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Enable delete protection on VM
+        test_vm_object.enable_delete_protection()
+        self.assertTrue(test_vm_object.get_delete_protection_state())
+
+        self.parser.parse_arguments(
+            'update --disable-delete-protection %s %s' %
+            ('mv-tsettinu-trivcm', self.test_vms['TEST_VM_1']['name']))
+
+        self.assertFalse(test_vm_object.get_delete_protection_state())
+
+    def test_disable_delete_protection_incorrect_check(self):
+        """Attempt to disable delete protection on a VM with an incorrect confirmation string"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Enable delete protection on VM
+        test_vm_object.enable_delete_protection()
+        self.assertTrue(test_vm_object.get_delete_protection_state())
+
+        with self.assertRaises(InvalidConfirmationCodeError):
+            self.parser.parse_arguments(
+                'update --disable-delete-protection %s %s' %
+                ('incorrect', self.test_vms['TEST_VM_1']['name']))
+
+        self.assertTrue(test_vm_object.get_delete_protection_state())
+
+    def test_disable_delete_protection_already_disabled(self):
+        """Attempt to disable delete protection on a VM where it is already disabled"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Ensure that delete protection is disabled
+        self.assertFalse(test_vm_object.get_delete_protection_state())
+
+        with self.assertRaises(DeleteProtectionNotEnabledError):
+            self.parser.parse_arguments(
+                'update --disable-delete-protection %s %s' %
+                ('mv-tsettinu-trivcm', self.test_vms['TEST_VM_1']['name']))
+
+        self.assertFalse(test_vm_object.get_delete_protection_state())
+
+    def test_delete_vm_with_delete_protection(self):
+        """Attempt to delete a VM with delete protection enabled"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Ensure that delete protection is disabled
+        test_vm_object.enable_delete_protection()
+        self.assertTrue(test_vm_object.get_delete_protection_state())
+
+        with self.assertRaises(DeleteProtectionEnabledError):
+            self.parser.parse_arguments(
+                'delete %s' %
+                self.test_vms['TEST_VM_1']['name'])
+
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
+
+    def test_create_backup_snapshot(self):
+        """Create VM backup snapshot"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Reset parser output
+        self.parser.print_output = []
+
+        test_data = os.urandom(8)
+
+        # Obtain the disk path for the VM and write random data to it
+        for disk_object in test_vm_object.get_hard_drive_objects():
+            self.rpc.annotate_object(disk_object)
+            with open(disk_object.getDiskPath(), 'w') as fh:
+                fh.write(test_data)
+
+        # Assert that the VM is unlocked
+        self.assertEqual(test_vm_object.getLockState(), 0)
+
+        # Create backup snapshot using parser.
+        self.parser.parse_arguments(
+            'backup create-snapshot %s --disk-id 1' %
+            self.test_vms['TEST_VM_1']['name'])
+
+        # Assert that the backup lock is now in place
+        self.assertEqual(test_vm_object.getLockState(), 1)
+
+        # Ensure that parser gave one line output with the path of the snapshot
+        self.assertEqual(len(self.parser.print_output), 1)
+        self.assertTrue(re.match(r'\/dev\/.*/mcvirt-hd-.*_snapshot', self.parser.print_output[0]))
+
+        # Check data is present on snapshot
+        with open(self.parser.print_output[0], 'r') as fh:
+            self.assertEqual(fh.read(8), test_data)
+
+        # Write some altereted data to original volume
+        altereted_test_data = os.urandom(8)
+        for disk_object in test_vm_object.get_hard_drive_objects():
+            self.rpc.annotate_object(disk_object)
+            with open(disk_object.getDiskPath(), 'w') as fh:
+                fh.write(altereted_test_data)
+
+        # Ensure that snapshot data has not changed
+        with open(self.parser.print_output[0], 'r') as fh:
+            self.assertEqual(fh.read(8), test_data)
+
+    def test_delete_backup_snapshot(self):
+        """Delete a backup snapshot from a VM"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Create snapshot
+        hard_drive_attachment_factory = self.rpc.get_connection('hard_drive_attachment_factory')
+        hard_drive_attachment = hard_drive_attachment_factory.get_object(
+            test_vm_object, 1)
+        self.rpc.annotate_object(hard_drive_attachment)
+        hard_drive_object = hard_drive_attachment.get_hard_drive_object()
+        self.rpc.annotate_object(hard_drive_object)
+        snapshot_path = hard_drive_object.create_backup_snapshot()
+
+        # Ensure that VM is locked and snapshot exists
+        self.assertTrue(os.path.exists(snapshot_path))
+        self.assertEqual(test_vm_object.getLockState(), 1)
+
+        # Delete snapshot using parser
+        self.parser.parse_arguments(
+            'backup delete-snapshot %s --disk-id 1' %
+            self.test_vms['TEST_VM_1']['name'])
+
+        # Ensure that VM is now unlocked and snapshot is no longer present
+        self.assertFalse(os.path.exists(snapshot_path))
+        self.assertEqual(test_vm_object.getLockState(), 0)
+
+    def test_create_second_backup_snapshot(self):
+        """Attempt to create a backup snapshot for a VM that already has one"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Create snapshot
+        hard_drive_attachment_factory = self.rpc.get_connection('hard_drive_attachment_factory')
+        hard_drive_attachment = hard_drive_attachment_factory.get_object(
+            test_vm_object, 1)
+        self.rpc.annotate_object(hard_drive_attachment)
+        hard_drive_object = hard_drive_attachment.get_hard_drive_object()
+        self.rpc.annotate_object(hard_drive_object)
+        snapshot_path = hard_drive_object.create_backup_snapshot()
+
+        # Ensure that VM is locked and snapshot exists
+        self.assertTrue(os.path.exists(snapshot_path))
+        self.assertEqual(test_vm_object.getLockState(), 1)
+
+        with self.assertRaises(VirtualMachineLockException):
+            # Create backup snapshot using parser.
+            self.parser.parse_arguments(
+                'backup create-snapshot %s --disk-id 1' %
+                self.test_vms['TEST_VM_1']['name'])
+
+        # Remove lock and attempt to create a second snapshot
+        self.parser.parse_arguments('lock --unlock %s' % test_vm_object.get_name())
+
+        # @TODO Test create new snapshot, which should raise exception (does't currently)
+
+    def test_delete_non_exist_backup_snapshot(self):
+        """Attempt to delete a snapshot when it doens't exist"""
+        test_vm_object = self.create_vm('TEST_VM_1', 'Local')
+
+        # Lock the VM first
+        # @TODO should to have to do this
+        self.parser.parse_arguments('lock --lock %s' % test_vm_object.get_name())
+
+        self.assertEqual(test_vm_object.getLockState(), 1)
+
+        with self.assertRaises(BackupSnapshotDoesNotExistException):
+            # Delete snapshot using parser
+            self.parser.parse_arguments(
+                'backup delete-snapshot %s --disk-id 1' %
+                self.test_vms['TEST_VM_1']['name'])
+
+        # Ensure that VM still locked
+        # self.assertEqual(test_vm_object.getLockState(), 1)

@@ -39,6 +39,7 @@ from mcvirt.parser_modules.virtual_machine.migrate_parser import MigrateParser
 from mcvirt.parser_modules.virtual_machine.info_parser import InfoParser
 from mcvirt.parser_modules.permission_parser import PermissionParser
 from mcvirt.parser_modules.network_parser import NetworkParser
+from mcvirt.parser_modules.hard_drive_parser import HardDriveParser
 from mcvirt.parser_modules.group_parser import GroupParser
 from mcvirt.parser_modules.user_parser import UserParser
 from mcvirt.parser_modules.virtual_machine.list_parser import ListParser
@@ -72,6 +73,7 @@ class Parser(object):
 
     def __init__(self, verbose=True):
         """Configure the argument parser object."""
+        self.print_output = []
         self.username = None
         self.session_id = None
         self.rpc = None
@@ -171,6 +173,8 @@ class Parser(object):
 
         StorageParser(self.subparsers, self.parent_parser)
 
+        HardDriveParser(self.subparsers, self.parent_parser)
+
         # Create subparser for commands relating to the local node configuration
         NodeParser(self.subparsers, self.parent_parser)
 
@@ -199,6 +203,8 @@ class Parser(object):
         """Print if the user has specified that the parser should print statuses."""
         if self.verbose:
             print status
+        else:
+            self.print_output.append(status)
 
     def check_ignore_failed(self, args):
         """Check ignore failed"""

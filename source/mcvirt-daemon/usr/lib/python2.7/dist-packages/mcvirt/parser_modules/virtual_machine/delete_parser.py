@@ -53,7 +53,7 @@ class DeleteParser(object):
     def handle_delete(self, p_, args):
         """Handle delete"""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
-        vm_object = vm_factory.getVirtualMachineByName(args.vm_name)
+        vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
         vm_object.delete(keep_disks=args.keep_disks,
                          keep_config=args.keep_config)

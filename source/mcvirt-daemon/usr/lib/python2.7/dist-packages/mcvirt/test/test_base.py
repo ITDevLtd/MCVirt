@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -82,8 +83,8 @@ class TestBase(unittest.TestCase):
                     'cpu_count': 1,
                     'memory_allocation': '100MB',
                     'memory_allocation_bytes': 100000000,
-                    'disk_size': ['100MiB'],
-                    'disk_size_bytes': [104857600],
+                    'disk_size': ['10MiB'],
+                    'disk_size_bytes': [10485760],
                     'networks': ['Production']
                 },
                 'TEST_VM_2':
@@ -160,7 +161,7 @@ class TestBase(unittest.TestCase):
                                            storage_type=storage_type,
                                            available_nodes=available_nodes)
         self.rpc.annotate_object(vm_object)
-        self.assertTrue(self.vm_factory.check_exists(self.test_vms[vm_name]['name']))
+        self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms[vm_name]['name']))
         return vm_object
 
     @classmethod
@@ -168,26 +169,29 @@ class TestBase(unittest.TestCase):
         """Stop and remove a virtual machine"""
         virtual_machine_factory = cls.rpc.get_connection('virtual_machine_factory')
 
-        if virtual_machine_factory.check_exists(vm_name):
-            vm_object = virtual_machine_factory.getVirtualMachineByName(vm_name)
+        if virtual_machine_factory.check_exists_by_name(vm_name):
+            vm_object = virtual_machine_factory.get_virtual_machine_by_name(vm_name)
             cls.rpc.annotate_object(vm_object)
 
             # Reset sync state for any Drbd disks
-            for disk_object in vm_object.getHardDriveObjects():
+            for disk_object in vm_object.get_hard_drive_objects():
                 cls.rpc.annotate_object(disk_object)
                 if disk_object.get_type() == 'Drbd':
                     disk_object.setSyncState(True)
+
+            if vm_object.getLockState() is LockStates.LOCKED.value:
+                vm_object.setLockState(LockStates.UNLOCKED.value)
 
             if not vm_object.isRegistered():
                 # Manually register VM on local node
                 vm_object.register()
 
             # Stop the VM if it is running
-            if vm_object.getPowerState() == PowerStates.RUNNING.value:
+            if vm_object.get_power_state() == PowerStates.RUNNING.value:
                 vm_object.stop()
 
-            if vm_object.getLockState() is LockStates.LOCKED.value:
-                vm_object.setLockState(LockStates.UNLOCKED.value)
+            if vm_object.get_delete_protection_state():
+                vm_object.disable_delete_protection(vm_name[::-1])
 
             # Delete VM
             vm_object.delete()

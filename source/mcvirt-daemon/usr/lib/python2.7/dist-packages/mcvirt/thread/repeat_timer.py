@@ -18,6 +18,7 @@
 from threading import Timer
 
 from mcvirt.rpc.pyro_object import PyroObject
+from mcvirt.syslogger import Syslogger
 
 
 class RepeatTimer(PyroObject):
@@ -49,6 +50,7 @@ class RepeatTimer(PyroObject):
 
     def cancel(self):
         """Cancel timer, if it is running"""
+        self.repeat = False
         if self.timer:
             self.timer.cancel()
 
@@ -59,8 +61,14 @@ class RepeatTimer(PyroObject):
             self.timer = Timer(float(self.interval), self.repeat_run)
             self.timer.start()
 
-        # Run command
-        return_output = self.run(*self.run_args, **self.run_kwargs)
+        return_output = None
+        try:
+            # Run command
+            return_output = self.run(*self.run_args, **self.run_kwargs)
+        except Exception, exc:
+            Syslogger.logger().error(
+                'Error ocurred during thread: %s\n%s' %
+                (self.__class__.__name__, str(exc)))
 
         # Restart timer, if set to repeat after run
         if self.repeat_after_run and self.repeat:

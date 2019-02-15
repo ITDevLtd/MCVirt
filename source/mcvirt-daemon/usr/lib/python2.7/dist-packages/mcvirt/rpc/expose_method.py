@@ -73,13 +73,26 @@ class Transaction(object):
             # Tear down all transactions
             for transaction in Transaction.transactions:
                 # Delete each of the function objects
-                for func in self.functions:
-                    self.functions.remove(func)
+                for func in transaction.functions:
+                    transaction.functions.remove(func)
                     func.unregister(force=True)
                     del func
 
             # Reset list of transactions
             Transaction.transactions = []
+        else:
+            # Otherwise, remove this transaction
+            Syslogger.logger().debug('End of transaction')
+
+            # Delete each of the function objects
+            for func in self.functions:
+                self.functions.remove(func)
+                func.unregister(force=True)
+                del func
+
+            # @TODO HOW CAN THIS NO LONGER BE IN THE LIST?
+            if self in Transaction.transactions:
+                Transaction.transactions.remove(self)
 
     @classmethod
     def register_function(cls, function):
@@ -167,6 +180,18 @@ class Function(PyroObject):
         if remote_nodes and 'nodes' in kwargs:
             nodes = kwargs['nodes']
             del kwargs['nodes']
+
+        # If all nodes has been specified, then obtain them
+        # from cluster
+        elif remote_nodes and 'all_nodes' in kwargs:
+            all_nodes = kwargs['all_nodes']
+            del kwargs['all_nodes']
+            if all_nodes:
+                nodes = self._get_registered_object('cluster').get_nodes(
+                    include_local=True)
+            else:
+                nodes = [get_hostname()]
+
         # Otherwise, just add the local node
         else:
             nodes = [get_hostname()]
@@ -211,9 +236,6 @@ class Function(PyroObject):
         self.remote_method = remote_method
         self.remote_undo_method = remote_undo_method
 
-        # Register instance and functions with pyro
-        self.obj._register_object(self, debug=False)
-
     @property
     def convert_to_remote_object_in_args(self):
         """This object is registered with daemon in init and all required
@@ -246,6 +268,9 @@ class Function(PyroObject):
 
     def run(self):
         """Run the function"""
+        # Register instance and functions with pyro
+        self.obj._register_object(self, debug=False)
+
         # Pause the session timeout
         self._pause_user_session()
 
@@ -283,8 +308,9 @@ class Function(PyroObject):
         except Exception:
             # Also try-catch the tear-down
             try:
-                # Notify that the transaction that the functino has failed
-                Transaction.function_failed(self)
+                if self.obj._is_cluster_master:
+                    # Notify that the transaction that the functino has failed
+                    Transaction.function_failed(self)
             except Exception:
                 # Reset user session after the command is
                 # complete
@@ -298,7 +324,8 @@ class Function(PyroObject):
             self._reset_user_session()
 
             # Print info about command execution failure
-            Syslogger.logger().debug('Expose failure: %s' % str(self.nodes))
+            Syslogger.logger().error('Expose failure: %s' % str(self.nodes))
+            Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
 
             # Re-raise exception
             raise
@@ -457,8 +484,8 @@ class Function(PyroObject):
 
         # Iterate through nodes and undo
         for node in self.nodes:
-            # Skip local node
-            if node == get_hostname():
+            # Skip local node or if the function did not complete on the node
+            if node == get_hostname() or not self.nodes[node]['complete']:
                 continue
 
             # Run the remote undo method

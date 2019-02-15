@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
+import hashlib
+import datetime
 import Pyro4
 from threading import Lock
 
@@ -31,6 +33,33 @@ class PyroObject(object):
         have been added to the daemon
         """
         pass
+
+    @staticmethod
+    def get_id_name_checksum_length():
+        """Return the lenght of the name checksum to use in the ID"""
+        return 18
+
+    @staticmethod
+    def get_id_date_checksum_length():
+        """Return the lenght of the name checksum to use in the ID"""
+        return 22
+
+    @staticmethod
+    def get_id_code():
+        """Return default Id code for object - should be overriden"""
+        return 'po'
+
+    @classmethod
+    def generate_id(cls, name):
+        """Generate ID for group"""
+        # Generate sha sum of name and sha sum of
+        # current datetime
+        name_checksum = hashlib.sha512(name).hexdigest()
+        date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
+        return '%s-%s-%s' % (
+            cls.get_id_code(),
+            name_checksum[0:cls.get_id_name_checksum_length()],
+            date_checksum[0:cls.get_id_date_checksum_length()])
 
     @property
     def convert_to_remote_object_in_args(self):
@@ -70,8 +99,18 @@ class PyroObject(object):
         else:
             return True
 
+    @property
+    def _has_lock(self):
+        """Determine if the current session holds the global lock"""
+        if self._is_pyro_initialised and 'has_lock' in dir(Pyro4.current_context):
+            return Pyro4.current_context.has_lock
+        else:
+            # If not defined, assume that we do not have the lock
+            return False
+
     def _register_object(self, local_object, debug=True):
         """Register an object with the pyro daemon"""
+        return_value = False
         if self._is_pyro_initialised:
             try:
                 if debug:
@@ -79,9 +118,12 @@ class PyroObject(object):
             except Exception:
                 pass
             self._pyroDaemon.register(local_object)
+            return_value = True
 
         if '_pyro_server_ref' in dir(self):
             local_object._pyro_server_ref = self._pyro_server_ref
+
+        return return_value
 
     def _convert_remote_object(self, remote_object):
         """Return a local instance of a remote object"""

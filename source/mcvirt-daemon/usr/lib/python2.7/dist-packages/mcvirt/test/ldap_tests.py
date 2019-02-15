@@ -1,3 +1,4 @@
+# pylint: disable=C0103
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -22,7 +23,7 @@ from mockldap import MockLdap
 
 from mcvirt.test.test_base import TestBase
 from mcvirt.parser import Parser
-from mcvirt.mcvirt_config import MCVirtConfig
+from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.exceptions import AuthenticationError, ArgumentParserException
 from mcvirt.constants import DirectoryLocation
 from mcvirt.node.ldap_factory import LdapFactory
