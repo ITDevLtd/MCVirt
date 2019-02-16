@@ -1,7 +1,56 @@
+# 11.0.0
+
+* Perform version check against agant and handle unknown commands
+* Implement storage backend for statistics and synchronisation between nodes
+* Implement CPU/memory usage statistics for virtual machines and nodes
+* Improve logging during Pyro4 exceptions in expose
+* Update hard drive objects to use IDs and move configuration outside of virtual machine configuration
+* Update storage backend to use custom config object
+* Implement virtual machine delete protection, which stops a VM from being deleted
+* Implement virtual machine IDs.
+* Implement ability to attach/detatch hard drives to/rom virtual machines
+* Fix issues around registration/unregister when a VM is no longer registered with Libvirt
+* Implement ability to import a hard drive
+
+# 10.0.1
+
+# 10.0.0
+
+# 9.1.0
+
+* Add IDs to storage backends and identity volumes
+* Fix minor issues with storage backend creation
+
+# 9.0.0
+
+* Implement storage backends, allowing multiple volume groups
+* Implement file-based storage
+* Fix issues with DRBD VM move
+* Implement transaction, improving reliability of DRBD volume creation
+* Replace --delete-data flag with --keep-config --keep-disks flags for removing VM
+
+# 8.3.0
+
+# 8.2.0
+
+# 8.1.0
+
+# 8.0.0
+
+# 7.3.9
+
+* Fix issue with performing 'drbd list' on a node outside of a DRBD cluster
+
+# 7.3.8
+
+# 7.3.7
+
+# 7.3.6
+
 # 7.3.5
 
-Fix issue relating to adding networks with interfaces which do not have IP addresses
-Fix issues with GitAdd and GitRemove
+* Fix issue relating to adding networks with interfaces which do not have IP addresses
+* Fix issues with GitAdd and GitRemove
 
 # 7.3.4
 
