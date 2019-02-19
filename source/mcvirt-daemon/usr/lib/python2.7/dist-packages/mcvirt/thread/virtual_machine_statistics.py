@@ -103,13 +103,13 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
     def __init__(self, virtual_machine, *args, **kwargs):
         """Store virtual machine"""
         self.virtual_machine = virtual_machine
+        self._interval = MCVirtConfig().get_config()['statistics']['interval']
         super(VirtualMachineStatisticsAgent, self).__init__(*args, **kwargs)
 
     @property
     def interval(self):
         """Return the timer interval"""
-        # @TODO This will be slow
-        return MCVirtConfig().get_config()['statistics']['interval']
+        return self._interval
 
     def insert_into_stat_db(self):
         """Add statistics to statistics database"""
