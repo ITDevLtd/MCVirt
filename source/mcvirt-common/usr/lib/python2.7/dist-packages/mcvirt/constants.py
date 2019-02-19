@@ -53,7 +53,7 @@ class PowerStates(Enum):
 
 
 class AutoStartStates(Enum):
-    """States that autostart can be"""
+    """States that autostart can be."""
 
     NO_AUTOSTART = 0
     ON_BOOT = 1
@@ -61,7 +61,7 @@ class AutoStartStates(Enum):
 
 
 class AgentSerialConfig(object):
-    """Provide static config for agent serial config"""
+    """Provide static config for agent serial config."""
 
     # Baud rate
     BAUD_RATE = 115200
@@ -72,13 +72,15 @@ class AgentSerialConfig(object):
 
 
 class StatisticsDeviceType(Enum):
-    """Statistics device type"""
+    """Statistics device type."""
+
     HOST = 1
     VIRTUAL_MACHINE = 2
 
 
 class StatisticsStatType(Enum):
-    """Statistics stat type"""
+    """Statistics stat type."""
+
     CPU_USAGE = 1
     MEMORY_USAGE = 2
 
