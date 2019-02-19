@@ -21,6 +21,7 @@ from threading import Lock
 
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
+from mcvirt.syslogger import syslogger
 
 
 class ClusterLock(PyroObject):
@@ -37,20 +38,50 @@ class ClusterLock(PyroObject):
         if ClusterLock.LOCK_INSTANCE is None:
             ClusterLock.LOCK_INSTANCE = Lock()
 
-    def lock(self):
+    def __init__(self):
+        """Initialise a blank array of nodes that have been locked."""
+        self.nodes = []
+
+    def __enter__(self):
         """Attempt to lock cluster."""
-        pass
+        if ClusterLock.LOCK_INSTANCE is None:
+            raise Exception('Lock object not present')
 
-    def unlock(self):
+        cluster_object = None
+        # Detmine if current object is registered
+        if self.po__is_pyro_initialised:
+            cluster_object = self.po__get_registered_object('cluster')
+        else:
+            # If not initialised, determine if
+            # singleton is stored in class attribute
+            if ClusterLock.CLUSTER_LOCK_INSTANCE is not None:
+                cluster_object = ClusterLock.CLUSTER_LOCK_INSTANCE.po__get_registered_object('cluster')
+            else:
+                # If there is no way to obtain a
+                # pyro-initialised varient of this object,
+                # default to just locking the local node
+                self.lock_node()
+                Syslogger.logger().warn(
+                    ('Unable to obtain pyro-initialised lock object, '
+                     'just locking local node'))
+                return
+
+            self.locked_nodes = self.lock_node(all_nodes=True).keys()
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
         """Unlock cluster."""
-        pass
+        self.unlock_node(nodes=self.locked_nodes)
 
-    @Expose()
+    @Expose(remote_nodes=True, undo_method='unlock_node')
     def lock_node(self):
         """Attempt to lock local node."""
-        pass
+        # Aquire lock
+        # @TODO Perform (optional?) timeout
+        ClusterLock.LOCK_INSTANCE.acquire()
 
     @Expose()
     def unlock_node(self):
         """Remove held lock on local node."""
-        pass
+        # Release lock object
+        ClusterLock.LOCK_INSTANCE.release()
