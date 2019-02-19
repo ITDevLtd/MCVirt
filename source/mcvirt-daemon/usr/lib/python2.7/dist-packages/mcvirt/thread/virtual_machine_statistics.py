@@ -117,13 +117,13 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         db_rows = [
             (StatisticsDeviceType.VIRTUAL_MACHINE.value,
              self.virtual_machine.id_,
-             StatisticsStatType.CPU_USAGE.value,
+             StatisticsStatType.VM_AGENT_CPU_USAGE.value,
              self.virtual_machine.current_guest_cpu_usage,
              "{:%s}".format(datetime.now())),
 
             (StatisticsDeviceType.VIRTUAL_MACHINE.value,
              self.virtual_machine.id_,
-             StatisticsStatType.MEMORY_USAGE.value,
+             StatisticsStatType.VM_AGENT_MEMORY_USAGE.value,
              self.virtual_machine.current_guest_memory_usage,
              "{:%s}".format(datetime.now()))
         ]

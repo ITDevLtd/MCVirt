@@ -81,8 +81,12 @@ class StatisticsDeviceType(Enum):
 class StatisticsStatType(Enum):
     """Statistics stat type."""
 
-    CPU_USAGE = 1
-    MEMORY_USAGE = 2
+    # VM CPU and memory usage from VM agent
+    VM_AGENT_CPU_USAGE = 1
+    VM_AGENT_MEMORY_USAGE = 2
+    # VM CPU and memory usage from hypervisor
+    VM_HYP_CPU_USAGE = 3
+    VM_HYP_MEMORY_USAGE = 4
 
 
 # Name of the default storage backend, used during upgrade
