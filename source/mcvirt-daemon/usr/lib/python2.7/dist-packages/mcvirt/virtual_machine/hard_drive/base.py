@@ -1,4 +1,4 @@
-"""Provide base operations to manage all hard drives, used by VMs"""
+"""Provide base operations to manage all hard drives, used by VMs."""
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -18,32 +18,24 @@
 
 from enum import Enum
 
+from mcvirt.config.hard_drive import HardDrive as HardDriveConfig
 from mcvirt.exceptions import (HardDriveDoesNotExistException,
-                               StorageTypesCannotBeMixedException,
-                               LogicalVolumeDoesNotExistException,
                                BackupSnapshotAlreadyExistsException,
                                BackupSnapshotDoesNotExistException,
-                               ExternalStorageCommandErrorException,
-                               MCVirtCommandException,
                                ResyncNotSupportedException,
-                               LogicalVolumeIsNotActiveException,
                                VolumeDoesNotExistError,
                                VolumeAlreadyExistsError,
                                InvalidStorageBackendError)
-from mcvirt.config.core import Core as MCVirtConfig
-from mcvirt.config.hard_drive import HardDrive as HardDriveConfig
 from mcvirt.system import System
 from mcvirt.auth.permissions import PERMISSIONS
-from mcvirt.exceptions import ReachedMaximumStorageDevicesException
 from mcvirt.utils import get_hostname, dict_merge
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.constants import LockStates
-from mcvirt.syslogger import Syslogger
 
 
 class Driver(Enum):
-    """Enums for specifying the hard drive driver type"""
+    """Enums for specifying the hard drive driver type."""
 
     VIRTIO = 'virtio'
     IDE = 'ide'
@@ -54,7 +46,7 @@ class Driver(Enum):
 
 
 class Base(PyroObject):
-    """Provides base operations to manage all hard drives, used by VMs"""
+    """Provides base operations to manage all hard drives, used by VMs."""
 
     # The maximum number of storage devices for the current type
     MAXIMUM_DEVICES = 1
@@ -70,14 +62,17 @@ class Base(PyroObject):
     CACHE_MODE = None
 
     def __init__(self, id_):
-        """Set member variables"""
+        """Set member variables."""
         self._id = id_
+
+        # Lazily initailise private attibutes,
+        # which are set when getter is first called
         self._driver = None
         self._storage_backend = None
         self._base_volume_name = None
 
     def __eq__(self, comp):
-        """Compare hard drive objects based on id"""
+        """Compare hard drive objects based on id."""
         # Ensure class and name of object match
         return ('__class__' in dir(comp) and
                 comp.__class__ == self.__class__ and
@@ -85,12 +80,12 @@ class Base(PyroObject):
 
     @staticmethod
     def get_id_code():
-        """Return the ID code for the object"""
+        """Return the ID code for the object."""
         return 'hd'
 
     @classmethod
     def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
-        """Generate config for hard drive"""
+        """Generate config for hard drive."""
         return {
             'nodes': nodes,
             'driver': driver if driver else cls.DEFAULT_DRIVER,
@@ -101,24 +96,25 @@ class Base(PyroObject):
 
     @property
     def id_(self):
-        """Return the ID of the hard drive"""
+        """Return the ID of the hard drive."""
         return self._id
 
     @Expose()
     def get_id(self):
-        """Return ID"""
+        """Return ID."""
         return self.id_
 
     @property
     def nodes(self):
-        """Return nodes that the hard drive is on"""
+        """Return nodes that the hard drive is on."""
         return self.get_config_object().get_config()['nodes']
 
     @property
     def storage_backend(self):
-        """Return the storage backend for the hard drive"""
+        """Return the storage backend for the hard drive."""
         if self._storage_backend is None:
-            storage_backend_id = self.get_config_object().get_config()['storage_backend']
+            storage_backend_id = self.get_config_object().get_config()[
+                'storage_backend']
             self._storage_backend = self.po__get_registered_object(
                 'storage_factory').get_object(storage_backend_id)
 
@@ -126,17 +122,17 @@ class Base(PyroObject):
 
     @property
     def libvirt_device_type(self):
-        """Return the libvirt device type of the storage backend"""
+        """Return the libvirt device type of the storage backend."""
         return self.storage_backend.libvirt_device_type
 
     @property
     def libvirt_source_parameter(self):
-        """Return the libvirt source parameter fro storage backend"""
+        """Return the libvirt source parameter fro storage backend."""
         return self.storage_backend.libvirt_source_parameter
 
     @property
     def driver(self):
-        """Return the disk drive driver name"""
+        """Return the disk drive driver name."""
         # Get from config, if not cached
         if self._driver is None:
             self._driver = self.get_config_object().get_config()['driver']
@@ -145,10 +141,11 @@ class Base(PyroObject):
 
     @property
     def base_volume_name(self):
-        """Return the disk drive driver name"""
+        """Return the disk drive driver name."""
         # Get from config, if not cached
         if self._base_volume_name is None:
-            self._base_volume_name = self.get_config_object().get_config()['base_volume_name']
+            self._base_volume_name = self.get_config_object().get_config()[
+                'base_volume_name']
 
         return self._base_volume_name
 
