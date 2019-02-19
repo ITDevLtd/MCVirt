@@ -248,7 +248,7 @@ class Function(PyroObject):
     def unregister(self, force=False):
         """De-register object after deletion."""
         if force or not Transaction.in_transaction():
-            self.unregister_object(self, debug=False)
+            self.po__unregister_object(self, debug=False)
 
     @property
     def _undo_function_name(self):

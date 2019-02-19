@@ -102,7 +102,7 @@ class Iso(PyroObject):
         # Unregister Pyro object and remove cached object
         if self.get_name() in self.po__get_registered_object('iso_factory').CACHED_OBJECTS:
             del self.po__get_registered_object('iso_factory').CACHED_OBJECTS[self.get_name()]
-        self.unregister_object()
+        self.po__unregister_object()
 
         if not os.path.isfile(self.get_path()):
             return True

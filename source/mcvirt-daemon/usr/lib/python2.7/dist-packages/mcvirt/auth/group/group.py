@@ -259,7 +259,7 @@ class Group(PyroObject):
         # Remove cached pyro object
         storage_factory = self.po__get_registered_object('group_factory')
         if self.id_ in storage_factory.CACHED_OBJECTS:
-            self.unregister_object()
+            self.po__unregister_object()
             del storage_factory.CACHED_OBJECTS[self.id_]
 
     def get_config(self):

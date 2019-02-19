@@ -228,7 +228,7 @@ class DatabaseConnection(PyroObject):
         del self._sqlite_object
         self.has_lock = False
         self._database = None
-        self.unregister_object()
+        self.po__unregister_object()
 
     def get_db_object(self):
         """Return DB object."""

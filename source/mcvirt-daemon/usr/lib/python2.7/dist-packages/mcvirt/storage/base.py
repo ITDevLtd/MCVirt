@@ -224,7 +224,7 @@ class Base(PyroObject):
         # Remove cached pyro object
         storage_factory = self.po__get_registered_object('storage_factory')
         if self._id in storage_factory.CACHED_OBJECTS:
-            self.unregister_object()
+            self.po__unregister_object()
             del storage_factory.CACHED_OBJECTS[self._id]
 
     def get_config_object(self):

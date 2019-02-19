@@ -722,7 +722,7 @@ class VirtualMachine(PyroObject):
         vm_factory = self.po__get_registered_object('virtual_machine_factory')
         if self.id_ in vm_factory.CACHED_OBJECTS:
             del vm_factory.CACHED_OBJECTS[self.id_]
-        self.unregister_object()
+        self.po__unregister_object()
 
     @Expose()
     def getRAM(self):

@@ -238,7 +238,7 @@ class HardDriveAttachment(PyroObject):
         nodes = [get_hostname()] if local_only else cluster.get_nodes(include_local=True)
         self.remove_config(nodes=cluster.get_nodes(include_local=True))
         del Factory.CACHED_OBJECTS[(self.virtual_machine.id_, self.attachment_id)]
-        self.unregister_object()
+        self.po__unregister_object()
 
     @Expose(locking=True, remote_nodes=True)
     def remove_config(self):

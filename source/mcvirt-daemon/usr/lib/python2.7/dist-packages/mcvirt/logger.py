@@ -245,7 +245,7 @@ class LogItem(PyroObject):
             except Exception:
                 pass
         self.remote_logs = []
-        self.unregister_object()
+        self.po__unregister_object()
 
 
 def getLogNames(callback, instance_method, object_type, args, kwargs):

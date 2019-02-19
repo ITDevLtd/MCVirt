@@ -146,7 +146,7 @@ class PyroObject(object):
         else:
             return None
 
-    def unregister_object(self, obj=None, debug=True):
+    def po__unregister_object(self, obj=None, debug=True):
         """Unregister object from the Pyro Daemon."""
         if self.po__is_pyro_initialised:
             if obj is None:

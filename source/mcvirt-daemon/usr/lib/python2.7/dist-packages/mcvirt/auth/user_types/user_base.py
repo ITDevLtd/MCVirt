@@ -304,7 +304,7 @@ class UserBase(PyroObject):
         # Unregister and remove cached object
         if self.get_username() in self.po__get_registered_object('user_factory').CACHED_OBJECTS:
             del self.po__get_registered_object('user_factory').CACHED_OBJECTS[self.get_username()]
-        self.unregister_object()
+        self.po__unregister_object()
 
     @staticmethod
     def get_default_config():

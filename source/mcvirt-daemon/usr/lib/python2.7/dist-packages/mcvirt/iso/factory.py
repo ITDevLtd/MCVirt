@@ -169,7 +169,7 @@ class IsoWriter(PyroObject):
         if self.fh:
             self.fh.close()
             self.fh = None
-        self.unregister_object()
+        self.po__unregister_object()
 
     @Expose()
     def write_data(self, data):
@@ -193,5 +193,5 @@ class IsoWriter(PyroObject):
 
         os.remove(self.temp_file)
         os.rmdir(self.temp_directory)
-        self.unregister_object()
+        self.po__unregister_object()
         return iso_object

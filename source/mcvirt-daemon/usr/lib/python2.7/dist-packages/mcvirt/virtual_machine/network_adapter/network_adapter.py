@@ -183,4 +183,4 @@ class NetworkAdapter(PyroObject):
         # Unregister Pyro object and cached object
         if cache_key in self.po__get_registered_object('network_adapter_factory').CACHED_OBJECTS:
             del self.po__get_registered_object('network_adapter_factory').CACHED_OBJECTS[cache_key]
-        self.unregister_object()
+        self.po__unregister_object()
