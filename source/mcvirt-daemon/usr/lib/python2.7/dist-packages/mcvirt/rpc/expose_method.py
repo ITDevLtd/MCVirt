@@ -497,8 +497,9 @@ class Function(PyroObject):
             self._call_function_remote(node=node, undo=True)
 
     def _pause_user_session(self):
-        """Pause the user session"""
-        # Determine if session ID is present in current context and the session object has
+        """Pause the user session."""
+        # Determine if session ID is present in current context and the session
+        # object has
         # been set
         if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
             # Disable the expiration whilst the method runs
@@ -507,8 +508,9 @@ class Function(PyroObject):
             ].disable()
 
     def _reset_user_session(self):
-        """Reset the user session"""
-        # Determine if session ID is present in current context and the session object has
+        """Reset the user session."""
+        # Determine if session ID is present in current context and the
+        # session object has
         # been set
         if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
             # Renew session expiry
@@ -516,10 +518,11 @@ class Function(PyroObject):
 
 
 class Expose(object):
-    """Decorator for exposing method via Pyro and optional log and locking"""
+    """Decorator for exposing method via Pyro and optional log and locking."""
     # @TODO Add permission checking, which is only performed during
     #       pyro call to method
 
+    # Set in rpc_daemon during startup
     SESSION_OBJECT = None
 
     def __init__(self, locking=False, object_type=None,
@@ -530,7 +533,7 @@ class Expose(object):
                                # exposed to pyro
                  remote_method=None,
                  remote_undo_method=None):
-        """Setup variables passed in via decorator as member variables"""
+        """Setup variables passed in via decorator as member variables."""
         self.locking = locking
         self.object_type = object_type
         self.instance_method = instance_method
@@ -542,9 +545,12 @@ class Expose(object):
         self.remote_undo_method = remote_undo_method
 
     def __call__(self, callback):
-        """Run when object is created. The returned value is the method that is executed"""
+        """Run when object is created.
+
+        The returned value is the method that is executed
+        """
         def inner(self_obj, *args, **kwargs):
-            """Run when the wrapping method is called"""
+            """Run when the wrapping method is called."""
             # Create function object and run
             function = Function(function=callback, obj=self_obj,
                                 args=args, kwargs=kwargs,
