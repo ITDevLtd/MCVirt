@@ -55,7 +55,7 @@ class UsbDevice(PyroObject):
             raise VmStoppedException('VM is stopped. '
                                      'Can only attached USB device to running VM')
         # TO ADD PERMISSION CHECKING
-        libvirt_object = self.virtual_machine._get_libvirt_domain_object()
+        libvirt_object = self.virtual_machine.get_libvirt_domain_object()
         libvirt_object.attachDeviceFlags(
             self._generate_libvirt_xml(),
             (libvirt.VIR_DOMAIN_AFFECT_LIVE |
@@ -70,7 +70,7 @@ class UsbDevice(PyroObject):
                                      'Can only attached USB device to running VM')
 
         # TO ADD PERMISSION CHECKING
-        libvirt_object = self.virtual_machine._get_libvirt_domain_object()
+        libvirt_object = self.virtual_machine.get_libvirt_domain_object()
         libvirt_object.detachDeviceFlags(
             self._generate_libvirt_xml(),
             (libvirt.VIR_DOMAIN_AFFECT_LIVE |

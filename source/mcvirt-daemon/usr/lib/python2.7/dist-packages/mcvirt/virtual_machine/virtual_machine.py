@@ -117,7 +117,7 @@ class VirtualMachine(PyroObject):
                 except Exception:
                     # If the VM was unregistered from libvirt during the
                     # config migration, set it as unregistered
-                    if self._get_libvirt_domain_object() is None:
+                    if self.get_libvirt_domain_object() is None:
                         self._setNode(None)
 
                     raise
@@ -254,7 +254,7 @@ class VirtualMachine(PyroObject):
         vm = self.get_remote_object()
         return '%s%%' % vm.get_guest_memory_usage()
 
-    def _get_libvirt_domain_object(self, allow_remote=False, auto_register=True):
+    def get_libvirt_domain_object(self, allow_remote=False, auto_register=True):
         """Look up LibVirt domain object, based on VM name,
         and return object
         """
@@ -282,7 +282,7 @@ class VirtualMachine(PyroObject):
                     try:
                         self._register(set_node=False)
                         # Return with call from this method
-                        return self._get_libvirt_domain_object(
+                        return self.get_libvirt_domain_object(
                             allow_remote=allow_remote,
                             auto_register=False)
                     except Exception, exc2:
@@ -297,7 +297,7 @@ class VirtualMachine(PyroObject):
     def get_libvirt_xml(self):
         """Obtain domain XML from libvirt"""
         self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
-        return self._get_libvirt_domain_object().XMLDesc()
+        return self.get_libvirt_domain_object().XMLDesc()
 
     @property
     def is_running(self):
@@ -324,7 +324,7 @@ class VirtualMachine(PyroObject):
             if self._get_power_state() is PowerStates.RUNNING:
                 try:
                     # Stop the VM
-                    self._get_libvirt_domain_object().destroy()
+                    self.get_libvirt_domain_object().destroy()
                 except Exception, e:
                     raise LibvirtException('Failed to stop VM: %s' % e)
             else:
@@ -355,7 +355,7 @@ class VirtualMachine(PyroObject):
             if self._get_power_state() is PowerStates.RUNNING:
                 try:
                     # Shutdown the VM
-                    self._get_libvirt_domain_object().shutdown()
+                    self.get_libvirt_domain_object().shutdown()
                 except Exception, e:
                     raise LibvirtException('Failed to stop VM: %s' % e)
             else:
@@ -423,7 +423,7 @@ class VirtualMachine(PyroObject):
 
             # Start the VM
             try:
-                self._get_libvirt_domain_object().create()
+                self.get_libvirt_domain_object().create()
             except Exception, e:
                 # Interogate exception to attempt to determine cause
                 # of failure
@@ -489,7 +489,7 @@ class VirtualMachine(PyroObject):
             if self._get_power_state() is PowerStates.RUNNING:
                 try:
                     # Reset the VM
-                    self._get_libvirt_domain_object().reset()
+                    self.get_libvirt_domain_object().reset()
                 except Exception, e:
                     raise LibvirtException('Failed to reset VM: %s' % e)
             else:
@@ -511,7 +511,7 @@ class VirtualMachine(PyroObject):
         """Return the power state of the VM in the form of a PowerStates enum"""
         if self.isRegistered():
             remote_libvirt = (self.isRegisteredRemotely() and not self._cluster_disabled)
-            libvirt_object = self._get_libvirt_domain_object(allow_remote=remote_libvirt)
+            libvirt_object = self.get_libvirt_domain_object(allow_remote=remote_libvirt)
             if libvirt_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING:
                 return PowerStates.RUNNING
             else:
@@ -1002,7 +1002,7 @@ class VirtualMachine(PyroObject):
         for the domain
         """
         domain_flags = (libvirt.VIR_DOMAIN_XML_INACTIVE + libvirt.VIR_DOMAIN_XML_SECURE)
-        domain_xml = ET.fromstring(self._get_libvirt_domain_object().XMLDesc(domain_flags))
+        domain_xml = ET.fromstring(self.get_libvirt_domain_object().XMLDesc(domain_flags))
         return domain_xml
 
     @Expose(locking=True)
@@ -1150,7 +1150,7 @@ class VirtualMachine(PyroObject):
             )
 
             # Obtain libvirt domain object
-            libvirt_domain_object = self._get_libvirt_domain_object()
+            libvirt_domain_object = self.get_libvirt_domain_object()
 
             # Clear the VM node configuration
             self._setNode(None)
@@ -1300,7 +1300,7 @@ class VirtualMachine(PyroObject):
             )
 
         # Determine if VM is running
-        if self._get_libvirt_domain_object().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
+        if self.get_libvirt_domain_object().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
             raise VmAlreadyStartedException('Can\'t clone running VM')
 
         # Ensure VM is unlocked
@@ -1375,7 +1375,7 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         # Determine if VM is running
-        if self._get_libvirt_domain_object().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
+        if self.get_libvirt_domain_object().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
             raise VmAlreadyStartedException('Can\'t duplicate running VM')
 
         # Ensure new VM name doesn't already exist
@@ -1508,7 +1508,7 @@ class VirtualMachine(PyroObject):
         # Determine if VM is registered, and obtain libvirt uuid
         if self.isRegistered():
             domain_xml = ET.fromstring(
-                self._get_libvirt_domain_object().XMLDesc(
+                self.get_libvirt_domain_object().XMLDesc(
                     libvirt.VIR_DOMAIN_XML_SECURE
                 )
             )
@@ -1655,7 +1655,7 @@ class VirtualMachine(PyroObject):
         """Perform actual unregistration"""
         # Remove VM from LibVirt
         try:
-            self._get_libvirt_domain_object(auto_register=False).undefine()
+            self.get_libvirt_domain_object(auto_register=False).undefine()
         except VirtualMachineNotRegisteredWithLibvirt:
             Syslogger.logger().warn(
                 'VM not registered with libvirt whilst attempting to unregister: %s' %
@@ -1772,7 +1772,7 @@ class VirtualMachine(PyroObject):
         if self._get_power_state() is not PowerStates.RUNNING:
             raise VmAlreadyStoppedException('The VM is not running')
         domain_xml = ET.fromstring(
-            self._get_libvirt_domain_object().XMLDesc(
+            self.get_libvirt_domain_object().XMLDesc(
                 libvirt.VIR_DOMAIN_XML_SECURE
             )
         )
@@ -1791,7 +1791,7 @@ class VirtualMachine(PyroObject):
         if self._get_power_state() is not PowerStates.RUNNING:
             raise VmAlreadyStoppedException('The VM is not running')
         domain_xml = ET.fromstring(
-            self._get_libvirt_domain_object().XMLDesc(
+            self.get_libvirt_domain_object().XMLDesc(
                 libvirt.VIR_DOMAIN_XML_SECURE
             )
         )

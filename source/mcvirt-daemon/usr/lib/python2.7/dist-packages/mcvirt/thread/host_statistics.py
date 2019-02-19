@@ -64,11 +64,11 @@ class HostStatistics(RepeatTimer):
         db_factory = self._get_registered_object('database_factory')
         db_rows = [
             (StatisticsDeviceType.HOST.value, get_hostname(),
-             StatisticsStatType.VM_AGENT_CPU_USAGE.value, self._cpu_usage,
+             StatisticsStatType.HOST_CPU_USAGE.value, self._cpu_usage,
              "{:%s}".format(datetime.now())),
 
             (StatisticsDeviceType.HOST.value, get_hostname(),
-             StatisticsStatType.VM_AGENT_MEMORY_USAGE.value,
+             StatisticsStatType.HOST_MEMORY_USAGE.value,
              self._memory_usage,
              "{:%s}".format(datetime.now()))
         ]

@@ -99,7 +99,7 @@ class DatabaseFactory(PyroObject):
         res = db_inst.cursor.execute(
             """SELECT version FROM mcvirt_schema""")
         version = res.fetchone()
-        return version if version is not None else 0
+        return version[0] if version is not None else 0
 
     def _schema_migration(self, db_inst):
         """Perform schema miagrations"""
@@ -109,6 +109,9 @@ class DatabaseFactory(PyroObject):
 
         if schema_version < 1:
             migrations.v1.migrate(db_inst)
+
+        if schema_version < 2:
+            migrations.v2.migrate(db_inst)
 
         if schema_version < migrations.SCHEMA_VERSION:
             migrations.update_schema_version(db_inst)
@@ -212,7 +215,7 @@ class DatabaseConnection(PyroObject):
         """Release lock"""
         # If an exception was raised, rollback the DB changes
         if exc_type is not None:
-            Syslogger.logger().error('Error during db lock: %s' % traceback)
+            Syslogger.logger().error('Error during db lock: %s')
             self.get_db_object().rollback()
 
         # Otherwise, commit changes

@@ -148,6 +148,46 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
                 self.virtual_machine.get_name())
             return
 
+        try:
+            self.get_hypervisor_stats()
+        except Exception as exc:
+            Syslogger.logger().error("""
+Failed to obtain hypervisor stats:
+Virtual Machine: %s
+Error: %s""" % (self.virtual_machine.get_name(), str(exc)))
+
+        try:
+            self.get_agent_stats()
+        except Exception as exc:
+            Syslogger.logger().error("""
+Failed to obtain agent stats:
+Virtual Machine: %s
+Error: %s""" % (self.virtual_machine.get_name(), str(exc)))
+
+        self.insert_into_stat_db()
+
+        Pyro4.current_context.INTERNAL_REQUEST = False
+        Syslogger.logger().debug('Statistics daemon complete: %s' %
+                                 self.virtual_machine.get_name())
+
+    def get_hypervisor_stats(self):
+        """Obtain usage statistics from libvirt"""
+        libvirt_domain = self.virtual_machine.get_libvirt_domain_object()
+        # Returns: actual and rss (both in KB)
+        for name, val_ in libvirt_domain.memoryStats().items():
+            Syslogger.logger().error('%s: %s' % (name, val_))
+        # Returns list of dicts for CPU time and vCPU time per core.
+        # Can find difference in CPU time between measurments to
+        # calculate average CPU%.
+        # Time is in nanoseconds
+        for val_ in libvirt_domain.getCPUStats(False):
+            Syslogger.logger().error('%s: %s' % (name, val_))
+
+        #self.virtual_machine.current_hyp_memory_usage = libvirt_domain.memoryStats()
+        #self.virtual_machine.current_hyp_cpu_usage =
+
+    def get_agent_stats(self):
+        """Obtain usage statistics from agent"""
         agent_conn = self.virtual_machine.get_agent_connection()
 
         resp = None
@@ -167,9 +207,3 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
                 resp['cpu_usage']
                 if 'cpu_usage' in resp else
                 None)
-
-        self.insert_into_stat_db()
-
-        Pyro4.current_context.INTERNAL_REQUEST = False
-        Syslogger.logger().debug('Statistics daemon complete: %s' %
-                                 self.virtual_machine.get_name())

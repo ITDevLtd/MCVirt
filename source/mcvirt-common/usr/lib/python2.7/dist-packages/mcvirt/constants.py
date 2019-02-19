@@ -81,12 +81,17 @@ class StatisticsDeviceType(Enum):
 class StatisticsStatType(Enum):
     """Statistics stat type."""
 
+    # Host CPU and memory usage
+    HOST_CPU_USAGE = 1
+    HOST_MEMORY_USAGE = 2
     # VM CPU and memory usage from VM agent
-    VM_AGENT_CPU_USAGE = 1
-    VM_AGENT_MEMORY_USAGE = 2
+    VM_AGENT_CPU_USAGE = 3
+    VM_AGENT_MEMORY_USAGE = 4
     # VM CPU and memory usage from hypervisor
-    VM_HYP_CPU_USAGE = 3
-    VM_HYP_MEMORY_USAGE = 4
+    VM_HYP_CPU_TIME = 5  # Time against physical CPU
+    VM_HYP_VCPU_TIME = 6  # Virtual CPU time
+    VM_HYP_RSS_MEMORY_USAGE = 7  # RSS Memory usage
+    VM_HYP_ACT_MEMORY_USAGE = 8  # Actual memory usage
 
 
 # Name of the default storage backend, used during upgrade

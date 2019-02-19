@@ -54,7 +54,7 @@ class DiskDrive(PyroObject):
         flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
 
         # Update the libvirt cdrom device
-        libvirt_object = self.vm_object._get_libvirt_domain_object()
+        libvirt_object = self.vm_object.get_libvirt_domain_object()
         if libvirt_object.updateDeviceFlags(cdrom_xml_string, flags):
             raise LibvirtException('An error occurred whilst attaching ISO')
 
@@ -74,7 +74,7 @@ class DiskDrive(PyroObject):
             flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
 
             # Update the libvirt cdrom device
-            if self.vm_object._get_libvirt_domain_object().updateDeviceFlags(
+            if self.vm_object.get_libvirt_domain_object().updateDeviceFlags(
                     cdrom_xml_string, flags):
                 raise LibvirtException('An error occurred whilst detaching ISO')
 

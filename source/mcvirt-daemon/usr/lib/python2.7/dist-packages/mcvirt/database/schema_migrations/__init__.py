@@ -16,9 +16,10 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from . import v1
+from . import v2
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def update_schema_version(db_inst):
