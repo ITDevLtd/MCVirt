@@ -69,7 +69,7 @@ class DatabaseFactory(PyroObject):
     def get_locking_connection(self, perform_sync=True):
         """Obtain instance of database connection"""
         db_object = DatabaseConnection(self, perform_sync=perform_sync)
-        self._register_object(db_object)
+        self.po__register_object(db_object)
         return db_object
 
     def get_sqlite_object(self):
@@ -116,7 +116,7 @@ class DatabaseFactory(PyroObject):
     @Expose()
     def get_latest_stat(self, device_type, device_id):
         """Obtain latest statistics date"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
         local_latest = None
         with self.get_locking_connection(perform_sync=False) as db_inst:
             res = db_inst.cursor.execute(
@@ -142,7 +142,7 @@ class DatabaseFactory(PyroObject):
     @Expose()
     def import_statistics(self, device_type, device_id, stats):
         """Import stats into local db"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser')
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
         for stat in stats:
             stat.append(device_type)
             stat.append(device_id)
@@ -157,9 +157,9 @@ class DatabaseFactory(PyroObject):
         # @TODO This is just waiting for a dead lock
         # Need to implement global cluster lock
 
-        virtual_machines = self._get_registered_object(
+        virtual_machines = self.po__get_registered_object(
             'virtual_machine_factory').get_all_virtual_machines()
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         for node in cluster.get_nodes():
             node_object = cluster.get_remote_node(node)
             remote_db_fact = node_object.get_connection('database_factory')
@@ -221,7 +221,7 @@ class DatabaseConnection(PyroObject):
 
             # Unless configured not to, perform statistics sync
             if self._perform_sync:
-                self._get_registered_object('statistics_sync').notify()
+                self.po__get_registered_object('statistics_sync').notify()
 
         # Release lock and remove reference to database object
         self._database.release_db_conn_lock()
@@ -323,7 +323,7 @@ class StatisticsSync(RepeatTimer):
         Pyro4.current_context.INTERNAL_REQUEST = True
         Syslogger.logger().debug('Starting stats sync')
 
-        self._get_registered_object('database_factory').sync()
+        self.po__get_registered_object('database_factory').sync()
 
         Syslogger.logger().debug('Completed stats sync')
 

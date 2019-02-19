@@ -42,7 +42,7 @@ class Factory(PyroObject):
     def get_remote_factory(self, node=None):
         if node is None or node == get_hostname():
             return self
-        node = self._get_registered_object('cluster').get_remote_node(node)
+        node = self.po__get_registered_object('cluster').get_remote_node(node)
         remote_factory = node.get_connection('iso_factory')
         node.annotate_object(remote_factory)
         return remote_factory
@@ -65,7 +65,7 @@ class Factory(PyroObject):
         """Create and register Iso object"""
         if iso_name not in Factory.CACHED_OBJECTS:
             Factory.CACHED_OBJECTS[iso_name] = Iso(iso_name)
-            self._register_object(Factory.CACHED_OBJECTS[iso_name])
+            self.po__register_object(Factory.CACHED_OBJECTS[iso_name])
         return Factory.CACHED_OBJECTS[iso_name]
 
     @Expose()
@@ -93,12 +93,12 @@ class Factory(PyroObject):
     @Expose(locking=True)
     def add_from_url(self, url, name=None, node=None):
         """Download an ISO from given URL and save in ISO directory"""
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_ISO
         )
 
         if node is not None and node != get_hostname():
-            remote_node = self._get_registered_object('cluster').get_remote_node(node)
+            remote_node = self.po__get_registered_object('cluster').get_remote_node(node)
             remote_factory = remote_node.get_connection('iso_factory')
             remote_iso = remote_factory.add_from_url(url=url, name=name)
             remote_node.annotate_object(remote_iso)
@@ -138,7 +138,7 @@ class Factory(PyroObject):
     @Expose(locking=True)
     def add_iso_from_stream(self, path, name=None):
         """Import ISO, writing binary data to the ISO file"""
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_ISO
         )
         if name is None:
@@ -149,7 +149,7 @@ class Factory(PyroObject):
         output_path = temp_directory + '/' + name
 
         iso_writer = IsoWriter(output_path, self, temp_directory, path)
-        self._register_object(iso_writer)
+        self.po__register_object(iso_writer)
         return iso_writer
 
 
@@ -174,7 +174,7 @@ class IsoWriter(PyroObject):
     @Expose()
     def write_data(self, data):
         """Write data to the ISO file"""
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_ISO
         )
         self.fh.write(binascii.unhexlify(data))
@@ -182,7 +182,7 @@ class IsoWriter(PyroObject):
     @Expose()
     def write_end(self):
         """End writing object, close FH and import ISO"""
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_ISO
         )
         if self.fh:

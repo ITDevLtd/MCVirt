@@ -40,7 +40,7 @@ class Factory(PyroObject):
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the group factory on a remote node"""
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -50,7 +50,7 @@ class Factory(PyroObject):
     def create(self, name):
         """Create storage backend"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
 
         # Ensure storage backend does not already exist with same name
         if self.get_id_by_name(name):
@@ -59,7 +59,7 @@ class Factory(PyroObject):
         t = Transaction()
 
         # Ensure that nodes are valid
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
 
         # Generate ID for the group
         id_ = Group.generate_id(name)
@@ -88,7 +88,7 @@ class Factory(PyroObject):
     def create_config(self, id_, config):
         """Create config for the storage backend"""
         # Check permissions
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         # Add new storage backend to MCVirt config
@@ -101,7 +101,7 @@ class Factory(PyroObject):
     def undo__create_config(self, id_, config):
         """Undo the create config"""
         # Check permissions
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def update_config(mcvirt_config):
@@ -114,7 +114,7 @@ class Factory(PyroObject):
         """List the Drbd volumes and statuses"""
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
-        self._get_registered_object('auth').set_permission_asserted()
+        self.po__get_registered_object('auth').set_permission_asserted()
 
         # Create table and add headers
         table = Texttable()
@@ -163,7 +163,7 @@ class Factory(PyroObject):
         # Create group object and cache
         if id_ not in Factory.CACHED_OBJECTS:
             group_object = Group(id_)
-            self._register_object(group_object)
+            self.po__register_object(group_object)
             Factory.CACHED_OBJECTS[id_] = group_object
 
         return Factory.CACHED_OBJECTS[id_]
@@ -180,7 +180,7 @@ class Factory(PyroObject):
     def set_config(self, group_config):
         """Add a user config to the local node."""
         # Ensure this is being run as a Cluster User
-        self._get_registered_object('auth').check_user_type('ClusterUser')
+        self.po__get_registered_object('auth').check_user_type('ClusterUser')
 
         def update_config(config):
             """Set group config"""

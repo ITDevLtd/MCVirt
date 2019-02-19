@@ -46,7 +46,7 @@ class Factory(PyroObject):
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the current storage backend object on a remote node"""
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -116,9 +116,9 @@ class Factory(PyroObject):
     @Expose()
     def validate_config(self, storage_type, config):
         """Perform the class method validate_config"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
         return self.get_class(storage_type).validate_config(
-            cluster=self._get_registered_object('cluster'),
+            cluster=self.po__get_registered_object('cluster'),
             config=config
         )
 
@@ -127,7 +127,7 @@ class Factory(PyroObject):
                node_config={}):
         """Create storage backend"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         # Ensure storage backend does not already exist with same name
         if self.get_id_by_name(name):
@@ -136,7 +136,7 @@ class Factory(PyroObject):
         t = Transaction()
 
         # Ensure that nodes are valid
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
 
         for node in node_config:
             cluster.ensure_node_exists(node, include_local=True)
@@ -172,7 +172,7 @@ class Factory(PyroObject):
 
         # If no nodes have been specified, get all nodes in cluster
         if not node_config:
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             node_config = {
                 node: {'location': None}
                 for node in cluster.get_nodes(return_all=True, include_local=True)
@@ -231,7 +231,7 @@ class Factory(PyroObject):
         """List the Drbd volumes and statuses"""
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
-        self._get_registered_object('auth').set_permission_asserted()
+        self.po__get_registered_object('auth').set_permission_asserted()
 
         # Create table and add headers
         table = Texttable()
@@ -257,9 +257,9 @@ class Factory(PyroObject):
     @Expose(remote_nodes=True)
     def node_pre_check(self, location, storage_type):
         """Ensure node is suitable for storage backend"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
-        cluster = self._get_registered_object('cluster')
-        libvirt_config = self._get_registered_object('libvirt_config')
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
+        cluster = self.po__get_registered_object('cluster')
+        libvirt_config = self.po__get_registered_object('libvirt_config')
         self.get_class(storage_type).node_pre_check(cluster=cluster,
                                                     libvirt_config=libvirt_config,
                                                     location=location)
@@ -300,7 +300,7 @@ class Factory(PyroObject):
         # Create required storage object, based on type
         if id_ not in Factory.CACHED_OBJECTS:
             storage_object = self.get_class(storage_type)(id_)
-            self._register_object(storage_object)
+            self.po__register_object(storage_object)
             Factory.CACHED_OBJECTS[id_] = storage_object
 
         return Factory.CACHED_OBJECTS[id_]

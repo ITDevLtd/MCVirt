@@ -36,9 +36,9 @@ class LocalUser(UserBase):
         """Change the current user's password."""
         # Check that the current user is the same as this user, or that current user has
         # the correct permissions
-        actual_user = self._get_registered_object('mcvirt_session').get_proxy_user_object()
+        actual_user = self.po__get_registered_object('mcvirt_session').get_proxy_user_object()
         if actual_user.get_username() != self.get_username():
-            self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+            self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
 
         self._set_password(new_password)
 
@@ -46,13 +46,13 @@ class LocalUser(UserBase):
     def add_permission(self, permission):
         """Add permissoin to the user"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         ArgumentValidator.validate_permission(permission)
 
         if permission in self._get_config()['global_permissions']:
             raise UserAlreadyHasPermissionError('User already has permission %s' % permission)
 
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         self.add_permission_to_user_config(nodes=cluster.get_nodes(include_local=True),
                                            permission=permission)
 
@@ -70,13 +70,13 @@ class LocalUser(UserBase):
     def remove_permission(self, permission):
         """Remove permissoin from the user"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         ArgumentValidator.validate_permission(permission)
 
         if permission not in self._get_config()['global_permissions']:
             raise UserDoesNotHavePermissionError('User does not have permission %s' % permission)
 
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         self.remove_permission_from_user_config(nodes=cluster.get_nodes(include_local=True),
                                                 permission=permission)
 

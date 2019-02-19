@@ -55,7 +55,7 @@ class Auth(PyroObject):
                 Pyro4.current_context.INTERNAL_REQUEST):
             return True
 
-        user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
+        user_object = self.po__get_registered_object('mcvirt_session').get_current_user_object()
         if user_object.__class__.__name__ in user_type_names:
             return True
         else:
@@ -121,10 +121,10 @@ class Auth(PyroObject):
             return True
 
         if user_object is None:
-            user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
+            user_object = self.po__get_registered_object('mcvirt_session').get_current_user_object()
 
         if vm_object:
-            self._convert_remote_object(vm_object)
+            self.po__convert_remote_object(vm_object)
 
         # Check the users permissions and determine if the permission is present
         if permission_enum in user_object.get_permissions(virtual_machine=vm_object):
@@ -138,7 +138,7 @@ class Auth(PyroObject):
         # Cluster users can do anything
         if self.check_user_type('ClusterUser'):
             return True
-        user_object = self._get_registered_object('mcvirt_session').get_proxy_user_object()
+        user_object = self.po__get_registered_object('mcvirt_session').get_proxy_user_object()
         username = user_object.get_username()
         superusers = self.get_superusers()
 
@@ -152,8 +152,8 @@ class Auth(PyroObject):
     @Expose(locking=True)
     def add_superuser(self, user_object, ignore_duplicate=False):
         """Add a new superuser."""
-        assert isinstance(self._convert_remote_object(user_object),
-                          self._get_registered_object('user_factory').USER_CLASS)
+        assert isinstance(self.po__convert_remote_object(user_object),
+                          self.po__get_registered_object('user_factory').USER_CLASS)
         ArgumentValidator.validate_boolean(ignore_duplicate)
 
         # Ensure the user is a superuser
@@ -161,7 +161,7 @@ class Auth(PyroObject):
             raise InsufficientPermissionsException(
                 'User must be a superuser to manage superusers'
             )
-        user_object = self._convert_remote_object(user_object)
+        user_object = self.po__convert_remote_object(user_object)
         username = user_object.get_username()
 
         mcvirt_config = MCVirtConfig()
@@ -178,7 +178,7 @@ class Auth(PyroObject):
                 'User \'%s\' is already a superuser' % username
             )
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remote_command(connection):
                 """Add superuser to remote node"""
                 remote_user_factory = connection.get_connection('user_factory')
@@ -186,14 +186,14 @@ class Auth(PyroObject):
                 remote_auth = connection.get_connection('auth')
                 remote_auth.add_superuser(remote_user, ignore_duplicate=ignore_duplicate)
 
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
     @Expose(locking=True)
     def delete_superuser(self, user_object):
         """Remove a superuser."""
-        assert isinstance(self._convert_remote_object(user_object),
-                          self._get_registered_object('user_factory').USER_CLASS)
+        assert isinstance(self.po__convert_remote_object(user_object),
+                          self.po__get_registered_object('user_factory').USER_CLASS)
 
         # Ensure the user is a superuser
         if not self.is_superuser():
@@ -201,7 +201,7 @@ class Auth(PyroObject):
                 'User must be a superuser to manage superusers'
             )
 
-        user_object = self._convert_remote_object(user_object)
+        user_object = self.po__convert_remote_object(user_object)
         username = user_object.get_username()
 
         # Ensure user to be removed is a superuser
@@ -216,7 +216,7 @@ class Auth(PyroObject):
         mcvirt_config.update_config(update_config, 'Removed \'%s\' from superuser group' %
                                                    username)
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remote_command(connection):
                 """Remove superuser from remote nodes"""
                 remote_user_factory = connection.get_connection('user_factory')
@@ -224,7 +224,7 @@ class Auth(PyroObject):
                 remote_auth = connection.get_connection('auth')
                 remote_auth.delete_superuser(remote_user)
 
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
     def copy_permissions(self, source_vm, dest_vm):

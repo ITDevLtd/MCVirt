@@ -138,7 +138,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         else:
             Pyro4.current_context.cluster_master = True
 
-    def handshake__set_has_lock(self, data, user_object):
+    def handshake__setpo__has_lock(self, data, user_object):
         """Set has lock in context"""
         if user_object.CLUSTER_USER and Annotations.HAS_LOCK in data:
             Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
@@ -155,7 +155,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         else:
             Pyro4.current_context.ignore_cluster = False
 
-    def handshake__set_ignore_drbd(self, data, user_object):
+    def handshake__setpo__ignore_drbd(self, data, user_object):
         """Set ignore drbd in context"""
         auth = self.registered_factories['auth']
         if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
@@ -194,11 +194,11 @@ class BaseRpcDaemon(Pyro4.Daemon):
             self.handshake__set_cluster_master(data, user_object)
 
             # Set has lock
-            self.handshake__set_has_lock(data, user_object)
+            self.handshake__setpo__has_lock(data, user_object)
 
             # Set ignore cluster and DRBD
             self.handshake__set_ignore_cluster(data, user_object)
-            self.handshake__set_ignore_drbd(data, user_object)
+            self.handshake__setpo__ignore_drbd(data, user_object)
 
             # Perform node version check
             self.handshake__check_cluster_version()

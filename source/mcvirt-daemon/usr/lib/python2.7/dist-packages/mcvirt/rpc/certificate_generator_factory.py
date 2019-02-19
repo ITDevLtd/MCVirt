@@ -32,8 +32,8 @@ class CertificateGeneratorFactory(PyroObject):
         """Obtain a certificate generator object for a given server"""
         if (server, remote) not in CertificateGeneratorFactory.CACHED_OBJECTS:
             cert_generator = CertificateGenerator(server, remote=remote)
-            self._register_object(cert_generator)
-            if not self._is_pyro_initialised:
+            self.po__register_object(cert_generator)
+            if not self.po__is_pyro_initialised:
                 return cert_generator
             CertificateGeneratorFactory.CACHED_OBJECTS[(server, remote)] = cert_generator
 

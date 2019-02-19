@@ -81,19 +81,19 @@ class LdapFactory(PyroObject):
         """Flag as to whether LDAP authentication
         is enabled or disabled.
         """
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
 
         def update_config(config):
             """Enable LDAP in MCVirt config"""
             config['ldap']['enabled'] = enable
         MCVirtConfig().update_config(update_config, 'Updated LDAP status')
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remote_command(node_connection):
                 """Enable ldap on a remote node"""
                 remote_ldap_factory = node_connection.get_connection('ldap_factory')
                 remote_ldap_factory.set_enable(enable)
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
     def get_user_filter(self, username=None):
@@ -166,7 +166,7 @@ class LdapFactory(PyroObject):
         Setting values to None will set them to None in the config, as well as any passed
         string.
         """
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         config_changes = {}
         for config in ['server_uri', 'base_dn', 'user_search', 'bind_dn', 'bind_pass',
                        'username_attribute']:
@@ -188,10 +188,10 @@ class LdapFactory(PyroObject):
                 ca_fh.write(ca_cert)
             config_changes['ca_cert'] = ca_cert
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remote_command(node_connection):
                 """Update ldap config in remote nodes"""
                 remote_ldap_factory = node_connection.get_connection('ldap_factory')
                 remote_ldap_factory.set_config(**config_changes)
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)

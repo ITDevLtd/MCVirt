@@ -70,48 +70,48 @@ class PyroObject(object):
         return True
 
     @property
-    def _is_pyro_initialised(self):
+    def po__is_pyro_initialised(self):
         """Determine if object is registered with the Pyro deamon"""
         return '_pyroDaemon' in self.__dict__.keys()
 
     @property
-    def _cluster_disabled(self):
+    def po__cluster_disabled(self):
         """Determine if the cluster has been actively disabled"""
         # @TODO Implement this using Pyro annotations and current_context
-        if self._is_pyro_initialised and 'ignore_cluster' in dir(Pyro4.current_context):
+        if self.po__is_pyro_initialised and 'ignore_cluster' in dir(Pyro4.current_context):
             return Pyro4.current_context.ignore_cluster
         else:
             return False
 
     @property
-    def _ignore_drbd(self):
+    def po__ignore_drbd(self):
         """Determine if DRBD statuses are being actively ignored"""
-        if self._is_pyro_initialised and 'ignore_drbd' in dir(Pyro4.current_context):
+        if self.po__is_pyro_initialised and 'ignore_drbd' in dir(Pyro4.current_context):
             return Pyro4.current_context.ignore_drbd
         else:
             return False
 
     @property
-    def _is_cluster_master(self):
+    def po__is_cluster_master(self):
         """Determine if the local node is acting as cluster master for the command"""
-        if self._is_pyro_initialised and 'cluster_master' in dir(Pyro4.current_context):
+        if self.po__is_pyro_initialised and 'cluster_master' in dir(Pyro4.current_context):
             return Pyro4.current_context.cluster_master
         else:
             return True
 
     @property
-    def _has_lock(self):
+    def po__has_lock(self):
         """Determine if the current session holds the global lock"""
-        if self._is_pyro_initialised and 'has_lock' in dir(Pyro4.current_context):
+        if self.po__is_pyro_initialised and 'has_lock' in dir(Pyro4.current_context):
             return Pyro4.current_context.has_lock
         else:
             # If not defined, assume that we do not have the lock
             return False
 
-    def _register_object(self, local_object, debug=True):
+    def po__register_object(self, local_object, debug=True):
         """Register an object with the pyro daemon"""
         return_value = False
-        if self._is_pyro_initialised:
+        if self.po__is_pyro_initialised:
             try:
                 if debug:
                     Syslogger.logger().debug('Registering object (dynamic): %s' % local_object)
@@ -125,17 +125,17 @@ class PyroObject(object):
 
         return return_value
 
-    def _convert_remote_object(self, remote_object):
+    def po__convert_remote_object(self, remote_object):
         """Return a local instance of a remote object"""
         # Ensure that object is a remote object
-        if self._is_pyro_initialised and '_pyroUri' in dir(remote_object):
+        if self.po__is_pyro_initialised and '_pyroUri' in dir(remote_object):
             # Obtain daemon instance of object
             return self._pyroDaemon.objectsById[remote_object._pyroUri.object]
         return remote_object
 
-    def _get_registered_object(self, object_name):
+    def po__get_registered_object(self, object_name):
         """Return objects registered in the Pyro Daemon"""
-        if self._is_pyro_initialised and object_name in self._pyroDaemon.registered_factories:
+        if self.po__is_pyro_initialised and object_name in self._pyroDaemon.registered_factories:
             return self._pyroDaemon.registered_factories[object_name]
         elif ('_pyro_server_ref' in dir(self) and
                 object_name in self._pyro_server_ref.registered_factories):
@@ -145,7 +145,7 @@ class PyroObject(object):
 
     def unregister_object(self, obj=None, debug=True):
         """Unregister object from the Pyro Daemon"""
-        if self._is_pyro_initialised:
+        if self.po__is_pyro_initialised:
             if obj is None:
                 obj = self
             try:

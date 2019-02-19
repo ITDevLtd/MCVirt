@@ -73,7 +73,7 @@ class UserBase(PyroObject):
         if not self.DISTRIBUTED:
             raise InvalidUserTypeException('Cannot get remote object of non-distributed user')
 
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -87,7 +87,7 @@ class UserBase(PyroObject):
     def is_superuser(self):
         """Determine if the user is a superuser of MCVirt."""
         username = self.get_username()
-        superusers = self._get_registered_object('auth').get_superusers()
+        superusers = self.po__get_registered_object('auth').get_superusers()
 
         return username in superusers
 
@@ -130,7 +130,7 @@ class UserBase(PyroObject):
     @Expose()
     def get_config(self):
         """Return the configuration of the user."""
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_USERS
         )
         return self._get_config()
@@ -169,7 +169,7 @@ class UserBase(PyroObject):
             update_config, 'Updated password for \'%s\'' % self.get_username()
         )
 
-        if self.DISTRIBUTED and self._is_cluster_master:
+        if self.DISTRIBUTED and self.po__is_cluster_master:
             def remote_command(node_connection):
                 """Update password hash in user config on remote nodes"""
                 remote_user_factory = node_connection.get_connection('user_factory')
@@ -177,7 +177,7 @@ class UserBase(PyroObject):
                 node_connection.annotate_object(remote_user)
                 remote_user.set_password(new_password)
 
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
     def _hash_password(self, password):
@@ -202,7 +202,7 @@ class UserBase(PyroObject):
     def add_permission(self, permission):
         """Add permissoin to the user"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         raise InvalidUserTypeException(
             'Cannot modify individual permissions for this type of user')
 
@@ -210,20 +210,20 @@ class UserBase(PyroObject):
     def remove_permission(self, permission):
         """Add permissoin to the user"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         raise InvalidUserTypeException(
             'Cannot modify individual permissions for this type of user')
 
     def get_groups(self, global_=True, virtual_machine=None, all_virtual_machines=False):
         """Get groups that the user is part of"""
-        group_factory = self._get_registered_object('group_factory')
+        group_factory = self.po__get_registered_object('group_factory')
 
         # Create list of virtual machines, whether VM passed or all_virtual_machines
         # specified
         if virtual_machine:
-            virtual_machines = [self._convert_remote_object(virtual_machine)]
+            virtual_machines = [self.po__convert_remote_object(virtual_machine)]
         elif all_virtual_machines:
-            virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+            virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
             virtual_machines = virtual_machine_factory.get_all_virtual_machines()
         else:
             virtual_machines = []
@@ -259,7 +259,7 @@ class UserBase(PyroObject):
         # Get permission overrides for virtual machine
         if virtual_machine:
             # Get VM user permission overrides and add permissions
-            virtual_machine = self._convert_remote_object(virtual_machine)
+            virtual_machine = self.po__convert_remote_object(virtual_machine)
             vm_permission_overrides = virtual_machine.get_config_object(). \
                 getPermissionConfig()['users']
             if self.get_username() in vm_permission_overrides:
@@ -271,7 +271,7 @@ class UserBase(PyroObject):
     @Expose(locking=True)
     def delete(self):
         """Delete the current user from MCVirt config"""
-        auth_object = self._get_registered_object('auth')
+        auth_object = self.po__get_registered_object('auth')
         auth_object.assert_permission(
             PERMISSIONS.MANAGE_USERS
         )
@@ -279,14 +279,14 @@ class UserBase(PyroObject):
         # Remove any global/VM-specific permissions
         if self.get_username() in auth_object.get_superusers():
             auth_object.delete_superuser(self)
-        group_factory = self._get_registered_object('group_factory')
-        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+        group_factory = self.po__get_registered_object('group_factory')
+        virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
         for virtual_machine in [None] + virtual_machine_factory.get_all_virtual_machines():
             for group in group_factory.get_all():
                 if self.get_username() in group.get_users(virtual_machine=virtual_machine):
                     group.remove_user(user=self, virtual_machine=virtual_machine)
 
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         # If the user is distributed, remove from all nodes
         remove_kwargs = {}
         if self.DISTRIBUTED:
@@ -302,8 +302,8 @@ class UserBase(PyroObject):
         MCVirtConfig().update_config(update_config, 'Deleted user \'%s\'' % self.get_username())
 
         # Unregister and remove cached object
-        if self.get_username() in self._get_registered_object('user_factory').CACHED_OBJECTS:
-            del self._get_registered_object('user_factory').CACHED_OBJECTS[self.get_username()]
+        if self.get_username() in self.po__get_registered_object('user_factory').CACHED_OBJECTS:
+            del self.po__get_registered_object('user_factory').CACHED_OBJECTS[self.get_username()]
         self.unregister_object()
 
     @staticmethod

@@ -31,9 +31,9 @@ class Factory(PyroObject):
     @Expose(locking=True)
     def create(self, virtual_machine, network_object, mac_address=None):
         """Create a network interface for the local VM"""
-        virtual_machine = self._convert_remote_object(virtual_machine)
-        network_object = self._convert_remote_object(network_object)
-        self._get_registered_object('auth').assert_permission(
+        virtual_machine = self.po__convert_remote_object(virtual_machine)
+        network_object = self.po__convert_remote_object(network_object)
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM, virtual_machine
         )
 
@@ -49,7 +49,7 @@ class Factory(PyroObject):
             update_vm_config, 'Added network adapter to \'%s\' on \'%s\' network' %
             (virtual_machine.get_name(), network_object.get_name()))
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remote_command(node_connection):
                 """Add network to remote nodes"""
                 remote_vm_factory = node_connection.get_connection('virtual_machine_factory')
@@ -63,7 +63,7 @@ class Factory(PyroObject):
                     'network_adapter_factory')
                 remote_network_adapter_factory.create(
                     remote_vm, remote_network, mac_address=mac_address)
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
         network_adapter_object = self.getNetworkAdapterByMacAdress(virtual_machine, mac_address)
@@ -84,7 +84,7 @@ class Factory(PyroObject):
         """Returns an array of network interface objects for each of the
         interfaces attached to the VM"""
         interfaces = []
-        virtual_machine = self._convert_remote_object(virtual_machine)
+        virtual_machine = self.po__convert_remote_object(virtual_machine)
         vm_config = virtual_machine.get_config_object().get_config()
         for mac_address in vm_config['network_interfaces'].keys():
             interface_object = self.getNetworkAdapterByMacAdress(
@@ -97,10 +97,10 @@ class Factory(PyroObject):
     def getNetworkAdapterByMacAdress(self, virtual_machine, mac_address):
         """Returns the network adapter by a given MAC address"""
         # Ensure that MAC address is a valid network adapter for the VM
-        virtual_machine = self._convert_remote_object(virtual_machine)
+        virtual_machine = self.po__convert_remote_object(virtual_machine)
         cache_key = (mac_address, virtual_machine.get_name())
         if cache_key not in Factory.CACHED_OBJECTS:
             interface_object = NetworkAdapter(mac_address, virtual_machine)
-            self._register_object(interface_object)
+            self.po__register_object(interface_object)
             Factory.CACHED_OBJECTS[cache_key] = interface_object
         return Factory.CACHED_OBJECTS[cache_key]

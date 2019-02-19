@@ -187,7 +187,7 @@ class Function(PyroObject):
             all_nodes = kwargs['all_nodes']
             del kwargs['all_nodes']
             if all_nodes:
-                nodes = self._get_registered_object('cluster').get_nodes(
+                nodes = self.po__get_registered_object('cluster').get_nodes(
                     include_local=True)
             else:
                 nodes = [get_hostname()]
@@ -269,14 +269,14 @@ class Function(PyroObject):
     def run(self):
         """Run the function"""
         # Register instance and functions with pyro
-        self.obj._register_object(self, debug=False)
+        self.obj.po__register_object(self, debug=False)
 
         # Pause the session timeout
         self._pause_user_session()
 
         # If the machine is the cluster master, run
         # the fuction with the transaction abilities
-        if self.obj._is_cluster_master:
+        if self.obj.po__is_cluster_master:
             Transaction.register_function(self)
 
         # Catch all exceptions to ensure that user
@@ -308,7 +308,7 @@ class Function(PyroObject):
         except Exception:
             # Also try-catch the tear-down
             try:
-                if self.obj._is_cluster_master:
+                if self.obj.po__is_cluster_master:
                     # Notify that the transaction that the functino has failed
                     Transaction.function_failed(self)
             except Exception:

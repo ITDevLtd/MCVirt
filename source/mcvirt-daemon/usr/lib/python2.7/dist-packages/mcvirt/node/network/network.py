@@ -43,14 +43,14 @@ class Network(PyroObject):
     def nodes(self):
         """Return the nodes that the network is available to"""
         # Since networks are currently global, obtain all nodes
-        return self._get_registered_object('cluster').get_nodes(return_all=True,
+        return self.po__get_registered_object('cluster').get_nodes(return_all=True,
                                                                 include_local=True)
 
     @Expose(locking=True)
     def delete(self):
         """Delete a network from the node"""
         # Ensure user has permission to manage networks
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Ensure network is not connected to any VMs
         connected_vms = self._get_connected_virtual_machines()
@@ -73,14 +73,14 @@ class Network(PyroObject):
             del config['networks'][self.get_name()]
         MCVirtConfig().update_config(update_config, 'Deleted network \'%s\'' % self.get_name())
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remove_remote(node):
                 """Remove network from remote nodes"""
                 network_factory = node.get_connection('network_factory')
                 network = network_factory.get_network_by_name(self.name)
                 node.annotate_object(network)
                 network.delete()
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remove_remote)
 
     def _get_connected_virtual_machines(self):
@@ -88,12 +88,12 @@ class Network(PyroObject):
         connected_vms = []
 
         # Iterate over all VMs and determine if any use the network to be deleted
-        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+        virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
         for vm_object in virtual_machine_factory.get_all_virtual_machines():
 
             # Iterate over each network interface for the VM and determine if it
             # is connected to this network
-            network_adapter_factory = self._get_registered_object('network_adapter_factory')
+            network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
             all_vm_interfaces = network_adapter_factory.getNetworkAdaptersByVirtualMachine(
                 vm_object)
             contains_connected_interface = False
@@ -111,7 +111,7 @@ class Network(PyroObject):
 
     def _get_libvirt_object(self):
         """Return the LibVirt object for the network"""
-        return self._get_registered_object(
+        return self.po__get_registered_object(
             'libvirt_connector'
         ).get_connection().networkLookupByName(self.name)
 
@@ -136,7 +136,7 @@ class Network(PyroObject):
         """Ensure that network is available on a given node"""
         # Default to local node
         if node is None:
-            node = self._get_registered_object('cluster').get_hostname()
+            node = self.po__get_registered_object('cluster').get_hostname()
 
         # Check if it's available and raise an exception is it's not available
         if not self.check_available_on_node(node=node):

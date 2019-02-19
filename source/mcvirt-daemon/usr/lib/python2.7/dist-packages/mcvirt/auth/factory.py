@@ -60,7 +60,7 @@ class Factory(PyroObject):
     @Expose()
     def create(self, username, password, user_type=LocalUser):
         """Create a user."""
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_USERS
         )
 
@@ -103,21 +103,21 @@ class Factory(PyroObject):
             config['users'][username] = user_config
         MCVirtConfig().update_config(update_config, 'Create user \'%s\'' % username)
 
-        if user_type.DISTRIBUTED and self._is_cluster_master:
+        if user_type.DISTRIBUTED and self.po__is_cluster_master:
             # Create the user on the other nodes in the cluster
             def create_user_remote(node_connection):
                 """Create user on remote node"""
                 remote_user_factory = node_connection.get_connection('user_factory')
                 remote_user_factory.create(username, password)
 
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(create_user_remote)
 
     @Expose()
     def add_config(self, username, user_config):
         """Add a user config to the local node."""
         # Ensure this is being run as a Cluster User
-        self._get_registered_object('auth').check_user_type('ClusterUser')
+        self.po__get_registered_object('auth').check_user_type('ClusterUser')
 
         def update_config(config):
             """Add user config to MCVirt config"""
@@ -141,7 +141,7 @@ class Factory(PyroObject):
             if username in user_class.get_all_usernames():
                 if username not in Factory.CACHED_OBJECTS:
                     Factory.CACHED_OBJECTS[username] = user_class(username=username)
-                    self._register_object(Factory.CACHED_OBJECTS[username])
+                    self.po__register_object(Factory.CACHED_OBJECTS[username])
                 return Factory.CACHED_OBJECTS[username]
 
         raise UserDoesNotExistException('User %s does not exist' %
@@ -159,7 +159,7 @@ class Factory(PyroObject):
         """List the Drbd volumes and statuses"""
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
-        self._get_registered_object('auth').set_permission_asserted()
+        self.po__get_registered_object('auth').set_permission_asserted()
 
         # Create table and add headers
         table = Texttable()

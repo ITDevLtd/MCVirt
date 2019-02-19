@@ -69,7 +69,7 @@ class Group(PyroObject):
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the group object on a remote node"""
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -82,23 +82,23 @@ class Group(PyroObject):
     @Expose(locking=True)
     def add_user(self, user, virtual_machine=None, ignore_duplicate=False):
         """Add uesr to group"""
-        assert isinstance(self._convert_remote_object(user),
-                          self._get_registered_object('user_factory').USER_CLASS)
+        assert isinstance(self.po__convert_remote_object(user),
+                          self.po__get_registered_object('user_factory').USER_CLASS)
         if virtual_machine:
-            assert isinstance(self._convert_remote_object(virtual_machine),
-                              self._get_registered_object(
+            assert isinstance(self.po__convert_remote_object(virtual_machine),
+                              self.po__get_registered_object(
                                   'virtual_machine_factory').VIRTUAL_MACHINE_CLASS)
         ArgumentValidator.validate_boolean(ignore_duplicate)
 
         if virtual_machine is not None:
-            virtual_machine = self._convert_remote_object(virtual_machine)
+            virtual_machine = self.po__convert_remote_object(virtual_machine)
 
         # Check if user running script is able to add users to permission group
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUP_MEMBERS,
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUP_MEMBERS,
                                                               vm_object=virtual_machine)
 
         # Convert remote objects
-        user = self._convert_remote_object(user)
+        user = self.po__convert_remote_object(user)
 
         # Ensure that the user is not already in the group
         if (user in self.get_users(virtual_machine=virtual_machine) and
@@ -106,7 +106,7 @@ class Group(PyroObject):
             raise DuplicatePermissionException('User %s already in group %s' %
                                                (user.get_username(), self.name))
 
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         if virtual_machine:
             # Convert remote objects
             self.add_user_to_vm_config(
@@ -119,11 +119,11 @@ class Group(PyroObject):
     def add_user_to_config(self, user):
         """Add user to group config"""
         # Check permissions
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         # Convert remote objects
-        user = self._convert_remote_object(user)
+        user = self.po__convert_remote_object(user)
 
         def update_config(config):
             """Update config"""
@@ -135,12 +135,12 @@ class Group(PyroObject):
     def add_user_to_vm_config(self, user, virtual_machine):
         """Add user to group config"""
         # Check permissions
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         # Convert remote objects
-        virtual_machine = self._convert_remote_object(virtual_machine)
-        user = self._convert_remote_object(user)
+        virtual_machine = self.po__convert_remote_object(virtual_machine)
+        user = self.po__convert_remote_object(user)
 
         def update_config(config):
             """Update VM config"""
@@ -158,20 +158,20 @@ class Group(PyroObject):
     def remove_user(self, user, virtual_machine=None):
         """Remove user from group"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUP_MEMBERS,
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUP_MEMBERS,
                                                               vm_object=virtual_machine)
 
         # Convert remote objects
         if virtual_machine is not None:
-            virtual_machine = self._convert_remote_object(virtual_machine)
-        user = self._convert_remote_object(user)
+            virtual_machine = self.po__convert_remote_object(virtual_machine)
+        user = self.po__convert_remote_object(user)
 
         # Ensure that the user is not already in the group
         if user not in self.get_users(virtual_machine=virtual_machine):
             raise UserNotPresentInGroup('User %s not in group %s' %
                                         (user.get_username(), self.name))
 
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         if virtual_machine:
             self.remove_user_from_vm_config(user, virtual_machine,
                                             nodes=cluster.get_nodes(include_local=True))
@@ -182,11 +182,11 @@ class Group(PyroObject):
     def remove_user_from_config(self, user):
         """Add user to group config"""
         # Check permissions
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         # Convert remote objects
-        user = self._convert_remote_object(user)
+        user = self.po__convert_remote_object(user)
 
         def update_config(config):
             """Update config"""
@@ -198,12 +198,12 @@ class Group(PyroObject):
     def remove_user_from_vm_config(self, user, virtual_machine):
         """Add user to group config"""
         # Check permissions
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         # Convert remote objects
-        virtual_machine = self._convert_remote_object(virtual_machine)
-        user = self._convert_remote_object(user)
+        virtual_machine = self.po__convert_remote_object(virtual_machine)
+        user = self.po__convert_remote_object(user)
 
         def update_config(config):
             """Update VM config"""
@@ -219,7 +219,7 @@ class Group(PyroObject):
 
     def in_use(self):
         """Determine if there are any users in the group"""
-        vm_factory = self._get_registered_object('virtual_machine_factory')
+        vm_factory = self.po__get_registered_object('virtual_machine_factory')
         for virtual_machine in [None] + vm_factory.get_all_virtual_machines():
             if self.get_users(virtual_machine=virtual_machine):
                 return True
@@ -230,21 +230,21 @@ class Group(PyroObject):
     def delete(self):
         """Shared function to remove storage"""
         # Check permissions
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
 
         # Determine if storage backend if used by VMs
         if self.in_use():
             raise GropuInUseError('Storage backend cannot be removed as it contains users')
 
         # Remove VM from MCVirt configuration
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         self.remove_config(nodes=cluster.get_nodes(include_local=True))
 
     @Expose(remote_nodes=True)
     def remove_config(self):
         """Remove VM from MCVirt configuration"""
         # Check permissions
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def update_mcvirt_config(config):
@@ -257,14 +257,14 @@ class Group(PyroObject):
         )
 
         # Remove cached pyro object
-        storage_factory = self._get_registered_object('group_factory')
+        storage_factory = self.po__get_registered_object('group_factory')
         if self.id_ in storage_factory.CACHED_OBJECTS:
             self.unregister_object()
             del storage_factory.CACHED_OBJECTS[self.id_]
 
     def get_config(self):
         """Get config for storage backend"""
-        return self._get_registered_object('group_factory').get_config()[self.id_]
+        return self.po__get_registered_object('group_factory').get_config()[self.id_]
 
     def get_vm_config(self, virtual_machine):
         """Return the configuration for the group in a VM"""
@@ -287,17 +287,17 @@ class Group(PyroObject):
         """Old style method for exposing the get_users method.
         Difficult to use other methods, since get_users is used to determine permissions
         """
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
         return self.get_users(*args, **kwargs)
 
     def get_users(self, virtual_machine=None):
         """Return the users assigned to the group, either global or a VM"""
-        user_factory = self._get_registered_object('user_factory')
+        user_factory = self.po__get_registered_object('user_factory')
         if virtual_machine is None:
             return [user_factory.get_user_by_username(username)
                     for username in self.get_config()['users']]
         else:
-            virtual_machine = self._convert_remote_object(virtual_machine)
+            virtual_machine = self.po__convert_remote_object(virtual_machine)
             return [user_factory.get_user_by_username(user)
                     for user in self.get_vm_config(virtual_machine)['users']]
 
@@ -308,7 +308,7 @@ class Group(PyroObject):
     @Expose(locking=True)
     def add_permission(self, permission):
         """Add a permission to the group"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
 
         # Check that permission is valid
         ArgumentValidator.validate_permission(permission)
@@ -319,13 +319,13 @@ class Group(PyroObject):
                 'Group \'%s\' already contains permission \'%s\'' %
                 (self.name, permission))
 
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         self.add_permission_to_config(permission, nodes=cluster.get_nodes(include_local=True))
 
     @Expose(locking=True, remote_nodes=True, undo_method='remove_permission_from_config')
     def add_permission_to_config(self, permission):
         """Add permission from group config"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser', allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser', allow_indirect=True)
 
         def update_config(config):
             """Update group config"""
@@ -337,7 +337,7 @@ class Group(PyroObject):
     @Expose(locking=True)
     def remove_permission(self, permission):
         """Remove a permission from the group"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
 
         ArgumentValidator.validate_permission(permission)
         permission_enum = PERMISSIONS[permission]
@@ -347,13 +347,13 @@ class Group(PyroObject):
                 'Group \'%s\' does not contain permission \'%s\'' %
                 (self.name, permission))
 
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         self.remove_permission_from_config(permission, nodes=cluster.get_nodes(include_local=True))
 
     @Expose(locking=True, remote_nodes=True, undo_method='add_permission_to_config')
     def remove_permission_from_config(self, permission):
         """Remove permission from group config"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser', allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser', allow_indirect=True)
 
         def update_config(config):
             """Update group config"""

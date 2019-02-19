@@ -42,7 +42,7 @@ class VirtualMachineStatisticsFactory(PyroObject):
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the statistics factory on a remote node"""
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -51,7 +51,7 @@ class VirtualMachineStatisticsFactory(PyroObject):
     def initialise(self):
         """Detect running VMs on local node and create statistics agents"""
         # Check all VMs
-        for virtual_machine in self._get_registered_object(
+        for virtual_machine in self.po__get_registered_object(
                 'virtual_machine_factory').get_all_virtual_machines():
 
             Syslogger.logger().debug('Registering statistics daemon for: %s' %
@@ -72,7 +72,7 @@ class VirtualMachineStatisticsFactory(PyroObject):
         """Get a statistics obect for a given virtual machine"""
         if virtual_machine.get_name() not in self.statistics_agents:
             stats_agent = VirtualMachineStatisticsAgent(virtual_machine)
-            self._register_object(stats_agent)
+            self.po__register_object(stats_agent)
             self.statistics_agents[virtual_machine.get_name()] = stats_agent
         return self.statistics_agents[virtual_machine.get_name()]
 
@@ -88,13 +88,13 @@ class VirtualMachineStatisticsFactory(PyroObject):
         ArgumentValidator.validate_positive_integer(interval)
 
         # Check permissions
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
 
         self.update_statistics_config(
             change_dict={'interval': interval},
             reason='Update global statistics interval',
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
 
 class VirtualMachineStatisticsAgent(RepeatTimer):
@@ -113,7 +113,7 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
 
     def insert_into_stat_db(self):
         """Add statistics to statistics database"""
-        db_factory = self._get_registered_object('database_factory')
+        db_factory = self.po__get_registered_object('database_factory')
         db_rows = [
             (StatisticsDeviceType.VIRTUAL_MACHINE.value,
              self.virtual_machine.id_,

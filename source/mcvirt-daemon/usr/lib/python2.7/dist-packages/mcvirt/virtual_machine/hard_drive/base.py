@@ -119,7 +119,7 @@ class Base(PyroObject):
         """Return the storage backend for the hard drive"""
         if self._storage_backend is None:
             storage_backend_id = self.get_config_object().get_config()['storage_backend']
-            self._storage_backend = self._get_registered_object(
+            self._storage_backend = self.po__get_registered_object(
                 'storage_factory').get_object(storage_backend_id)
 
         return self._storage_backend
@@ -166,7 +166,7 @@ class Base(PyroObject):
 
     def get_attachment_object(self):
         """Obtain the VM object for the resource"""
-        return self._get_registered_object(
+        return self.po__get_registered_object(
             'hard_drive_attachment_factory').get_object_by_hard_drive(self)
 
     def get_virtual_machine(self):
@@ -179,7 +179,7 @@ class Base(PyroObject):
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the current hard drive object on a remote node"""
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -192,7 +192,7 @@ class Base(PyroObject):
     @Expose(remote_nodes=True)
     def ensure_exists(self):
         """Ensure the disk exists on the local node"""
-        self._get_registered_object('auth').assert_user_type(
+        self.po__get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         self.storage_backend.ensure_available()
@@ -207,7 +207,7 @@ class Base(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def update_config(self, change_dict, reason, _f):
         """Update hard drive config using dict"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def update_config(config):
@@ -221,7 +221,7 @@ class Base(PyroObject):
     def undo__update_config(self, change_dict, reason, original_config=None,
                             *args, **kwargs):
         """Undo config change"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def revert_config(config):
@@ -278,7 +278,7 @@ class Base(PyroObject):
         """Delete the logical volume for the disk"""
         vm_object = self.get_virtual_machine()
         # Ensure that the user has permissions to add delete storage
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
             vm_object
         )
@@ -286,7 +286,7 @@ class Base(PyroObject):
         # If the storage backend is available on one to more nodes,
         # ensure that the hard drive exists. Prefer local host
         check_node = get_hostname() if get_hostname() in self.nodes else self.nodes[0]
-        if self._is_cluster_master or check_node == get_hostname():
+        if self.po__is_cluster_master or check_node == get_hostname():
             self.ensure_exists(nodes=[check_node])
 
         if vm_object:
@@ -300,7 +300,7 @@ class Base(PyroObject):
         self._removeStorage(local_only=local_only)
 
         # Remove config
-        nodes = [get_hostname()] if local_only else self._get_registered_object(
+        nodes = [get_hostname()] if local_only else self.po__get_registered_object(
             'cluster').get_nodes(include_local=True)
 
         self.remove_config(nodes=nodes)
@@ -318,7 +318,7 @@ class Base(PyroObject):
             storage_backend = self.storage_backend
 
         # Create new disk object, using the same type, size and disk_id
-        new_hdd = self._get_registered_object('hard_drive_factory').create(
+        new_hdd = self.po__get_registered_object('hard_drive_factory').create(
             size=self.get_size(), storage_type=self.get_type(),
             driver=self.driver, storage_backend=storage_backend)
 
@@ -340,7 +340,7 @@ class Base(PyroObject):
     @Expose(locking=True, remote_nodes=True)
     def activate_volume(self, volume):
         """Activates a logical volume on the node/cluster"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
         # Obtain logical volume path
         volume.activate()
@@ -350,7 +350,7 @@ class Base(PyroObject):
         """Creates a snapshot of the logical volume for backing up and locks the VM"""
         vm_object = self.get_virtual_machine()
         # Ensure the user has permission to delete snapshot backups
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
             self.get_virtual_machine()
         )
@@ -383,7 +383,7 @@ class Base(PyroObject):
         """Deletes the backup snapshot for the disk and unlocks the VM"""
         vm_object = self.get_virtual_machine()
         # Ensure the user has permission to delete snapshot backups
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.BACKUP_VM,
             vm_object
         )
@@ -469,7 +469,7 @@ class Base(PyroObject):
     @Expose()
     def getDiskPath(self):
         """Exposed method for _getDiskPath"""
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_CLUSTER,
             allow_indirect=True
         )

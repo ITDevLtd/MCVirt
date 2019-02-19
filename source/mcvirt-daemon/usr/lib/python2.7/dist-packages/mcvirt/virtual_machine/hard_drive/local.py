@@ -69,7 +69,7 @@ class Local(Base):
     def increase_size(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by"""
         vm_object = self.get_virtual_machine()
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE, vm_object
         )
 
@@ -111,7 +111,7 @@ class Local(Base):
         self.ensure_exists()
 
         # Create destination hard drive, without creating actual storage
-        hard_drive_factory = self._get_registered_object('hard_drive_factory')
+        hard_drive_factory = self.po__get_registered_object('hard_drive_factory')
         new_hdd = hard_drive_factory.create(
             size=self.get_size(), storage_type=self.get_type(),
             driver=self.driver, storage_backend=self.storage_backend,
@@ -121,7 +121,7 @@ class Local(Base):
         self._get_data_volume().clone(new_hdd._get_data_volume())
 
         # Register with dest virtual machine
-        self._get_registered_object('hard_drive_attachment_factory').create(
+        self.po__get_registered_object('hard_drive_attachment_factory').create(
             destination_vm_object, new_hdd)
 
         return new_hdd

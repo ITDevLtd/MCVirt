@@ -95,7 +95,7 @@ class NetworkAdapter(PyroObject):
 
     def get_network_object(self):
         """Return the network object for the connected network"""
-        return self._get_registered_object('network_factory').get_network_by_name(
+        return self.po__get_registered_object('network_factory').get_network_by_name(
             self.getConnectedNetwork())
 
     @staticmethod
@@ -116,7 +116,7 @@ class NetworkAdapter(PyroObject):
     @Expose(locking=True)
     def change_network(self, network):
         """Change network attached to network adapter"""
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
         )
@@ -149,7 +149,7 @@ class NetworkAdapter(PyroObject):
     @Expose(locking=True)
     def delete(self):
         """Remove the given interface from the VM, based on the given MAC address"""
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
         )
@@ -181,6 +181,6 @@ class NetworkAdapter(PyroObject):
             (self.vm_object.get_name(), self.getConnectedNetwork(), self.getMacAddress()))
 
         # Unregister Pyro object and cached object
-        if cache_key in self._get_registered_object('network_adapter_factory').CACHED_OBJECTS:
-            del self._get_registered_object('network_adapter_factory').CACHED_OBJECTS[cache_key]
+        if cache_key in self.po__get_registered_object('network_adapter_factory').CACHED_OBJECTS:
+            del self.po__get_registered_object('network_adapter_factory').CACHED_OBJECTS[cache_key]
         self.unregister_object()
