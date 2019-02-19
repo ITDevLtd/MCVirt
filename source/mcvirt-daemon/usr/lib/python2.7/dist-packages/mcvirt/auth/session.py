@@ -143,9 +143,9 @@ class Session(PyroObject):
     @Expose()
     def get_session_id(self):
         """Return the client's current session ID"""
-        return self._get_session_id()
+        return self.get_session_id()
 
-    def _get_session_id(self):
+    def get_session_id(self):
         """Return the client's current session ID"""
         if 'session_id' in dir(Pyro4.current_context) and Pyro4.current_context.session_id:
             return Pyro4.current_context.session_id

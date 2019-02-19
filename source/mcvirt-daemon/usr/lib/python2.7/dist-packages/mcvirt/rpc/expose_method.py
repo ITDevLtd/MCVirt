@@ -406,28 +406,29 @@ class Function(PyroObject):
         if not undo:
             self.nodes[node]['return_val'] = response
 
-    def _convert_local_object(self, node, args, kwargs):
-        """Convert any local objects in args and kwargs to
-        get remote objects
-        """
+    @staticmethod
+    def _convert_local_object(node, args, kwargs):
+        """Convert any local objects in args and kwargs to remote objects."""
         # @TODO: Inspect lists and dicts within each argumnet
         # Create new list of args and kwargs
         args = list(args)
         kwargs = dict(kwargs)
         for itx, arg in enumerate(args):
-            if isinstance(arg, PyroObject) and arg.convert_to_remote_object_in_args:
+            if (isinstance(arg, PyroObject) and
+                    arg.convert_to_remote_object_in_args):
                 remote_object = arg.get_remote_object(node=node)
                 args[itx] = remote_object
 
         for key, val in kwargs.iteritems():
-            if isinstance(val, PyroObject) and val.convert_to_remote_object_in_args:
+            if (isinstance(val, PyroObject) and
+                    val.convert_to_remote_object_in_args):
                 remote_object = val.get_remote_object(node=node)
                 kwargs[key] = remote_object
 
         return args, kwargs
 
     def _get_response_data(self):
-        """Determine and return response data"""
+        """Determine and return response data."""
         # Return dict of node -> output, if a dict response was
         # specified
         if self.return_dict:
@@ -446,21 +447,23 @@ class Function(PyroObject):
         return None
 
     def add_undo_argument(self, **kwargs):
-        """Add an additional keyword argument to be
-        passed to the undo method, when it is run
+        """Add an additional keyword argument.
+
+        This is to be passed to the undo method, when it is run.
         """
         self.nodes[self.current_node]['kwargs'].update(kwargs)
 
     def complete(self):
-        """Mark the function as having completed
-        successfully. Once run, if any exception occurs within
+        """Mark the function as having completed successfully.
+
+        Once run, if any exception occurs within
         the function (or, if in one, the rest of the transaction),
         the undo method will be called
         """
         self.nodes[self.current_node]['complete'] = True
 
     def undo(self):
-        """Execute the undo method for the function"""
+        """Execute the undo method for the function."""
         # If the local node is in the list of complete
         # commands, then undo it first
         if (get_hostname() in self.nodes and
@@ -499,10 +502,10 @@ class Function(PyroObject):
         # Determine if session ID is present in current context and the session
         # object has
         # been set
-        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
+        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT.get_session_id():
             # Disable the expiration whilst the method runs
             Expose.SESSION_OBJECT.USER_SESSIONS[
-                Expose.SESSION_OBJECT._get_session_id()
+                Expose.SESSION_OBJECT.get_session_id()
             ].disable()
 
     def _reset_user_session(self):
@@ -510,9 +513,9 @@ class Function(PyroObject):
         # Determine if session ID is present in current context and the
         # session object has
         # been set
-        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
+        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT.get_session_id():
             # Renew session expiry
-            Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT._get_session_id()].renew()
+            Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT.get_session_id()].renew()
 
 
 class Expose(object):
