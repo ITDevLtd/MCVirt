@@ -24,12 +24,13 @@ from mcvirt.syslogger import Syslogger
 
 
 class Transaction(object):
-    """Perform a saga-transaction, allowing functions
-    that make system mofications, the ability to be rolled
-    back.
+    """Perform a saga-transaction.
+
+    This provides the ability for functions, which make system mofications,
+    to be able to be rolled back.
     """
 
-    # LIFO Stack of running transactions
+    # FILO Stack of running transactions
     transactions = []
 
     # Determine if currently undo-ing
@@ -41,7 +42,7 @@ class Transaction(object):
         return len(cls.transactions) > 0
 
     @property
-    def id(self):
+    def id_(self):
         """Return the ID of the transaction."""
         return self._id
 
@@ -62,13 +63,13 @@ class Transaction(object):
             Transaction.transactions.insert(0, self)
             Syslogger.logger().debug('Starting new transaction')
 
-    def finish(self):
+    def set_complete(self):
         """Mark the transaction as having been completed."""
         self.comlpete = True
         # Only remove transaction if it is the last
         # transaction in the stack
-        if self.id == Transaction.transactions[-1].id:
-            Syslogger.logger().debug('End of transaction stack')
+        if self.id_ == Transaction.transactions[-1].id_:
+            Syslogger.logger().debug('End of last transaction in stack')
 
             # Tear down all transactions
             for transaction in Transaction.transactions:
@@ -107,10 +108,11 @@ class Transaction(object):
                     transaction.functions.insert(0, function)
 
     @classmethod
-    def function_failed(cls, function):
-        """Called when a function fails - perform
-        the undo method on all previous functions on each of the
-        transactions
+    def on_function_fail(cls, function):
+        """Called when a function fails.
+
+        Performs the undo method on all previous functions on each of the
+        transactions.
         """
         # If already undoing transaction, do not undo the undo methods
         if Transaction.undo_state:
@@ -130,7 +132,7 @@ class Transaction(object):
 
                     # Mark the transaction as complete, removing
                     # it from global list and all functions
-                    transaction_ar.finish()
+                    transaction_ar.set_complete()
             else:
                 # Otherwise, undo single function
                 function.undo()
@@ -142,7 +144,7 @@ class Transaction(object):
             for transaction_ar in cls.transactions:
                 # Mark the transaction as complete, removing
                 # it from global list and all functions
-                transaction_ar.finish()
+                transaction_ar.set_complete()
 
             # Reset undo state flag
             Transaction.undo_state = False
@@ -310,7 +312,7 @@ class Function(PyroObject):
             try:
                 if self.obj.po__is_cluster_master:
                     # Notify that the transaction that the functino has failed
-                    Transaction.function_failed(self)
+                    Transaction.on_function_fail(self)
             except Exception:
                 # Reset user session after the command is
                 # complete

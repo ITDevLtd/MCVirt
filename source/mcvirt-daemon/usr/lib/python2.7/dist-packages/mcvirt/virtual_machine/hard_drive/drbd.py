@@ -437,7 +437,7 @@ class Drbd(Base):
 
         self.drbdSetSecondary(nodes=remote_nodes)
 
-        trans.finish()
+        trans.set_complete()
 
     @Expose()
     def removeStorage(self, *args, **kwargs):

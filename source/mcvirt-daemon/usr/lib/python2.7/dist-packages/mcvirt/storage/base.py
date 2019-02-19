@@ -312,7 +312,7 @@ class Base(PyroObject):
             # Create ID volume
             self.create_id_volume(nodes=[node_name])
 
-        t.finish()
+        t.set_complete()
 
     @Expose(locking=True, remote_nodes=True, undo_method='remove_node_from_config')
     def add_node_to_config(self, node_name, config):
@@ -389,7 +389,7 @@ class Base(PyroObject):
             node_name,
             nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
-        t.finish()
+        t.set_complete()
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def remove_node_from_config(self, node_name, config=None, _f=None):

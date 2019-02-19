@@ -76,7 +76,7 @@ class Factory(PyroObject):
 
         group_object = self.get_object(id_)
 
-        t.finish()
+        t.set_complete()
 
         return group_object
 

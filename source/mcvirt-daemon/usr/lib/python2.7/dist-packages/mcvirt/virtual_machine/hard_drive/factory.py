@@ -336,7 +336,7 @@ class Factory(PyroObject):
             self.po__get_registered_object('hard_drive_attachment_factory').create(
                 vm_object, hdd_object)
 
-        t.finish()
+        t.set_complete()
 
         return hdd_object
 
@@ -386,7 +386,7 @@ class Factory(PyroObject):
             self.po__get_registered_object('hard_drive_attachment_factory').create(
                 virtual_machine, hdd_object)
 
-        t.finish()
+        t.set_complete()
 
         return hdd_object
 

@@ -209,7 +209,7 @@ class Factory(PyroObject):
         # Create ID volume
         storage_object.create_id_volume()
 
-        t.finish()
+        t.set_complete()
 
         return storage_object
 
