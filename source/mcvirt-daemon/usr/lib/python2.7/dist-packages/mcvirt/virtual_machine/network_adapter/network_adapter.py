@@ -27,7 +27,7 @@ from mcvirt.rpc.expose_method import Expose
 
 
 class NetworkAdapter(PyroObject):
-    """Provides operations to network interfaces attached to a VM"""
+    """Provides operations to network interfaces attached to a VM."""
 
     def __init__(self, mac_address, vm_object):
         """Set member variables and obtains libvirt domain object."""
@@ -41,7 +41,7 @@ class NetworkAdapter(PyroObject):
 
     def _generateLibvirtXml(self):
         """Creates a basic XML configuration for a network interface,
-        encorporating the name of the network"""
+        encorporating the name of the network."""
         interface_xml = ET.Element('interface')
         interface_xml.set('type', 'network')
 
@@ -59,12 +59,12 @@ class NetworkAdapter(PyroObject):
         return interface_xml
 
     def _check_exists(self):
-        """Determines if the network interface is present on the VM"""
+        """Determines if the network interface is present on the VM."""
         vm_config = self.vm_object.get_config_object().get_config()
         return self.getMacAddress() in vm_config['network_interfaces']
 
     def get_libvirt_config(self):
-        """Returns a dict of the LibVirt configuration for the network interface"""
+        """Returns a dict of the LibVirt configuration for the network interface."""
         domain_config = self.vm_object.get_libvirt_config()
         interface_config = domain_config.find(
             './devices/interface[@type="network"]/mac[@address="%s"]/..' %
@@ -78,7 +78,7 @@ class NetworkAdapter(PyroObject):
         return interface_config
 
     def get_config(self):
-        """Returns a dict of the MCVirt configuration for the network interface"""
+        """Returns a dict of the MCVirt configuration for the network interface."""
         vm_config = self.vm_object.get_config_object().get_config()
         network_config = \
             {
@@ -89,18 +89,18 @@ class NetworkAdapter(PyroObject):
 
     @Expose()
     def getConnectedNetwork(self):
-        """Returns the network that a given interface is connected to"""
+        """Returns the network that a given interface is connected to."""
         interface_config = self.get_config()
         return interface_config['network']
 
     def get_network_object(self):
-        """Return the network object for the connected network"""
+        """Return the network object for the connected network."""
         return self.po__get_registered_object('network_factory').get_network_by_name(
             self.getConnectedNetwork())
 
     @staticmethod
     def generateMacAddress():
-        """Generates a random MAC address for new VM network interfaces"""
+        """Generates a random MAC address for new VM network interfaces."""
         mac = [0x00, 0x16, 0x3e,
                random.randint(0x00, 0x7f),
                random.randint(0x00, 0xff),
@@ -110,12 +110,12 @@ class NetworkAdapter(PyroObject):
 
     @Expose()
     def getMacAddress(self):
-        """Returns the MAC address of the current network object"""
+        """Returns the MAC address of the current network object."""
         return self.mac_address
 
     @Expose(locking=True)
     def change_network(self, network):
-        """Change network attached to network adapter"""
+        """Change network attached to network adapter."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
@@ -123,14 +123,14 @@ class NetworkAdapter(PyroObject):
 
         # Update the VM configuration
         def update_vm_config(config):
-            """Update VM config with new network"""
+            """Update VM config with new network."""
             config['network_interfaces'][self.getMacAddress()] = network.get_name()
         self.vm_object.get_config_object().update_config(
             update_vm_config, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %
             (self.vm_object.get_name(), self.getConnectedNetwork(), self.getMacAddress()))
 
         def update_libvirt(domain_xml):
-            """Update network in libvirt config"""
+            """Update network in libvirt config."""
             device_xml = domain_xml.find('./devices')
             interface_xml = device_xml.find(
                 './interface[@type="network"]/mac[@address="%s"]/..' %
@@ -148,7 +148,7 @@ class NetworkAdapter(PyroObject):
 
     @Expose(locking=True)
     def delete(self):
-        """Remove the given interface from the VM, based on the given MAC address"""
+        """Remove the given interface from the VM, based on the given MAC address."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
@@ -157,7 +157,7 @@ class NetworkAdapter(PyroObject):
         cache_key = (self.getMacAddress(), self.vm_object.get_name())
 
         def update_libvirt(domain_xml):
-            """Remove network from libvirt config"""
+            """Remove network from libvirt config."""
             device_xml = domain_xml.find('./devices')
             interface_xml = device_xml.find(
                 './interface[@type="network"]/mac[@address="%s"]/..' %
@@ -174,7 +174,7 @@ class NetworkAdapter(PyroObject):
 
         # Update the VM configuration
         def update_vm_config(config):
-            """Remove network interface from VM config"""
+            """Remove network interface from VM config."""
             del config['network_interfaces'][self.getMacAddress()]
         self.vm_object.get_config_object().update_config(
             update_vm_config, 'Removed network adapter from \'%s\' on \'%s\' network: %s' %

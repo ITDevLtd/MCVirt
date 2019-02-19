@@ -55,7 +55,7 @@ from mcvirt.size_converter import SizeConverter
 
 
 class Modification(Enum):
-    """An enum to represent the available modification flags"""
+    """An enum to represent the available modification flags."""
 
     WINDOWS = 'windows'
 
@@ -75,16 +75,16 @@ class VirtualMachine(PyroObject):
 
     @staticmethod
     def get_id_code():
-        """Return default Id code for object"""
+        """Return default Id code for object."""
         return 'vm'
 
     def initialise(self):
-        """Run after object is registered with pyro"""
+        """Run after object is registered with pyro."""
         # Take the oportunity to update libvirt config
         self.check_libvirt_config_update()
 
     def __eq__(self, comp):
-        """Allow for comparison of VM objects"""
+        """Allow for comparison of VM objects."""
         # Ensure class and name of object match
         if ('__class__' in dir(comp) and
                 comp.__class__ == self.__class__ and
@@ -95,7 +95,7 @@ class VirtualMachine(PyroObject):
         return False
 
     def check_libvirt_config_update(self):
-        """Determine if config updates need to be performed to libvirt"""
+        """Determine if config updates need to be performed to libvirt."""
         config = self.get_config_object().get_config()
         # Determine if applied config is older than the config version and
         # VM is registered locally
@@ -150,28 +150,28 @@ class VirtualMachine(PyroObject):
             raise VmNotRegistered('The VM is not registered on a node')
 
     def get_config_object(self):
-        """Return the configuration object for the VM"""
+        """Return the configuration object for the VM."""
         return VirtualMachineConfig(self)
 
     @Expose(locking=True)
     def set_permission_config(self, config):
-        """Set the permission config for the VM"""
+        """Set the permission config for the VM."""
         # Check permissions
         self.po__get_registered_object('auth').assert_user_type('ClusterUser')
 
         def update_vm_config(config):
-            """Update the VM config"""
+            """Update the VM config."""
             config['permissions'] = config
         self.get_config_object().update_config(update_vm_config, 'Sync permissions')
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def update_vm_config(self, change_dict, reason, _f):
-        """Update VM config using dict"""
+        """Update VM config using dict."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def update_config(config):
-            """Update the MCVirt config"""
+            """Update the MCVirt config."""
             _f.add_undo_argument(original_config=dict(config))
             dict_merge(config, change_dict)
 
@@ -179,12 +179,12 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def undo__update_vm_config(self, change_dict, reason, _f=None, original_config=None):
-        """Undo config change"""
+        """Undo config change."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def revert_config(config):
-            """Revert config"""
+            """Revert config."""
             config = original_config
 
         if original_config is not None:
@@ -194,19 +194,19 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_name(self):
-        """Return the name of the VM"""
+        """Return the name of the VM."""
         if self.name is None:
             self.name = self.get_config_object().get_config()['name']
         return self.name
 
     @Expose()
     def get_id(self):
-        """Return the ID of the VM"""
+        """Return the ID of the VM."""
         return self.id_
 
     @property
     def id_(self):
-        """Return ID"""
+        """Return ID."""
         return self._id
 
     def is_static(self):
@@ -228,11 +228,11 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_guest_cpu_usage(self):
-        """Return value for cpu usage"""
+        """Return value for cpu usage."""
         return self.current_guest_cpu_usage
 
     def get_guest_cpu_usage_text(self):
-        """Obtain text for cpu usage"""
+        """Obtain text for cpu usage."""
         if not self.isRegistered() or not self.is_running:
             return 'Not running'
         if self.current_guest_memory_usage is None:
@@ -242,11 +242,11 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_guest_memory_usage(self):
-        """Return value for memory usage"""
+        """Return value for memory usage."""
         return self.current_guest_memory_usage
 
     def get_guest_memory_usage_text(self):
-        """Obtain text for memory usage"""
+        """Obtain text for memory usage."""
         if not self.isRegistered() or not self.is_running:
             return 'Not running'
         if self.current_guest_memory_usage is None:
@@ -295,23 +295,23 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_libvirt_xml(self):
-        """Obtain domain XML from libvirt"""
+        """Obtain domain XML from libvirt."""
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
         return self._get_libvirt_domain_object().XMLDesc()
 
     @property
     def is_running(self):
-        """Return True if VM is running"""
+        """Return True if VM is running."""
         return self._get_power_state() is PowerStates.RUNNING
 
     @property
     def is_stopped(self):
-        """Return true is VM is stopped"""
+        """Return true is VM is stopped."""
         return self._get_power_state() is PowerStates.STOPPED
 
     @Expose(locking=True)
     def stop(self):
-        """Stops the VM"""
+        """Stops the VM."""
         # Check the user has permission to start/stop VMs
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.CHANGE_VM_POWER_STATE,
@@ -342,7 +342,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def shutdown(self):
-        """Shuts down the VM the VM"""
+        """Shuts down the VM the VM."""
         # Check the user has permission to start/stop VMs
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.CHANGE_VM_POWER_STATE,
@@ -369,13 +369,13 @@ class VirtualMachine(PyroObject):
             )
 
     def ensure_stopped(self):
-        """Ensure VM is stopped"""
+        """Ensure VM is stopped."""
         if self._get_power_state() is not PowerStates.STOPPED:
             raise VmAlreadyStartedException('VM is not stopped')
 
     @Expose(locking=True)
     def start(self, iso_name=None):
-        """Starts the VM"""
+        """Starts the VM."""
         # Check the user has permission to start/stop VMs
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.CHANGE_VM_POWER_STATE,
@@ -451,7 +451,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def update_iso(self, iso_name=None):
-        """Update the ISO attached to the VM"""
+        """Update the ISO attached to the VM."""
         # Ensure user has permissions to modify VM
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM, self
@@ -473,7 +473,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def reset(self):
-        """Reset the VM"""
+        """Reset the VM."""
         # Check the user has permission to start/stop VMs
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.CHANGE_VM_POWER_STATE,
@@ -504,11 +504,11 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_power_state(self):
-        """Return the value of current power state"""
+        """Return the value of current power state."""
         return self._get_power_state().value
 
     def _get_power_state(self):
-        """Return the power state of the VM in the form of a PowerStates enum"""
+        """Return the power state of the VM in the form of a PowerStates enum."""
         if self.isRegistered():
             remote_libvirt = (self.isRegisteredRemotely() and not self.po__cluster_disabled)
             libvirt_object = self._get_libvirt_domain_object(allow_remote=remote_libvirt)
@@ -521,7 +521,7 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_agent_version_check_string(self):
-        """Check agent version"""
+        """Check agent version."""
         if not self.isRegistered():
             return 'VM is not registered'
 
@@ -541,7 +541,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def getInfo(self):
-        """Get information about the current VM"""
+        """Get information about the current VM."""
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
@@ -639,7 +639,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def delete(self, keep_disks=False, keep_config=False, local_only=False):
-        """Delete the VM - removing it from LibVirt and from the filesystem"""
+        """Delete the VM - removing it from LibVirt and from the filesystem."""
         ArgumentValidator.validate_boolean(keep_disks)
         ArgumentValidator.validate_boolean(keep_config)
         ArgumentValidator.validate_boolean(local_only)
@@ -698,7 +698,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def delete_config(self, keep_config):
-        """Remove the VM config from the disk and MCVirt config"""
+        """Remove the VM config from the disk and MCVirt config."""
         # Unregister VM
         if self.isRegisteredLocally():
             self.unregister()
@@ -707,7 +707,7 @@ class VirtualMachine(PyroObject):
         # of the parent
         if self.getCloneParent():
             def removeCloneChildConfig(vm_config):
-                """Remove a given child VM from a parent VM configuration"""
+                """Remove a given child VM from a parent VM configuration."""
                 vm_config['clone_children'].remove(self.get_name())
 
             vm_factory = self.po__get_registered_object('virtual_machine_factory')
@@ -726,12 +726,12 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def getRAM(self):
-        """Returns the amount of memory attached the VM"""
+        """Returns the amount of memory attached the VM."""
         return self.get_config_object().get_config()['memory_allocation']
 
     @Expose(locking=True)
     def update_ram(self, memory_allocation):
-        """Updates the amount of RAM allocated to a VM"""
+        """Updates the amount of RAM allocated to a VM."""
         # Convert memory and disk sizes to bytes
         memory_allocation = (memory_allocation
                              if memory_allocation is isinstance(memory_allocation, int) else
@@ -750,7 +750,7 @@ class VirtualMachine(PyroObject):
         self.ensureUnlocked()
 
         def update_libvirt(domain_xml):
-            """Update RAM allocation and unit measurement"""
+            """Update RAM allocation and unit measurement."""
             domain_xml.find('./memory').text = str(memory_allocation)
             domain_xml.find('./memory').set('unit', 'KiB')
             domain_xml.find('./currentMemory').text = str(memory_allocation)
@@ -764,12 +764,12 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def getCPU(self):
-        """Returns the number of CPU cores attached to the VM"""
+        """Returns the number of CPU cores attached to the VM."""
         return self.get_config_object().get_config()['cpu_cores']
 
     @Expose(locking=True)
     def update_cpu(self, cpu_count, old_value):
-        """Updates the number of CPU cores attached to a VM"""
+        """Updates the number of CPU cores attached to a VM."""
         ArgumentValidator.validate_positive_integer(cpu_count)
         ArgumentValidator.validate_positive_integer(old_value)
 
@@ -801,7 +801,7 @@ class VirtualMachine(PyroObject):
 
         if self.isRegistered():
             def update_libvirt(domain_xml):
-                """Update RAM allocation and unit measurement"""
+                """Update RAM allocation and unit measurement."""
                 domain_xml.find('./vcpu').text = str(cpu_count)
             self.update_libvirt_config(update_libvirt)
 
@@ -811,7 +811,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def apply_cpu_flags(self):
-        """Apply the XML changes for CPU flags"""
+        """Apply the XML changes for CPU flags."""
         self.po__get_registered_object('auth').assert_user_type(
             'ClusterUser',
             allow_indirect=True
@@ -820,7 +820,7 @@ class VirtualMachine(PyroObject):
         flags = self.get_modification_flags()
 
         def update_libvirt(domain_xml):
-            """Apply CPU flags to libvirt config"""
+            """Apply CPU flags to libvirt config."""
             cpu_section = domain_xml.find('./cpu')
 
             # Delete the CPU section if it already exists
@@ -842,25 +842,25 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_modification_flags(self):
-        """Return a list of modification flags for this VM"""
+        """Return a list of modification flags for this VM."""
         return self.get_config_object().get_config()['modifications']
 
     @staticmethod
     def check_modification_flag(flag):
-        """Check that the provided flag name is valid"""
+        """Check that the provided flag name is valid."""
         if flag not in [i.value for i in Modification]:
             raise InvalidModificationFlagException('Invalid modification flag \'%s\'' % flag)
 
     @Expose(locking=True)
     def update_modification_flags(self, *args, **kwargs):
-        """Update the modification flags for a VM"""
+        """Update the modification flags for a VM."""
 
         # Check the user has permission to modify VMs
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
         return self._update_modification_flags(*args, **kwargs)
 
     def _update_modification_flags(self, add_flags=None, remove_flags=None):
-        """Update the modification flags for a VM"""
+        """Update the modification flags for a VM."""
 
         if add_flags is None:
             add_flags = []
@@ -901,7 +901,7 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_disk_drive(self):
-        """Return a disk drive object for the VM"""
+        """Return a disk drive object for the VM."""
         if not self.disk_drive_object:
             self.disk_drive_object = DiskDrive(self)
             self.po__register_object(self.disk_drive_object)
@@ -909,19 +909,19 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_hard_drive_objects(self):
-        """Return an array of disk objects for the disks attached to the VM"""
+        """Return an array of disk objects for the disks attached to the VM."""
         return [attachment.get_hard_drive_object()
                 for attachment in self.get_hard_drive_attachments()]
 
     @Expose()
     def get_hard_drive_attachments(self):
-        """Return an array of hard drive attachments for the VM"""
+        """Return an array of hard drive attachments for the VM."""
         hard_drive_attachment_factory = self.po__get_registered_object(
             'hard_drive_attachment_factory')
         return hard_drive_attachment_factory.get_objects_by_virtual_machine(self)
 
     def get_attached_usb_devices(self):
-        """Get USB devices attached to the VM"""
+        """Get USB devices attached to the VM."""
         libvirt_config = self.get_libvirt_config()
         device_list = []
         for device_config in libvirt_config.findall('./devices/hostdev[@type="usb"]'):
@@ -932,7 +932,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def get_usb_device(self, bus, device):
-        """Get USB object attached to the VM"""
+        """Get USB object attached to the VM."""
         self.ensureRegisteredLocally()
         # Determine if device attached to another VM
         for vm_object in self.po__get_registered_object(
@@ -947,7 +947,7 @@ class VirtualMachine(PyroObject):
         return self._get_usb_device(bus, device)
 
     def _get_usb_device(self, bus, device):
-        """Get Usb Device object"""
+        """Get Usb Device object."""
         # Create USB device object, register with daemon and return
         usb_device_object = UsbDevice(bus=bus, device=device, virtual_machine=self)
         self.po__register_object(usb_device_object)
@@ -955,7 +955,7 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def remote_update_config(self, *args, **kwargs):
-        """Provide an exposed method for update_config"""
+        """Provide an exposed method for update_config."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser')
         return self.update_config(*args, **kwargs)
 
@@ -971,7 +971,7 @@ class VirtualMachine(PyroObject):
         # Update the local configuration
 
         def update_local_config(config):
-            """Update VM config"""
+            """Update VM config."""
             config_level = config
             for attribute in attribute_path[:-1]:
                 config_level = config_level[attribute]
@@ -981,7 +981,7 @@ class VirtualMachine(PyroObject):
 
         if not local_only:
             def update_config_remote(remote_object):
-                """Update remote VM config"""
+                """Update remote VM config."""
                 vm_factory = remote_object.get_connection('virtual_machine_factory')
                 remote_vm = vm_factory.get_virtual_machine_by_name(self.get_name())
                 remote_object.annotate_object(remote_vm)
@@ -994,7 +994,7 @@ class VirtualMachine(PyroObject):
 
     @staticmethod
     def get_vm_dir(name):
-        """Return the storage directory for a given VM"""
+        """Return the storage directory for a given VM."""
         return DirectoryLocation.BASE_VM_STORAGE_DIR + '/' + name
 
     def get_libvirt_config(self):
@@ -1034,17 +1034,17 @@ class VirtualMachine(PyroObject):
             raise LibvirtException('Error: An error occurred whilst updating the VM')
 
     def getCloneParent(self):
-        """Determines if a VM is a clone of another VM"""
+        """Determines if a VM is a clone of another VM."""
         return self.get_config_object().get_config()['clone_parent']
 
     def getCloneChildren(self):
-        """Returns the VMs that have been cloned from the VM"""
+        """Returns the VMs that have been cloned from the VM."""
         return self.get_config_object().get_config()['clone_children']
 
     @Expose(locking=True)
     def offlineMigrate(self, destination_node_name, start_after_migration=False,
                        wait_for_vm_shutdown=False):
-        """Performs an offline migration of a VM to another node in the cluster"""
+        """Performs an offline migration of a VM to another node in the cluster."""
         ArgumentValidator.validate_hostname(destination_node_name)
         ArgumentValidator.validate_boolean(start_after_migration)
         ArgumentValidator.validate_boolean(wait_for_vm_shutdown)
@@ -1097,7 +1097,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def onlineMigrate(self, destination_node_name):
-        """Performs an online migration of a VM to another node in the cluster"""
+        """Performs an online migration of a VM to another node in the cluster."""
         ArgumentValidator.validate_hostname(destination_node_name)
 
         # Ensure user has permission to migrate VM
@@ -1228,7 +1228,7 @@ class VirtualMachine(PyroObject):
 
     def _preMigrationChecks(self, destination_node_name):
         """Performs checks on the state of the VM to determine if is it suitable to
-           be migrated"""
+           be migrated."""
         # Ensure node is in the available nodes that the VM can be run on
         if destination_node_name not in self.getAvailableNodes():
             raise UnsuitableNodeException(
@@ -1258,7 +1258,7 @@ class VirtualMachine(PyroObject):
                 )
 
     def _preOnlineMigrationChecks(self, destination_node_name):
-        """Perform online-migration-specific pre-migration checks"""
+        """Perform online-migration-specific pre-migration checks."""
         # Ensure any attached ISOs exist on the destination node
         disk_drive_object = self.get_disk_drive()
         disk_drive_object.preOnlineMigrationChecks(destination_node_name)
@@ -1272,7 +1272,7 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def getStorageType(self):
-        """Returns the storage type of the VM"""
+        """Returns the storage type of the VM."""
         for hdd in self.get_hard_drive_objects():
             return hdd.get_type()
 
@@ -1332,7 +1332,7 @@ class VirtualMachine(PyroObject):
 
         # Mark VM as being a clone and mark parent as being a clone
         def set_clone_parent(vm_config):
-            """Update clone parent config"""
+            """Update clone parent config."""
             vm_config['clone_parent'] = self.get_name()
 
         new_vm_object.get_config_object().update_config(
@@ -1340,7 +1340,7 @@ class VirtualMachine(PyroObject):
             'Set VM clone parent after initial clone')
 
         def set_clone_child(vm_config):
-            """Set clone children config in new VM"""
+            """Set clone children config in new VM."""
             vm_config['clone_children'].append(new_vm_object.get_name())
 
         self.get_config_object().update_config(
@@ -1362,7 +1362,7 @@ class VirtualMachine(PyroObject):
     @Expose(locking=True)
     def duplicate(self, duplicate_vm_name, storage_backend=None, retain_mac=False):
         """Duplicates a VM, creating an identical machine, making a
-           copy of the storage"""
+           copy of the storage."""
         ArgumentValidator.validate_hostname(duplicate_vm_name)
 
         # Check the user has permission to create VMs
@@ -1411,7 +1411,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def move(self, destination_node, source_node=None):
-        """Move a VM from one node to another"""
+        """Move a VM from one node to another."""
         ArgumentValidator.validate_hostname(destination_node)
         if source_node is not None:
             ArgumentValidator.validate_hostname(source_node)
@@ -1499,7 +1499,7 @@ class VirtualMachine(PyroObject):
             remote_vm.register()
 
     def get_uuid(self):
-        """Returns the Libvirt UUID for the VM"""
+        """Returns the Libvirt UUID for the VM."""
         # If the UUID is stored in the MCVirt configuration, return it
         config_uuid = self.get_config_object().get_config()['uuid']
         if config_uuid:
@@ -1527,7 +1527,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def register(self, node=None):
-        """Public method for permforming VM register"""
+        """Public method for permforming VM register."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.SET_VM_NODE, self
         )
@@ -1535,7 +1535,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True, expose=False, undo_method='_unregister')
     def _register(self, set_node=True, node=None):
-        """Register a VM with LibVirt"""
+        """Register a VM with LibVirt."""
         # Import domain XML template
         current_node = self.getNode()
         node = get_hostname() if node is None else node
@@ -1567,7 +1567,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def register_on_node(self):
-        """Perform actual registration on node"""
+        """Perform actual registration on node."""
         self.po__get_registered_object('auth').assert_user_type(
             'ClusterUser',
             allow_indirect=True
@@ -1630,7 +1630,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True, undo_method='_register')
     def unregister(self):
-        """Public method for permforming VM unregister"""
+        """Public method for permforming VM unregister."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.SET_VM_NODE, self
         )
@@ -1638,7 +1638,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(expose=False)
     def _unregister(self, *args, **kwrags):
-        """Unregister the VM from the local node"""
+        """Unregister the VM from the local node."""
         # Ensure VM is unlocked
         self.ensureUnlocked()
 
@@ -1652,7 +1652,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def unregister_on_node(self):
-        """Perform actual unregistration"""
+        """Perform actual unregistration."""
         # Remove VM from LibVirt
         try:
             self._get_libvirt_domain_object(auto_register=False).undefine()
@@ -1670,7 +1670,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def setNodeRemote(self, node):
-        """Set node from remote _setNode command"""
+        """Set node from remote _setNode command."""
         if node is not None:
             ArgumentValidator.validate_hostname(node)
         # @TODO Merge with setNode and check either user type or permissions
@@ -1678,14 +1678,14 @@ class VirtualMachine(PyroObject):
         self._setNode(node)
 
     def _setNode(self, node):
-        """Sets the node of the VM"""
+        """Sets the node of the VM."""
         self.update_vm_config(
             {'node': node},
             'Update node for %s to %s' % (self.get_name(), node),
             nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
     def _get_remote_nodes(self):
-        """Returns a list of remote available nodes"""
+        """Returns a list of remote available nodes."""
         # @TODO rename ot get_remote_nodes
         # Obtain list of available nodes
         nodes = self.getAvailableNodes()
@@ -1698,27 +1698,27 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def isRegisteredLocally(self):
-        """Returns true if the VM is registered on the local node"""
+        """Returns true if the VM is registered on the local node."""
         return self.getNode() == get_hostname()
 
     @Expose()
     def isRegisteredRemotely(self):
-        """Returns true if the VM is registered on a remote node"""
+        """Returns true if the VM is registered on a remote node."""
         return not (self.getNode() == get_hostname() or self.getNode() is None)
 
     @Expose()
     def isRegistered(self):
-        """Returns true if the VM is registered on a node"""
+        """Returns true if the VM is registered on a node."""
         return self.getNode() is not None
 
     def ensureRegistered(self):
-        """Ensures that the VM is registered"""
+        """Ensures that the VM is registered."""
         if not self.isRegistered():
             raise VmNotRegistered('The VM %s is not registered on a node' % self.get_name())
 
     @Expose()
     def getNode(self):
-        """Returns the node that the VM is registered on"""
+        """Returns the node that the VM is registered on."""
         return self.get_config_object().get_config()['node']
 
     def getStorageNodes(self):
@@ -1730,7 +1730,7 @@ class VirtualMachine(PyroObject):
         return self.getAvailableNodes()
 
     def getAvailableNodes(self):
-        """Returns the nodes that the VM can be run on"""
+        """Returns the nodes that the VM can be run on."""
         # If the VM is static, return the nodes from the config file
         if self.is_static():
             return self.get_config_object().get_config()['available_nodes']
@@ -1748,7 +1748,7 @@ class VirtualMachine(PyroObject):
         return cluster.get_compatible_nodes(storage_backends=storage_backends, networks=networks)
 
     def ensureRegisteredLocally(self):
-        """Ensures that the VM is registered locally, otherwise an exception is thrown"""
+        """Ensures that the VM is registered locally, otherwise an exception is thrown."""
         if not self.isRegisteredLocally():
             node = self.getNode()
             if node:
@@ -1762,7 +1762,7 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def getVncPort(self):
-        """Returns the port used by the VNC display for the VM"""
+        """Returns the port used by the VNC display for the VM."""
         # Check the user has permission to view the VM console
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.VIEW_VNC_CONSOLE,
@@ -1783,11 +1783,11 @@ class VirtualMachine(PyroObject):
             return domain_xml.find('./devices/graphics[@type="vnc"]').get('port')
 
     def get_agent_connection(self):
-        """Obtain an agent connection object"""
+        """Obtain an agent connection object."""
         return AgentConnection(self)
 
     def get_host_agent_path(self):
-        """Obtain the path of the serial interface for the VM on the host"""
+        """Obtain the path of the serial interface for the VM on the host."""
         if self._get_power_state() is not PowerStates.RUNNING:
             raise VmAlreadyStoppedException('The VM is not running')
         domain_xml = ET.fromstring(
@@ -1803,7 +1803,7 @@ class VirtualMachine(PyroObject):
                 './devices/serial[@type="pty"]/target[@port="0"]/../source').get('path')
 
     def get_agent_timeout(self):
-        """Obtain agent timeout from config"""
+        """Obtain agent timeout from config."""
         timeout = self.get_config_object().get_config()['agent']['connection_timeout']
         if timeout is None:
             timeout = MCVirtConfig().get_config()['agent']['connection_timeout']
@@ -1811,12 +1811,12 @@ class VirtualMachine(PyroObject):
         return timeout
 
     def is_watchdog_enabled(self):
-        """Obtain watchdog interval from config"""
+        """Obtain watchdog interval from config."""
         return self.get_config_object().get_config()['watchdog']['enabled']
 
     @Expose(locking=True)
     def set_watchdog_status(self, status):
-        """Update the status of the watchdog"""
+        """Update the status of the watchdog."""
         # Validate status boolean
         ArgumentValidator.validate_boolean(status)
 
@@ -1831,7 +1831,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def set_watchdog_interval(self, interval):
-        """Set VM watchdog interval"""
+        """Set VM watchdog interval."""
         # Validate interval
         if interval is not None:
             ArgumentValidator.validate_positive_integer(interval)
@@ -1847,7 +1847,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def set_watchdog_reset_fail_count(self, count):
-        """Update reset fail count for watchdog"""
+        """Update reset fail count for watchdog."""
         if count is not None:
             ArgumentValidator.validate_positive_integer(count)
 
@@ -1862,7 +1862,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def set_watchdog_boot_wait(self, wait):
-        """Update boot wait for watchdog"""
+        """Update boot wait for watchdog."""
         if wait is not None:
             ArgumentValidator.validate_positive_integer(wait)
 
@@ -1876,7 +1876,7 @@ class VirtualMachine(PyroObject):
             nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
     def get_watchdog_interval(self):
-        """Obtain watchdog interval from config"""
+        """Obtain watchdog interval from config."""
         interval = self.get_config_object().get_config()['watchdog']['interval']
         if interval is None:
             interval = MCVirtConfig().get_config()['watchdog']['interval']
@@ -1884,7 +1884,7 @@ class VirtualMachine(PyroObject):
         return interval
 
     def get_watchdog_boot_wait(self):
-        """Obtain watchdog interval from config"""
+        """Obtain watchdog interval from config."""
         boot_wait = self.get_config_object().get_config()['watchdog']['boot_wait']
         if boot_wait is None:
             boot_wait = MCVirtConfig().get_config()['watchdog']['boot_wait']
@@ -1892,7 +1892,7 @@ class VirtualMachine(PyroObject):
         return boot_wait
 
     def get_watchdog_reset_fail_count(self):
-        """Obtain watchdog interval from config"""
+        """Obtain watchdog interval from config."""
         reset_fail_count = self.get_config_object().get_config()['watchdog'][
             'reset_fail_count']
         if reset_fail_count is None:
@@ -1901,13 +1901,13 @@ class VirtualMachine(PyroObject):
         return reset_fail_count
 
     def ensureUnlocked(self):
-        """Ensures that the VM is in an unlocked state"""
+        """Ensures that the VM is in an unlocked state."""
         if self._getLockState() is LockStates.LOCKED:
             raise VirtualMachineLockException('VM \'%s\' is locked' % self.get_name())
 
     @Expose(locking=True)
     def set_autostart_state(self, state):
-        """Set the autostart state of the VM"""
+        """Set the autostart state of the VM."""
         # Ensure the state is valid
         try:
             autostart = AutoStartStates[state]
@@ -1917,25 +1917,25 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_autostart_state(self):
-        """Return the enum value for autostart"""
+        """Return the enum value for autostart."""
         return self._get_autostart_state().value
 
     def _get_autostart_state(self):
-        """Return the autostart enum"""
+        """Return the autostart enum."""
         return AutoStartStates(self.get_config_object().get_config()['autostart'])
 
     @Expose()
     def getLockState(self):
-        """Return the lock state for the VM"""
+        """Return the lock state for the VM."""
         return self._getLockState().value
 
     def _getLockState(self):
-        """Returns the lock status of a VM"""
+        """Returns the lock status of a VM."""
         return LockStates(self.get_config_object().get_config()['lock'])
 
     @Expose(locking=True)
     def setLockState(self, lock_status):
-        """Set the lock state for the VM"""
+        """Set the lock state for the VM."""
         ArgumentValidator.validate_integer(lock_status)
         try:
             return self._setLockState(LockStates(lock_status))
@@ -1943,7 +1943,7 @@ class VirtualMachine(PyroObject):
             raise MCVirtTypeError('Invalid lock state')
 
     def _setLockState(self, lock_status):
-        """Sets the lock status of the VM"""
+        """Sets the lock status of the VM."""
         # Ensure the user has permission to set VM locks
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.SET_VM_LOCK, self)
 
@@ -1953,7 +1953,7 @@ class VirtualMachine(PyroObject):
                                               (self.get_name(), self._getLockState().name))
 
         def update_lock(config):
-            """Update lock in VM config"""
+            """Update lock in VM config."""
             config['lock'] = lock_status.value
         self.get_config_object().update_config(update_lock,
                                                'Setting lock state of \'%s\' to \'%s\'' %
@@ -1961,12 +1961,12 @@ class VirtualMachine(PyroObject):
 
     @Expose()
     def get_delete_protection_state(self):
-        """Get the current state of the deletion lock"""
+        """Get the current state of the deletion lock."""
         return self.get_config_object().get_config()['delete_protection']
 
     @Expose(locking=True)
     def enable_delete_protection(self):
-        """Enable delete protection on the VM"""
+        """Enable delete protection on the VM."""
         # Check the user has permission to modify VMs
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
@@ -1981,7 +1981,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def disable_delete_protection(self, confirmation):
-        """Disable the deletion protection"""
+        """Disable the deletion protection."""
         # Check the user has permission to modify VMs
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
@@ -1999,10 +1999,10 @@ class VirtualMachine(PyroObject):
             nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
     def set_boot_order(self, boot_devices):
-        """Sets the boot devices and the order in which devices are booted from"""
+        """Sets the boot devices and the order in which devices are booted from."""
 
         def update_libvirt(domain_xml):
-            """Update libvirt config with new boot order"""
+            """Update libvirt config with new boot order."""
             old_boot_objects = domain_xml.findall('./os/boot')
             os_xml = domain_xml.find('./os')
 
@@ -2022,7 +2022,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True)
     def update_graphics_driver(self, driver):
-        """Update the graphics driver in the libvirt configuration for this VM"""
+        """Update the graphics driver in the libvirt configuration for this VM."""
         # Check the user has permission to modify VMs
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
@@ -2043,17 +2043,17 @@ class VirtualMachine(PyroObject):
             self.ensureUnlocked()
 
             def update_libvirt(domain_xml):
-                """Update graphics in libvirt config"""
+                """Update graphics in libvirt config."""
                 domain_xml.find('./devices/video/model').set('type', driver)
 
             self.update_libvirt_config(update_libvirt)
 
     def get_graphics_driver(self):
-        """Returns the graphics driver for this VM"""
+        """Returns the graphics driver for this VM."""
         return self.get_config_object().get_config()['graphics_driver']
 
     def create_snapshot(self):
-        """Create snapshot of the virtual machine"""
+        """Create snapshot of the virtual machine."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_VM_SNAPSHOTS, self)
 
@@ -2074,12 +2074,12 @@ class VirtualMachine(PyroObject):
                 ' online snapshotting.')
 
     def delete_snapshot(self, snapshot_id):
-        """Delete a snapshot"""
+        """Delete a snapshot."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_VM_SNAPSHOTS, self)
 
     def revert_snapshot(self, snapshot_id):
-        """Revert the state to a snapshot"""
+        """Revert the state to a snapshot."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_VM_SNAPSHOTS, self)
 
@@ -2090,5 +2090,5 @@ class VirtualMachine(PyroObject):
                 ' a snapshot')
 
     def get_sapshots(self):
-        """Get virtual machine snapshots"""
+        """Get virtual machine snapshots."""
         pass

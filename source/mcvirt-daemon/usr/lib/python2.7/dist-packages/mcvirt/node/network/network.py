@@ -1,4 +1,4 @@
-"""Provide interface to libvirt network objects"""
+"""Provide interface to libvirt network objects."""
 
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
@@ -27,28 +27,28 @@ from mcvirt.config.core import Core as MCVirtConfig
 
 
 class Network(PyroObject):
-    """Provides an interface to LibVirt networks"""
+    """Provides an interface to LibVirt networks."""
 
     def __init__(self, name):
-        """Set member variables and obtains libvirt domain object"""
+        """Set member variables and obtains libvirt domain object."""
         self.name = name
 
     @staticmethod
     def get_network_config():
-        """Return the network configuration for the node"""
+        """Return the network configuration for the node."""
         mcvirt_config = MCVirtConfig().get_config()
         return mcvirt_config['networks']
 
     @property
     def nodes(self):
-        """Return the nodes that the network is available to"""
+        """Return the nodes that the network is available to."""
         # Since networks are currently global, obtain all nodes
         return self.po__get_registered_object('cluster').get_nodes(return_all=True,
                                                                 include_local=True)
 
     @Expose(locking=True)
     def delete(self):
-        """Delete a network from the node"""
+        """Delete a network from the node."""
         # Ensure user has permission to manage networks
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
@@ -69,13 +69,13 @@ class Network(PyroObject):
 
         # Update MCVirt config
         def update_config(config):
-            """Delete network from MCVirt config"""
+            """Delete network from MCVirt config."""
             del config['networks'][self.get_name()]
         MCVirtConfig().update_config(update_config, 'Deleted network \'%s\'' % self.get_name())
 
         if self.po__is_cluster_master:
             def remove_remote(node):
-                """Remove network from remote nodes"""
+                """Remove network from remote nodes."""
                 network_factory = node.get_connection('network_factory')
                 network = network_factory.get_network_by_name(self.name)
                 node.annotate_object(network)
@@ -84,7 +84,7 @@ class Network(PyroObject):
             cluster.run_remote_command(remove_remote)
 
     def _get_connected_virtual_machines(self):
-        """Return an array of VM objects that have an interface connected to the network"""
+        """Return an array of VM objects that have an interface connected to the network."""
         connected_vms = []
 
         # Iterate over all VMs and determine if any use the network to be deleted
@@ -110,30 +110,30 @@ class Network(PyroObject):
         return connected_vms
 
     def _get_libvirt_object(self):
-        """Return the LibVirt object for the network"""
+        """Return the LibVirt object for the network."""
         return self.po__get_registered_object(
             'libvirt_connector'
         ).get_connection().networkLookupByName(self.name)
 
     @Expose()
     def get_name(self):
-        """Return the name of the network"""
+        """Return the name of the network."""
         return self.name
 
     @Expose()
     def get_adapter(self):
-        """Return the name of the physical bridge adapter for the network"""
+        """Return the name of the physical bridge adapter for the network."""
         return Network.get_network_config()[self.get_name()]
 
     def check_available_on_node(self, node=None):
-        """Determine whether network is available on a given node"""
+        """Determine whether network is available on a given node."""
         # Default to local node
         if node is None:
             node = get_hostname()
         return node in self.nodes
 
     def ensure_available_on_node(self, node=None):
-        """Ensure that network is available on a given node"""
+        """Ensure that network is available on a given node."""
         # Default to local node
         if node is None:
             node = self.po__get_registered_object('cluster').get_hostname()

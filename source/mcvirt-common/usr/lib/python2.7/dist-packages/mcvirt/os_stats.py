@@ -19,14 +19,14 @@ from psutil import cpu_percent, virtual_memory
 
 
 class OSStats(object):
-    """Provide functions to obtain VM functions"""
+    """Provide functions to obtain VM functions."""
 
     @staticmethod
     def get_cpu_usage():
-        """Obtain CPU usage statistics"""
+        """Obtain CPU usage statistics."""
         return cpu_percent()
 
     @staticmethod
     def get_ram_usage():
-        """Get memory usage statistics"""
+        """Get memory usage statistics."""
         return virtual_memory().percent

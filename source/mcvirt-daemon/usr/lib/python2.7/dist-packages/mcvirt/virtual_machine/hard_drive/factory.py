@@ -110,7 +110,7 @@ from mcvirt.size_converter import SizeConverter
 
 
 class Factory(PyroObject):
-    """Provides a factory for creating hard drive/hard drive config objects"""
+    """Provides a factory for creating hard drive/hard drive config objects."""
 
     DEFAULT_STORAGE_TYPE = 'Local'
     OBJECT_TYPE = 'hard disk'
@@ -119,14 +119,14 @@ class Factory(PyroObject):
 
     @Expose()
     def get_object_by_vm_and_attachment_id(self, vm_object, attachment_id):
-        """Return the disk object based on virtual machine and attachment Id"""
+        """Return the disk object based on virtual machine and attachment Id."""
         return self.po__get_registered_object(
             'hard_drive_attachment_factory').get_object(
                 vm_object, attachment_id).get_hard_drive_object()
 
     @Expose()
     def get_object(self, id_):
-        """Returns the storage object for a given disk"""
+        """Returns the storage object for a given disk."""
 
         if id_ not in Factory.CACHED_OBJECTS:
             base_hdd = Base(id_)
@@ -140,7 +140,7 @@ class Factory(PyroObject):
     def get_remote_object(self,
                           node=None,  # The name of the remote node to connect to
                           node_object=None):  # Otherwise, pass a remote node connection
-        """Obtain an instance of the hard drive factory on a remote node"""
+        """Obtain an instance of the hard drive factory on a remote node."""
         cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
@@ -270,7 +270,7 @@ class Factory(PyroObject):
     @Expose(locking=True, support_callback=True)
     def create(self, size, storage_type, driver, storage_backend=None,
                nodes=None, skip_create=False, vm_object=None, _f=None):
-        """Performs the creation of a hard drive, using a given storage type"""
+        """Performs the creation of a hard drive, using a given storage type."""
         if vm_object is not None:
             vm_object = self.po__convert_remote_object(vm_object)
         if storage_backend is not None:
@@ -343,14 +343,14 @@ class Factory(PyroObject):
     def undo__create(self, size, storage_type, driver, storage_backend=None,
                      nodes=None, skip_create=False, vm_object=None, id_=None,
                      _p=None):
-        """Undo create of the drive"""
+        """Undo create of the drive."""
         hard_drive_object = self.get_object(id_)
         hard_drive_object.delete()
 
     @Expose(locking=True)
     def import_(self, base_volume_name, storage_backend, node=None,
                 driver=None, virtual_machine=None):
-        """Import a local disk"""
+        """Import a local disk."""
         if virtual_machine:
             virtual_machine = self.po__convert_remote_object(virtual_machine)
         storage_backend = self.po__convert_remote_object(storage_backend)
@@ -392,7 +392,7 @@ class Factory(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def create_config(self, vm_object, id_, config):
-        """Create the hard drive config"""
+        """Create the hard drive config."""
         # Ensure that the user has permissions to add create storage
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
@@ -402,7 +402,7 @@ class Factory(PyroObject):
 
     @Expose(locking=True)
     def undo__create_config(self, vm_object, id_, config):
-        """Undo creating VM object"""
+        """Undo creating VM object."""
         # Ensure that the user has permissions to add create storage
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
@@ -411,7 +411,7 @@ class Factory(PyroObject):
         self.get_object(id_).get_config_object().delete()
 
     def _get_available_storage_types(self):
-        """Returns a list of storage types that are available on the node"""
+        """Returns a list of storage types that are available on the node."""
         available_storage_types = []
         storage_factory = self.po__get_registered_object('storage_factory')
         node_drbd = self.po__get_registered_object('node_drbd')
@@ -421,12 +421,12 @@ class Factory(PyroObject):
         return available_storage_types
 
     def get_all_storage_types(self):
-        """Returns the available storage types that MCVirt provides"""
+        """Returns the available storage types that MCVirt provides."""
         return get_all_submodules(Base)
 
     @Expose()
     def get_hard_drive_list_table(self):
-        """Return a table of hard drives"""
+        """Return a table of hard drives."""
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
@@ -458,11 +458,11 @@ class Factory(PyroObject):
         return table.draw()
 
     def get_all(self):
-        """Return all hard drive objects"""
+        """Return all hard drive objects."""
         return [self.get_object(id_) for id_ in HardDriveConfig.get_global_config().keys()]
 
     def getClass(self, storage_type, allow_base=False):
-        """Obtains the hard drive class for a given storage type"""
+        """Obtains the hard drive class for a given storage type."""
         # If allowed to return base class and storage_type is
         # null, return the base class
         if allow_base and not storage_type:
@@ -478,7 +478,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_drbd_object_by_resource_name(self, resource_name):
-        """Obtains a hard drive object for a Drbd drive, based on the resource name"""
+        """Obtains a hard drive object for a Drbd drive, based on the resource name."""
         node_drbd = self.po__get_registered_object('node_drbd')
         for hard_drive_object in node_drbd.get_all_drbd_hard_drive_object():
             if hard_drive_object.resource_name == resource_name:

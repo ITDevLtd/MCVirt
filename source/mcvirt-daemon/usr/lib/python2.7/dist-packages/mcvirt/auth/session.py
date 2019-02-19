@@ -31,10 +31,10 @@ from mcvirt.syslogger import Syslogger
 
 
 class SessionInfo(object):
-    """Store information about a session"""
+    """Store information about a session."""
 
     def __init__(self, username, user_class):
-        """Set member variables and expiry time if applicable"""
+        """Set member variables and expiry time if applicable."""
         self.username = username
 
         # If the user session expires, set disabled
@@ -51,7 +51,7 @@ class SessionInfo(object):
             self.expires = False
 
     def is_valid(self):
-        """Return True if this session is valid"""
+        """Return True if this session is valid."""
         # Session is valid if expiry time is greater than
         # the current time or expires has been disabled
         return self.expires is False or self.expires > time.time()
@@ -70,7 +70,7 @@ class SessionInfo(object):
 
     @staticmethod
     def get_timeout():
-        """Return the session timeout in seconds"""
+        """Return the session timeout in seconds."""
         return MCVirtConfig().get_config()['session_timeout'] * 60
 
 
@@ -142,10 +142,10 @@ class Session(PyroObject):
 
     @Expose()
     def get_session_id(self):
-        """Return the client's current session ID"""
+        """Return the client's current session ID."""
         return self.get_session_id()
 
     def get_session_id(self):
-        """Return the client's current session ID"""
+        """Return the client's current session ID."""
         if 'session_id' in dir(Pyro4.current_context) and Pyro4.current_context.session_id:
             return Pyro4.current_context.session_id

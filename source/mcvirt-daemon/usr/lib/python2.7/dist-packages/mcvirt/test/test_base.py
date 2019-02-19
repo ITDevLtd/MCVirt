@@ -25,10 +25,10 @@ from mcvirt.utils import get_hostname
 
 
 def skip_drbd(required):
-    """Skip DRBD wrapper"""
+    """Skip DRBD wrapper."""
 
     def wrapper_gen(f):
-        """Wrapper method call"""
+        """Wrapper method call."""
 
         # Disable docstring check, as this will override the docstring
         # used for the test
@@ -116,7 +116,7 @@ class TestBase(unittest.TestCase):
             network.delete()
 
     def tearDown(self):
-        """Tear down test VMs"""
+        """Tear down test VMs."""
         # Ensure any test VM is stopped and removed from the machine
         self.rpc.ignore_drbd()
         self.stop_and_delete(self.test_vms['TEST_VM_2']['name'])
@@ -139,7 +139,7 @@ class TestBase(unittest.TestCase):
         cls.parser = None
 
     def create_vm(self, vm_name, storage_type):
-        """Create a test VM, annotate object and ensure it exists"""
+        """Create a test VM, annotate object and ensure it exists."""
         all_nodes = self.rpc.get_connection('cluster').get_nodes(include_local=True)
         available_nodes = self.rpc.get_connection('cluster').get_nodes(include_local=False)
 
@@ -166,7 +166,7 @@ class TestBase(unittest.TestCase):
 
     @classmethod
     def stop_and_delete(cls, vm_name):
-        """Stop and remove a virtual machine"""
+        """Stop and remove a virtual machine."""
         virtual_machine_factory = cls.rpc.get_connection('virtual_machine_factory')
 
         if virtual_machine_factory.check_exists_by_name(vm_name):

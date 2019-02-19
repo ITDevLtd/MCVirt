@@ -35,7 +35,7 @@ class Factory(PyroObject):
     def get_remote_object(self,
                           node=None,  # The name of the remote node to connect to
                           node_object=None):  # Otherwise, pass a remote node connection
-        """Obtain an instance of the hard drive attachment factory on a remote node"""
+        """Obtain an instance of the hard drive attachment factory on a remote node."""
         cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
@@ -44,7 +44,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_object(self, virtual_machine, attachment_id):
-        """Obtain hard drive attachment object"""
+        """Obtain hard drive attachment object."""
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         attachment_id = str(attachment_id)
 
@@ -68,14 +68,14 @@ class Factory(PyroObject):
         return Factory.CACHED_OBJECTS[cache_id]
 
     def get_objects_by_virtual_machine(self, virtual_machine):
-        """Obtain attachments by virtual machine"""
+        """Obtain attachments by virtual machine."""
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         attachment_ids = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
         return [self.get_object(virtual_machine, id_) for id_ in attachment_ids]
 
     @Expose()
     def get_object_by_hard_drive(self, hard_drive, raise_on_failure=False):
-        """Obtain attachment by hard drive"""
+        """Obtain attachment by hard drive."""
         hard_drive = self.po__convert_remote_object(hard_drive)
 
         # Iterate over each virtual machine and each attachment on the VM
@@ -94,7 +94,7 @@ class Factory(PyroObject):
 
     @Expose(locking=True)
     def create(self, virtual_machine, hard_drive):
-        """Create attachment"""
+        """Create attachment."""
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         hard_drive = self.po__convert_remote_object(hard_drive)
 
@@ -128,7 +128,7 @@ class Factory(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def create_config(self, virtual_machine, attachment_id, config):
-        """Add hard drive attachmenrt config to VM"""
+        """Add hard drive attachmenrt config to VM."""
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         attachment_id = str(attachment_id)
 
@@ -139,7 +139,7 @@ class Factory(PyroObject):
         )
 
         def add_attachment_config(vm_config):
-            """Add attachment config to VM config"""
+            """Add attachment config to VM config."""
             vm_config['hard_drives'][str(attachment_id)] = config
 
         virtual_machine.get_config_object().update_config(
@@ -171,10 +171,10 @@ class Factory(PyroObject):
 
 
 class HardDriveAttachment(PyroObject):
-    """Defines a link between a hard drive and a virtual machine"""
+    """Defines a link between a hard drive and a virtual machine."""
 
     def __init__(self, virtual_machine, attachment_id):
-        """Initialise member variables"""
+        """Initialise member variables."""
         self.virtual_machine = virtual_machine
         self.attachment_id = attachment_id
         self.hard_drive_id = None
@@ -182,7 +182,7 @@ class HardDriveAttachment(PyroObject):
     def get_remote_object(self,
                           node=None,  # The name of the remote node to connect to
                           node_object=None):  # Otherwise, pass a remote node connection
-        """Obtain an instance of the hard drive attachment factory on a remote node"""
+        """Obtain an instance of the hard drive attachment factory on a remote node."""
         cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
@@ -202,17 +202,17 @@ class HardDriveAttachment(PyroObject):
 
     @property
     def _target_dev(self):
-        """Determine the target dev, based on the disk's ID"""
+        """Determine the target dev, based on the disk's ID."""
         # Use ascii numbers to map 1 => a, 2 => b, etc...
         return 'sd' + chr(96 + int(self.attachment_id))
 
     def get_config(self):
-        """Get hard drive attachment config"""
+        """Get hard drive attachment config."""
         vm_config = self.virtual_machine.get_config_object().get_config()
         return vm_config['hard_drives'][self.attachment_id]
 
     def get_hard_drive_id(self):
-        """Obtain the hard rive ID"""
+        """Obtain the hard rive ID."""
         if self.hard_drive_id is None:
             self.hard_drive_id = self.get_config()['hard_drive_id']
 
@@ -220,13 +220,13 @@ class HardDriveAttachment(PyroObject):
 
     @Expose()
     def get_hard_drive_object(self):
-        """Get hard drive object"""
+        """Get hard drive object."""
         hdd_factory = self.po__get_registered_object('hard_drive_factory')
         return hdd_factory.get_object(self.get_hard_drive_id())
 
     @Expose(locking=True)
     def delete(self, local_only=False):
-        """Remove the hard drive attachment"""
+        """Remove the hard drive attachment."""
         # Ensure that the user has permissions to add delete storage
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
@@ -242,10 +242,10 @@ class HardDriveAttachment(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def remove_config(self):
-        """Remove the config from the virtual machine"""
+        """Remove the config from the virtual machine."""
 
         def update_vm_config(vm_config):
-            """Remove attachment config from VM"""
+            """Remove attachment config from VM."""
             del vm_config['hard_drives'][str(self.attachment_id)]
 
         self.virtual_machine.get_config_object().update_config(
@@ -253,7 +253,7 @@ class HardDriveAttachment(PyroObject):
             'Remove disk attachment from VM')
 
     def generate_libvirt_xml(self):
-        """Create a basic libvirt XML configuration for the connection to the disk"""
+        """Create a basic libvirt XML configuration for the connection to the disk."""
         hdd_object = self.get_hard_drive_object()
 
         # Create the base disk XML element
@@ -309,11 +309,11 @@ class HardDriveAttachment(PyroObject):
             self._unregister_libvirt()
 
     def _unregister_libvirt(self):
-        """Removes the hard drive from the LibVirt configuration for the VM"""
+        """Removes the hard drive from the LibVirt configuration for the VM."""
         # Update the libvirt domain XML configuration
         # @TODO - NEEDS REWORK NOW
         def update_libvirt(domain_xml):
-            """Update libvirt config"""
+            """Update libvirt config."""
             device_xml = domain_xml.find('./devices')
             disk_xml = device_xml.find(
                 './disk/target[@dev="%s"]/..' %
@@ -324,9 +324,9 @@ class HardDriveAttachment(PyroObject):
         self.virtual_machine.update_libvirt_config(update_libvirt)
 
     def _register_libvirt(self):
-        """Register the hard drive with the Libvirt VM configuration"""
+        """Register the hard drive with the Libvirt VM configuration."""
         def update_libvirt(domain_xml):
-            """Add disk to libvirt config"""
+            """Add disk to libvirt config."""
             drive_xml = self.generate_libvirt_xml()
             device_xml = domain_xml.find('./devices')
             device_xml.append(drive_xml)

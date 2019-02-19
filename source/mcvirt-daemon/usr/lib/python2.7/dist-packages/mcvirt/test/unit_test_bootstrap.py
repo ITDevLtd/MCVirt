@@ -35,10 +35,10 @@ from mcvirt.rpc.rpc_daemon import RpcNSMixinDaemon
 
 
 class UnitTestBootstrap(object):
-    """Bootstrap daemon with unit tests"""
+    """Bootstrap daemon with unit tests."""
 
     def __init__(self):
-        """Create dameon and test suite objects"""
+        """Create dameon and test suite objects."""
         # Configure daemon
         self.daemon_run = True
         self.daemon = RpcNSMixinDaemon()
@@ -79,11 +79,11 @@ class UnitTestBootstrap(object):
         ])
 
     def daemon_loop_condition(self):
-        """Provide a condition for the daemon loop"""
+        """Provide a condition for the daemon loop."""
         return self.daemon_run
 
     def start(self):
-        """Start the daemon, run the unit tests and tear down"""
+        """Start the daemon, run the unit tests and tear down."""
         success = False
         try:
             # Attempt to start daemon

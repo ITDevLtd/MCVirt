@@ -47,7 +47,7 @@ class UserBase(PyroObject):
 
     @classmethod
     def get_all_usernames(cls):
-        """Return all local users"""
+        """Return all local users."""
         user_config = MCVirtConfig().get_config()['users']
         users = []
         for username in user_config:
@@ -56,7 +56,7 @@ class UserBase(PyroObject):
         return users
 
     def __eq__(self, comp):
-        """Allow for comparison of user objects"""
+        """Allow for comparison of user objects."""
         # Ensure class and name of object match
         if ('__class__' in dir(comp) and
                 comp.__class__ == self.__class__ and
@@ -69,7 +69,7 @@ class UserBase(PyroObject):
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
-        """Obtain an instance of the user object on a remote node"""
+        """Obtain an instance of the user object on a remote node."""
         if not self.DISTRIBUTED:
             raise InvalidUserTypeException('Cannot get remote object of non-distributed user')
 
@@ -113,16 +113,16 @@ class UserBase(PyroObject):
 
     @Expose()
     def is_locally_managed(self):
-        """Determine if user is locally managed"""
+        """Determine if user is locally managed."""
         return self.LOCALLY_MANAGED
 
     @Expose()
     def get_username(self):
-        """Return the username of the current user"""
+        """Return the username of the current user."""
         return self.username
 
     def _ensure_exists(self):
-        """Ensure that the current user exists in the MCVirt configuration"""
+        """Ensure that the current user exists in the MCVirt configuration."""
         if not self.__class__.check_exists(self.get_username()):
             raise UserDoesNotExistException('User %s does not exist' %
                                             self.get_username())
@@ -136,11 +136,11 @@ class UserBase(PyroObject):
         return self._get_config()
 
     def _get_config(self):
-        """Return the config hash for the current user"""
+        """Return the config hash for the current user."""
         return MCVirtConfig().get_config()['users'][self.get_username()]
 
     def get_user_type(self):
-        """Return the user type of the user"""
+        """Return the user type of the user."""
         return self._get_config()['user_type']
 
     def _check_password(self, password):
@@ -150,20 +150,20 @@ class UserBase(PyroObject):
         return password_hash == config['password']
 
     def _get_password_salt(self):
-        """Return the user's salt"""
+        """Return the user's salt."""
         return self._get_config()['salt']
 
     @Expose()
     def set_password(self, new_password):  # pylint: disable=W0613
-        """Default functionality for password change is to throw an exception"""
+        """Default functionality for password change is to throw an exception."""
         raise InvalidUserTypeException('Cannot change password for this type of user')
 
     def _set_password(self, new_password):
-        """Set the password for the current user"""
+        """Set the password for the current user."""
         password_hash = self._hash_password(new_password)
 
         def update_config(config):
-            """Update password hash in user config in MCVirt config"""
+            """Update password hash in user config in MCVirt config."""
             config['users'][self.get_username()]['password'] = password_hash
         MCVirtConfig().update_config(
             update_config, 'Updated password for \'%s\'' % self.get_username()
@@ -171,7 +171,7 @@ class UserBase(PyroObject):
 
         if self.DISTRIBUTED and self.po__is_cluster_master:
             def remote_command(node_connection):
-                """Update password hash in user config on remote nodes"""
+                """Update password hash in user config on remote nodes."""
                 remote_user_factory = node_connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(self.get_username())
                 node_connection.annotate_object(remote_user)
@@ -181,17 +181,17 @@ class UserBase(PyroObject):
             cluster.run_remote_command(remote_command)
 
     def _hash_password(self, password):
-        """Hash a password, using the current user's salt"""
+        """Hash a password, using the current user's salt."""
         return self.__class__._hash_string(password, self._get_password_salt())
 
     @staticmethod
     def _hash_string(string, salt):
-        """Hash string using salt"""
+        """Hash string using salt."""
         return crypt(string, salt, iterations=1000)
 
     @staticmethod
     def generate_password(length, numeric_only=False):
-        """Return a randomly generated password"""
+        """Return a randomly generated password."""
         characers = string.ascii_letters
         if not numeric_only:
             characers += string.digits + '!@#$%^&*()'
@@ -200,7 +200,7 @@ class UserBase(PyroObject):
 
     @Expose()
     def add_permission(self, permission):
-        """Add permissoin to the user"""
+        """Add permissoin to the user."""
         # Check permissions
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         raise InvalidUserTypeException(
@@ -208,14 +208,14 @@ class UserBase(PyroObject):
 
     @Expose()
     def remove_permission(self, permission):
-        """Add permissoin to the user"""
+        """Add permissoin to the user."""
         # Check permissions
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         raise InvalidUserTypeException(
             'Cannot modify individual permissions for this type of user')
 
     def get_groups(self, global_=True, virtual_machine=None, all_virtual_machines=False):
-        """Get groups that the user is part of"""
+        """Get groups that the user is part of."""
         group_factory = self.po__get_registered_object('group_factory')
 
         # Create list of virtual machines, whether VM passed or all_virtual_machines
@@ -241,7 +241,7 @@ class UserBase(PyroObject):
         return groups
 
     def get_permissions(self, virtual_machine=None):
-        """Obtain the list of permissions that the user has"""
+        """Obtain the list of permissions that the user has."""
         # Get the list of hard coded permission for the user type
         permissions = list(self.PERMISSIONS)
 
@@ -270,7 +270,7 @@ class UserBase(PyroObject):
 
     @Expose(locking=True)
     def delete(self):
-        """Delete the current user from MCVirt config"""
+        """Delete the current user from MCVirt config."""
         auth_object = self.po__get_registered_object('auth')
         auth_object.assert_permission(
             PERMISSIONS.MANAGE_USERS
@@ -295,9 +295,9 @@ class UserBase(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def remove_user_config(self):
-        """Remove user from MCVirt config"""
+        """Remove user from MCVirt config."""
         def update_config(config):
-            """Update config"""
+            """Update config."""
             del config['users'][self.get_username()]
         MCVirtConfig().update_config(update_config, 'Deleted user \'%s\'' % self.get_username())
 

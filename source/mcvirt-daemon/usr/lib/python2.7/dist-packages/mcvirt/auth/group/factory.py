@@ -30,7 +30,7 @@ from mcvirt.exceptions import (GroupAlreadyExistsError,
 
 
 class Factory(PyroObject):
-    """Provides a factory for creating group objects"""
+    """Provides a factory for creating group objects."""
 
     OBJECT_TYPE = 'group'
     CACHED_OBJECTS = {}
@@ -39,7 +39,7 @@ class Factory(PyroObject):
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
-        """Obtain an instance of the group factory on a remote node"""
+        """Obtain an instance of the group factory on a remote node."""
         cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
@@ -48,7 +48,7 @@ class Factory(PyroObject):
 
     @Expose(locking=True)
     def create(self, name):
-        """Create storage backend"""
+        """Create storage backend."""
         # Check permissions
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUPS)
 
@@ -81,37 +81,37 @@ class Factory(PyroObject):
         return group_object
 
     def get_all(self):
-        """Get all of group objects"""
+        """Get all of group objects."""
         return [self.get_object(id_) for id_ in self.get_config().keys()]
 
     @Expose(remote_nodes=True)
     def create_config(self, id_, config):
-        """Create config for the storage backend"""
+        """Create config for the storage backend."""
         # Check permissions
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         # Add new storage backend to MCVirt config
         def update_config(mcvirt_config):
-            """Update MCVirt config"""
+            """Update MCVirt config."""
             mcvirt_config[self.GROUP_CONFIG_KEY][id_] = config
         MCVirtConfig().update_config(update_config, 'Add group %s' % config['name'])
 
     @Expose()
     def undo__create_config(self, id_, config):
-        """Undo the create config"""
+        """Undo the create config."""
         # Check permissions
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def update_config(mcvirt_config):
-            """Update MCVirt config"""
+            """Update MCVirt config."""
             del mcvirt_config[self.GROUP_CONFIG_KEY][id_]
         MCVirtConfig().update_config(update_config, 'Remove group %s' % config['name'])
 
     @Expose()
     def list(self):
-        """List the Drbd volumes and statuses"""
+        """List the Drbd volumes and statuses."""
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
         self.po__get_registered_object('auth').set_permission_asserted()
@@ -134,11 +134,11 @@ class Factory(PyroObject):
         return table.draw()
 
     def get_config(self):
-        """Return the configs for storage backends"""
+        """Return the configs for storage backends."""
         return MCVirtConfig().get_config()[Factory.GROUP_CONFIG_KEY]
 
     def get_id_by_name(self, name):
-        """Determine the ID of a storage backend by name"""
+        """Determine the ID of a storage backend by name."""
         config = self.get_config()
 
         # Check each
@@ -150,12 +150,12 @@ class Factory(PyroObject):
         return False
 
     def check_exists(self, id_):
-        """Determine if a storage backend exists by ID"""
+        """Determine if a storage backend exists by ID."""
         return id_ in self.get_config().keys()
 
     @Expose()
     def get_object(self, id_):
-        """Return a group object by id"""
+        """Return a group object by id."""
         # Ensure exists
         if not self.check_exists(id_):
             raise GroupDoesNotExistError('Group does not exist: %s' % id_)
@@ -170,7 +170,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_object_by_name(self, name):
-        """Return group object by name"""
+        """Return group object by name."""
         object_id = self.get_id_by_name(name)
         if not object_id:
             raise GroupDoesNotExistError('Group does not exist: %s' % name)
@@ -183,6 +183,6 @@ class Factory(PyroObject):
         self.po__get_registered_object('auth').check_user_type('ClusterUser')
 
         def update_config(config):
-            """Set group config"""
+            """Set group config."""
             config['groups'] = group_config
         MCVirtConfig().update_config(update_config, 'Updating groups')

@@ -37,7 +37,7 @@ class Logger(PyroObject):
 
     @Pyro4.expose
     def create_log_remote(self, *args, **kwargs):
-        """Remotely accessible create_log method"""
+        """Remotely accessible create_log method."""
         self.po__get_registered_object('auth').check_user_type('ClusterUser')
         kwargs['local_only'] = True
         log_object = self.create_log(*args, **kwargs)
@@ -45,7 +45,7 @@ class Logger(PyroObject):
         return log_object
 
     def create_log(self, method_name, user, object_name, object_type, node=None, local_only=False):
-        """Create a log item and store"""
+        """Create a log item and store."""
         if node is None:
             node = get_hostname()
 
@@ -53,7 +53,7 @@ class Logger(PyroObject):
         Logger.LOGS.append(log_item)
         if not local_only and self.po__is_pyro_initialised:
             def remote_command(remote_node):
-                """Create log object on remote node"""
+                """Create log object on remote node."""
                 remote_logger = remote_node.get_connection('logger')
                 remote_log = remote_logger.create_log_remote(
                     method_name=method_name, user=user, object_name=object_name,
@@ -71,7 +71,7 @@ class Logger(PyroObject):
 
     @Pyro4.expose
     def get_logs(self, start_log=None, back=0, newer=False):
-        """Return a dict containing log information"""
+        """Return a dict containing log information."""
         if start_log is not None:
             ArgumentValidator.validate_integer(start_log)
         ArgumentValidator.validate_integer(back)
@@ -124,7 +124,7 @@ class Logger(PyroObject):
 
 
 class LogState(object):
-    """State of log items"""
+    """State of log items."""
 
     QUEUED = {
         'status': 0,
@@ -146,10 +146,10 @@ class LogState(object):
 
 
 class LogItem(PyroObject):
-    """Log item for storing information about locking command status"""
+    """Log item for storing information about locking command status."""
 
     def __init__(self, method_name, user, object_name, object_type, node):
-        """Create member variables"""
+        """Create member variables."""
         # Store information about method being run
         self.user = user
         self.object_name = object_name
@@ -238,7 +238,7 @@ class LogItem(PyroObject):
 
     @Pyro4.expose
     def unregister(self):
-        """Unregister connections to remote objects"""
+        """Unregister connections to remote objects."""
         for log in self.remote_logs:
             try:
                 log.unregister()
@@ -249,7 +249,7 @@ class LogItem(PyroObject):
 
 
 def getLogNames(callback, instance_method, object_type, args, kwargs):
-    """Attempts to determine object name and object type, based on method"""
+    """Attempts to determine object name and object type, based on method."""
     # Determine if object is a method of an object
     object_name = None
 

@@ -1,4 +1,4 @@
-"""Module for sizes"""
+"""Module for sizes."""
 # Copyright (c) 2018 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -31,7 +31,7 @@ class Unit(object):
     """
 
     def __init__(self, suffix, long_name, oom, dec):
-        """Store member variables"""
+        """Store member variables."""
         self.suffix = suffix
         self.long_name = long_name
         # Order of magnitude
@@ -42,7 +42,7 @@ class Unit(object):
         SizeConverter.units.append(self)
 
     def get_multiplier(self):
-        """Get multiplier for unit"""
+        """Get multiplier for unit."""
         base = 1000 if self.dec else 1024
         return base ** self.oom
 
@@ -55,7 +55,7 @@ class SizeConverter(object):
     units = []
 
     def __init__(self, size, storage=False):
-        """Create object and store size"""
+        """Create object and store size."""
         self.size = int(size)
         self.storage = storage
 
@@ -65,12 +65,12 @@ class SizeConverter(object):
 
     @classmethod
     def get_units(cls):
-        """Return the unit objects"""
+        """Return the unit objects."""
         return cls.units
 
     @classmethod
     def from_string(cls, size_string, storage=False):
-        """Create object from a string"""
+        """Create object from a string."""
         # Split value and units
         re_match = re.match(r'([0-9\.]+)([a-zA-Z]*)', str(size_string))
         if not re_match or not re_match.group(1):
@@ -100,11 +100,11 @@ class SizeConverter(object):
         return SizeConverter(int(size), storage=storage)
 
     def to_bytes(self):
-        """Get size in bytes"""
+        """Get size in bytes."""
         return self.size
 
     def to_string(self):
-        """Convert to string"""
+        """Convert to string."""
         # Iterate through units, from largest to smallest
         for unit in sorted(SizeConverter.units, key=lambda x: x.get_multiplier(), reverse=True):
             # If the value can be shown acurately to 2DP, then use this

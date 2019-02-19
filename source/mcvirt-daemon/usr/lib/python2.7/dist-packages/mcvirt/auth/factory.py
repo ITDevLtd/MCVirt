@@ -34,7 +34,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 
 
 class Factory(PyroObject):
-    """Class for obtaining user objects"""
+    """Class for obtaining user objects."""
 
     USER_CLASS = UserBase
     CACHED_OBJECTS = {}
@@ -54,7 +54,7 @@ class Factory(PyroObject):
 
     @Expose()
     def generate_password(self):
-        """Generate password"""
+        """Generate password."""
         return UserBase.generate_password(10)
 
     @Expose()
@@ -99,14 +99,14 @@ class Factory(PyroObject):
         user_config['global_permissions'] = []
 
         def update_config(config):
-            """Update user config in MCVirt config"""
+            """Update user config in MCVirt config."""
             config['users'][username] = user_config
         MCVirtConfig().update_config(update_config, 'Create user \'%s\'' % username)
 
         if user_type.DISTRIBUTED and self.po__is_cluster_master:
             # Create the user on the other nodes in the cluster
             def create_user_remote(node_connection):
-                """Create user on remote node"""
+                """Create user on remote node."""
                 remote_user_factory = node_connection.get_connection('user_factory')
                 remote_user_factory.create(username, password)
 
@@ -120,7 +120,7 @@ class Factory(PyroObject):
         self.po__get_registered_object('auth').check_user_type('ClusterUser')
 
         def update_config(config):
-            """Add user config to MCVirt config"""
+            """Add user config to MCVirt config."""
             config['users'][username] = user_config
         MCVirtConfig().update_config(update_config, 'Adding user %s' % username)
 
@@ -156,7 +156,7 @@ class Factory(PyroObject):
 
     @Expose()
     def list(self):
-        """List the Drbd volumes and statuses"""
+        """List the Drbd volumes and statuses."""
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
         self.po__get_registered_object('auth').set_permission_asserted()
@@ -222,7 +222,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_cluster_user_by_node(self, node):
-        """Obtain a cluster user for a given node"""
+        """Obtain a cluster user for a given node."""
         for user in self.get_all_user_objects(user_classes=[ClusterUser]):
             if user.node == node:
                 return user

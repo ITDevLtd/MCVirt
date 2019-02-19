@@ -23,12 +23,12 @@ from mcvirt.exceptions import LibVirtConnectionException
 
 
 class LibvirtConnector(PyroObject):
-    """Obtains/manages Libvirt connections"""
+    """Obtains/manages Libvirt connections."""
 
     CACHED_CONNECTIONS = {}
 
     def get_connection(self, server=None):
-        """Obtains a Libvirt connection for a given server"""
+        """Obtains a Libvirt connection for a given server."""
         if server is None:
             server = get_hostname()
 

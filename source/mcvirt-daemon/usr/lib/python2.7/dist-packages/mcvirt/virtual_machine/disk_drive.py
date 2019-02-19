@@ -27,15 +27,15 @@ from mcvirt.constants import DirectoryLocation
 
 
 class DiskDrive(PyroObject):
-    """Provides operations to manage the disk drive attached to a VM"""
+    """Provides operations to manage the disk drive attached to a VM."""
 
     def __init__(self, vm_object):
-        """Sets member variables and obtains libvirt domain object"""
+        """Sets member variables and obtains libvirt domain object."""
         self.vm_object = self.po__convert_remote_object(vm_object)
 
     @Expose()
     def attach_iso(self, iso_object, live=False):
-        """Attaches an ISO image to the disk drive of the VM"""
+        """Attaches an ISO image to the disk drive of the VM."""
         iso_object = self.po__convert_remote_object(iso_object)
 
         # Ensure that the user has permissions to modifiy the VM
@@ -59,7 +59,7 @@ class DiskDrive(PyroObject):
             raise LibvirtException('An error occurred whilst attaching ISO')
 
     def remove_iso(self, live=False):
-        """Removes ISO attached to the disk drive of a VM"""
+        """Removes ISO attached to the disk drive of a VM."""
 
         # Import cdrom XML template
         cdrom_xml = ET.parse(DirectoryLocation.TEMPLATE_DIR + '/cdrom.xml')
@@ -79,7 +79,7 @@ class DiskDrive(PyroObject):
                 raise LibvirtException('An error occurred whilst detaching ISO')
 
     def getCurrentDisk(self):
-        """Returns the path of the disk currently attached to the VM"""
+        """Returns the path of the disk currently attached to the VM."""
         # Import cdrom XML template
         domain_config = self.vm_object.get_libvirt_config()
         source_xml = domain_config.find('./devices/disk[@device="cdrom"]/source')
@@ -91,7 +91,7 @@ class DiskDrive(PyroObject):
             return None
 
     def preOnlineMigrationChecks(self, destination_node_name):
-        """Performs pre-online-migration checks"""
+        """Performs pre-online-migration checks."""
         # Determines if an attached ISO is present on the remote node
         if self.getCurrentDisk():
             # @TODO Update

@@ -44,7 +44,7 @@ class Node(PyroObject):
                  for line in net_tcp_contents.strip().split('\n')[1:]]
         if include_remote:
             def remote_command(remote_object):
-                """Get listen ports from remote node"""
+                """Get listen ports from remote node."""
                 node_object = remote_object.get_connection('node')
                 ports.extend(node_object.get_listen_ports())
             cluster = self.po__get_registered_object('cluster')
@@ -60,7 +60,7 @@ class Node(PyroObject):
 
         # Update global MCVirt configuration
         def update_config(config):
-            """Update cluster IP in MCVirt config"""
+            """Update cluster IP in MCVirt config."""
             config['cluster']['cluster_ip'] = ip_address
         mcvirt_config = MCVirtConfig()
         mcvirt_config.update_config(update_config, 'Set node cluster IP address to %s' %
@@ -68,12 +68,12 @@ class Node(PyroObject):
 
     @Expose()
     def get_version(self):
-        """Return the version of the running daemon"""
+        """Return the version of the running daemon."""
         return VERSION
 
     @Expose()
     def clear_method_lock(self):
-        """Force clear a method lock to escape deadlock"""
+        """Force clear a method lock to escape deadlock."""
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
         lock = MethodLock.get_lock()
         if lock.locked():

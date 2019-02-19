@@ -28,14 +28,14 @@ from mcvirt.size_converter import SizeConverter
 
 
 class Local(Base):
-    """Provides operations to manage local hard drives, used by VMs"""
+    """Provides operations to manage local hard drives, used by VMs."""
 
     MAXIMUM_DEVICES = 4
     CACHE_MODE = 'directsync'
 
     @classmethod
     def generate_config(cls, driver, storage_backend, nodes, base_volume_name):
-        """Generate config for hard drive"""
+        """Generate config for hard drive."""
         # If the storage backend is shared, re-assign nodes to a
         # None value, as it will be obtained by the storage backend
         if storage_backend.shared:
@@ -44,7 +44,7 @@ class Local(Base):
 
     @property
     def nodes(self):
-        """Return nodes that the hard drive is on"""
+        """Return nodes that the hard drive is on."""
         # If storage backend is shared, return the nodes
         # that it is attached to
         if self.storage_backend.shared:
@@ -53,21 +53,21 @@ class Local(Base):
 
     @property
     def disk_name(self):
-        """Return disk name"""
+        """Return disk name."""
         return self.base_volume_name
 
     @staticmethod
     def isAvailable(storage_factory, node_drdb):
-        """Determine if local storage is available on the node"""
+        """Determine if local storage is available on the node."""
         return bool(storage_factory.get_all(available_on_local_node=True))
 
     def _get_data_volume(self):
-        """Obtain the data volume object for the disk"""
+        """Obtain the data volume object for the disk."""
         return self._get_volume(self.disk_name)
 
     @Expose(locking=True)
     def increase_size(self, increase_size):
-        """Increases the size of a VM hard drive, given the size to increase the drive by"""
+        """Increases the size of a VM hard drive, given the size to increase the drive by."""
         vm_object = self.get_virtual_machine()
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE, vm_object
@@ -95,11 +95,11 @@ class Local(Base):
 
     def _check_exists(self):
         """Checks if a disk exists, which is required before any operations
-        can be performed on the disk"""
+        can be performed on the disk."""
         return self._get_data_volume().check_exists()
 
     def _removeStorage(self, local_only=False, remove_raw=True):
-        """Removes the backing logical volume"""
+        """Removes the backing logical volume."""
         self._get_data_volume().delete()
 
     def get_size(self):
@@ -107,7 +107,7 @@ class Local(Base):
         return self._get_data_volume().get_size()
 
     def clone(self, destination_vm_object):
-        """Clone a VM, using snapshotting, attaching it to the new VM object"""
+        """Clone a VM, using snapshotting, attaching it to the new VM object."""
         self.ensure_exists()
 
         # Create destination hard drive, without creating actual storage
@@ -128,20 +128,20 @@ class Local(Base):
 
     def create(self, size):
         """Creates a new disk image, attaches the disk to the VM and records the disk
-        in the VM configuration"""
+        in the VM configuration."""
         self._get_data_volume().create(size)
 
     def activateDisk(self):
-        """Starts the disk logical volume"""
+        """Starts the disk logical volume."""
         self.ensure_exists()
         self._get_data_volume().activate()
 
     def deactivateDisk(self):
-        """Deactivates the disk loglcal volume"""
+        """Deactivates the disk loglcal volume."""
         self._get_data_volume().deactivate()
 
     def preMigrationChecks(self):
-        """Perform pre-migration checks"""
+        """Perform pre-migration checks."""
         # @TODO Allow migration for shared disks - worth ensuring that the disks is actually
         # available on both nodes
         if not self.storage_backend.shared:
@@ -149,17 +149,17 @@ class Local(Base):
                 'VMs using local disks on a non-shared backend cannot be migrated')
 
     def _getDiskPath(self):
-        """Returns the path of the raw disk image"""
+        """Returns the path of the raw disk image."""
         return self._get_data_volume().get_path()
 
     def _getDiskName(self):
-        """Returns the name of a disk logical volume, for a given VM"""
+        """Returns the name of a disk logical volume, for a given VM."""
         return self.disk_name
 
     def get_backup_source_volume(self):
-        """Retrun the source volume for snapshotting for backeups"""
+        """Retrun the source volume for snapshotting for backeups."""
         return self._get_data_volume()
 
     def get_backup_snapshot_volume(self):
-        """Return a volume object for the disk object"""
+        """Return a volume object for the disk object."""
         return self._get_volume(self.disk_name + self.SNAPSHOT_SUFFIX)

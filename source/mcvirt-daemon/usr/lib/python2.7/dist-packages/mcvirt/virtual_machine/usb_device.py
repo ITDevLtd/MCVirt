@@ -25,32 +25,32 @@ from mcvirt.exceptions import VmStoppedException
 
 
 class UsbDevice(PyroObject):
-    """Provide methods for attaching USB devices to VMs"""
+    """Provide methods for attaching USB devices to VMs."""
 
     def __init__(self, bus, device, virtual_machine):
-        """Set member variables for the object"""
+        """Set member variables for the object."""
         self.virtual_machine = virtual_machine
         self.bus = bus
         self.device = device
 
     def _generate_libvirt_xml(self):
-        """Generate LibVirt XML for the device"""
+        """Generate LibVirt XML for the device."""
         usb_xml = ET.parse(DirectoryLocation.TEMPLATE_DIR + '/usb-device.xml')
         usb_xml.find('./source/address').set('bus', self.bus)
         usb_xml.find('./source/address').set('device', self.device)
         return ET.tostring(usb_xml.getroot(), encoding='utf8', method='xml')
 
     def get_bus(self):
-        """Return the bus for the USB object"""
+        """Return the bus for the USB object."""
         return int(self.bus)
 
     def get_device(self):
-        """Return the device ID of the USB object"""
+        """Return the device ID of the USB object."""
         return int(self.device)
 
     @Expose(locking=True)
     def attach(self):
-        """Attach the USB device to the libvirt domain"""
+        """Attach the USB device to the libvirt domain."""
         if not self.virtual_machine.is_running:
             raise VmStoppedException('VM is stopped. '
                                      'Can only attached USB device to running VM')
@@ -64,7 +64,7 @@ class UsbDevice(PyroObject):
 
     @Expose(locking=True)
     def detach(self):
-        """Detach the USB device from the libvirt domain"""
+        """Detach the USB device from the libvirt domain."""
         if not self.virtual_machine.is_running:
             raise VmStoppedException('VM is stopped. '
                                      'Can only attached USB device to running VM')

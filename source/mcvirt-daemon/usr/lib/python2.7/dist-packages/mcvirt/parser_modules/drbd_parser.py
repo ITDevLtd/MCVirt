@@ -19,10 +19,10 @@
 
 
 class DrbdParser(object):
-    """Handle DRBD management parser"""
+    """Handle DRBD management parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for DRBD management"""
+        """Create subparser for DRBD management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -36,26 +36,26 @@ class DrbdParser(object):
         self.register_list()
 
     def register_enable(self):
-        """Register enable parser"""
+        """Register enable parser."""
         self.enable_parser = self.subparser.add_parser(
             'enable', help='Enable Drbd support on the cluster',
             parents=[self.parent_parser])
         self.enable_parser.set_defaults(func=self.handle_enable)
 
     def handle_enable(self, p_, args):
-        """Handle DRBD enable"""
+        """Handle DRBD enable."""
         node_drbd = p_.rpc.get_connection('node_drbd')
         node_drbd.enable()
         p_.print_status('Successfully enabled DRBD')
 
     def register_list(self):
-        """Register DRBD list parser"""
+        """Register DRBD list parser."""
         self.list_parser = self.subparser.add_parser(
             'list', help='List Drbd volumes on the system',
             parents=[self.parent_parser])
         self.list_parser.set_defaults(func=self.handle_list)
 
     def handle_list(self, p_, args):
-        """Handle DRBD list"""
+        """Handle DRBD list."""
         node_drbd = p_.rpc.get_connection('node_drbd')
         p_.print_status(node_drbd.list())

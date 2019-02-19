@@ -207,7 +207,7 @@ class Parser(object):
             self.print_output.append(status)
 
     def check_ignore_failed(self, args):
-        """Check ignore failed"""
+        """Check ignore failed."""
         if args.ignore_failed_nodes:
             # If the user has specified to ignore the cluster,
             # print a warning and confirm the user's answer
@@ -223,7 +223,7 @@ class Parser(object):
         return False
 
     def authenticate_saved_session(self, ignore_cluster):
-        """Attempt to authenticate using saved session"""
+        """Attempt to authenticate using saved session."""
         # Try logging in with saved session
         auth_session = None
         try:
@@ -251,7 +251,7 @@ class Parser(object):
                 self.rpc = None
 
     def authenticate_username_password(self, args, ignore_cluster):
-        """Authenticate using username and password"""
+        """Authenticate using username and password."""
         # Check if user/password have been passed. Else, ask for them.
         username = args.username if args.username else System.getUserInput(
             'Username: '

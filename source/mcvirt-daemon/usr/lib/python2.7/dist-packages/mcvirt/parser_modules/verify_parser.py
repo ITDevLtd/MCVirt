@@ -21,10 +21,10 @@ from mcvirt.exceptions import DrbdVolumeNotInSyncException
 
 
 class VerifyParser(object):
-    """Handle verify parser"""
+    """Handle verify parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for verifcation"""
+        """Create subparser for verifcation."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -44,7 +44,7 @@ class VerifyParser(object):
                                                         help='Specify a single VM to verify')
 
     def handle_verify(self, p_, args):
-        """Hanlde verify"""
+        """Hanlde verify."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         if args.vm_name:
             vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)

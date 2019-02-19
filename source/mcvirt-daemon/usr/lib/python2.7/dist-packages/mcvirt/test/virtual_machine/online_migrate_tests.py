@@ -41,7 +41,7 @@ from mcvirt.rpc.expose_method import Expose
 
 
 class LibvirtFailureMode(Enum):
-    """Modes in which the libvirt is directed to simulate a failure"""
+    """Modes in which the libvirt is directed to simulate a failure."""
     NORMAL_RUN = 0
     CONNECTION_FAILURE = 1
     PRE_MIGRATION_FAILURE = 2
@@ -49,13 +49,13 @@ class LibvirtFailureMode(Enum):
 
 
 class LibvirtFailureSimulationException(MCVirtException):
-    """A libvirt command has been simulated to fail"""
+    """A libvirt command has been simulated to fail."""
     pass
 
 
 class LibvirtConnectorUnitTest(LibvirtConnector):
     """Override LibvirtConnector class to provide ability to cause
-       connection errors whilst connecting to remote libvirt instances"""
+       connection errors whilst connecting to remote libvirt instances."""
 
     def get_connection(self, server=None):
         if not (server is None or server == 'localhost' or server == get_hostname()):
@@ -67,7 +67,7 @@ class VirtualMachineFactoryUnitTest(VirtualMachineFactory):
 
     @Expose()
     def get_virtual_machine_by_id(self, vm_id):
-        """Obtain a VM object, based on VM name"""
+        """Obtain a VM object, based on VM name."""
         # If not, create object, register with pyro
         # and store in cached object dict
         vm_object = VirtualMachineLibvirtFail(vm_id)
@@ -96,7 +96,7 @@ class VirtualMachineLibvirtFail(VirtualMachine):
 
             # Override migrate3 method to raise an exception before the migration takes place
             def migrate3(self, *args, **kwargs):
-                """Raise exception for pre-migration failure"""
+                """Raise exception for pre-migration failure."""
                 raise LibvirtFailureSimulationException('Pre-migration failure')
 
             # Bind overridden migrate3 method to libvirt object
@@ -108,7 +108,7 @@ class VirtualMachineLibvirtFail(VirtualMachine):
             # Override the migrate3 method to raise an exception
             # after the migration has taken place
             def migrate3(self, *args, **kwargs):
-                """Raise post migration failure"""
+                """Raise post migration failure."""
                 libvirt.virDomain.migrate3(libvirt_object, *args, **kwargs)
                 raise LibvirtFailureSimulationException('Post-migration failure')
 
@@ -120,13 +120,13 @@ class VirtualMachineLibvirtFail(VirtualMachine):
 
 
 class OnlineMigrateTests(TestBase):
-    """Provides unit tests for the onlineMigrate function"""
+    """Provides unit tests for the onlineMigrate function."""
 
     RPC_DAEMON = None
 
     @staticmethod
     def suite():
-        """Return a test suite of the online migrate tests"""
+        """Return a test suite of the online migrate tests."""
         suite = unittest.TestSuite()
         suite.addTest(OnlineMigrateTests('test_migrate_locked'))
         suite.addTest(OnlineMigrateTests('test_migrate_unregistered'))
@@ -143,7 +143,7 @@ class OnlineMigrateTests(TestBase):
         return suite
 
     def setUp(self):
-        """Create various objects and deletes any test VMs"""
+        """Create various objects and deletes any test VMs."""
         # Register fake libvirt connector with daemon
         self.old_libvirt_connector = RpcNSMixinDaemon.DAEMON.registered_factories[
             'libvirt_connector'
@@ -186,7 +186,7 @@ class OnlineMigrateTests(TestBase):
         self.local_vm_object.start()
 
     def tearDown(self):
-        """Stops and tears down any test VMs"""
+        """Stops and tears down any test VMs."""
         # Remove the test ISO, if it exists
         if os.path.isfile(self.test_iso_path):
             os.unlink(self.test_iso_path)
@@ -203,7 +203,7 @@ class OnlineMigrateTests(TestBase):
 
     @skip_drbd(True)
     def test_migrate_locked(self):
-        """Attempts to migrate a locked VM"""
+        """Attempts to migrate a locked VM."""
         self.local_vm_object._setLockState(LockStates.LOCKED)
 
         with self.assertRaises(VirtualMachineLockException):
@@ -211,7 +211,7 @@ class OnlineMigrateTests(TestBase):
 
     @skip_drbd(True)
     def test_migrate_unregistered(self):
-        """Attempts to migrate a VM that is not registered"""
+        """Attempts to migrate a VM that is not registered."""
         self.local_vm_object.stop()
 
         # Unregister VM
@@ -224,11 +224,11 @@ class OnlineMigrateTests(TestBase):
     @skip_drbd(True)
     def test_migrate_inappropriate_node(self):
         """Attempts to migrate a VM to a node that is not part of
-           its available nodes"""
+           its available nodes."""
         remote_node = self.local_vm_object._get_remote_nodes()[0]
 
         def remote_node_config(config):
-            """Remove node from VM config"""
+            """Remove node from VM config."""
             config['available_nodes'].remove(remote_node)
         self.local_vm_object.get_config_object().update_config(remote_node_config)
 
@@ -236,13 +236,13 @@ class OnlineMigrateTests(TestBase):
             self.test_vm_object.onlineMigrate(remote_node)
 
         def add_node_config(config):
-            """Update available nodes config"""
+            """Update available nodes config."""
             config['available_nodes'].append(remote_node)
         self.local_vm_object.get_config_object().update_config(add_node_config)
 
     @skip_drbd(True)
     def test_migrate_drbd_not_connected(self):
-        """Attempts to migrate a VM whilst Drbd is not connected"""
+        """Attempts to migrate a VM whilst Drbd is not connected."""
         for disk_object in self.local_vm_object.get_hard_drive_objects():
             disk_object._drbdDisconnect()
 
@@ -252,10 +252,10 @@ class OnlineMigrateTests(TestBase):
     @skip_drbd(True)
     def test_migrate_invalid_network(self):
         """Attempts to migrate a VM attached to a network that doesn't exist
-           on the destination node"""
+           on the destination node."""
         # Replace the network in VM network adapters with an invalid network
         def set_invalid_network(config):
-            """Set invalid network name"""
+            """Set invalid network name."""
             for mac_address in config['network_interfaces']:
                 config['network_interfaces'][mac_address] = 'Non-existent-network'
         self.local_vm_object.get_config_object().update_config(set_invalid_network)
@@ -266,7 +266,7 @@ class OnlineMigrateTests(TestBase):
 
         # Reset the VM configuration
         def resetNetwork(config):
-            """Reset network config"""
+            """Reset network config."""
             for mac_address in config['network_interfaces']:
                 config['network_interfaces'][mac_address] = self.test_vms[
                     'TEST_VM_1'
@@ -276,7 +276,7 @@ class OnlineMigrateTests(TestBase):
     @skip_drbd(True)
     def test_migrate_invalid_iso(self):
         """Attempts to migrate a VM, with an ISO attached that doesn't exist
-           on the destination node"""
+           on the destination node."""
         # Create test ISO
         fhandle = open(self.test_iso_path, 'a')
         try:
@@ -297,13 +297,13 @@ class OnlineMigrateTests(TestBase):
 
     @skip_drbd(True)
     def test_migrate_invalid_node(self):
-        """Attempts to migrate the VM to a non-existent node"""
+        """Attempts to migrate the VM to a non-existent node."""
         with self.assertRaises(UnsuitableNodeException):
             self.test_vm_object.onlineMigrate('non-existent-node')
 
     @skip_drbd(True)
     def test_migrate_pre_migration_libvirt_failure(self):
-        """Simulates a pre-migration libvirt failure"""
+        """Simulates a pre-migration libvirt failure."""
         # Set the mcvirt libvirt failure mode to simulate a pre-migration failure
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.PRE_MIGRATION_FAILURE
 
@@ -346,7 +346,7 @@ class OnlineMigrateTests(TestBase):
 
     @skip_drbd(True)
     def test_migrate_post_migration_libvirt_failure(self):
-        """Simulates a post-migration libvirt failure"""
+        """Simulates a post-migration libvirt failure."""
         # Set the mcvirt libvirt failure mode to simulate a post-migration failure
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.POST_MIGRATION_FAILURE
 
@@ -391,7 +391,7 @@ class OnlineMigrateTests(TestBase):
     @skip_drbd(True)
     def test_migrate_libvirt_connection_failure(self):
         """Attempt to perform a migration, simulating a libvirt
-           connection failure"""
+           connection failure."""
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.CONNECTION_FAILURE
 
         with self.assertRaises(libvirt.libvirtError):
@@ -405,7 +405,7 @@ class OnlineMigrateTests(TestBase):
 
     @skip_drbd(True)
     def test_migrate_stopped_vm(self):
-        """Attempts to migrate a stopped VM"""
+        """Attempts to migrate a stopped VM."""
         self.local_vm_object.stop()
 
         with self.assertRaises(VmStoppedException):

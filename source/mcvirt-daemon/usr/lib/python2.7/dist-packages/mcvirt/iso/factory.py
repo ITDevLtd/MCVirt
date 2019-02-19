@@ -1,4 +1,4 @@
-"""Provide factory class for ISO"""
+"""Provide factory class for ISO."""
 
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
@@ -34,7 +34,7 @@ from mcvirt.utils import get_hostname
 
 
 class Factory(PyroObject):
-    """Class for obtaining ISO objects"""
+    """Class for obtaining ISO objects."""
 
     ISO_CLASS = Iso
     CACHED_OBJECTS = {}
@@ -49,7 +49,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_isos(self):
-        """Return a list of a ISOs"""
+        """Return a list of a ISOs."""
         # Get files in ISO directory
         file_list = os.listdir(DirectoryLocation.ISO_STORAGE_DIR)
         iso_list = []
@@ -62,7 +62,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_iso_by_name(self, iso_name, node=None):
-        """Create and register Iso object"""
+        """Create and register Iso object."""
         if iso_name not in Factory.CACHED_OBJECTS:
             Factory.CACHED_OBJECTS[iso_name] = Iso(iso_name)
             self.po__register_object(Factory.CACHED_OBJECTS[iso_name])
@@ -70,7 +70,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_iso_list(self, node=None):
-        """Return a user-readable list of ISOs"""
+        """Return a user-readable list of ISOs."""
         iso_list = self.get_remote_factory(node).get_isos()
         if len(iso_list) == 0:
             return 'No ISOs found'
@@ -78,7 +78,7 @@ class Factory(PyroObject):
             return "\n".join(iso_list)
 
     def add_iso(self, path):
-        """Copy an ISO to ISOs directory"""
+        """Copy an ISO to ISOs directory."""
         # Check that file exists
         if not os.path.isfile(path):
             raise InvalidISOPathException('Error: \'%s\' is not a file or does not exist' % path)
@@ -92,7 +92,7 @@ class Factory(PyroObject):
 
     @Expose(locking=True)
     def add_from_url(self, url, name=None, node=None):
-        """Download an ISO from given URL and save in ISO directory"""
+        """Download an ISO from given URL and save in ISO directory."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_ISO
         )
@@ -137,7 +137,7 @@ class Factory(PyroObject):
 
     @Expose(locking=True)
     def add_iso_from_stream(self, path, name=None):
-        """Import ISO, writing binary data to the ISO file"""
+        """Import ISO, writing binary data to the ISO file."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_ISO
         )
@@ -154,7 +154,7 @@ class Factory(PyroObject):
 
 
 class IsoWriter(PyroObject):
-    """Provide an interface for writing ISOs"""
+    """Provide an interface for writing ISOs."""
 
     def __init__(self, temp_file, factory, temp_directory, path):
         """Set methods to be able to create ISO from temp path."""
@@ -165,7 +165,7 @@ class IsoWriter(PyroObject):
         self.fh = open(self.temp_file, 'wb')
 
     def __delete__(self):
-        """Close FH on object deletion"""
+        """Close FH on object deletion."""
         if self.fh:
             self.fh.close()
             self.fh = None
@@ -173,7 +173,7 @@ class IsoWriter(PyroObject):
 
     @Expose()
     def write_data(self, data):
-        """Write data to the ISO file"""
+        """Write data to the ISO file."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_ISO
         )
@@ -181,7 +181,7 @@ class IsoWriter(PyroObject):
 
     @Expose()
     def write_end(self):
-        """End writing object, close FH and import ISO"""
+        """End writing object, close FH and import ISO."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_ISO
         )

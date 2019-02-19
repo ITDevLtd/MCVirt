@@ -24,11 +24,11 @@ from mcvirt.test.test_base import TestBase
 
 
 class ValidationTests(TestBase):
-    """Provides unit tests for validation"""
+    """Provides unit tests for validation."""
 
     @staticmethod
     def suite():
-        """Return a test suite of validation tests"""
+        """Return a test suite of validation tests."""
         suite = unittest.TestSuite()
         suite.addTest(ValidationTests('test_create_vm'))
         suite.addTest(ValidationTests('test_create_network'))
@@ -65,7 +65,7 @@ class ValidationTests(TestBase):
                                      (expected_exception.__name__, i, validator.__name__))
 
     def test_create_vm(self):
-        """Test an invalid VM name to check that VM creation uses ArgumentValidator"""
+        """Test an invalid VM name to check that VM creation uses ArgumentValidator."""
         with self.assertRaises(InvalidVirtualMachineNameException):
             self.parser.parse_arguments('create --memory %s --cpu-count %s -- %s' %
                                         (self.test_vms['TEST_VM_1']['memory_allocation'],
@@ -74,7 +74,7 @@ class ValidationTests(TestBase):
 
     def test_create_network(self):
         """Test creating a netork with an invalid name to check that network creation uses
-        ArgumentValidator"""
+        ArgumentValidator."""
         network_name = 'not-valid-'
         try:
             with self.assertRaises(MCVirtTypeError):
@@ -90,37 +90,37 @@ class ValidationTests(TestBase):
             raise
 
     def test_hostnames(self):
-        """Test the validation of hostnames"""
+        """Test the validation of hostnames."""
         valid = ['validname', 'with123numbers', 'with-dashes', '1validname', 'x' * 63, 'x' * 64]
         invalid = ['-StartingWithADash', 'EndingWithADash-', 'name!#', 'x' * 65]
         self.test_validity(ArgumentValidator.validate_hostname, valid, invalid)
 
     def test_network_names(self):
-        """Test the validation of network names"""
+        """Test the validation of network names."""
         valid = ['normalName', 'withNumbers999', '123456', 'x' * 63, 'x' * 64, 'with-dash']
         invalid = ['-not-very-valid', 'under_score', '!!!$$', 'x' * 65]
         self.test_validity(ArgumentValidator.validate_network_name, valid, invalid)
 
     def test_integer(self):
-        """Test the validation of integers"""
+        """Test the validation of integers."""
         valid = [0, 1, '2', -4, '-10']
         invalid = ['hello', None, False, '4.5', 3.12, {}, []]
         self.test_validity(ArgumentValidator.validate_integer, valid, invalid)
 
     def test_pos_integer(self):
-        """Test the validation of positive integers"""
+        """Test the validation of positive integers."""
         valid = [1, 2, 10, '99999999']
         invalid = [None, True, '-123', -234, 0]
         self.test_validity(ArgumentValidator.validate_positive_integer, valid, invalid)
 
     def test_boolean(self):
-        """Test the validation of booleans"""
+        """Test the validation of booleans."""
         valid = [True, False]
         invalid = ['True', None, 0, 1, '0']
         self.test_validity(ArgumentValidator.validate_boolean, valid, invalid)
 
     def test_drbd_resource(self):
-        """Test the validation of DRBD resource names"""
+        """Test the validation of DRBD resource names."""
         valid = ['mcvirt_vm-blah-disk-32', 'mcvirt_vm-test-disk-1', 'mcvirt_vm-blah-disk-99']
         invalid = ['xmcvirt_vm-blah-disk-1', 'mcvirt_vm-blah-disk-', 'MCVirt_vm-blah-disk-2',
                    'mcvirt_vm-blah-disk-2x', 'mcvirt_vm--disk-1', 'mcvirt_vm-test-disk-0',
@@ -128,7 +128,7 @@ class ValidationTests(TestBase):
         self.test_validity(ArgumentValidator.validate_drbd_resource, valid, invalid)
 
     def test_ip_address(self):
-        """Test the validation of IP addresses"""
+        """Test the validation of IP addresses."""
         valid = ['1.2.3.4', '192.168.1.143', '255.255.255.255', '0.0.0.0']
         invalid = ['1.2.3', '256.1.1.1', '-1.2.3.4', 'one.two.three.four', 'invalid_ip', '1.2.3.4a']
         self.test_validity(ArgumentValidator.validate_ip_address, valid, invalid)

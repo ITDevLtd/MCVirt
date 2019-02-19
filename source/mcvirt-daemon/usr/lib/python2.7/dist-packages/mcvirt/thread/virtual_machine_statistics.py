@@ -32,16 +32,16 @@ from mcvirt.constants import (StatisticsDeviceType,
 
 
 class VirtualMachineStatisticsFactory(PyroObject):
-    """Object to configure and create statistics daemons"""
+    """Object to configure and create statistics daemons."""
 
     def __init__(self):
-        """Intialise state of statisticss"""
+        """Intialise state of statisticss."""
         self.statistics_agents = {}
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
-        """Obtain an instance of the statistics factory on a remote node"""
+        """Obtain an instance of the statistics factory on a remote node."""
         cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
@@ -49,7 +49,7 @@ class VirtualMachineStatisticsFactory(PyroObject):
         return node_object.get_connection('virtual_machine_statistics_factory')
 
     def initialise(self):
-        """Detect running VMs on local node and create statistics agents"""
+        """Detect running VMs on local node and create statistics agents."""
         # Check all VMs
         for virtual_machine in self.po__get_registered_object(
                 'virtual_machine_factory').get_all_virtual_machines():
@@ -59,17 +59,17 @@ class VirtualMachineStatisticsFactory(PyroObject):
             self.start_statistics(virtual_machine)
 
     def start_statistics(self, virtual_machine):
-        """Create statistics agents and start"""
+        """Create statistics agents and start."""
         stats = self.get_statistics_agent(virtual_machine)
         stats.initialise()
 
     def stop_statistics(self, virtual_machine):
-        """Stop statistics"""
+        """Stop statistics."""
         stats = self.get_statistics_agent(virtual_machine)
         stats.cancel()
 
     def get_statistics_agent(self, virtual_machine):
-        """Get a statistics obect for a given virtual machine"""
+        """Get a statistics obect for a given virtual machine."""
         if virtual_machine.get_name() not in self.statistics_agents:
             stats_agent = VirtualMachineStatisticsAgent(virtual_machine)
             self.po__register_object(stats_agent)
@@ -77,14 +77,14 @@ class VirtualMachineStatisticsFactory(PyroObject):
         return self.statistics_agents[virtual_machine.get_name()]
 
     def cancel(self):
-        """Stop all threads"""
+        """Stop all threads."""
         for stats_agent in self.statistics_agents.values():
             stats_agent.repeat = False
             stats_agent.cancel()
 
     @Expose(locking=True)
     def set_global_interval(self, interval):
-        """Set global default statistics check interval"""
+        """Set global default statistics check interval."""
         ArgumentValidator.validate_positive_integer(interval)
 
         # Check permissions
@@ -98,21 +98,21 @@ class VirtualMachineStatisticsFactory(PyroObject):
 
 
 class VirtualMachineStatisticsAgent(RepeatTimer):
-    """Statistics agent timer thread for checking VM stats"""
+    """Statistics agent timer thread for checking VM stats."""
 
     def __init__(self, virtual_machine, *args, **kwargs):
-        """Store virtual machine"""
+        """Store virtual machine."""
         self.virtual_machine = virtual_machine
         super(VirtualMachineStatisticsAgent, self).__init__(*args, **kwargs)
 
     @property
     def interval(self):
-        """Return the timer interval"""
+        """Return the timer interval."""
         # @TODO This will be slow
         return MCVirtConfig().get_config()['statistics']['interval']
 
     def insert_into_stat_db(self):
-        """Add statistics to statistics database"""
+        """Add statistics to statistics database."""
         db_factory = self.po__get_registered_object('database_factory')
         db_rows = [
             (StatisticsDeviceType.VIRTUAL_MACHINE.value,
@@ -135,7 +135,7 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
                 db_rows)
 
     def run(self):
-        """Perform statistics check"""
+        """Perform statistics check."""
         Syslogger.logger().debug('Statistics daemon checking: %s' %
                                  self.virtual_machine.get_name())
         Pyro4.current_context.INTERNAL_REQUEST = True

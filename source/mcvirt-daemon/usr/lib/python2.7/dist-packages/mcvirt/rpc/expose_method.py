@@ -37,16 +37,16 @@ class Transaction(object):
 
     @classmethod
     def in_transaction(cls):
-        """Determine if a transaction is currently in progress"""
+        """Determine if a transaction is currently in progress."""
         return len(cls.transactions) > 0
 
     @property
     def id(self):
-        """Return the ID of the transaction"""
+        """Return the ID of the transaction."""
         return self._id
 
     def __init__(self):
-        """Setup member variables and register transaction"""
+        """Setup member variables and register transaction."""
         # Determine transaction ID.
         self._id = len(Transaction.transactions)
 
@@ -63,7 +63,7 @@ class Transaction(object):
             Syslogger.logger().debug('Starting new transaction')
 
     def finish(self):
-        """Mark the transaction as having been completed"""
+        """Mark the transaction as having been completed."""
         self.comlpete = True
         # Only remove transaction if it is the last
         # transaction in the stack
@@ -96,7 +96,7 @@ class Transaction(object):
 
     @classmethod
     def register_function(cls, function):
-        """Register a function with the current transactions"""
+        """Register a function with the current transactions."""
         # Only register function if a transaction is in progress
         if cls.in_transaction() and not Transaction.undo_state:
             for transaction in Transaction.transactions:
@@ -246,13 +246,13 @@ class Function(PyroObject):
         return False
 
     def unregister(self, force=False):
-        """De-register object after deletion"""
+        """De-register object after deletion."""
         if force or not Transaction.in_transaction():
             self.unregister_object(self, debug=False)
 
     @property
     def _undo_function_name(self):
-        """Return the name of the undo function"""
+        """Return the name of the undo function."""
         # If running on a remote node and a remote undo method
         # is defined, return that
         if self.current_node != get_hostname() and self.remote_undo_method:
@@ -267,7 +267,7 @@ class Function(PyroObject):
         return 'undo__%s' % self.function.__name__
 
     def run(self):
-        """Run the function"""
+        """Run the function."""
         # Register instance and functions with pyro
         self.obj.po__register_object(self, debug=False)
 
@@ -338,7 +338,7 @@ class Function(PyroObject):
         return self._get_response_data()
 
     def _get_kwargs(self):
-        """Obtain kwargs for passing to the function"""
+        """Obtain kwargs for passing to the function."""
         # Create copy of kwargs before modifying them
         kwargs = dict(self.nodes[self.current_node]['kwargs'])
 
@@ -349,7 +349,7 @@ class Function(PyroObject):
         return kwargs
 
     def _call_function_local(self):
-        """Perform the actual command on the local node"""
+        """Perform the actual command on the local node."""
         # Set the current node to the local node
         local_hostname = get_hostname()
         self.current_node = local_hostname
@@ -372,7 +372,7 @@ class Function(PyroObject):
                               **self._get_kwargs())
 
     def _call_function_remote(self, node, undo=False):
-        """Run the function on a remote node"""
+        """Run the function on a remote node."""
         # Set current node to remote node
         self.current_node = node
 

@@ -19,10 +19,10 @@
 
 
 class ResetParser(object):
-    """Handle VM reset parser"""
+    """Handle VM reset parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for resetting VMs"""
+        """Create subparser for resetting VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -35,7 +35,7 @@ class ResetParser(object):
                                        help='Names of VMs')
 
     def handle_reset(self, p_, args):
-        """Handle reset"""
+        """Handle reset."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         for vm_name in args.vm_names:
             try:

@@ -1,4 +1,4 @@
-"""Provides a locking mechanism for the MCVirt daemon"""
+"""Provides a locking mechanism for the MCVirt daemon."""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -24,12 +24,12 @@ from mcvirt.exceptions import MCVirtLockException
 
 
 class DaemonLock(object):
-    """Provides a lock for the MCVirt daemon"""
+    """Provides a lock for the MCVirt daemon."""
 
     LOCK = None
 
     def __init__(self, timeout=2):
-        """Create the lock file and lock file object and obtains a lock"""
+        """Create the lock file and lock file object and obtains a lock."""
         # Create lock file, if it does not exist
         if not os.path.isfile(DirectoryLocation.LOCK_FILE):
             if not os.path.isdir(DirectoryLocation.LOCK_FILE_DIR):

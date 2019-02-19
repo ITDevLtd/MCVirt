@@ -19,10 +19,10 @@
 
 
 class ShutdownParser(object):
-    """Handle VM shutdown parser"""
+    """Handle VM shutdown parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for shutting down VMs"""
+        """Create subparser for shutting down VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -35,7 +35,7 @@ class ShutdownParser(object):
                                           help='Names of VMs')
 
     def handle_shutdown(self, p_, args):
-        """Handle shutdown"""
+        """Handle shutdown."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         for vm_name in args.vm_names:
             try:

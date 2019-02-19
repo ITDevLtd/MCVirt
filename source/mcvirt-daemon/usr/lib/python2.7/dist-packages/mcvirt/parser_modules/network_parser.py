@@ -19,10 +19,10 @@
 
 
 class NetworkParser(object):
-    """Handle network parser"""
+    """Handle network parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for network management"""
+        """Create subparser for network management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -43,18 +43,18 @@ class NetworkParser(object):
         self.register_delete()
 
     def register_list(self):
-        """Register network list parser"""
+        """Register network list parser."""
         self.list_parser = self.subparser.add_parser('list', help='List the networks on the node',
                                                      parents=[self.parent_parser])
         self.list_parser.set_defaults(func=self.handle_list)
 
     def handle_list(self, p_, args):
-        """Handle network listing"""
+        """Handle network listing."""
         network_factory = p_.rpc.get_connection('network_factory')
         p_.print_status(network_factory.get_network_list_table())
 
     def register_create(self):
-        """Register parser to handle network creation"""
+        """Register parser to handle network creation."""
         self.create_parser = self.subparser.add_parser(
             'create',
             help='Create a network on the MCVirt host',
@@ -73,12 +73,12 @@ class NetworkParser(object):
                                         help='Name of the virtual network to be created')
 
     def handle_create(self, p_, args):
-        """Handle network creation"""
+        """Handle network creation."""
         network_factory = p_.rpc.get_connection('network_factory')
         network_factory.create(args.network, physical_interface=args.interface)
 
     def register_delete(self):
-        """Register parser to handle network deletions"""
+        """Register parser to handle network deletions."""
         self.delete_parser = self.subparser.add_parser(
             'delete',
             help='Delete a network on the MCVirt host',
@@ -89,7 +89,7 @@ class NetworkParser(object):
                                         help='Name of the virtual network to be removed')
 
     def handle_delete(self, p_, args):
-        """Handle network deletion"""
+        """Handle network deletion."""
         network_factory = p_.rpc.get_connection('network_factory')
         network_object = network_factory.get_network_by_name(args.network)
         p_.rpc.annotate_object(network_object)

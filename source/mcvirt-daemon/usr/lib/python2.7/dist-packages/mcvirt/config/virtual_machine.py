@@ -27,22 +27,22 @@ import mcvirt.config.migrations.virtual_machine as migrations
 
 
 class VirtualMachine(BaseSubconfig):
-    """Provides operations to obtain and set the MCVirt configuration for a VM"""
+    """Provides operations to obtain and set the MCVirt configuration for a VM."""
 
     SUBTREE_ARRAY = ['virtual_machines']
 
     def __init__(self, vm_object):
-        """Sets member variables"""
+        """Sets member variables."""
         self.vm_object = vm_object
         super(VirtualMachine, self).__init__()
 
     def _get_config_key(self):
-        """Get the key for the config"""
+        """Get the key for the config."""
         return self.vm_object.get_id()
 
     @staticmethod
     def create(vm_id, vm_name, available_nodes, cpu_cores, memory_allocation, graphics_driver):
-        """Creates a basic VM configuration for new VMs"""
+        """Creates a basic VM configuration for new VMs."""
 
         # Create basic config
         config = \
@@ -88,7 +88,7 @@ class VirtualMachine(BaseSubconfig):
             'Add virtual machine config: %s' % vm_name)
 
     def _upgrade(self, config):
-        """Perform an upgrade of the configuration file"""
+        """Perform an upgrade of the configuration file."""
 
         if self._getVersion() < 16:
             raise IntermediateUpgradeRequiredError(

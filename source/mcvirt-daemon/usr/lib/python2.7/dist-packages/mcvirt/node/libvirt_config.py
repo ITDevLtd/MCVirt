@@ -1,4 +1,4 @@
-"""Provide class to configure libvirtd"""
+"""Provide class to configure libvirtd."""
 
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
@@ -28,7 +28,7 @@ from mcvirt.exceptions import LibvirtNotInstalledException
 
 
 class LibvirtConfig(PyroObject):
-    """Provides configuration for libvirtd"""
+    """Provides configuration for libvirtd."""
 
     LIBVIRT_USER = 'libvirt-qemu'
     LIBVIRT_GROUP = 'kvm'
@@ -47,13 +47,13 @@ libvirtd_opts=" --listen --verbose %s"
 """
 
     def __init__(self):
-        """Create variable to determine if a hard restart is required"""
+        """Create variable to determine if a hard restart is required."""
         # Determine location of libvirt init script
         self.hard_restart = False
         self.service_name = self.get_service_name()
 
     def get_service_name(self):
-        """Locate the libvirt service"""
+        """Locate the libvirt service."""
         for service_name in ['libvirtd', 'libvirt-bin']:
             if os.path.isfile('/etc/init.d/%s' % service_name):
                 return service_name
@@ -61,7 +61,7 @@ libvirtd_opts=" --listen --verbose %s"
         raise LibvirtNotInstalledException('Libvirt does not appear to be installed')
 
     def generate_config(self):
-        """Generate the libvirtd configuration"""
+        """Generate the libvirtd configuration."""
         libvirt_config = self.get_config()
 
         # Replace the variables in the template with the local libvirtd configuration
@@ -83,7 +83,7 @@ libvirtd_opts=" --listen --verbose %s"
         self._reload_libvirt()
 
     def get_config(self):
-        """Create the configuration for libvirt"""
+        """Create the configuration for libvirt."""
         cert_gen_factory = self.po__get_registered_object('certificate_generator_factory')
         ssl_socket = cert_gen_factory.get_cert_generator('localhost')
         nodes = self.po__get_registered_object('cluster').get_nodes(return_all=True)
@@ -99,7 +99,7 @@ libvirtd_opts=" --listen --verbose %s"
         }
 
     def _reload_libvirt(self):
-        """Force libvirt to reload it's configuration"""
+        """Force libvirt to reload it's configuration."""
         action = 'restart' if self.hard_restart else 'force-reload'
         System.runCommand(['service', self.service_name, action])
         self.hard_restart = False

@@ -1,4 +1,4 @@
-"""Base class for providing Pyro-based methods for objects"""
+"""Base class for providing Pyro-based methods for objects."""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -26,7 +26,7 @@ from mcvirt.syslogger import Syslogger
 
 
 class PyroObject(object):
-    """Base class for providing Pyro-based methods for objects"""
+    """Base class for providing Pyro-based methods for objects."""
 
     def initialise(self):
         """Method to override, which is run once all factory objects
@@ -36,22 +36,22 @@ class PyroObject(object):
 
     @staticmethod
     def get_id_name_checksum_length():
-        """Return the lenght of the name checksum to use in the ID"""
+        """Return the lenght of the name checksum to use in the ID."""
         return 18
 
     @staticmethod
     def get_id_date_checksum_length():
-        """Return the lenght of the name checksum to use in the ID"""
+        """Return the lenght of the name checksum to use in the ID."""
         return 22
 
     @staticmethod
     def get_id_code():
-        """Return default Id code for object - should be overriden"""
+        """Return default Id code for object - should be overriden."""
         return 'po'
 
     @classmethod
     def generate_id(cls, name):
-        """Generate ID for group"""
+        """Generate ID for group."""
         # Generate sha sum of name and sha sum of
         # current datetime
         name_checksum = hashlib.sha512(name).hexdigest()
@@ -71,12 +71,12 @@ class PyroObject(object):
 
     @property
     def po__is_pyro_initialised(self):
-        """Determine if object is registered with the Pyro deamon"""
+        """Determine if object is registered with the Pyro deamon."""
         return '_pyroDaemon' in self.__dict__.keys()
 
     @property
     def po__cluster_disabled(self):
-        """Determine if the cluster has been actively disabled"""
+        """Determine if the cluster has been actively disabled."""
         # @TODO Implement this using Pyro annotations and current_context
         if self.po__is_pyro_initialised and 'ignore_cluster' in dir(Pyro4.current_context):
             return Pyro4.current_context.ignore_cluster
@@ -85,7 +85,7 @@ class PyroObject(object):
 
     @property
     def po__ignore_drbd(self):
-        """Determine if DRBD statuses are being actively ignored"""
+        """Determine if DRBD statuses are being actively ignored."""
         if self.po__is_pyro_initialised and 'ignore_drbd' in dir(Pyro4.current_context):
             return Pyro4.current_context.ignore_drbd
         else:
@@ -93,7 +93,7 @@ class PyroObject(object):
 
     @property
     def po__is_cluster_master(self):
-        """Determine if the local node is acting as cluster master for the command"""
+        """Determine if the local node is acting as cluster master for the command."""
         if self.po__is_pyro_initialised and 'cluster_master' in dir(Pyro4.current_context):
             return Pyro4.current_context.cluster_master
         else:
@@ -101,7 +101,7 @@ class PyroObject(object):
 
     @property
     def po__has_lock(self):
-        """Determine if the current session holds the global lock"""
+        """Determine if the current session holds the global lock."""
         if self.po__is_pyro_initialised and 'has_lock' in dir(Pyro4.current_context):
             return Pyro4.current_context.has_lock
         else:
@@ -109,7 +109,7 @@ class PyroObject(object):
             return False
 
     def po__register_object(self, local_object, debug=True):
-        """Register an object with the pyro daemon"""
+        """Register an object with the pyro daemon."""
         return_value = False
         if self.po__is_pyro_initialised:
             try:
@@ -126,7 +126,7 @@ class PyroObject(object):
         return return_value
 
     def po__convert_remote_object(self, remote_object):
-        """Return a local instance of a remote object"""
+        """Return a local instance of a remote object."""
         # Ensure that object is a remote object
         if self.po__is_pyro_initialised and '_pyroUri' in dir(remote_object):
             # Obtain daemon instance of object
@@ -134,7 +134,7 @@ class PyroObject(object):
         return remote_object
 
     def po__get_registered_object(self, object_name):
-        """Return objects registered in the Pyro Daemon"""
+        """Return objects registered in the Pyro Daemon."""
         if (self.po__is_pyro_initialised and
                 object_name in self._pyroDaemon.registered_factories):
             return self._pyroDaemon.registered_factories[object_name]
@@ -147,7 +147,7 @@ class PyroObject(object):
             return None
 
     def unregister_object(self, obj=None, debug=True):
-        """Unregister object from the Pyro Daemon"""
+        """Unregister object from the Pyro Daemon."""
         if self.po__is_pyro_initialised:
             if obj is None:
                 obj = self

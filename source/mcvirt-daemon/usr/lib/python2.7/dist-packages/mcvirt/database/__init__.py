@@ -1,4 +1,4 @@
-"""Module for distributed database across the cluster"""
+"""Module for distributed database across the cluster."""
 
 # Copyright (c) 2018 - Matt Comben
 #
@@ -49,13 +49,13 @@ class DatabaseFactory(PyroObject):
     CONNECTION_LOCK = Lock()
 
     def __init__(self):
-        """Obtain singleton lock and create connection to DB"""
+        """Obtain singleton lock and create connection to DB."""
         if not DatabaseFactory.SINGLETON_LOCK.acquire(False):
             raise DatabaseClassAlreadyInstanciatedError(
                 'Database class has already been instanciated')
 
     def initialise(self):
-        """Perform DB migration"""
+        """Perform DB migration."""
         with self.get_locking_connection() as db_inst:
             self._schema_migration(db_inst)
 
@@ -67,27 +67,27 @@ class DatabaseFactory(PyroObject):
         DatabaseFactory.SINGLETON_LOCK.release()
 
     def get_locking_connection(self, perform_sync=True):
-        """Obtain instance of database connection"""
+        """Obtain instance of database connection."""
         db_object = DatabaseConnection(self, perform_sync=perform_sync)
         self.po__register_object(db_object)
         return db_object
 
     def get_sqlite_object(self):
-        """Retrun the SQLite database object"""
+        """Retrun the SQLite database object."""
         return sqlite3.connect(DirectoryLocation.SQLITE_DATABASE)
 
     @staticmethod
     def obtain_db_conn_lock():
-        """Obtain database connection lock"""
+        """Obtain database connection lock."""
         return DatabaseFactory.CONNECTION_LOCK.acquire()
 
     @staticmethod
     def release_db_conn_lock():
-        """Release datbase connection lock"""
+        """Release datbase connection lock."""
         DatabaseFactory.CONNECTION_LOCK.release()
 
     def _get_schema_version(self, db_inst):
-        """Get database schema version"""
+        """Get database schema version."""
         res = db_inst.cursor.execute(
             """SELECT name FROM sqlite_master WHERE type='table' AND name='mcvirt_schema';""")
 
@@ -97,12 +97,12 @@ class DatabaseFactory(PyroObject):
 
         # Otherwise obtain the schema version from the file
         res = db_inst.cursor.execute(
-            """SELECT version FROM mcvirt_schema""")
+            """SELECT version FROM mcvirt_schema.""")
         version = res.fetchone()
         return version if version is not None else 0
 
     def _schema_migration(self, db_inst):
-        """Perform schema miagrations"""
+        """Perform schema miagrations."""
         Syslogger.logger().info('Performing DB migration')
         schema_version = self._get_schema_version(db_inst)
         Syslogger.logger().info('Current DB schema version: %s' % schema_version)
@@ -115,7 +115,7 @@ class DatabaseFactory(PyroObject):
 
     @Expose()
     def get_latest_stat(self, device_type, device_id):
-        """Obtain latest statistics date"""
+        """Obtain latest statistics date."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser')
         local_latest = None
         with self.get_locking_connection(perform_sync=False) as db_inst:
@@ -128,7 +128,7 @@ class DatabaseFactory(PyroObject):
         return local_latest if local_latest else 0
 
     def get_statistics(self, device_type, device_id, from_date):
-        """Obtain ist of statistics from a given date"""
+        """Obtain ist of statistics from a given date."""
         data_set = []
         with self.get_locking_connection(perform_sync=False) as db_inst:
             res = db_inst.cursor.execute(
@@ -141,7 +141,7 @@ class DatabaseFactory(PyroObject):
 
     @Expose()
     def import_statistics(self, device_type, device_id, stats):
-        """Import stats into local db"""
+        """Import stats into local db."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser')
         for stat in stats:
             stat.append(device_type)
@@ -153,7 +153,7 @@ class DatabaseFactory(PyroObject):
                 stats)
 
     def sync(self):
-        """Syncronise all local data with remote nodes"""
+        """Syncronise all local data with remote nodes."""
         # @TODO This is just waiting for a dead lock
         # Need to implement global cluster lock
 
@@ -192,24 +192,24 @@ class DatabaseFactory(PyroObject):
 
 
 class DatabaseConnection(PyroObject):
-    """Provide a locking connecftion to the sqlite database object"""
+    """Provide a locking connecftion to the sqlite database object."""
 
     def __init__(self, database, perform_sync):
-        """Obtain the database connection"""
+        """Obtain the database connection."""
         self.has_lock = False
         self._database = database
         self._perform_sync = perform_sync
         self._sqlite_object = self._database.get_sqlite_object()
 
     def __enter__(self):
-        """Obtain connection lock"""
+        """Obtain connection lock."""
         if not self._database.obtain_db_conn_lock():
             raise UnableToObtainDatabaseLockError('Unable to obtain database lock')
         self.has_lock = True
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Release lock"""
+        """Release lock."""
         # If an exception was raised, rollback the DB changes
         if exc_type is not None:
             Syslogger.logger().error('Error during db lock: %s' % traceback)
@@ -231,12 +231,12 @@ class DatabaseConnection(PyroObject):
         self.unregister_object()
 
     def get_db_object(self):
-        """Return DB object"""
+        """Return DB object."""
         return self._sqlite_object
 
     @property
     def cursor(self):
-        """Obtain the cursor"""
+        """Obtain the cursor."""
         if self.has_lock:
             return self.get_db_object().cursor()
         raise DoNotHaveDatabaseConnectionLockError(
@@ -244,7 +244,7 @@ class DatabaseConnection(PyroObject):
 
 
 class StatisticsSync(RepeatTimer):
-    """Object to perform regular statistics syncronisation between nodes"""
+    """Object to perform regular statistics syncronisation between nodes."""
 
     DEFAULT_TIMEOUT_WAIT_PERIOD = 30
     MAXIMUM_WAIT_PERIOD = 120
@@ -256,7 +256,7 @@ class StatisticsSync(RepeatTimer):
 
     @property
     def interval(self):
-        """Return the timer interval"""
+        """Return the timer interval."""
         if self.original_timer_start is None:
             return float(0)
 
@@ -281,7 +281,7 @@ class StatisticsSync(RepeatTimer):
 
     def notify(self):
         """Notify timer, either start or increasing last notify
-        time"""
+        time."""
         # Update last timer notify time
         self.last_timer_notify = datetime.now()
 
@@ -293,7 +293,7 @@ class StatisticsSync(RepeatTimer):
             self.timer.start()
 
     def repeat_run(self):
-        """Re-start timer once run has complete"""
+        """Re-start timer once run has complete."""
         # Timer has come to an end...
         # If the thread has been notified, start new timer
         # and return
@@ -319,7 +319,7 @@ class StatisticsSync(RepeatTimer):
         return return_output
 
     def run(self):
-        """Obtain CPU and memory statistics"""
+        """Obtain CPU and memory statistics."""
         Pyro4.current_context.INTERNAL_REQUEST = True
         Syslogger.logger().debug('Starting stats sync')
 

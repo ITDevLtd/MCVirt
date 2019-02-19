@@ -22,7 +22,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 
 
 class Factory(PyroObject):
-    """Factory method to create/obtain network adapter instances"""
+    """Factory method to create/obtain network adapter instances."""
 
     OBJECT_TYPE = 'network adapter'
     NETWORK_ADAPTER_CLASS = NetworkAdapter
@@ -30,7 +30,7 @@ class Factory(PyroObject):
 
     @Expose(locking=True)
     def create(self, virtual_machine, network_object, mac_address=None):
-        """Create a network interface for the local VM"""
+        """Create a network interface for the local VM."""
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         network_object = self.po__convert_remote_object(network_object)
         self.po__get_registered_object('auth').assert_permission(
@@ -43,7 +43,7 @@ class Factory(PyroObject):
 
         # Add network interface to VM configuration
         def update_vm_config(config):
-            """Add network interface to MCVirt config"""
+            """Add network interface to MCVirt config."""
             config['network_interfaces'][mac_address] = network_object.get_name()
         virtual_machine.get_config_object().update_config(
             update_vm_config, 'Added network adapter to \'%s\' on \'%s\' network' %
@@ -51,7 +51,7 @@ class Factory(PyroObject):
 
         if self.po__is_cluster_master:
             def remote_command(node_connection):
-                """Add network to remote nodes"""
+                """Add network to remote nodes."""
                 remote_vm_factory = node_connection.get_connection('virtual_machine_factory')
                 remote_vm = remote_vm_factory.get_virtual_machine_by_name(
                     virtual_machine.get_name())
@@ -71,7 +71,7 @@ class Factory(PyroObject):
         # Only update the LibVirt configuration if VM is registered on this node
         if virtual_machine.isRegisteredLocally():
             def updateXML(domain_xml):
-                """Add network to VM libvirt config"""
+                """Add network to VM libvirt config."""
                 network_xml = network_adapter_object._generateLibvirtXml()
                 device_xml = domain_xml.find('./devices')
                 device_xml.append(network_xml)
@@ -82,7 +82,7 @@ class Factory(PyroObject):
     @Expose()
     def getNetworkAdaptersByVirtualMachine(self, virtual_machine):
         """Returns an array of network interface objects for each of the
-        interfaces attached to the VM"""
+        interfaces attached to the VM."""
         interfaces = []
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         vm_config = virtual_machine.get_config_object().get_config()
@@ -95,7 +95,7 @@ class Factory(PyroObject):
 
     @Expose()
     def getNetworkAdapterByMacAdress(self, virtual_machine, mac_address):
-        """Returns the network adapter by a given MAC address"""
+        """Returns the network adapter by a given MAC address."""
         # Ensure that MAC address is a valid network adapter for the VM
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         cache_key = (mac_address, virtual_machine.get_name())

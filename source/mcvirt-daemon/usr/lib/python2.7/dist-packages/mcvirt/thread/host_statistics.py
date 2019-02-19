@@ -31,7 +31,7 @@ from mcvirt.utils import get_hostname
 
 
 class HostStatistics(RepeatTimer):
-    """Object to perform regular cpu and memory stats gathering on host"""
+    """Object to perform regular cpu and memory stats gathering on host."""
 
     def __init__(self, *args, **kwargs):
         self._cpu_usage = 0
@@ -50,17 +50,17 @@ class HostStatistics(RepeatTimer):
 
     @property
     def interval(self):
-        """Return the timer interval"""
+        """Return the timer interval."""
         return self.get_autostart_interval()
 
     @Expose()
     def get_autostart_interval(self):
-        """Return the statistics interval for the node"""
+        """Return the statistics interval for the node."""
         return self.po__get_registered_object(
             'mcvirt_config')().get_config()['statistics']['interval']
 
     def insert_into_stat_db(self):
-        """Add statistics to statistics database"""
+        """Add statistics to statistics database."""
         db_factory = self.po__get_registered_object('database_factory')
         db_rows = [
             (StatisticsDeviceType.HOST.value, get_hostname(),
@@ -79,7 +79,7 @@ class HostStatistics(RepeatTimer):
                 db_rows)
 
     def run(self):
-        """Obtain CPU and memory statistics"""
+        """Obtain CPU and memory statistics."""
         Pyro4.current_context.INTERNAL_REQUEST = True
         Syslogger.logger().debug('Starting host stats gathering')
         self._cpu_usage = OSStats.get_cpu_usage()

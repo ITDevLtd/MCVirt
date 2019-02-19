@@ -1,4 +1,4 @@
-"""Provide class for ldap users"""
+"""Provide class for ldap users."""
 
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
@@ -26,7 +26,7 @@ from mcvirt.rpc.expose_method import Expose
 
 
 class LdapUser(UserBase):
-    """Provides an interaction with ldap user backend"""
+    """Provides an interaction with ldap user backend."""
 
     CAN_CREATE = False
     SEARCH_ORDER = 2
@@ -38,11 +38,11 @@ class LdapUser(UserBase):
         return LdapFactory().get_all_usernames()
 
     def _get_dn(self):
-        """Obtain the DN for the given user"""
+        """Obtain the DN for the given user."""
         return self.po__get_registered_object('ldap_factory').search_dn(self.get_username())
 
     def _get_config(self):
-        """Return the config hash for the current user"""
+        """Return the config hash for the current user."""
         # @TODO: Do we not store information about LDAP users?
         return {
             'user_type': self.__class__.__name__,
@@ -50,7 +50,7 @@ class LdapUser(UserBase):
         }
 
     def get_user_type(self):
-        """Return the user type of the user"""
+        """Return the user type of the user."""
         return self.__class__.__name__
 
     def _check_password(self, password):
@@ -72,14 +72,14 @@ class LdapUser(UserBase):
         return False
 
     def _get_password_salt(self):
-        """Return the user's salt"""
+        """Return the user's salt."""
         raise NotImplementedError
 
     def _set_password(self, new_password):
-        """Set the password for the current user"""
+        """Set the password for the current user."""
         raise NotImplementedError
 
     @Expose(locking=True)
     def delete(self):
-        """Delete the current user from MCVirt config"""
+        """Delete the current user from MCVirt config."""
         raise NotImplementedError

@@ -1,4 +1,4 @@
-"""Provides classes for locking the MCVirt daemon whilst a function is being performed"""
+"""Provides classes for locking the MCVirt daemon whilst a function is being performed."""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -25,13 +25,13 @@ from mcvirt.syslogger import Syslogger
 
 
 class MethodLock(object):
-    """Class for storing/generating/obtaining a lock object"""
+    """Class for storing/generating/obtaining a lock object."""
 
     _lock = None
 
     @classmethod
     def get_lock(cls):
-        """Obtain the lock object and return"""
+        """Obtain the lock object and return."""
         if cls._lock is None:
             cls._lock = Lock()
         return cls._lock
