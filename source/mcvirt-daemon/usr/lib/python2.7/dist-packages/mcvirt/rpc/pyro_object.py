@@ -17,6 +17,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import hashlib
+import string
 import datetime
 import Pyro4
 from threading import Lock
@@ -50,8 +51,15 @@ class PyroObject(object):
         return 'po'
 
     @classmethod
-    def generate_id(cls, name):
+    def generate_id(cls, name=None):
         """Generate ID for group."""
+        # Generate random ID for name, if not specified
+        if name is None:
+            name = password = "".join(
+                choice(
+                    string.ascii_letters + string.punctuation + string.digits)
+                for x in range(24))
+
         # Generate sha sum of name and sha sum of
         # current datetime
         name_checksum = hashlib.sha512(name).hexdigest()

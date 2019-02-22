@@ -51,23 +51,23 @@ class ClusterLock(PyroObject):
         # Detmine if current object is registered
         if self.po__is_pyro_initialised:
             cluster_object = self.po__get_registered_object('cluster')
-        else:
+
+        elif ClusterLock.CLUSTER_LOCK_INSTANCE is not None::
             # If not initialised, determine if
             # singleton is stored in class attribute
-            if ClusterLock.CLUSTER_LOCK_INSTANCE is not None:
-                cluster_object = ClusterLock.CLUSTER_LOCK_INSTANCE.po__get_registered_object('cluster')
-            else:
-                # If there is no way to obtain a
-                # pyro-initialised varient of this object,
-                # default to just locking the local node
-                self.lock_node()
-                Syslogger.logger().warn(
-                    ('Unable to obtain pyro-initialised lock object, '
-                     'just locking local node'))
-                return
+            cluster_object = ClusterLock.CLUSTER_LOCK_INSTANCE.po__get_registered_object('cluster')
+
+        else:
+            # If there is no way to obtain a
+            # pyro-initialised varient of this object,
+            # default to just locking the local node
+            self.lock_node()
+            Syslogger.logger().warn(
+                ('Unable to obtain pyro-initialised lock object, '
+                 'just locking local node'))
+            return
 
             self.locked_nodes = self.lock_node(all_nodes=True).keys()
-
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Unlock cluster."""
@@ -77,8 +77,7 @@ class ClusterLock(PyroObject):
     def lock_node(self):
         """Attempt to lock local node."""
         # Aquire lock
-        # @TODO Perform (optional?) timeout
-        ClusterLock.LOCK_INSTANCE.acquire()
+        return ClusterLock.LOCK_INSTANCE.acquire(False)
 
     @Expose()
     def unlock_node(self):
