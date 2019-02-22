@@ -97,7 +97,7 @@ class DatabaseFactory(PyroObject):
 
         # Otherwise obtain the schema version from the file
         res = db_inst.cursor.execute(
-            """SELECT version FROM mcvirt_schema.""")
+            """SELECT version FROM mcvirt_schema;""")
         version = res.fetchone()
         return version if version is not None else 0
 
