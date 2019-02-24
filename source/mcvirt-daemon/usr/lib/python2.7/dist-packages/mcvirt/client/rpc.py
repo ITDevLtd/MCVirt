@@ -44,7 +44,7 @@ class Connection(object):
         Pyro4.config.CREATE_SOCKET_METHOD = SSLSocket.create_ssl_socket
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
         self.__username = username
-        self._po__ignore_drbd = False
+        self._ignore_drbd = False
         self.__ignore_cluster = ignore_cluster
         if 'proxy_user' in dir(Pyro4.current_context):
             self.__proxy_username = Pyro4.current_context.proxy_user
@@ -108,7 +108,7 @@ class Connection(object):
         auth_dict[Annotations.IGNORE_CLUSTER] = self.__ignore_cluster
         if 'ignore_cluster' in dir(Pyro4.current_context):
             auth_dict[Annotations.IGNORE_CLUSTER] |= Pyro4.current_context.ignore_cluster
-        auth_dict[Annotations.IGNORE_DRBD] = self._po__ignore_drbd
+        auth_dict[Annotations.IGNORE_DRBD] = self._ignore_drbd
         if 'ignore_drbd' in dir(Pyro4.current_context):
             auth_dict[Annotations.IGNORE_DRBD] |= Pyro4.current_context.ignore_drbd
         return auth_dict
@@ -134,7 +134,7 @@ class Connection(object):
 
     def ignore_drbd(self):
         """Set flag to ignore DRBD."""
-        self._po__ignore_drbd = True
+        self._ignore_drbd = True
 
     def ignore_cluster(self):
         """Set flag to ignore cluster."""
