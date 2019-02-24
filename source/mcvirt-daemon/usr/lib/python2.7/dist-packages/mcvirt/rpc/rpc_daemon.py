@@ -194,11 +194,11 @@ class BaseRpcDaemon(Pyro4.Daemon):
             self.handshake__set_cluster_master(data, user_object)
 
             # Set has lock
-            self.handshake__setpo__has_lock(data, user_object)
+            self.handshake__set_has_lock(data, user_object)
 
             # Set ignore cluster and DRBD
             self.handshake__set_ignore_cluster(data, user_object)
-            self.handshake__setpo__ignore_drbd(data, user_object)
+            self.handshake__set_ignore_drbd(data, user_object)
 
             # Perform node version check
             self.handshake__check_cluster_version()
