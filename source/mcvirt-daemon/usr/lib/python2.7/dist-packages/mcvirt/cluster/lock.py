@@ -52,7 +52,7 @@ class ClusterLock(PyroObject):
         if self.po__is_pyro_initialised:
             cluster_object = self.po__get_registered_object('cluster')
 
-        elif ClusterLock.CLUSTER_LOCK_INSTANCE is not None::
+        elif ClusterLock.CLUSTER_LOCK_INSTANCE is not None:
             # If not initialised, determine if
             # singleton is stored in class attribute
             cluster_object = ClusterLock.CLUSTER_LOCK_INSTANCE.po__get_registered_object('cluster')
