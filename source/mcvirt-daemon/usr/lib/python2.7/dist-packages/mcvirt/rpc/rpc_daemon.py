@@ -126,7 +126,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
             Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
 
     def handshake__set_cluster_master(self, data, user_object):
-        """SEt cluster master status in context."""
+        """Set cluster master status in context."""
         # If the user is a cluster/connection user, treat this connection
         # as a cluster client (the command as been executed on a remote node)
         # unless specified otherwise
