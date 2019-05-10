@@ -236,7 +236,7 @@ class Base(PyroObject):
         """Get config for storage backend."""
         # Check permissions
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+                                                                allow_indirect=True)
 
         return self.get_config_object().get_config()
 

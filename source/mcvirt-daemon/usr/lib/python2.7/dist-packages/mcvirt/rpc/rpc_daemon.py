@@ -346,7 +346,10 @@ class RpcNSMixinDaemon(object):
             [AutoStartWatchdog(), 'autostart_watchdog']
         ]
         for factory_object, name in registration_factories:
-            self.register(factory_object, objectId=name, force=True)
+            try:
+                self.register(factory_object, objectId=name, force=True)
+            except Exception, e:
+                Syslogger.logger().error('Failed to initialise module: %s: %s' % (name, str(e)))
 
         Pyro4.CERTIFICATE_GENERATOR_FACTORY = RpcNSMixinDaemon.DAEMON.registered_factories[
             'certificate_generator_factory']
