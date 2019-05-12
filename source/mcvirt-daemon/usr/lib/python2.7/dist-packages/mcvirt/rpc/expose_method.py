@@ -504,10 +504,10 @@ class Function(PyroObject):
         # Determine if session ID is present in current context and the session
         # object has
         # been set
-        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT.get_session_id():
+        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT.get_session_id_():
             # Disable the expiration whilst the method runs
             Expose.SESSION_OBJECT.USER_SESSIONS[
-                Expose.SESSION_OBJECT.get_session_id()
+                Expose.SESSION_OBJECT.get_session_id_()
             ].disable()
 
     def _reset_user_session(self):
@@ -515,9 +515,9 @@ class Function(PyroObject):
         # Determine if session ID is present in current context and the
         # session object has
         # been set
-        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT.get_session_id():
+        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT.get_session_id_():
             # Renew session expiry
-            Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT.get_session_id()].renew()
+            Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT.get_session_id_()].renew()
 
 
 class Expose(object):

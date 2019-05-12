@@ -79,11 +79,6 @@ class Session(PyroObject):
 
     USER_SESSIONS = {}
 
-    @Expose()
-    def dummy(self):
-        """Dummy method to allow object to pyro connections"""
-        pass
-
     def authenticate_user(self, username, password):
         """Authenticate using username/password and store
         session
@@ -145,12 +140,12 @@ class Session(PyroObject):
             return user_factory.get_user_by_username(username)
         raise CurrentUserError('Cannot obtain current user')
 
-    # @Expose()
-    # def get_session_id(self):
-    #     """Return the client's current session ID."""
-    #     return self.get_session_id()
-
+    @Expose()
     def get_session_id(self):
+        """Return the client's current session ID."""
+        return self.get_session_id_()
+
+    def get_session_id_(self):
         """Return the client's current session ID."""
         if 'session_id' in dir(Pyro4.current_context) and Pyro4.current_context.session_id:
             return Pyro4.current_context.session_id
