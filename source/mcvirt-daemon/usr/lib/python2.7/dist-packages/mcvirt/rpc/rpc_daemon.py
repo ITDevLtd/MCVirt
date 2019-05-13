@@ -272,12 +272,15 @@ class RpcNSMixinDaemon(object):
                     signal.SIGSEGV, signal.SIGTERM):
             signal.signal(sig, self.shutdown)
 
-        Syslogger.logger().debug('Initialising objects')
+        Syslogger.logger().debug('Initialising modules')
         for registered_object in RpcNSMixinDaemon.DAEMON.registered_factories:
             obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
             if type(obj) is not types.TypeType:  # noqa
-                Syslogger.logger().debug('Initialising object %s' % registered_object)
-                obj.initialise()
+                Syslogger.logger().debug('Initialising module %s' % registered_object)
+                try:
+                    obj.initialise()
+                except Exception:
+                    Syslogger.logger().error('Failed to initailise module: %s' % registered_object)
 
     def start(self, *args, **kwargs):
         """Start the Pyro daemon."""
@@ -349,7 +352,7 @@ class RpcNSMixinDaemon(object):
             try:
                 self.register(factory_object, objectId=name, force=True)
             except Exception, e:
-                Syslogger.logger().error('Failed to initialise module: %s: %s' % (name, str(e)))
+                Syslogger.logger().error('Failed to register module: %s: %s' % (name, str(e)))
 
         Pyro4.CERTIFICATE_GENERATOR_FACTORY = RpcNSMixinDaemon.DAEMON.registered_factories[
             'certificate_generator_factory']
