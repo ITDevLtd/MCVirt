@@ -127,6 +127,12 @@ class PyroObject(object):
                 pass
             self._pyroDaemon.register(local_object)
             return_value = True
+        else:
+            try:
+                Syslogger.logger().warning('Could not register object with daemon: %s' %
+                                           str(local_object))
+            except Exception:
+                pass
 
         if '_pyro_server_ref' in dir(self):
             local_object._pyro_server_ref = self._pyro_server_ref
