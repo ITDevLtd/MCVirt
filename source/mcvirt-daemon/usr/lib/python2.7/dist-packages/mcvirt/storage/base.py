@@ -489,7 +489,7 @@ class Base(PyroObject):
     def get_volume(self, name):
         """Return a volume for the current storage volume."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+                                                                allow_indirect=True)
         # Create volume object
         volume = self._volume_class(name=name, storage_backend=self)
         # Register with daemon

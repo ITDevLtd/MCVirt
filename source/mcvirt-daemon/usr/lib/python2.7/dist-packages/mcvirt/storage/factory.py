@@ -88,6 +88,7 @@ class Factory(PyroObject):
 
                 # If the list of nodes is required (predefined) and not all are
                 # present, skip storage backend
+                # @TODO CHECK THAT THE NODES MATCH, NOT JUST THE AMOUNT OF NODES!!
                 if nodes_predefined and len(nodes) != len(available_nodes):
                     continue
 
@@ -100,11 +101,11 @@ class Factory(PyroObject):
             if drbd and not storage_object.is_drbd_suitable():
                 continue
 
-            # If storage_type is specified, ensure hat storage matches the object
+            # If storage_type is specified, ensure that storage matches the object
             if storage_type and not self.get_class(storage_type) != storage_object.__class__:
                 continue
 
-            # If a shared type is defined, determine if it matches the object, otherwise skip
+            # If a shared type is defined, determine whether it matches the object, otherwise skip
             if shared is not None and shared != storage_object.shared:
                 continue
 

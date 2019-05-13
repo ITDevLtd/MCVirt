@@ -101,7 +101,7 @@ class LvmVolume(BaseVolume):
     def create(self, size, _f=None):
         """Create volume in storage backend."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+                                                                allow_indirect=True)
         # Ensure volume does not already exist
         if self.check_exists():
             raise VolumeAlreadyExistsError('Volume (%s) already exists' % self.name)
