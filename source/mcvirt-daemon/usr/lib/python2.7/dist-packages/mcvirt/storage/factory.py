@@ -300,8 +300,13 @@ class Factory(PyroObject):
         # Create required storage object, based on type
         if id_ not in Factory.CACHED_OBJECTS:
             storage_object = self.get_class(storage_type)(id_)
-            self.po__register_object(storage_object)
-            Factory.CACHED_OBJECTS[id_] = storage_object
+            # Attempt to register with pyro
+            if self.po__register_object(storage_object):
+                # If this succeeds, storage in cached objects
+                Factory.CACHED_OBJECTS[id_] = storage_object
+            else:
+                # Otherwise just return the object
+                return storage_object
 
         return Factory.CACHED_OBJECTS[id_]
 

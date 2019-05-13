@@ -510,9 +510,8 @@ class Base(PyroObject):
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the current storage backend object on a remote node."""
-        cluster = self.po__get_registered_object('cluster')
         if node_object is None:
-            node_object = cluster.get_remote_node(node)
+            node_object = self.po__get_registered_object('cluster').get_remote_node(node)
 
         remote_storage_factory = node_object.get_connection('storage_factory')
         remote_storage = remote_storage_factory.get_object(self._id)
@@ -611,7 +610,7 @@ class BaseVolume(PyroObject):
     def create(self, size, _f=None):
         """Create volume in storage backend."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+                                                                allow_indirect=True)
         raise NotImplementedError
 
     def undo__create(self, size, _f=None):
@@ -622,14 +621,14 @@ class BaseVolume(PyroObject):
     def delete(self, ignore_non_existent, _f=None):
         """Delete volume."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+                                                                allow_indirect=True)
         raise NotImplementedError
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def activate(self, _f=None):
         """Activate volume."""
         self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+                                                                allow_indirect=True)
         raise NotImplementedError
 
     def is_active(self):
