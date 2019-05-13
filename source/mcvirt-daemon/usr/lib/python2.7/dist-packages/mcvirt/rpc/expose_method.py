@@ -163,11 +163,16 @@ class Function(PyroObject):
 
     def __init__(self, function, obj, args, kwargs,
                  locking, object_type, instance_method,
-                 remote_nodes,  # remote_nodes - Determine whether the remote_nodes and
-                                #                return_dict arguments are used by the
+                 remote_nodes,  # remote_nodes - Determine whether the nodes and
+                                #                all_nodes arguments are used by the
                                 #                wrapper to execute the method on
                                 #                remote nodes, otherwise it is passed
-                                #                to the function
+                                #                to the function.
+                                #                Note: this is mainly for backwards
+                                #                compatibility. Try not to use for new
+                                #                methods, i.e. avoid using 'nodes' and
+                                #                'all_nodes' as arguments for the
+                                #                method.
                  support_callback,  # Determines whether the method support the _f
                                     # callback class
                  undo_method,  # Override the name of the undo method
