@@ -493,7 +493,7 @@ class Factory(PyroObject):
             # Add modification flags
             vm_object._update_modification_flags(add_flags=modification_flags)
 
-        t.set_complete()
+        t.finish()
 
         return vm_object
 
