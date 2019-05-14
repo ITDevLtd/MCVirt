@@ -235,8 +235,8 @@ class Base(PyroObject):
     def get_config(self):
         """Get config for storage backend."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                                allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
 
         return self.get_config_object().get_config()
 
@@ -488,8 +488,9 @@ class Base(PyroObject):
     @Expose()
     def get_volume(self, name):
         """Return a volume for the current storage volume."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                                allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         # Create volume object
         volume = self._volume_class(name=name, storage_backend=self)
         # Register with daemon
@@ -576,8 +577,9 @@ class BaseVolume(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def wipe(self, _f=None):
         """Wipe the volume."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         System.perform_dd(source=System.WIPE,
                           destination=self.get_path(),
                           size=self.get_size())
@@ -609,8 +611,9 @@ class BaseVolume(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def create(self, size, _f=None):
         """Create volume in storage backend."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                                allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         raise NotImplementedError
 
     def undo__create(self, size, _f=None):
@@ -620,15 +623,17 @@ class BaseVolume(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def delete(self, ignore_non_existent, _f=None):
         """Delete volume."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                                allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         raise NotImplementedError
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def activate(self, _f=None):
         """Activate volume."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                                allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         raise NotImplementedError
 
     def is_active(self):
@@ -654,8 +659,9 @@ class BaseVolume(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def resize(self, size, increase, _f=None):
         """Reszie volume."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         raise NotImplementedError
 
     def check_exists(self):
@@ -665,6 +671,7 @@ class BaseVolume(PyroObject):
     @Expose(remote_nodes=True)
     def get_size(self):
         """Obtain the size of the volume."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         raise NotImplementedError

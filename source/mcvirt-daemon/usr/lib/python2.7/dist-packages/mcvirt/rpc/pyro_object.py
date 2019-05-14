@@ -136,6 +136,14 @@ class PyroObject(object):
 
         if '_pyro_server_ref' in dir(self):
             local_object._pyro_server_ref = self._pyro_server_ref
+        else:
+            try:
+                Syslogger.logger().warning(
+                    'Could attach pyro_server_ref to newly registered object: %s' %
+                    str(local_object))
+            except Exception:
+                pass
+
 
         return return_value
 
