@@ -39,7 +39,7 @@ class LdapUser(UserBase):
 
     def _get_dn(self):
         """Obtain the DN for the given user."""
-        return self.po__get_registered_object('ldap_factory').search_dn(self.get_username())
+        return self._get_registered_object('ldap_factory').search_dn(self.get_username())
 
     def _get_config(self):
         """Return the config hash for the current user."""
@@ -60,7 +60,7 @@ class LdapUser(UserBase):
             return False
 
         try:
-            self.po__get_registered_object('ldap_factory').get_connection(bind_dn=self._get_dn(),
+            self._get_registered_object('ldap_factory').get_connection(bind_dn=self._get_dn(),
                                                                        password=password)
             return True
         except ldap.INVALID_CREDENTIALS:

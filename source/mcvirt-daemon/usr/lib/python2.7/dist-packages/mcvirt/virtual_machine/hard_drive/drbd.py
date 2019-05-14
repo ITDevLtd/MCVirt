@@ -281,7 +281,7 @@ class Drbd(Base):
                 self.update_config(
                     {'drbd_port': self._drbd_port},
                     'Set DRBD port for disk: %s' % self.id_,
-                    nodes=self.po__get_registered_object('cluster').get_nodes(
+                    nodes=self._get_registered_object('cluster').get_nodes(
                         include_local=True))
 
         return self._drbd_port
@@ -302,7 +302,7 @@ class Drbd(Base):
                 self.update_config(
                     {'drbd_minor': self._drbd_minor},
                     'Set DRBD Minor for disk: %s' % self.id_,
-                    nodes=self.po__get_registered_object('cluster').get_nodes(
+                    nodes=self._get_registered_object('cluster').get_nodes(
                         include_local=True))
 
         return self._drbd_minor
@@ -374,11 +374,11 @@ class Drbd(Base):
         in the VM configuration
         """
         # Ensure user has privileges to create a Drbd volume
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
 
         # Ensure Drbd is enabled on the host
-        if not self.po__get_registered_object('node_drbd').is_enabled():
+        if not self._get_registered_object('node_drbd').is_enabled():
             raise DrbdNotEnabledOnNode('Drbd is not enabled on this node')
 
         # Get remote nodes - can assume that this is just 1 since DRBD only support two nodes
@@ -442,14 +442,14 @@ class Drbd(Base):
     @Expose()
     def removeStorage(self, *args, **kwargs):
         """Exposed method for _removeStorage."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
         return self._removeStorage(*args, **kwargs)
 
     def _removeStorage(self, local_only=False, remove_raw=True):
         """Removes the backing storage for the Drbd hard drive."""
         # @TODO Use transaction and pass nodes to each function
         self.ensure_exists()
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         all_nodes = [get_hostname()] if local_only else self.nodes
         remote_nodes = list(all_nodes)
         remote_nodes.remove(get_hostname())
@@ -490,7 +490,7 @@ class Drbd(Base):
         """Provides an exposed method for _initialiseMetaData
         with permission checking
         """
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._initialiseMetaData(*args, **kwargs)
 
@@ -519,7 +519,7 @@ class Drbd(Base):
     @Expose(locking=True)
     def increase_size(self, increase_size):
         """Increases the size of a VM hard drive, given the size to increase the drive by."""
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE, self.get_virtual_machine()
         )
 
@@ -577,7 +577,7 @@ class Drbd(Base):
 
         # Resize DRBD volume
         self._drbd_resize()
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
 
         def resize_drbd_remote(node):
             """Resize DRBD on remote node."""
@@ -596,7 +596,7 @@ class Drbd(Base):
     def drbd_resize(self, *args, **kwargs):
         """Provides an exposed method for _drbd_resize
            with permission checking."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbd_resize(*args, **kwargs)
 
@@ -609,7 +609,7 @@ class Drbd(Base):
         """Provides an exposed method for _drbdUp
         with permission checking
         """
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdUp(*args, **kwargs)
 
@@ -624,7 +624,7 @@ class Drbd(Base):
         """Provides an exposed method for _drbdDown
         with permission checking
         """
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdDown(*args, **kwargs)
 
@@ -642,7 +642,7 @@ class Drbd(Base):
         """Provides an exposed method for _drbdConnect
         with permission checking
         """
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdConnect(*args, **kwargs)
 
@@ -659,7 +659,7 @@ class Drbd(Base):
         """Provides an exposed method for _drbdDisconnect
         with permission checking
         """
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdDisconnect(*args, **kwargs)
 
@@ -675,7 +675,7 @@ class Drbd(Base):
         """Provides an exposed method for _setTwoPrimariesConfig
         with permission checking
         """
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._setTwoPrimariesConfig(*args, **kwargs)
 
@@ -712,10 +712,10 @@ class Drbd(Base):
                                '--allow-two-primaries=no'])
 
         # Configure remote node(s)
-        if self.po__is_cluster_master:
+        if self._is_cluster_master:
             remote_nodes = self.nodes
             remote_nodes.remove(get_hostname())
-            cluster_instance = self.po__get_registered_object('cluster')
+            cluster_instance = self._get_registered_object('cluster')
 
             def set_dual_primary_remote(node):
                 """set dual primary on remote node."""
@@ -729,7 +729,7 @@ class Drbd(Base):
         """Provides an exposed method for _drbdSetPrimary
         with permission checking
         """
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdSetPrimary(*args, **kwargs)
 
@@ -743,7 +743,7 @@ class Drbd(Base):
         # Ensure that role states are not unknown
         if (local_role_state is DrbdRoleState.UNKNOWN or
             (remote_role_state is DrbdRoleState.UNKNOWN and
-             not self.po__ignore_drbd)):
+             not self._ignore_drbd)):
             raise DrbdStateException('Drbd role is unknown for resource %s' %
                                      self.resource_name)
 
@@ -751,7 +751,7 @@ class Drbd(Base):
         if (not allow_two_primaries and
             remote_role_state is not DrbdRoleState.SECONDARY and
             not (DrbdRoleState.UNKNOWN and
-                 self.po__ignore_drbd)):
+                 self._ignore_drbd)):
             raise DrbdStateException(
                 'Cannot make local Drbd primary if remote Drbd is not secondary: %s' %
                 self.resource_name)
@@ -763,7 +763,7 @@ class Drbd(Base):
     def drbdSetSecondary(self, *args, **kwargs):
         """Provides an exposed method for _drbdSetSecondary
            with permission checking."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._drbdSetSecondary(*args, **kwargs)
 
@@ -814,7 +814,7 @@ class Drbd(Base):
             # Ignore the state if it is in warning and the user has specified to ignore
             # the Drbd state
             if state in Drbd.DRBD_STATES[state_name]['WARNING']:
-                if not self.po__ignore_drbd:
+                if not self._ignore_drbd:
                     raise DrbdStateException(
                         ('Drbd connection state for the Drbd resource '
                          '%s is %s so cannot continue. Run MCVirt as a '
@@ -830,7 +830,7 @@ class Drbd(Base):
     @Expose()
     def drbdGetConnectionState(self):
         """Provide an exposed method for _drbdGetConnectionState."""
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
         connection_state = self._drbdGetConnectionState()
         return connection_state.name, connection_state.value
@@ -845,7 +845,7 @@ class Drbd(Base):
     @Expose()
     def drbdGetDiskState(self):
         """Provide an exposed method for drbdGetDiskState."""
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
         local_state, remote_state = self._drbdGetDiskState()
         return (local_state.name, local_state.value), (remote_state.name, remote_state.value)
@@ -861,7 +861,7 @@ class Drbd(Base):
     @Expose()
     def drbdGetRole(self):
         """Provide an exposed method for drbdGetRole."""
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
         local_state, remote_state = self._drbdGetRole()
         return (local_state.name, local_state.value), (remote_state.name, remote_state.value)
@@ -930,7 +930,7 @@ class Drbd(Base):
 
     def _ensureInSync(self):
         """Ensures that the Drbd volume was marked as in sync during the last verification."""
-        if not self._isInSync() and not self.po__ignore_drbd:
+        if not self._isInSync() and not self._ignore_drbd:
             raise DrbdVolumeNotInSyncException(
                 'The last Drbd verification of the Drbd volume failed: %s. ' %
                 self.resource_name +
@@ -940,7 +940,7 @@ class Drbd(Base):
     @Expose()
     def isInSync(self):
         """Provides an exposed method for _isInSync."""
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
         return self._isInSync()
 
@@ -954,19 +954,19 @@ class Drbd(Base):
     @Expose(locking=True)
     def setSyncState(self, sync_state, update_remote=True):
         """Updates the hard drive config, marking the disk as out of sync."""
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.SET_SYNC_STATE, self.get_virtual_machine()
         )
 
         self.update_config(
             {'sync_state': sync_state},
             'Update sync state of disk %s to %s' % (self.id_, sync_state),
-            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     @Expose()
     def verify(self):
         """Performs a verification of a Drbd hard drive."""
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine()
         )
 
@@ -1016,7 +1016,7 @@ class Drbd(Base):
     def resync(self, source_node=None, auto_determine=False):
         """Perform a resync of a Drbd hard drive."""
         # Ensure user has privileges to create a Drbd volume
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_DRBD, self.get_virtual_machine())
 
         # Obtain remote object is local node is not either of the
@@ -1078,7 +1078,7 @@ class Drbd(Base):
         # Attempt to remove all related configuration/volume groups on source node, except
         # raw logical volume, as this would be useful in case of any failures during the rest of
         # the method.
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         source_node_object = cluster.get_remote_node(node=source_node)
         dest_node_object = cluster.get_remote_node(node=destination_node)
 
@@ -1101,7 +1101,7 @@ class Drbd(Base):
         self.update_config(
             {'nodes': nodes},
             'Update nodes for disk: %s' % self.id_,
-            nodes=self.po__get_registered_object('cluster').get_nodes(
+            nodes=self._get_registered_object('cluster').get_nodes(
                 include_local=True))
 
         # Obtain the size of the disk to be created
@@ -1132,7 +1132,7 @@ class Drbd(Base):
         # Generate Drbd configuration on local and remote node
         self._generateDrbdConfig()
         dest_hdd_object.generateDrbdConfig()
-        self.po__get_registered_object('node_drbd').adjust_drbd_config(
+        self._get_registered_object('node_drbd').adjust_drbd_config(
             self.resource_name
         )
 
@@ -1163,10 +1163,10 @@ class Drbd(Base):
     def _get_available_drbd_port(self):
         """Obtains the next available Drbd port."""
         # Obtain list of currently used Drbd ports
-        node_drbd = self.po__get_registered_object('node_drbd')
+        node_drbd = self._get_registered_object('node_drbd')
         used_ports = node_drbd.get_used_drbd_ports()
         available_port = None
-        node_object = self.po__get_registered_object('node')
+        node_object = self._get_registered_object('node')
         listening_ports = node_object._get_listen_ports(include_remote=True)
 
         # Determine a free port
@@ -1184,7 +1184,7 @@ class Drbd(Base):
     def _get_available_drbd_minor(self):
         """Obtains the next available Drbd minor."""
         # Obtain list of currently used Drbd minors
-        node_drbd = self.po__get_registered_object('node_drbd')
+        node_drbd = self._get_registered_object('node_drbd')
         used_minor_ids = node_drbd.get_used_drbd_minors()
         available_minor_id = None
 
@@ -1231,7 +1231,7 @@ class Drbd(Base):
         """Provides an exposed method for _generateDrbdConfig
         with permission checking
         """
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._generateDrbdConfig(*args, **kwargs)
 
@@ -1255,7 +1255,7 @@ class Drbd(Base):
             }
 
         # Add local node to the Drbd config
-        cluster_object = self.po__get_registered_object('cluster')
+        cluster_object = self._get_registered_object('cluster')
         # Add remote nodes to Drbd config
         for node in self.nodes:
             node_config = cluster_object.get_node_config(node, include_local=True)
@@ -1279,7 +1279,7 @@ class Drbd(Base):
         """Provides an exposed method for _removeDrbdConfig
         with permission checking
         """
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ClusterUser')
 
         return self._removeDrbdConfig(*args, **kwargs)
 

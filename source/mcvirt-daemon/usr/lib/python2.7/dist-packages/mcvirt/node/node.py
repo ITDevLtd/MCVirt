@@ -47,14 +47,14 @@ class Node(PyroObject):
                 """Get listen ports from remote node."""
                 node_object = remote_object.get_connection('node')
                 ports.extend(node_object.get_listen_ports())
-            cluster = self.po__get_registered_object('cluster')
+            cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
         return ports
 
     @Expose(locking=True)
     def set_cluster_ip_address(self, ip_address):
         """Update the cluster IP address for the node."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
 
         ArgumentValidator.validate_ip_address(ip_address)
 
@@ -74,7 +74,7 @@ class Node(PyroObject):
     @Expose()
     def clear_method_lock(self):
         """Force clear a method lock to escape deadlock."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
         lock = MethodLock.get_lock()
         if lock.locked():
             lock.release()

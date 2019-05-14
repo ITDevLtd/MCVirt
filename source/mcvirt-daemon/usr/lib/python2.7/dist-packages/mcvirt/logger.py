@@ -38,10 +38,10 @@ class Logger(PyroObject):
     @Pyro4.expose
     def create_log_remote(self, *args, **kwargs):
         """Remotely accessible create_log method."""
-        self.po__get_registered_object('auth').check_user_type('ClusterUser')
+        self._get_registered_object('auth').check_user_type('ClusterUser')
         kwargs['local_only'] = True
         log_object = self.create_log(*args, **kwargs)
-        self.po__register_object(log_object)
+        self._register_object(log_object)
         return log_object
 
     def create_log(self, method_name, user, object_name, object_type, node=None, local_only=False):
@@ -51,7 +51,7 @@ class Logger(PyroObject):
 
         log_item = LogItem(method_name, user, object_name, object_type, node)
         Logger.LOGS.append(log_item)
-        if not local_only and self.po__is_pyro_initialised:
+        if not local_only and self._is_pyro_initialised:
             def remote_command(remote_node):
                 """Create log object on remote node."""
                 remote_logger = remote_node.get_connection('logger')
@@ -62,7 +62,7 @@ class Logger(PyroObject):
                 remote_node.annotate_object(remote_log)
                 log_item.remote_logs.append(remote_log)
             try:
-                cluster = self.po__get_registered_object('cluster')
+                cluster = self._get_registered_object('cluster')
                 cluster.run_remote_command(remote_command)
             except Exception:
                 pass
@@ -245,7 +245,7 @@ class LogItem(PyroObject):
             except Exception:
                 pass
         self.remote_logs = []
-        self.po__unregister_object()
+        self.unregister_object()
 
 
 def getLogNames(callback, instance_method, object_type, args, kwargs):

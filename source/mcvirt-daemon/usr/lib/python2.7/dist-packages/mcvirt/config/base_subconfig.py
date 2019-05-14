@@ -53,7 +53,7 @@ class BaseSubconfig(Core):
     @classmethod
     def set_global_config(cls, config):
         """Set global config."""
-        cls.po__get_registered_object('auth').assert_user_type('ClusterUser')
+        cls._get_registered_object('auth').assert_user_type('ClusterUser')
 
         def update_config(parent_config):
             """Update parent config."""

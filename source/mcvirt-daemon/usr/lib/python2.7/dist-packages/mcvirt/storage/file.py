@@ -134,7 +134,7 @@ class FileVolume(BaseVolume):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def create(self, size, _f=None):
         """Create volume in storage backend."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume does not already exist
         if self.check_exists():
             raise VolumeAlreadyExistsError('Volume (%s) already exists' % self.name)
@@ -152,7 +152,7 @@ class FileVolume(BaseVolume):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def delete(self, ignore_non_existent=False, _f=None):
         """Delete volume."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Determine if logical volume exists before attempting to remove it
         if not self.check_exists() and not ignore_non_existent:
             raise VolumeDoesNotExistError(
@@ -170,7 +170,7 @@ class FileVolume(BaseVolume):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def activate(self, _f=None):
         """Activate volume."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume exists
         self.ensure_exists()
 
@@ -181,7 +181,7 @@ class FileVolume(BaseVolume):
         required_permissions_global = (
             stat.S_IROTH | stat.S_IWOTH
         )
-        libvirt_config = self.po__get_registered_object('libvirt_config')
+        libvirt_config = self._get_registered_object('libvirt_config')
         libvirt_user_uid = pwd.getpwnam(libvirt_config.LIBVIRT_USER).pw_uid
         libvirt_group_gid = grp.getgrnam(libvirt_config.LIBVIRT_GROUP).gr_gid
         stat_info = os.stat(self.get_path())
@@ -227,7 +227,7 @@ class FileVolume(BaseVolume):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def resize(self, size, increase=True, _f=None):
         """Reszie volume."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume exists
         self.ensure_exists()
 

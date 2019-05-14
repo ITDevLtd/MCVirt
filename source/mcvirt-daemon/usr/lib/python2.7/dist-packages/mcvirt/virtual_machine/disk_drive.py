@@ -31,15 +31,15 @@ class DiskDrive(PyroObject):
 
     def __init__(self, vm_object):
         """Sets member variables and obtains libvirt domain object."""
-        self.vm_object = self.po__convert_remote_object(vm_object)
+        self.vm_object = self._convert_remote_object(vm_object)
 
     @Expose()
     def attach_iso(self, iso_object, live=False):
         """Attaches an ISO image to the disk drive of the VM."""
-        iso_object = self.po__convert_remote_object(iso_object)
+        iso_object = self._convert_remote_object(iso_object)
 
         # Ensure that the user has permissions to modifiy the VM
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.vm_object
         )
@@ -95,7 +95,7 @@ class DiskDrive(PyroObject):
         # Determines if an attached ISO is present on the remote node
         if self.getCurrentDisk():
             # @TODO Update
-            cluster_instance = self.po__get_registered_object('cluster')
+            cluster_instance = self._get_registered_object('cluster')
             return_data = cluster_instance.run_remote_command('iso-get_isos', {},
                                                               nodes=[destination_node_name])
             if self.getCurrentDisk().get_name() not in return_data[destination_node_name]:

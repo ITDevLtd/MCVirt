@@ -194,7 +194,7 @@ class Function(PyroObject):
             all_nodes = kwargs['all_nodes']
             del kwargs['all_nodes']
             if all_nodes:
-                nodes = self.po__get_registered_object('cluster').get_nodes(
+                nodes = self._get_registered_object('cluster').get_nodes(
                     include_local=True)
             else:
                 nodes = [get_hostname()]
@@ -255,7 +255,7 @@ class Function(PyroObject):
     def unregister(self, force=False):
         """De-register object after deletion."""
         if force or not Transaction.in_transaction():
-            self.po__unregister_object(self, debug=False)
+            self.unregister_object(self, debug=False)
 
     @property
     def _undo_function_name(self):
@@ -276,14 +276,14 @@ class Function(PyroObject):
     def run(self):
         """Run the function."""
         # Register instance and functions with pyro
-        self.obj.po__register_object(self, debug=False)
+        self.obj._register_object(self, debug=False)
 
         # Pause the session timeout
         self._pause_user_session()
 
         # If the machine is the cluster master, run
         # the fuction with the transaction abilities
-        if self.obj.po__is_cluster_master:
+        if self.obj._is_cluster_master:
             Transaction.register_function(self)
 
         # Catch all exceptions to ensure that user
@@ -315,7 +315,7 @@ class Function(PyroObject):
         except Exception:
             # Also try-catch the tear-down
             try:
-                if self.obj.po__is_cluster_master:
+                if self.obj._is_cluster_master:
                     # Notify that the transaction that the functino has failed
                     Transaction.on_function_fail(self)
             except Exception:
@@ -413,8 +413,7 @@ class Function(PyroObject):
         if not undo:
             self.nodes[node]['return_val'] = response
 
-    @staticmethod
-    def _convert_local_object(node, args, kwargs):
+    def _convert_local_object(self, node, args, kwargs):
         """Convert any local objects in args and kwargs to remote objects."""
         # @TODO: Inspect lists and dicts within each argumnet
         # Create new list of args and kwargs

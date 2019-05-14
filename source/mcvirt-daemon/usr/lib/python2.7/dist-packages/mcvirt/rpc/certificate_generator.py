@@ -251,7 +251,7 @@ class CertificateGenerator(PyroObject):
 
         # Ensure that the client certificate exists
         if check_client and not self._ensure_exists(self.client_pub_file, assert_raise=False):
-            certificate_generator_factory = self.po__get_registered_object(
+            certificate_generator_factory = self._get_registered_object(
                 'certificate_generator_factory')
             local_remote = certificate_generator_factory.get_cert_generator(
                 server='localhost', remote=True)
@@ -262,7 +262,7 @@ class CertificateGenerator(PyroObject):
     @Expose()
     def generate_csr(self):
         """Generate a certificate request for the remote server."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         return self._generate_csr()
 
     def _generate_csr(self):
@@ -273,7 +273,7 @@ class CertificateGenerator(PyroObject):
     @Expose()
     def sign_csr(self, csr):
         """Sign the CSR for a remote SSL certificate."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         return self._sign_csr(csr)
 
     def _sign_csr(self, csr):
@@ -286,7 +286,7 @@ class CertificateGenerator(PyroObject):
                            '-sha256'])
 
         # Regenerate libvirtd configuration, allowing access to this certificate
-        libvirt_config = self.po__get_registered_object('libvirt_config')
+        libvirt_config = self._get_registered_object('libvirt_config')
         if self.is_local:
             libvirt_config.hard_restart = True
         libvirt_config.generate_config()
@@ -295,13 +295,13 @@ class CertificateGenerator(PyroObject):
     @Expose()
     def remove_certificates(self):
         """Remove a certificate directory for a node."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         shutil.rmtree(self.ssl_directory)
 
     @Expose()
     def add_public_key(self, key):
         """Add the public key for a remote node."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
         return self._add_public_key(key)
 
     def _add_public_key(self, key):

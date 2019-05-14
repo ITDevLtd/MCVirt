@@ -120,7 +120,7 @@ class Factory(PyroObject):
     @Expose()
     def get_object_by_vm_and_attachment_id(self, vm_object, attachment_id):
         """Return the disk object based on virtual machine and attachment Id."""
-        return self.po__get_registered_object(
+        return self._get_registered_object(
             'hard_drive_attachment_factory').get_object(
                 vm_object, attachment_id).get_hard_drive_object()
 
@@ -132,7 +132,7 @@ class Factory(PyroObject):
             base_hdd = Base(id_)
             storage_type = base_hdd.get_type()
             hard_drive_object = self.getClass(storage_type)(id_)
-            self.po__register_object(hard_drive_object)
+            self._register_object(hard_drive_object)
             Factory.CACHED_OBJECTS[id_] = hard_drive_object
 
         return Factory.CACHED_OBJECTS[id_]
@@ -141,7 +141,7 @@ class Factory(PyroObject):
                           node=None,  # The name of the remote node to connect to
                           node_object=None):  # Otherwise, pass a remote node connection
         """Obtain an instance of the hard drive factory on a remote node."""
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -175,7 +175,7 @@ class Factory(PyroObject):
         # and there are more or fewer than 2 available nodes with DRBD enabled,
         # the user MUST determine which two nodes will be used.
         if storage_type == Drbd.__name__:
-            node_drbd = self.po__get_registered_object('node_drbd')
+            node_drbd = self._get_registered_object('node_drbd')
             for node in nodes:
                 # If DRBD is not enabled on the node, remove it from the list
                 # of nodes
@@ -203,7 +203,7 @@ class Factory(PyroObject):
 
         # If storage backend has been defined, ensure it is available on the current node
         if storage_backend:
-            storage_backend = self.po__convert_remote_object(storage_backend)
+            storage_backend = self._convert_remote_object(storage_backend)
             # Ensure that the storage backend is suitable for the storage type
             if storage_type == Drbd.__name__ and not storage_backend.is_drbd_suitable():
                 raise InvalidStorageBackendError('Storage backend does not support DRBD')
@@ -219,7 +219,7 @@ class Factory(PyroObject):
         else:
             # Obtain all storage backends available, given the nodes (and whether they
             # must all be required - based on nodes_predefined) and whether DRBD is required
-            storage_factory = self.po__get_registered_object('storage_factory')
+            storage_factory = self._get_registered_object('storage_factory')
             available_storage_backends = storage_factory.get_all(
                 nodes=nodes, drbd=(storage_type == Drbd.__name__),
                 nodes_predefined=nodes_predefined
@@ -272,9 +272,9 @@ class Factory(PyroObject):
                nodes=None, skip_create=False, vm_object=None, _f=None):
         """Performs the creation of a hard drive, using a given storage type."""
         if vm_object is not None:
-            vm_object = self.po__convert_remote_object(vm_object)
+            vm_object = self._convert_remote_object(vm_object)
         if storage_backend is not None:
-            storage_backend = self.po__convert_remote_object(storage_backend)
+            storage_backend = self._convert_remote_object(storage_backend)
 
         # Convert disk size to bytes
         size = (size
@@ -282,7 +282,7 @@ class Factory(PyroObject):
                 SizeConverter.from_string(size, storage=True).to_bytes())
 
         # Ensure that the user has permissions to add create storage
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
             vm_object
         )
@@ -293,11 +293,11 @@ class Factory(PyroObject):
             if vm_object:
                 nodes = vm_object.getAvailableNodes()
             else:
-                nodes = self.po__get_registered_object('cluster').get_nodes(include_local=True)
+                nodes = self._get_registered_object('cluster').get_nodes(include_local=True)
                 nodes_predefined = False
         else:
             for node in nodes:
-                self.po__get_registered_object('cluster').ensure_node_exists(
+                self._get_registered_object('cluster').ensure_node_exists(
                     node, include_local=True)
 
         # Specify nodes_predefined to stop available nodes from being changed when
@@ -320,7 +320,7 @@ class Factory(PyroObject):
         t = Transaction()
 
         # Create the config for the hard drive on all nodes
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         self.create_config(
             vm_object, id_, config,
             nodes=cluster.get_nodes(include_local=True))
@@ -333,7 +333,7 @@ class Factory(PyroObject):
 
         # Attach to VM
         if vm_object:
-            self.po__get_registered_object('hard_drive_attachment_factory').create(
+            self._get_registered_object('hard_drive_attachment_factory').create(
                 vm_object, hdd_object)
 
         t.set_complete()
@@ -352,11 +352,11 @@ class Factory(PyroObject):
                 driver=None, virtual_machine=None):
         """Import a local disk."""
         if virtual_machine:
-            virtual_machine = self.po__convert_remote_object(virtual_machine)
-        storage_backend = self.po__convert_remote_object(storage_backend)
+            virtual_machine = self._convert_remote_object(virtual_machine)
+        storage_backend = self._convert_remote_object(storage_backend)
 
         # Ensure that the user has permissions to add create storage
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
             virtual_machine
         )
@@ -376,14 +376,14 @@ class Factory(PyroObject):
 
         self.create_config(
             virtual_machine, id_, config,
-            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
         hdd_object = self.get_object(id_)
         hdd_object.ensure_exists()
 
         # Attach to VM
         if virtual_machine:
-            self.po__get_registered_object('hard_drive_attachment_factory').create(
+            self._get_registered_object('hard_drive_attachment_factory').create(
                 virtual_machine, hdd_object)
 
         t.set_complete()
@@ -394,7 +394,7 @@ class Factory(PyroObject):
     def create_config(self, vm_object, id_, config):
         """Create the hard drive config."""
         # Ensure that the user has permissions to add create storage
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
             vm_object
         )
@@ -404,7 +404,7 @@ class Factory(PyroObject):
     def undo__create_config(self, vm_object, id_, config):
         """Undo creating VM object."""
         # Ensure that the user has permissions to add create storage
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_HARD_DRIVE,
             vm_object
         )
@@ -413,8 +413,8 @@ class Factory(PyroObject):
     def _get_available_storage_types(self):
         """Returns a list of storage types that are available on the node."""
         available_storage_types = []
-        storage_factory = self.po__get_registered_object('storage_factory')
-        node_drbd = self.po__get_registered_object('node_drbd')
+        storage_factory = self._get_registered_object('storage_factory')
+        node_drbd = self._get_registered_object('node_drbd')
         for storage_type in self.get_all_storage_types():
             if storage_type.isAvailable(storage_factory, node_drbd):
                 available_storage_types.append(storage_type)
@@ -430,7 +430,7 @@ class Factory(PyroObject):
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        self.po__get_registered_object('auth').set_permission_asserted()
+        self._get_registered_object('auth').set_permission_asserted()
 
         # Create table and set headings
         table = Texttable()
@@ -479,7 +479,7 @@ class Factory(PyroObject):
     @Expose()
     def get_drbd_object_by_resource_name(self, resource_name):
         """Obtains a hard drive object for a Drbd drive, based on the resource name."""
-        node_drbd = self.po__get_registered_object('node_drbd')
+        node_drbd = self._get_registered_object('node_drbd')
         for hard_drive_object in node_drbd.get_all_drbd_hard_drive_object():
             if hard_drive_object.resource_name == resource_name:
                 return hard_drive_object

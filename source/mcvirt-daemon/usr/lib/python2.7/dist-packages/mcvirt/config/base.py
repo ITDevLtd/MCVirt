@@ -52,7 +52,7 @@ class Base(PyroObject):
     @Expose(locking=True)
     def get_config_remote(self):
         """Provide an exposed method for reading MCVirt configuration."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
         return self.get_config()
 
     @Expose(locking=True)
@@ -159,7 +159,7 @@ class Base(PyroObject):
     def gitAdd(self, message=''):
         """Commit changes to an added or modified configuration file."""
         if self._checkGitRepo():
-            session_obj = self.po__get_registered_object('mcvirt_session')
+            session_obj = self._get_registered_object('mcvirt_session')
             username = ''
             user = None
             if session_obj:
@@ -189,7 +189,7 @@ class Base(PyroObject):
     def gitRemove(self, message='', custom_file=None):
         """Remove and commits a configuration file."""
         if self._checkGitRepo():
-            session_obj = self.po__get_registered_object('mcvirt_session')
+            session_obj = self._get_registered_object('mcvirt_session')
             username = ''
             user = None
             if session_obj:

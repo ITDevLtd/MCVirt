@@ -204,7 +204,7 @@ class Base(PyroObject):
     def delete(self):
         """Shared function to remove storage."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         # Determine if storage backend if used by VMs
         if self.in_use():
@@ -213,7 +213,7 @@ class Base(PyroObject):
         self.delete_id_volume()
 
         # Remove VM from MCVirt configuration
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         self.remove_config(nodes=cluster.get_nodes(include_local=True))
 
     @Expose(remote_nodes=True)
@@ -222,9 +222,9 @@ class Base(PyroObject):
         self.get_config_object().delete()
 
         # Remove cached pyro object
-        storage_factory = self.po__get_registered_object('storage_factory')
+        storage_factory = self._get_registered_object('storage_factory')
         if self._id in storage_factory.CACHED_OBJECTS:
-            self.po__unregister_object()
+            self.unregister_object()
             del storage_factory.CACHED_OBJECTS[self._id]
 
     def get_config_object(self):
@@ -235,7 +235,7 @@ class Base(PyroObject):
     def get_config(self):
         """Get config for storage backend."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         return self.get_config_object().get_config()
@@ -246,7 +246,7 @@ class Base(PyroObject):
         None will mean no default location
         If node is set to None, the default location will be set
         """
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
         # @TODO Add error checking - does it exist?
 
         def update_location_config(config):
@@ -258,18 +258,18 @@ class Base(PyroObject):
         self.update_config(update_location_config,
                            'Update location for %s' % self.name)
 
-        if self.po__is_cluster_master:
+        if self._is_cluster_master:
             def update_remote_node(conn):
                 """Update location on remote nodes."""
                 remote_storage_backend = self.get_remote_object(node_object=conn)
                 remote_storage_backend.set_location(new_location=new_location,
                                                     node=node)
-            self.po__get_registered_object('cluster').run_remote_command(update_remote_node)
+            self._get_registered_object('cluster').run_remote_command(update_remote_node)
 
     @Expose(locking=True)
     def add_node(self, node_name, custom_location=None):
         """Add a new node to the storage backend."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         location = custom_location if custom_location else self.get_location(return_default=True)
 
@@ -283,11 +283,11 @@ class Base(PyroObject):
                 'Node already configured in storage backend: %s %s' % (node_name, self.name)
             )
 
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
 
         if node_name == get_hostname():
             # Ensure that the requested volume exists
-            storage_factory = self.po__get_registered_object('storage_factory')
+            storage_factory = self._get_registered_object('storage_factory')
             storage_factory.node_pre_check(storage_type=self.storage_type,
                                            location=location)
         else:
@@ -306,7 +306,7 @@ class Base(PyroObject):
 
         self.add_node_to_config(
             node_name, config,
-            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
         if not self.shared:
             # Create ID volume
@@ -361,7 +361,7 @@ class Base(PyroObject):
         #  - Have static availalble nodes
         #  - Use this storage backend; and
         #  - This node is one of the available nodes
-        virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
+        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
         for virtual_machine in virtual_machine_factory.get_all_virtual_machines():
             used_storage_backends = [hdd.storage_backend
                                      for hdd in virtual_machine.get_hard_drive_objects()]
@@ -373,7 +373,7 @@ class Base(PyroObject):
     @Expose(locking=True)
     def remove_node(self, node_name):
         """Remove a node from the storage backend."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         self.ensure_can_remove_node(node_name)
 
@@ -387,7 +387,7 @@ class Base(PyroObject):
         # remove node from storage backend
         self.remove_node_from_config(
             node_name,
-            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
         t.set_complete()
 
@@ -411,7 +411,7 @@ class Base(PyroObject):
     def set_shared(self, shared):
         """Set the shared status of the storage backend."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         ArgumentValidator.validate_boolean(shared)
 
@@ -428,18 +428,18 @@ class Base(PyroObject):
             config['shared'] = shared
         self.update_config(update_shared_config, 'Update shared status to %s' % shared)
 
-        if self.po__is_cluster_master:
+        if self._is_cluster_master:
             def update_shared_remote_nodes(connection):
                 """Update shared status of remote nodes."""
                 remote_storage_backend = self.get_remote_object(node_object=connection)
                 remote_storage_backend.set_shared(shared)
-            self.po__get_registered_object('cluster').run_remote_command(
+            self._get_registered_object('cluster').run_remote_command(
                 update_shared_remote_nodes)
 
     def in_use(self, node=None):
         """Whether the storage backend is used for any disks objects."""
         # Get VM factory
-        virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
+        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
 
         # Iterate over all virtual machine and hard drive objects
         for virtual_machine in virtual_machine_factory.get_all_virtual_machines(node=node):
@@ -488,13 +488,13 @@ class Base(PyroObject):
     @Expose()
     def get_volume(self, name):
         """Return a volume for the current storage volume."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         # Create volume object
         volume = self._volume_class(name=name, storage_backend=self)
         # Register with daemon
-        self.po__register_object(volume)
+        self._register_object(volume)
         return volume
 
     def is_drbd_suitable(self):
@@ -512,7 +512,7 @@ class Base(PyroObject):
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the current storage backend object on a remote node."""
         if node_object is None:
-            node_object = self.po__get_registered_object('cluster').get_remote_node(node)
+            node_object = self._get_registered_object('cluster').get_remote_node(node)
 
         remote_storage_factory = node_object.get_connection('storage_factory')
         remote_storage = remote_storage_factory.get_object(self._id)
@@ -552,7 +552,7 @@ class BaseVolume(PyroObject):
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the current volume object on a remote node."""
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         if node_object is None and node is not None:
             node_object = cluster.get_remote_node(node)
 
@@ -577,7 +577,7 @@ class BaseVolume(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def wipe(self, _f=None):
         """Wipe the volume."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         System.perform_dd(source=System.WIPE,
@@ -611,7 +611,7 @@ class BaseVolume(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def create(self, size, _f=None):
         """Create volume in storage backend."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         raise NotImplementedError
@@ -623,7 +623,7 @@ class BaseVolume(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def delete(self, ignore_non_existent, _f=None):
         """Delete volume."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         raise NotImplementedError
@@ -631,7 +631,7 @@ class BaseVolume(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def activate(self, _f=None):
         """Activate volume."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         raise NotImplementedError
@@ -659,7 +659,7 @@ class BaseVolume(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def resize(self, size, increase, _f=None):
         """Reszie volume."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         raise NotImplementedError
@@ -671,7 +671,7 @@ class BaseVolume(PyroObject):
     @Expose(remote_nodes=True)
     def get_size(self):
         """Obtain the size of the volume."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         raise NotImplementedError

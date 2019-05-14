@@ -86,7 +86,7 @@ class Factory(PyroObject):
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the virtual machine factory on a remote node."""
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -124,7 +124,7 @@ class Factory(PyroObject):
             # If not, create object, register with pyro
             # and store in cached object dict
             vm_object = VirtualMachine(vm_id)
-            self.po__register_object(vm_object)
+            self._register_object(vm_object)
             vm_object.initialise()
             Factory.CACHED_OBJECTS[vm_id] = vm_object
 
@@ -157,13 +157,13 @@ class Factory(PyroObject):
             #         and use a seperate function to get libvirt
             #         registered VMs
             # Obtain array of all domains from libvirt
-            all_domains = self.po__get_registered_object(
+            all_domains = self._get_registered_object(
                 'libvirt_connector').get_connection().listAllDomains()
             return [vm.name() for vm in all_domains]
 
         else:
             # Return list of VMs registered on remote node
-            cluster = self.po__get_registered_object('cluster')
+            cluster = self._get_registered_object('cluster')
 
             def remote_command(node_connection):
                 """Get virtual machine names from remote node."""
@@ -177,7 +177,7 @@ class Factory(PyroObject):
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        self.po__get_registered_object('auth').set_permission_asserted()
+        self._get_registered_object('auth').set_permission_asserted()
 
         # Create base table
         table = Texttable()
@@ -271,7 +271,7 @@ class Factory(PyroObject):
         """
         networks = [] if networks is None else networks
 
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
 
         # Ensure all nodes are valid, if defined
         if nodes:
@@ -289,7 +289,7 @@ class Factory(PyroObject):
         # If defined, ensure that all networks exist
         if networks:
             for network in networks:
-                network_factory = self.po__get_registered_object('network_factory')
+                network_factory = self._get_registered_object('network_factory')
                 network_factory.ensure_exists(network)
 
                 # Obtain network object
@@ -312,7 +312,7 @@ class Factory(PyroObject):
         if required_storage_size:
             # Use the hard drive factory to determine whether the given
             # storage requirements are possible, given the available nodes.
-            hard_drive_factory = self.po__get_registered_object('hard_drive_factory')
+            hard_drive_factory = self._get_registered_object('hard_drive_factory')
             nodes, storage_type, storage_backend = hard_drive_factory.ensure_hdd_valid(
                 size=required_storage_size, storage_type=storage_type, nodes=nodes,
                 storage_backend=storage_backend, nodes_predefined=nodes_predefined
@@ -323,7 +323,7 @@ class Factory(PyroObject):
     @Expose(locking=True, instance_method=True)
     def create(self, *args, **kwargs):
         """Exposed method for creating a VM, that performs a permission check."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
     def _create(self,
@@ -370,7 +370,7 @@ class Factory(PyroObject):
                              SizeConverter.from_string(memory_allocation).to_bytes())
 
         if storage_backend:
-            storage_backend = self.po__convert_remote_object(storage_backend)
+            storage_backend = self._convert_remote_object(storage_backend)
 
         # Ensure name is valid, as well as other attributes
         self.checkName(name)
@@ -386,7 +386,7 @@ class Factory(PyroObject):
         for available_node in available_nodes:
             ArgumentValidator.validate_hostname(available_node)
 
-        cluster_object = self.po__get_registered_object('cluster')
+        cluster_object = self._get_registered_object('cluster')
         local_hostname = get_hostname()
 
         if node and available_nodes and node not in available_nodes:
@@ -406,13 +406,13 @@ class Factory(PyroObject):
             node = local_hostname
 
         # Ensure that the local node is included in the list of available nodes
-        if self.po__is_cluster_master and local_hostname not in available_nodes:
+        if self._is_cluster_master and local_hostname not in available_nodes:
             raise InvalidNodesException('Local node must included in available nodes')
 
         # Ensure storage_type is a valid type, if specified
-        hard_drive_factory = self.po__get_registered_object('hard_drive_factory')
+        hard_drive_factory = self._get_registered_object('hard_drive_factory')
         assert storage_type in [None] + [
-            storage_type_itx.__name__ for storage_type_itx in self.po__get_registered_object(
+            storage_type_itx.__name__ for storage_type_itx in self._get_registered_object(
                 'hard_drive_factory').get_all_storage_types()
         ]
 
@@ -429,7 +429,7 @@ class Factory(PyroObject):
 
         # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
         # in this state
-        if self.po__cluster_disabled:
+        if self._cluster_disabled:
             raise ClusterNotInitialisedException('VM cannot be created whilst the cluster' +
                                                  ' is not initialised')
 
@@ -441,7 +441,7 @@ class Factory(PyroObject):
         if os_path_exists(VirtualMachine.get_vm_dir(name)):
             raise VmDirectoryAlreadyExistsException('Error: VM directory already exists')
 
-        if local_hostname not in available_nodes and self.po__is_cluster_master:
+        if local_hostname not in available_nodes and self._is_cluster_master:
             raise InvalidNodesException('One of the nodes must be the local node')
 
         # Create VM configuration file
@@ -460,21 +460,21 @@ class Factory(PyroObject):
 
         vm_object = self.create_config(
             id_, name, config_nodes, cpu_cores, memory_allocation, graphics_driver,
-            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
         if node == get_hostname():
             # Register VM with LibVirt. If MCVirt has not been initialised on this node,
             # do not set the node in the VM configuration, as the change can't be
             # replicated to remote nodes
-            vm_object._register(set_node=self.po__is_cluster_master)
-        elif self.po__is_cluster_master:
+            vm_object._register(set_node=self._is_cluster_master)
+        elif self._is_cluster_master:
             # If MCVirt has been initialised on this node and the local machine is
             # not the node that the VM will be registered on, set the node on the VM
             vm_object._setNode(node)
 
-        if self.po__is_cluster_master:
+        if self._is_cluster_master:
             # Create disk images
-            hard_drive_factory = self.po__get_registered_object('hard_drive_factory')
+            hard_drive_factory = self._get_registered_object('hard_drive_factory')
             for hard_drive_size in hard_drives:
                 hard_drive_factory.create(vm_object=vm_object, size=hard_drive_size,
                                           storage_type=storage_type, driver=hard_drive_driver,
@@ -483,8 +483,8 @@ class Factory(PyroObject):
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML
-            network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
-            network_factory = self.po__get_registered_object('network_factory')
+            network_adapter_factory = self._get_registered_object('network_adapter_factory')
+            network_factory = self._get_registered_object('network_factory')
             if network_interfaces is not None:
                 for network in network_interfaces:
                     network_object = network_factory.get_network_by_name(network)

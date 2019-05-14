@@ -56,12 +56,12 @@ class HostStatistics(RepeatTimer):
     @Expose()
     def get_autostart_interval(self):
         """Return the statistics interval for the node."""
-        return self.po__get_registered_object(
+        return self._get_registered_object(
             'mcvirt_config')().get_config()['statistics']['interval']
 
     def insert_into_stat_db(self):
         """Add statistics to statistics database."""
-        db_factory = self.po__get_registered_object('database_factory')
+        db_factory = self._get_registered_object('database_factory')
         db_rows = [
             (StatisticsDeviceType.HOST.value, get_hostname(),
              StatisticsStatType.CPU_USAGE.value, self._cpu_usage,

@@ -36,7 +36,7 @@ class Factory(PyroObject):
                           node=None,  # The name of the remote node to connect to
                           node_object=None):  # Otherwise, pass a remote node connection
         """Obtain an instance of the hard drive attachment factory on a remote node."""
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -45,7 +45,7 @@ class Factory(PyroObject):
     @Expose()
     def get_object(self, virtual_machine, attachment_id):
         """Obtain hard drive attachment object."""
-        virtual_machine = self.po__convert_remote_object(virtual_machine)
+        virtual_machine = self._convert_remote_object(virtual_machine)
         attachment_id = str(attachment_id)
 
         cache_id = (virtual_machine.id_, attachment_id)
@@ -60,7 +60,7 @@ class Factory(PyroObject):
             # If not, create object, register with pyro
             # and store in cached object dict
             hdd_attachment = HardDriveAttachment(virtual_machine, attachment_id)
-            self.po__register_object(hdd_attachment)
+            self._register_object(hdd_attachment)
 
             Factory.CACHED_OBJECTS[cache_id] = hdd_attachment
 
@@ -69,17 +69,17 @@ class Factory(PyroObject):
 
     def get_objects_by_virtual_machine(self, virtual_machine):
         """Obtain attachments by virtual machine."""
-        virtual_machine = self.po__convert_remote_object(virtual_machine)
+        virtual_machine = self._convert_remote_object(virtual_machine)
         attachment_ids = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
         return [self.get_object(virtual_machine, id_) for id_ in attachment_ids]
 
     @Expose()
     def get_object_by_hard_drive(self, hard_drive, raise_on_failure=False):
         """Obtain attachment by hard drive."""
-        hard_drive = self.po__convert_remote_object(hard_drive)
+        hard_drive = self._convert_remote_object(hard_drive)
 
         # Iterate over each virtual machine and each attachment on the VM
-        for vm in self.po__get_registered_object(
+        for vm in self._get_registered_object(
                 'virtual_machine_factory').get_all_virtual_machines():
             for attachment in self.get_objects_by_virtual_machine(vm):
                 # If the hard drive ID matches the ID of the hard drive
@@ -95,11 +95,11 @@ class Factory(PyroObject):
     @Expose(locking=True)
     def create(self, virtual_machine, hard_drive):
         """Create attachment."""
-        virtual_machine = self.po__convert_remote_object(virtual_machine)
-        hard_drive = self.po__convert_remote_object(hard_drive)
+        virtual_machine = self._convert_remote_object(virtual_machine)
+        hard_drive = self._convert_remote_object(hard_drive)
 
         # Ensure that the user has permissions to modify VM
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             virtual_machine
         )
@@ -115,7 +115,7 @@ class Factory(PyroObject):
             'hard_drive_id': hard_drive.id_
         }
 
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         self.create_config(
             virtual_machine=virtual_machine, attachment_id=attachment_id,
             config=config,
@@ -129,11 +129,11 @@ class Factory(PyroObject):
     @Expose(locking=True, remote_nodes=True)
     def create_config(self, virtual_machine, attachment_id, config):
         """Add hard drive attachmenrt config to VM."""
-        virtual_machine = self.po__convert_remote_object(virtual_machine)
+        virtual_machine = self._convert_remote_object(virtual_machine)
         attachment_id = str(attachment_id)
 
         # Ensure that the user has permissions to modify VM
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             virtual_machine
         )
@@ -150,10 +150,10 @@ class Factory(PyroObject):
         """Obtain the next available ID for the VM hard drive, by scanning the IDs
         of disks attached to the VM
         """
-        virtual_machine = self.po__convert_remote_object(virtual_machine)
+        virtual_machine = self._convert_remote_object(virtual_machine)
         attachment_id = 0
         disks = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
-        hdd_class = self.po__get_registered_object('hard_drive_factory').getClass(
+        hdd_class = self._get_registered_object('hard_drive_factory').getClass(
             virtual_machine.getStorageType(), allow_base=True)
 
         # Ensure that the number of disks attached to the VM is not already
@@ -183,7 +183,7 @@ class HardDriveAttachment(PyroObject):
                           node=None,  # The name of the remote node to connect to
                           node_object=None):  # Otherwise, pass a remote node connection
         """Obtain an instance of the hard drive attachment factory on a remote node."""
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -221,24 +221,24 @@ class HardDriveAttachment(PyroObject):
     @Expose()
     def get_hard_drive_object(self):
         """Get hard drive object."""
-        hdd_factory = self.po__get_registered_object('hard_drive_factory')
+        hdd_factory = self._get_registered_object('hard_drive_factory')
         return hdd_factory.get_object(self.get_hard_drive_id())
 
     @Expose(locking=True)
     def delete(self, local_only=False):
         """Remove the hard drive attachment."""
         # Ensure that the user has permissions to add delete storage
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.virtual_machine
         )
 
         self.remove_from_virtual_machine()
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         nodes = [get_hostname()] if local_only else cluster.get_nodes(include_local=True)
         self.remove_config(nodes=cluster.get_nodes(include_local=True))
         del Factory.CACHED_OBJECTS[(self.virtual_machine.id_, self.attachment_id)]
-        self.po__unregister_object()
+        self.unregister_object()
 
     @Expose(locking=True, remote_nodes=True)
     def remove_config(self):
@@ -284,7 +284,7 @@ class HardDriveAttachment(PyroObject):
         and performs the base function on all nodes in the cluster
         """
         # Ensure that the user has permissions to modify VM
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.virtual_machine
         )
@@ -299,7 +299,7 @@ class HardDriveAttachment(PyroObject):
         """
         # @TODO - NEEDS REWORK NOW
         # Ensure that the user has permissions to modify VM
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MODIFY_VM,
             self.virtual_machine
         )

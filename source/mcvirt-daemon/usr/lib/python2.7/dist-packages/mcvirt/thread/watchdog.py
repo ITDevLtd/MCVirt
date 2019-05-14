@@ -56,7 +56,7 @@ class WatchdogFactory(PyroObject):
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
         """Obtain an instance of the watchdog factory on a remote node."""
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -65,7 +65,7 @@ class WatchdogFactory(PyroObject):
     def initialise(self):
         """Detect running VMs on local node and create watchdog daemon."""
         # Check all VMs
-        for virtual_machine in self.po__get_registered_object(
+        for virtual_machine in self._get_registered_object(
                 'virtual_machine_factory').get_all_virtual_machines():
 
             Syslogger.logger().debug('Registering watchdog for: %s' % virtual_machine.get_name())
@@ -96,7 +96,7 @@ class WatchdogFactory(PyroObject):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def update_watchdog_config(self, change_dict, reason, _f):
         """Update global watchdog config using dict."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def update_config(config):
@@ -109,7 +109,7 @@ class WatchdogFactory(PyroObject):
     @Expose(locking=True)
     def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
         """Undo config change."""
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
+        self._get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def revert_config(config):
@@ -125,13 +125,13 @@ class WatchdogFactory(PyroObject):
         ArgumentValidator.validate_positive_integer(interval)
 
         # Check permissions
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
 
         self.update_watchdog_config(
             change_dict={'interval': interval},
             reason='Update global watchdog interval',
-            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     @Expose(locking=True)
     def set_global_reset_fail_count(self, count):
@@ -139,13 +139,13 @@ class WatchdogFactory(PyroObject):
         ArgumentValidator.validate_positive_integer(count)
 
         # Check permissions
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
 
         self.update_watchdog_config(
             change_dict={'reset_fail_count': count},
             reason='Update global watchdog reset fail count',
-            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
     @Expose(locking=True)
     def set_global_boot_wait(self, wait):
@@ -153,13 +153,13 @@ class WatchdogFactory(PyroObject):
         ArgumentValidator.validate_positive_integer(wait)
 
         # Check permissions
-        self.po__get_registered_object('auth').assert_permission(
+        self._get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
 
         self.update_watchdog_config(
             change_dict={'boot_wait': wait},
             reason='Update global watchdog boot wait period',
-            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
 
 
 class Watchdog(RepeatTimer):

@@ -83,7 +83,7 @@ class Session(PyroObject):
         """Authenticate using username/password and store
         session
         """
-        user_factory = self.po__get_registered_object('user_factory')
+        user_factory = self._get_registered_object('user_factory')
         user_object = user_factory.authenticate(username, password)
         if user_object:
             # Generate Session ID
@@ -112,7 +112,7 @@ class Session(PyroObject):
             # Check session has not expired
             if Session.USER_SESSIONS[session].is_valid():
                 Session.USER_SESSIONS[session].renew()
-                user_factory = self.po__get_registered_object('user_factory')
+                user_factory = self._get_registered_object('user_factory')
                 return user_factory.get_user_by_username(username)
             else:
                 del Session.USER_SESSIONS[session]
@@ -122,7 +122,7 @@ class Session(PyroObject):
     def get_proxy_user_object(self):
         """Return the user that is being proxied as."""
         current_user = self.get_current_user_object()
-        user_factory = self.po__get_registered_object('user_factory')
+        user_factory = self._get_registered_object('user_factory')
         if (current_user.allow_proxy_user and 'proxy_user' in dir(Pyro4.current_context) and
                 Pyro4.current_context.proxy_user):
             try:
@@ -136,7 +136,7 @@ class Session(PyroObject):
         if Pyro4.current_context.session_id:
             session_id = Pyro4.current_context.session_id
             username = Session.USER_SESSIONS[session_id].username
-            user_factory = self.po__get_registered_object('user_factory')
+            user_factory = self._get_registered_object('user_factory')
             return user_factory.get_user_by_username(username)
         raise CurrentUserError('Cannot obtain current user')
 

@@ -44,7 +44,7 @@ class Factory(PyroObject):
     def pre_check_network(self, name, interface):
         """Perform pre-limiary checks on node before determining
            that a network can be added."""
-        self.po__get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')
         # Ensure that the physical interface exists
         self.assert_interface_exists(interface)
 
@@ -57,7 +57,7 @@ class Factory(PyroObject):
         # Ensure that there is not already a network with the same name defined in
         # libvirt
         try:
-            self.po__get_registered_object(
+            self._get_registered_object(
                 'libvirt_connector'
             ).get_connection().networkLookupByName(name)
 
@@ -75,7 +75,7 @@ class Factory(PyroObject):
     @Expose()
     def interface_exists(self, interface):
         """Public method for to determine if an interface exists."""
-        self.po__get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')
+        self._get_registered_object('auth').assert_user_type('ConnectionUser', 'ClusterUser')
         return self._interface_exists(interface)
 
     def _interface_exists(self, interface):
@@ -94,7 +94,7 @@ class Factory(PyroObject):
     def create(self, name, physical_interface):
         """Create a network on the node."""
         # Ensure user has permission to manage networks
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_HOST_NETWORKS)
 
         # Validate name
         ArgumentValidator.validate_network_name(name)
@@ -103,13 +103,13 @@ class Factory(PyroObject):
         if self.check_exists(name):
             raise NetworkAlreadyExistsException('Network already exists: %s' % name)
 
-        if self.po__is_cluster_master:
+        if self._is_cluster_master:
             def remote_command(remote_connection):
                 """Check that interface exists on remote node."""
                 network_factory = remote_connection.get_connection('network_factory')
                 network_factory.assert_interface_exists(physical_interface)
 
-            cluster = self.po__get_registered_object('cluster')
+            cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
         if not self._interface_exists(physical_interface):
@@ -136,7 +136,7 @@ class Factory(PyroObject):
 
         # Attempt to register network with LibVirt
         try:
-            self.po__get_registered_object('libvirt_connector').get_connection(
+            self._get_registered_object('libvirt_connector').get_connection(
             ).networkDefineXML(network_xml_string)
         except Exception:
             raise LibvirtException('An error occurred whilst registering network with LibVirt')
@@ -146,7 +146,7 @@ class Factory(PyroObject):
             """Update MCVirt config."""
             config['networks'][name] = physical_interface
 
-        self.po__get_registered_object('mcvirt_config')().update_config(
+        self._get_registered_object('mcvirt_config')().update_config(
             update_config, 'Created network \'%s\'' % name)
 
         # Obtain instance of the network object
@@ -158,12 +158,12 @@ class Factory(PyroObject):
         # Set network to autostart
         network_instance._get_libvirt_object().setAutostart(True)
 
-        if self.po__is_cluster_master:
+        if self._is_cluster_master:
             def remote_add(node):
                 """Create network on remote node."""
                 network_factory = node.get_connection('network_factory')
                 network_factory.create(name, physical_interface)
-            cluster = self.po__get_registered_object('cluster')
+            cluster = self._get_registered_object('cluster')
             cluster.run_remote_command(remote_add)
 
         return network_instance
@@ -174,7 +174,7 @@ class Factory(PyroObject):
         self.ensure_exists(network_name)
         if network_name not in Factory.CACHED_OBJECTS:
             Factory.CACHED_OBJECTS[network_name] = Network(network_name)
-            self.po__register_object(self.CACHED_OBJECTS[network_name])
+            self._register_object(self.CACHED_OBJECTS[network_name])
         return Factory.CACHED_OBJECTS[network_name]
 
     @Expose()
@@ -220,7 +220,7 @@ class Factory(PyroObject):
 
     def initialise(self):
         """Delete the default libvirt network if it exists."""
-        libvirt = self.po__get_registered_object('libvirt_connector').get_connection()
+        libvirt = self._get_registered_object('libvirt_connector').get_connection()
         try:
             default = libvirt.networkLookupByName(DEFAULT_LIBVIRT_NETWORK_NAME)
             try:

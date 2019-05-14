@@ -71,7 +71,7 @@ class VirtualMachineFactoryUnitTest(VirtualMachineFactory):
         # If not, create object, register with pyro
         # and store in cached object dict
         vm_object = VirtualMachineLibvirtFail(vm_id)
-        self.po__register_object(vm_object)
+        self._register_object(vm_object)
         vm_object.initialise()
         return vm_object
 

@@ -100,7 +100,7 @@ class LvmVolume(BaseVolume):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def create(self, size, _f=None):
         """Create volume in storage backend."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
         # Ensure volume does not already exist
         if self.check_exists():
@@ -128,7 +128,7 @@ class LvmVolume(BaseVolume):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def delete(self, ignore_non_existent=False, _f=None):
         """Delete volume."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
         # Create command arguments
@@ -151,7 +151,7 @@ class LvmVolume(BaseVolume):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def activate(self, _f=None):
         """Activate volume."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
         # Ensure volume exists
         self.ensure_exists()
@@ -205,7 +205,7 @@ class LvmVolume(BaseVolume):
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def resize(self, size, increase=True, _f=None):
         """Reszie volume."""
-        self.po__get_registered_object('auth').assert_user_type(
+        self._get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
         # Ensure volume exists
         self.ensure_exists()

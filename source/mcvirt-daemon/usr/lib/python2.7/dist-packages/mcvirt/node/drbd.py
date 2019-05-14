@@ -56,7 +56,7 @@ class Drbd(PyroObject):
         """Ensure that DRBD user exists and that hook configuration
         exists
         """
-        user_factory = self.po__get_registered_object('user_factory')
+        user_factory = self._get_registered_object('user_factory')
         if (not os.path.exists(DirectoryLocation.DRBD_HOOK_CONFIG) or
                 not len(user_factory.get_all_user_objects(user_classes=['DrbdHookUser']))):
 
@@ -70,7 +70,7 @@ class Drbd(PyroObject):
     @Expose()
     def is_enabled(self, node=None):
         """Determine whether Drbd is enabled on the node or not."""
-        cluster = self.po__get_registered_object('cluster')
+        cluster = self._get_registered_object('cluster')
         if node is None or node == get_hostname():
             return self.get_config()['enabled']
 
@@ -97,12 +97,12 @@ class Drbd(PyroObject):
     def enable(self, secret=None):
         """Ensure the machine is suitable to run Drbd."""
         # Ensure user has the ability to manage Drbd
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_DRBD)
+        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_DRBD)
 
         # Ensure that Drbd is installed
         self.ensure_installed()
 
-        if self.is_enabled() and self.po__is_cluster_master:
+        if self.is_enabled() and self._is_cluster_master:
             raise DrbdAlreadyEnabled('Drbd has already been enabled on this node')
 
         if secret is None:
@@ -113,9 +113,9 @@ class Drbd(PyroObject):
         # Set the secret in the local configuration
         self.set_secret(secret)
 
-        if self.po__is_cluster_master:
+        if self._is_cluster_master:
             # Enable Drbd on the remote nodes
-            cluster = self.po__get_registered_object('cluster')
+            cluster = self._get_registered_object('cluster')
 
             def remote_command(node):
                 """Enable DRBD on remote node, specifying the secret."""
@@ -173,7 +173,7 @@ class Drbd(PyroObject):
     def get_all_drbd_hard_drive_object(self, include_remote=False):
         """Obtain all hard drive objects that are backed by DRBD."""
         hard_drive_objects = []
-        hdd_factory = self.po__get_registered_object('hard_drive_factory')
+        hdd_factory = self._get_registered_object('hard_drive_factory')
         for hdd_object in hdd_factory.get_all():
             if ((get_hostname() in hdd_object.nodes or include_remote) and
                     hdd_object.get_type() == 'Drbd'):
@@ -197,7 +197,7 @@ class Drbd(PyroObject):
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        self.po__get_registered_object('auth').set_permission_asserted()
+        self._get_registered_object('auth').set_permission_asserted()
 
         # Create table and add headers
         table = Texttable()
