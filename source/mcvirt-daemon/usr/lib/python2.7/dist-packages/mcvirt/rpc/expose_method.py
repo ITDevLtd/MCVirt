@@ -453,6 +453,7 @@ class Function(PyroObject):
         # Otherwise, if no node data, return None
         return None
 
+    @Pyro4.expose
     def add_undo_argument(self, **kwargs):
         """Add an additional keyword argument.
 
@@ -460,6 +461,7 @@ class Function(PyroObject):
         """
         self.nodes[self.current_node]['kwargs'].update(kwargs)
 
+    @Pyro4.expose
     def complete(self):
         """Mark the function as having completed successfully.
 
