@@ -55,9 +55,12 @@ class TaskScheduler(PyroObject):
 
     def distribute_task(self, task):
         """Distribute task to cluster."""
+        pass
 
     def receive_task(self, node, task_id):
-        """Create task object from 
+        """Create task object from """
+        pass
 
     def remote_notify(self, task_id):
         """Allow a remote node to notify a task to start"""
+        pass
