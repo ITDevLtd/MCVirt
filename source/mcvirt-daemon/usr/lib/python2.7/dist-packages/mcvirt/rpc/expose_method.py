@@ -194,7 +194,7 @@ class Function(PyroObject):
             all_nodes = kwargs['all_nodes']
             del kwargs['all_nodes']
             if all_nodes:
-                nodes = self.po__get_registered_object('cluster').get_nodes(
+                nodes = obj.po__get_registered_object('cluster').get_nodes(
                     include_local=True)
             else:
                 nodes = [get_hostname()]
@@ -276,7 +276,8 @@ class Function(PyroObject):
     def run(self):
         """Run the function."""
         # Register instance and functions with pyro
-        self.obj.po__register_object(self, debug=False)
+        if not self.po__is_pyro_initialised:
+            self.obj.po__register_object(self, debug=False)
 
         # Pause the session timeout
         self._pause_user_session()
@@ -344,7 +345,7 @@ class Function(PyroObject):
         # Return the data from the function
         return self._get_response_data()
 
-    def _get_kwargs(self):
+    def get_kwargs(self):
         """Obtain kwargs for passing to the function."""
         # Create copy of kwargs before modifying them
         kwargs = dict(self.nodes[self.current_node]['kwargs'])
@@ -366,17 +367,13 @@ class Function(PyroObject):
         if self.locking:
 
             self.nodes[local_hostname]['return_val'] = \
-                lock_log_and_call(self.function,
-                                  [self.obj] + self.nodes[local_hostname]['args'],
-                                  self._get_kwargs(),
-                                  self.instance_method,
-                                  self.object_type)
+                lock_log_and_call(self)
 
         # Otherwise run the command directly
         else:
             self.nodes[local_hostname]['return_val'] = \
                 self.function(self.obj, *self.nodes[local_hostname]['args'],
-                              **self._get_kwargs())
+                              **self.get_kwargs())
 
     def _call_function_remote(self, node, undo=False):
         """Run the function on a remote node."""
@@ -402,7 +399,7 @@ class Function(PyroObject):
         # Convert local object in args and kwargs
         args, kwargs = self._convert_local_object(node,
                                                   self.nodes[node]['args'],
-                                                  self._get_kwargs())
+                                                  self.get_kwargs())
 
         # Run the method by obtaining the member attribute, based on the name of
         # the callback function from of the remote object

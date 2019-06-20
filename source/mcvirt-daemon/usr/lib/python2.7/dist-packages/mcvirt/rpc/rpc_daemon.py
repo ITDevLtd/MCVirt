@@ -23,6 +23,7 @@ import signal
 import types
 import time
 
+from mcvirt.task_scheduler.scheduler import TaskScheduler
 from mcvirt.database import DatabaseFactory, StatisticsSync
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
@@ -319,6 +320,7 @@ class RpcNSMixinDaemon(object):
     def register_factories(self):
         """Register base MCVirt factories with RPC daemon."""
         registration_factories = [
+            [TaskScheduler(), 'task_scheduler'],
             [DatabaseFactory(), 'database_factory'],
             [VirtualMachineFactory(), 'virtual_machine_factory'],
             [NetworkFactory(), 'network_factory'],

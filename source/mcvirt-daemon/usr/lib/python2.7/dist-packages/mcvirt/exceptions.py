@@ -927,6 +927,12 @@ class UnknownAgentCommandRun(MCVirtException):
     pass
 
 
+class TaskSchedulerConflictError(MCVirtException):
+    """Task scheduler suffered a conflict with another node"""
+
+    pass
+
+
 for exception_class in get_all_submodules(MCVirtException):
     Pyro4.util.all_exceptions[
         '%s.%s' % (exception_class.__module__, exception_class.__name__)

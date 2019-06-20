@@ -17,6 +17,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import hashlib
+import random
 import string
 import datetime
 import Pyro4
@@ -55,8 +56,8 @@ class PyroObject(object):
         """Generate ID for group."""
         # Generate random ID for name, if not specified
         if name is None:
-            name = password = "".join(
-                choice(
+            name = "".join(
+                random.choice(
                     string.ascii_letters + string.punctuation + string.digits)
                 for x in range(24))
 

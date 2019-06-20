@@ -21,7 +21,6 @@ from threading import Lock
 
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.syslogger import syslogger
 
 
 class ClusterLock(PyroObject):
@@ -29,6 +28,11 @@ class ClusterLock(PyroObject):
 
     CLUSTER_LOCK_INSTANCE = None
     LOCK_INSTANCE = None
+
+    @staticmethod
+    def get_instance():
+        """Obtain instance of the object, if it exists"""
+        return ClusterLock.CLUSTER_LOCK_INSTANCE
 
     def initalise(self):
         """On node startup, create local reference to singleton instance."""
