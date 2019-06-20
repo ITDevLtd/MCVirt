@@ -89,30 +89,30 @@ class LockTests(TestBase, PyroObject):
         locking_thread.join()
 
     def test_method_lock_escape_return(self):
-            """Test whether locks can be cleared and clear_method_lock returns accurateley."""
+        """Test whether locks can be cleared and clear_method_lock returns accurateley."""
 
-            thread_is_running_event = threading.Event()
-            thread_should_stop_event = threading.Event()
+        thread_is_running_event = threading.Event()
+        thread_should_stop_event = threading.Event()
 
-            @Expose(locking=True)
-            def hold_lock_forever(self):
-                """Hold lock forever."""
-                while not thread_should_stop_event.is_set():
-                    thread_is_running_event.set()
+        @Expose(locking=True)
+        def hold_lock_forever(self):
+            """Hold lock forever."""
+            while not thread_should_stop_event.is_set():
+                thread_is_running_event.set()
 
-            node = self.rpc.get_connection('node')
-            self.assertFalse(node.clear_method_lock())
+        node = self.rpc.get_connection('node')
+        self.assertFalse(node.clear_method_lock())
 
-            # Try to take a lock which has already been taken
-            locking_thread = threading.Thread(target=hold_lock_forever, args=(self,))
-            locking_thread.start()
+        # Try to take a lock which has already been taken
+        locking_thread = threading.Thread(target=hold_lock_forever, args=(self,))
+        locking_thread.start()
 
-            # wait for the locking thread to take its lock
-            thread_is_running_event.wait()
+        # wait for the locking thread to take its lock
+        thread_is_running_event.wait()
 
-            self.assertTrue(node.clear_method_lock())
-            self.assertFalse(node.clear_method_lock())
+        self.assertTrue(node.clear_method_lock())
+        self.assertFalse(node.clear_method_lock())
 
-            # Clean up
-            thread_should_stop_event.set()
-            locking_thread.join()
+        # Clean up
+        thread_should_stop_event.set()
+        locking_thread.join()
