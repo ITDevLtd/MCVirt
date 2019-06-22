@@ -43,7 +43,8 @@ class Task(PyroObject):
         self._event = Event()
         self._function_obj = function_obj
         self._id = self.generate_id()
-        self._set_current_context = False
+        self._set_context_task = False
+        self._set_context_lock = False
 
     def execute(self):
         """Execute task, which will wait for allocated time"""
@@ -58,7 +59,11 @@ class Task(PyroObject):
             Pyro4.current_context.CURRENT_TASK_P = self.po__get_registered_object(
                 'task_scheduler').get_task_pointer_by_id(
                     self.id_)
-            self._set_current_context = True
+            self._set_context_task = True
+
+        if self.po__get_current_context_item('has_lock') is None:
+            Pyro4.current_context.has_lock = True
+            self._set_context_lock = True
 
         return_val = None
         try:
@@ -72,9 +77,12 @@ class Task(PyroObject):
     def on_completion(self):
         """Tear down this task and start next task"""
         # Remove task/task pointer from current context
-        if self._set_current_context:
+        if self._set_context_task:
             Pyro4.current_context.CURRENT_TASK = None
             Pyro4.current_context.CURRENT_TASK_P = None
+        # Reset context lock, if set
+        if self._set_context_lock:
+            Pyro4.current_context.has_lock = False
 
         task_scheduler = self.po__get_registered_object('task_scheduler')
         is_cancelled = task_scheduler.is_task_cancelled(self.id_)

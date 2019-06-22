@@ -82,13 +82,12 @@ def lock_log_and_call(function_obj):
         if function_obj.po__is_pyro_initialised:
             ts = function_obj.po__get_registered_object('task_scheduler')
             task = ts.add_task(function_obj)
-        # @TODO: lock entire cluster - raise exception if it cannot
-        # be obtained in short period (~5 seconds)
-        Pyro4.current_context.has_lock = True
 
     if log:
         log.start()
+
     response = None
+
     try:
         if task is not None:
             response = task.execute()
@@ -96,28 +95,26 @@ def lock_log_and_call(function_obj):
             response = callback(*args, **kwargs)
 
     except MCVirtException, exc:
+
         Syslogger.logger().error('An internal MCVirt exception occurred in lock')
         Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
+
         if log:
             log.finish_error(exc)
-
-        # Attempt to release lock if it was locked
-        if requires_lock:
-            Pyro4.current_context.has_lock = False
 
         # Re-raise exception
         raise
 
     except Exception, exc:
+
         Syslogger.logger().error('Unknown exception occurred in lock')
         Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
+
         if log:
             log.finish_error_unknown(exc)
-        if requires_lock:
-            Pyro4.current_context.has_lock = False
         raise
+
     if log:
         log.finish_success()
-    if requires_lock:
-        Pyro4.current_context.has_lock = False
+
     return response
