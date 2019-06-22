@@ -201,8 +201,7 @@ class TaskScheduler(PyroObject):
     def get_current_running_task_pointer(self):
         """Get current running task"""
         for task in TaskScheduler._TASK_QUEUE:
-            if not task.is_cancelled():
-                return task
+            return task
         return None
 
     @Expose()
@@ -211,9 +210,6 @@ class TaskScheduler(PyroObject):
         task_p = self.get_current_running_task_pointer()
         if task_p:
             task_p.cancel(all_nodes=True)
-
-            # Start next task
-            self.next_task()
 
             # Return True indicating that task has
             # been cancelled

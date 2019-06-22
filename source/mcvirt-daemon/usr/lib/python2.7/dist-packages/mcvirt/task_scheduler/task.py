@@ -85,11 +85,9 @@ class Task(PyroObject):
             Pyro4.current_context.has_lock = False
 
         task_scheduler = self.po__get_registered_object('task_scheduler')
-        is_cancelled = task_scheduler.is_task_cancelled(self.id_)
-        task_scheduler.remove_task(self._id, all_nodes=True)
+        task_scheduler.remove_task(self.id_, all_nodes=True)
 
-        if not is_cancelled:
-            task_scheduler.next_task()
+        task_scheduler.next_task()
 
     def start(self):
         """Signal task start event"""
