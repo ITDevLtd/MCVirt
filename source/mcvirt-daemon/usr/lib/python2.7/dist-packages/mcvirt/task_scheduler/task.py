@@ -61,7 +61,7 @@ class Task(PyroObject):
                     self.id_)
             self._set_context_task = True
 
-        if self.po__get_current_context_item('has_lock') is None:
+        if self.po__get_current_context_item('has_lock') is not True:
             Pyro4.current_context.has_lock = True
             self._set_context_lock = True
 
