@@ -31,7 +31,7 @@ class Task(PyroObject):
     @staticmethod
     def get_id_code():
         """Return default Id code for object."""
-        return 'ta'
+        return 'tsk'
 
     @property
     def id_(self):
@@ -77,8 +77,11 @@ class Task(PyroObject):
             Pyro4.current_context.CURRENT_TASK_P = None
 
         task_scheduler = self.po__get_registered_object('task_scheduler')
+        is_cancelled = task_scheduler.is_task_cancelled(self.id_)
         task_scheduler.remove_task(self._id, all_nodes=True)
-        task_scheduler.next_task()
+
+        if not is_cancelled:
+            task_scheduler.next_task()
 
     def start(self):
         """Signal task start event"""

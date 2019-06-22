@@ -56,7 +56,6 @@ class TaskPointer(PyroObject):
         node_obj.annotate_object(remote_task)
         return remote_task
 
-    @Expose()
     def is_cancelled(self):
         """Return whether task is cancelled"""
         return self._cancelled

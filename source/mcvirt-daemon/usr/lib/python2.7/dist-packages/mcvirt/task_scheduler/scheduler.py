@@ -52,7 +52,7 @@ class TaskScheduler(PyroObject):
             node_object = cluster.get_remote_node(node)
 
         remote_task_scheduler = node_object.get_connection('task_scheduler')
-        if return_node:
+        if return_node_object:
             return remote_task_scheduler, node_object
         return remote_task_scheduler
 
@@ -71,6 +71,10 @@ class TaskScheduler(PyroObject):
     def get_current_task(self):
         """Get the current task"""
         return self.po__get_current_context_item('CURRENT_TASK')
+
+    def is_task_cancelled(self, task_id):
+        """Return if a task is cancelled"""
+        return TaskScheduler._TASK_POINTERS[task_id].is_cancelled()
 
     def get_current_task_pointer(self):
         """Get the current task"""
@@ -196,10 +200,10 @@ class TaskScheduler(PyroObject):
 
     def get_current_running_task_pointer(self):
         """Get current running task"""
-        # @TODO Ignore cancelled tasks
-        return (TaskScheduler._TASK_QUEUE[-1]
-                if TaskScheduler._TASK_QUEUE else
-                None)
+        for task in TaskScheduler._TASK_QUEUE:
+            if not task.is_cancelled():
+                return task
+        return None
 
     @Expose()
     def cancel_current_task(self):
@@ -207,6 +211,10 @@ class TaskScheduler(PyroObject):
         task_p = self.get_current_running_task_pointer()
         if task_p:
             task_p.cancel(all_nodes=True)
+
+            # Start next task
+            self.next_task()
+
             # Return True indicating that task has
             # been cancelled
             return True
@@ -216,6 +224,6 @@ class TaskScheduler(PyroObject):
 
     def next_task(self):
         """Allow a remote node to notify a task to start"""
-        if TaskScheduler._TASK_QUEUE:
-            task_p = TaskScheduler._TASK_QUEUE[0]
-            task_p.start()
+        task = self.get_current_running_task_pointer()
+        if task:
+            task.start()
