@@ -22,6 +22,7 @@ import threading
 
 from mcvirt.test.test_base import TestBase
 from mcvirt.rpc.expose_method import Expose
+from mcvirt.exceptions import TaskCancelledError
 from mcvirt.rpc.pyro_object import PyroObject
 
 
@@ -33,13 +34,19 @@ class LockingFunctions(PyroObject):
         self.thread_should_stop_event = threading.Event()
         self.thread_is_running_event = threading.Event()
 
+    @Expose
+    def tick(self):
+        sleep(1.0/10)
 
     @Expose(locking=True)
     def hold_lock_forever(self):
         """Hold lock forever."""
         while not self.thread_should_stop_event.is_set():
             self.thread_is_running_event.set()
-            sleep(1.0 / 10)
+            try:
+                self.tick()
+            except TaskCancelledError:
+                self.thread_should_stop_event.set()
 
     @Expose(locking=True)
     def take_lock(self):
@@ -99,31 +106,31 @@ class LockTests(TestBase):
         testing_thread = threading.Thread(target=s_take_lock, args=(self,))
         # testing_thread.daemon = True
         testing_thread.start()
-        #testing_thread.join(2)
+        testing_thread.join(2)
 
-        # # Try to take a lock which has already been taken
-        # locking_thread = threading.Thread(target=s_hold_lock_forever, args=(self,))
-        # locking_thread.daemon = True
-        # locking_thread.start()
+        # Try to take a lock which has already been taken
+        locking_thread = threading.Thread(target=s_hold_lock_forever, args=(self,))
+        locking_thread.daemon = True
+        locking_thread.start()
 
-        # # wait for the locking thread to take its lock
-        # self.locking_functions_obj.thread_is_running_event.wait()
+        # wait for the locking thread to take its lock
+        self.locking_functions_obj.thread_is_running_event.wait()
 
-        # testing_thread = threading.Thread(target=s_take_lock, args=(self,))
-        # testing_thread.daemon = True
-        # testing_thread.start()
+        testing_thread = threading.Thread(target=s_take_lock, args=(self,))
+        testing_thread.daemon = True
+        testing_thread.start()
 
         # This should return without the thread ending
-        #testing_thread.join(2)
+        testing_thread.join(2)
 
         # check that the thread is still running after 2 seconds, because it'll still be locked.
-        # self.assertTrue(testing_thread.is_alive())
+        self.assertTrue(testing_thread.is_alive())
 
         # Fix the problem by clearing the lock
         self.parser.parse_arguments("clear-method-lock")
 
         # This should succeed:
-        #testing_thread.join(10)
+        testing_thread.join(10)
 
         # check that the thread has stopped
         self.assertFalse(testing_thread.is_alive())
