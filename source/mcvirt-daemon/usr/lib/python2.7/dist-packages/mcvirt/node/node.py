@@ -70,14 +70,3 @@ class Node(PyroObject):
     def get_version(self):
         """Return the version of the running daemon."""
         return VERSION
-
-    @Expose()
-    def clear_method_lock(self):
-        """Force clear a method lock to escape deadlock."""
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
-        lock = MethodLock.get_lock()
-        if lock.locked():
-            lock.release()
-            Pyro4.current_context.has_lock = False
-            return True
-        return False

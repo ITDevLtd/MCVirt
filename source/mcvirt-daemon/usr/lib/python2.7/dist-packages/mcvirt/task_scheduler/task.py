@@ -19,6 +19,8 @@
 
 from threading import Event
 
+import Pyro4
+
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
 
@@ -41,10 +43,23 @@ class Task(PyroObject):
         self._event = Event()
         self._function_obj = function_obj
         self._id = self.generate_id()
+        self._set_current_context = False
 
     def execute(self):
         """Execute task, which will wait for allocated time"""
+        # Wait for event to be set
         self._event.wait()
+
+        # Set task/pointer current context
+        if ('CURRENT_TASK' not in dir(Pyro4.current_context)
+                or Pyro4.current_context.CURRENT_TASK is None):
+            Pyro4.current_context.CURRENT_TASK = self
+
+            Pyro4.current_context.CURRENT_TASK_P = self.po__get_registered_object(
+                'task_scheduler').get_task_pointer_by_id(
+                    self.id_)
+            self._set_current_context = True
+
         return_val = None
         try:
             return_val = self._function_obj.run()
@@ -56,6 +71,11 @@ class Task(PyroObject):
 
     def on_completion(self):
         """Tear down this task and start next task"""
+        # Remove task/task pointer from current context
+        if self._set_current_context:
+            Pyro4.current_context.CURRENT_TASK = None
+            Pyro4.current_context.CURRENT_TASK_P = None
+
         task_scheduler = self.po__get_registered_object('task_scheduler')
         task_scheduler.remove_task(self._id, all_nodes=True)
         task_scheduler.next_task()
@@ -63,4 +83,3 @@ class Task(PyroObject):
     def start(self):
         """Signal task start event"""
         self._event.set()
-

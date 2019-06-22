@@ -35,8 +35,8 @@ class ClearMethodLockParser(object):
 
     def handle_clear_method_lock(self, p_, args):
         """Handle method lock clear."""
-        node = p_.rpc.get_connection('node')
-        if node.clear_method_lock():
-            p_.print_status('Successfully cleared method lock')
+        task_scheduler = p_.rpc.get_connection('task_scheduler')
+        if task_scheduler.cancel_current_task():
+            p_.print_status('Running task cancelled')
         else:
-            p_.print_status('Method lock already cleared')
+            p_.print_status('No running tasks')

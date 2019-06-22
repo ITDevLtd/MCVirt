@@ -20,6 +20,8 @@
 from time import sleep
 from random import randrange
 
+import Pyro4
+
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
 from mcvirt.task_scheduler.task import Task
@@ -42,15 +44,19 @@ class TaskScheduler(PyroObject):
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
-                          node_object=None):   # Otherwise, pass a remote node connection
+                          node_object=None,   # Otherwise, pass a remote node connection
+                          return_node_object=False):
         """Obtain an instance of task scheduler on a remote node."""
         cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
-        return node_object.get_connection('task_scheduler')
+        remote_task_scheduler = node_object.get_connection('task_scheduler')
+        if return_node:
+            return remote_task_scheduler, node_object
+        return remote_task_scheduler
 
-    @Expose()
+    @Expose(remote_nodes=True)
     def get_task_by_id(self, task_id):
         if task_id in TaskScheduler._TASKS:
             return TaskScheduler._TASKS[task_id]
@@ -61,6 +67,14 @@ class TaskScheduler(PyroObject):
         if task_id in TaskScheduler._TASK_POINTERS:
             return TaskScheduler._TASK_POINTERS[task_id]
         return None
+
+    def get_current_task(self):
+        """Get the current task"""
+        return self.po__get_current_context_item('CURRENT_TASK')
+
+    def get_current_task_pointer(self):
+        """Get the current task"""
+        return self.po__get_current_context_item('CURRENT_TASK_P')
 
     @Expose(remote_nodes=True)
     def confirm_task_pointer(self, task_id):
@@ -175,9 +189,30 @@ class TaskScheduler(PyroObject):
         """Obtain the ID of the latest task in the queue.
         If therre are no takss in the queue, return None.
         """
-        return (TaskScheduler._TASK_QUEUE[-1].task_id
+        task_p = self.get_current_running_task_pointer()
+        if task_p:
+            return task_p.task_id
+        return None
+
+    def get_current_running_task_pointer(self):
+        """Get current running task"""
+        # @TODO Ignore cancelled tasks
+        return (TaskScheduler._TASK_QUEUE[-1]
                 if TaskScheduler._TASK_QUEUE else
                 None)
+
+    @Expose()
+    def cancel_current_task(self):
+        """Cancel the current running task"""
+        task_p = self.get_current_running_task_pointer()
+        if task_p:
+            task_p.cancel(all_nodes=True)
+            # Return True indicating that task has
+            # been cancelled
+            return True
+
+        # No task has been cancelled
+        return False
 
     def next_task(self):
         """Allow a remote node to notify a task to start"""

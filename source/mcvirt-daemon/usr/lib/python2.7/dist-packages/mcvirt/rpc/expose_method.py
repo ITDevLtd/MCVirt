@@ -21,6 +21,7 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import lock_log_and_call
 from mcvirt.utils import get_hostname
 from mcvirt.syslogger import Syslogger
+from mcvirt.exceptions import TaskCancelledError
 
 
 class Transaction(object):
@@ -278,6 +279,13 @@ class Function(PyroObject):
         # Register instance and functions with pyro
         if not self.po__is_pyro_initialised:
             self.obj.po__register_object(self, debug=False)
+
+        # Ensure that task has not been cancelled
+        task_scheduler = self.po__get_registered_object('task_scheduler')
+        if task_scheduler:
+            current_task_pointer = task_scheduler.get_current_task_pointer()
+            if current_task_pointer and current_task_pointer.is_cancelled():
+                raise TaskCancelledError('Task has been cancelled')
 
         # Pause the session timeout
         self._pause_user_session()

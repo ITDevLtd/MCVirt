@@ -183,3 +183,9 @@ class PyroObject(object):
 
             # Unregister object from pyro
             self._pyroDaemon.unregister(obj)
+
+    def po__get_current_context_item(self, key_):
+        """Obtain item from current context"""
+        if key_ in dir(Pyro4.current_context):
+            return getattr(Pyro4.current_context, key_)
+        return None

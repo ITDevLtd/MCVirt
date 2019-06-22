@@ -42,6 +42,29 @@ class TaskPointer(PyroObject):
         self._task_id = task_id
         self._node = node
         self._provisional = True
+        self._cancelled = False
+
+    @Expose()
+    def get_task(self):
+        """Obtain remote task object"""
+        remote_task_scheduler, node_obj = self.po__get_registered_object(
+            'task_scheduler').get_remote_object(
+                node=self._node,
+                return_node_object=True)
+
+        remote_task = remote_task_scheduler.get_task_by_id(self._task_id)
+        node_obj.annotate_object(remote_task)
+        return remote_task
+
+    @Expose()
+    def is_cancelled(self):
+        """Return whether task is cancelled"""
+        return self._cancelled
+
+    @Expose(remote_nodes=True)
+    def cancel(self):
+        """Set task as cancelled"""
+        self._cancelled = True
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to

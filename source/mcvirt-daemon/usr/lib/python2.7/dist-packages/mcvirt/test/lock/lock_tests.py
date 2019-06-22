@@ -100,8 +100,8 @@ class LockTests(TestBase, PyroObject):
             while not thread_should_stop_event.is_set():
                 thread_is_running_event.set()
 
-        node = self.rpc.get_connection('node')
-        self.assertFalse(node.clear_method_lock())
+        task_scheduler = self.rpc.get_connection('task_scheduler')
+        self.assertFalse(task_scheduler.cancel_current_task())
 
         # Try to take a lock which has already been taken
         locking_thread = threading.Thread(target=hold_lock_forever, args=(self,))
@@ -110,8 +110,8 @@ class LockTests(TestBase, PyroObject):
         # wait for the locking thread to take its lock
         thread_is_running_event.wait()
 
-        self.assertTrue(node.clear_method_lock())
-        self.assertFalse(node.clear_method_lock())
+        self.assertTrue(task_scheduler.cancel_current_task())
+        self.assertFalse(task_scheduler.cancel_current_task())
 
         # Clean up
         thread_should_stop_event.set()
