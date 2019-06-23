@@ -134,7 +134,7 @@ class TaskScheduler(PyroObject):
         # Create a pointer, add to stack, push to cluster
         latest_id = self.get_latest_task_id()
         dist_status = self.receive_task(
-            node=get_hostname(),
+            execution_node=get_hostname(),
             task_id=task.id_, latest_task_id=latest_id,
             all_nodes=True, return_dict=True)
 
@@ -157,7 +157,7 @@ class TaskScheduler(PyroObject):
         return latest_id
 
     @Expose(remote_nodes=True)
-    def receive_task(self, node, task_id, latest_task_id):
+    def receive_task(self, execution_node, task_id, latest_task_id):
         """Create task object from """
         # If the latest task does not match the other nodes latest
         # task, then return False as a conflict occured
@@ -166,7 +166,8 @@ class TaskScheduler(PyroObject):
 
         # Create task pointer and add to task queue and
         # task pointer lookup
-        task_pointer = TaskPointer(task_id=task_id, node=node)
+        task_pointer = TaskPointer(
+            task_id=task_id, execution_node=execution_node)
         self.po__register_object(task_pointer)
         TaskScheduler._TASK_QUEUE.append(task_pointer)
         TaskScheduler._TASK_POINTERS[task_id] = task_pointer
@@ -217,9 +218,18 @@ class TaskScheduler(PyroObject):
         """Cancel the current running task"""
         task_p = self.get_current_running_task_pointer(provisional=False, cancelled=False)
         if task_p:
-            print 'cacelled task'
-            # CAncell
-            task_p.cancel(all_nodes=True)
+            # Cancel on all nodes except the node running the task, initially
+            all_nodes = self.po__get_registered_object(
+                'cluster').get_nodes(
+                    include_local=True)
+            non_task_nodes = list(all_nodes)
+            non_task_nodes.remove(task_p.execution_node)
+            task_p.cancel(nodes=non_task_nodes)
+
+            # Finally, perform on execution node.
+            # This stops a race-condition, where the task stops and deletes itself
+            # before the cancellation is complete
+            task_p.cancel(nodes=[task_p.execution_node])
 
             # Return True indicating that task has
             # been cancelled

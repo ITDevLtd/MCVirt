@@ -39,6 +39,11 @@ class TaskPointer(PyroObject):
         return self._task_id
 
     @property
+    def execution_node(self):
+        """Obtain execution node"""
+        return self._execution_node
+
+    @property
     def is_provisional(self):
         return self._provisional
 
@@ -47,11 +52,11 @@ class TaskPointer(PyroObject):
         """Return whether task is cancelled"""
         return self._cancelled
 
-    def __init__(self, task_id, node=None):
+    def __init__(self, task_id, execution_node=None):
         """Create member required objects."""
         self._task_id = task_id
-        self._node = node
-        self._is_local = (node == get_hostname())
+        self._execution_node = execution_node
+        self._is_local = (execution_node == get_hostname())
         self._provisional = True
         self._cancelled = False
 
@@ -64,7 +69,7 @@ class TaskPointer(PyroObject):
         # If not local, use task_scheduler to obtain remote task scheduler
         if not self._is_local:
             task_scheduler, node_obj = task_scheduler.get_remote_object(
-                node=self._node,
+                node=self._execution_node,
                 return_node_object=True)
         task = task_scheduler.get_task_by_id(self.task_id)
 
