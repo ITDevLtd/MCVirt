@@ -218,6 +218,7 @@ class TaskScheduler(PyroObject):
         task_p = self.get_current_running_task_pointer(provisional=False, cancelled=False)
         if task_p:
             print 'cacelled task'
+            # CAncell
             task_p.cancel(all_nodes=True)
 
             # Return True indicating that task has
