@@ -63,6 +63,7 @@ class UnitTestBootstrap(object):
         OnlineMigrateTests.RPC_DAEMON = self.daemon
         AuthTests.RPC_DAEMON = self.daemon
         UpdateTests.RPC_DAEMON = self.daemon
+        LockTests.RPC_DAEMON = self.daemon
 
         self.all_tests = unittest.TestSuite([
             auth_test_suite,
@@ -97,6 +98,8 @@ class UnitTestBootstrap(object):
             self.daemon_run = False
             OnlineMigrateTests.RPC_DAEMON = None
             AuthTests.RPC_DAEMON = None
+            UpdateTests.RPC_DAEMON = None
+            LockTests.RPC_DAEMON = None
             self.daemon.shutdown(0, 0)
 
             # Wait for daemon to stop
