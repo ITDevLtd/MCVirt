@@ -284,7 +284,7 @@ class Function(PyroObject):
         task_scheduler = self.po__get_registered_object('task_scheduler')
         if task_scheduler:
             current_task_pointer = task_scheduler.get_current_task_pointer()
-            if current_task_pointer and current_task_pointer.is_cancelled():
+            if current_task_pointer and current_task_pointer.is_cancelled:
                 raise TaskCancelledError('Task has been cancelled')
 
         # Pause the session timeout

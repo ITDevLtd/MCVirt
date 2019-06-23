@@ -56,7 +56,7 @@ class TaskScheduler(PyroObject):
             return remote_task_scheduler, node_object
         return remote_task_scheduler
 
-    @Expose(remote_nodes=True)
+    @Expose()
     def get_task_by_id(self, task_id):
         if task_id in TaskScheduler._TASKS:
             return TaskScheduler._TASKS[task_id]
@@ -64,6 +64,8 @@ class TaskScheduler(PyroObject):
 
     @Expose()
     def get_task_pointer_by_id(self, task_id):
+        Syslogger.logger().error(TaskScheduler._TASK_POINTERS)
+        Syslogger.logger().error(task_id)
         if task_id in TaskScheduler._TASK_POINTERS:
             return TaskScheduler._TASK_POINTERS[task_id]
         return None
@@ -74,7 +76,7 @@ class TaskScheduler(PyroObject):
 
     def is_task_cancelled(self, task_id):
         """Return if a task is cancelled"""
-        return TaskScheduler._TASK_POINTERS[task_id].is_cancelled()
+        return TaskScheduler._TASK_POINTERS[task_id].is_cancelled
 
     def get_current_task_pointer(self):
         """Get the current task"""
@@ -115,7 +117,7 @@ class TaskScheduler(PyroObject):
                 'Unable to successfully distribute task without conflict')
 
         # Since the task is now confirmed on the queue,
-        #  remove provisional tag
+        # remove provisional tag
         self.confirm_task_pointer(task.id_, all_nodes=True)
 
         # If thre previous task ID is None,
@@ -173,6 +175,7 @@ class TaskScheduler(PyroObject):
     def remove_task(self, task_id):
         """Remove task from queues, lookup tables and unregister
         from daemon"""
+        Syslogger.logger().error('REMOVING TASK!: %s' % task_id)
         # If the task exists, then remove from task queue,
         # task lookup and unregister from pyro
         if task_id in TaskScheduler._TASK_POINTERS:
@@ -193,22 +196,27 @@ class TaskScheduler(PyroObject):
         """Obtain the ID of the latest task in the queue.
         If therre are no takss in the queue, return None.
         """
-        task_p = self.get_current_running_task_pointer()
+        task_p = self.get_current_running_task_pointer(
+            provisional=True, cancelled=True)
         if task_p:
             return task_p.task_id
         return None
 
-    def get_current_running_task_pointer(self):
+    def get_current_running_task_pointer(self, provisional, cancelled):
         """Get current running task"""
         for task in TaskScheduler._TASK_QUEUE:
+            if ((not provisional and task.is_provisional)
+                    or (not cancelled and task.is_cancelled)):
+                continue
             return task
         return None
 
     @Expose()
     def cancel_current_task(self):
         """Cancel the current running task"""
-        task_p = self.get_current_running_task_pointer()
+        task_p = self.get_current_running_task_pointer(provisional=False, cancelled=False)
         if task_p:
+            print 'cacelled task'
             task_p.cancel(all_nodes=True)
 
             # Return True indicating that task has
@@ -220,6 +228,6 @@ class TaskScheduler(PyroObject):
 
     def next_task(self):
         """Allow a remote node to notify a task to start"""
-        task = self.get_current_running_task_pointer()
+        task = self.get_current_running_task_pointer(provisional=False, cancelled=False)
         if task:
             task.start()

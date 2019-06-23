@@ -22,6 +22,7 @@ from threading import Event
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.utils import get_hostname
+from mcvirt.syslogger import Syslogger
 
 
 class TaskPointer(PyroObject):
@@ -36,6 +37,15 @@ class TaskPointer(PyroObject):
     def task_id(self):
         """Obtain task ID"""
         return self._task_id
+
+    @property
+    def is_provisional(self):
+        return self._provisional
+
+    @property
+    def is_cancelled(self):
+        """Return whether task is cancelled"""
+        return self._cancelled
 
     def __init__(self, task_id, node=None):
         """Create member required objects."""
@@ -52,13 +62,8 @@ class TaskPointer(PyroObject):
                 node=self._node,
                 return_node_object=True)
 
-        remote_task = remote_task_scheduler.get_task_by_id(self._task_id)
-        node_obj.annotate_object(remote_task)
+        remote_task = remote_task_scheduler.get_task_by_id(self.task_id)
         return remote_task
-
-    def is_cancelled(self):
-        """Return whether task is cancelled"""
-        return self._cancelled
 
     @Expose(remote_nodes=True)
     def cancel(self):
@@ -74,7 +79,9 @@ class TaskPointer(PyroObject):
             node_object = cluster.get_remote_node(node)
 
         remote_task_scheduler = node_object.get_connection('task_scheduler')
-        remote_task_pointer = remote_task_scheduler.get_task_pointer_by_id(self._task_id)
+        Syslogger.logger().error('TASK ID: %s' % str(self.task_id))
+        remote_task_pointer = remote_task_scheduler.get_task_pointer_by_id(self.task_id)
+        Syslogger.logger().error('remote task: %s' % str(remote_task_pointer))
         node_object.annotate_object(remote_task_pointer)
 
         return remote_task_pointer

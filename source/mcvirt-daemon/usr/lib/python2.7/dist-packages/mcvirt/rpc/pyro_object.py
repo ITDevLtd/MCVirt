@@ -140,8 +140,8 @@ class PyroObject(object):
         else:
             try:
                 Syslogger.logger().warning(
-                    'Could attach pyro_server_ref to newly registered object: %s' %
-                    str(local_object))
+                    'Could attach pyro_server_ref to newly registered object: %s (source: %s)' %
+                    (str(local_object), str(self)))
             except Exception:
                 pass
 
