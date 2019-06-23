@@ -23,6 +23,7 @@ import Pyro4
 
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.utils import get_hostname
+from mcvirt.rpc.expose_method import Expose
 
 
 class Task(PyroObject):
@@ -76,19 +77,21 @@ class Task(PyroObject):
 
     def on_completion(self):
         """Tear down this task and start next task"""
-        task_scheduler = self.po__get_registered_object('task_scheduler')
-        task_scheduler.remove_task(self.id_, all_nodes=True)
-
         # Remove task/task pointer from current context
         if self._set_context_task:
             Pyro4.current_context.CURRENT_TASK = None
             Pyro4.current_context.CURRENT_TASK_P = None
+
+        task_scheduler = self.po__get_registered_object('task_scheduler')
+        task_scheduler.remove_task(self.id_, all_nodes=True)
+
         # Reset context lock, if set
         if self._set_context_lock:
             Pyro4.current_context.has_lock = False
 
         task_scheduler.next_task()
 
+    @Expose()
     def start(self):
         """Signal task start event"""
         self._event.set()

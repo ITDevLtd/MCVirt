@@ -52,6 +52,7 @@ class TaskScheduler(PyroObject):
             node_object = cluster.get_remote_node(node)
 
         remote_task_scheduler = node_object.get_connection('task_scheduler')
+
         if return_node_object:
             return remote_task_scheduler, node_object
         return remote_task_scheduler
@@ -228,6 +229,8 @@ class TaskScheduler(PyroObject):
 
     def next_task(self):
         """Allow a remote node to notify a task to start"""
-        task = self.get_current_running_task_pointer(provisional=False, cancelled=False)
-        if task:
-            task.start()
+        Syslogger.logger().error('Starting next task...')
+        task_p = self.get_current_running_task_pointer(provisional=False, cancelled=False)
+        if task_p:
+            Syslogger.logger().error('Found task to start: %s: %s' % (task_p.task_id, task_p))
+            task_p.start()

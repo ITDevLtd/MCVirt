@@ -51,19 +51,28 @@ class TaskPointer(PyroObject):
         """Create member required objects."""
         self._task_id = task_id
         self._node = node
+        self._is_local = (node == get_hostname())
         self._provisional = True
         self._cancelled = False
 
-    @Expose()
     def get_task(self):
         """Obtain remote task object"""
-        remote_task_scheduler, node_obj = self.po__get_registered_object(
-            'task_scheduler').get_remote_object(
+        task_scheduler = self.po__get_registered_object(
+            'task_scheduler')
+        node_obj = None
+
+        # If not local, use task_scheduler to obtain remote task scheduler
+        if not self._is_local:
+            task_scheduler, node_obj = task_scheduler.get_remote_object(
                 node=self._node,
                 return_node_object=True)
+        task = task_scheduler.get_task_by_id(self.task_id)
 
-        remote_task = remote_task_scheduler.get_task_by_id(self.task_id)
-        return remote_task
+        # Annotate remote object
+        if not self._is_local:
+            node_obj.annotate_object(task)
+
+        return task
 
     @Expose(remote_nodes=True)
     def cancel(self):
@@ -93,8 +102,4 @@ class TaskPointer(PyroObject):
     @Expose()
     def start(self):
         """Get the task on the remote and start the task"""
-        if self._node == get_hostname():
-            self.po__get_registered_object('task_scheduler').get_task_by_id(
-                self._task_id).start()
-        else:
-            self.get_remote_object(self._node).start()
+        self.get_task().start()
