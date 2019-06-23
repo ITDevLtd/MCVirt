@@ -28,7 +28,7 @@ from mcvirt.task_scheduler.task import Task
 from mcvirt.task_scheduler.pointer import TaskPointer
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.syslogger import Syslogger
-from mcvirt.exceptions import TaskSchedulerConflictError
+from mcvirt.exceptions import TaskSchedulerConflictError, InaccessibleNodeException
 
 
 class TaskScheduler(PyroObject):
@@ -41,6 +41,45 @@ class TaskScheduler(PyroObject):
     TASK_DISTRIBUTE_ATTEMPTS = 5
     MIN_NEGOTIATE_WAIT_TIME = 5
     MAX_NEGOTIATE_WAIT_TIME = 200
+
+    def initialise(self):
+        """Copy tasks from other nodes in the cluster on startup"""
+        cluster = self.po__get_registered_object('cluster')
+        for node in cluster.get_nodes(include_local=False):
+            try:
+                node_object = cluster.get_remote_node(node=node)
+                remote_task_scheduler = node_object.get_connection('task_scheduler')
+                self.import_tasks(remote_task_scheduler.dump_task_pointers())
+                break
+            except InaccessibleNodeException:
+                pass
+
+    @Expose()
+    def dump_task_pointer_queue(self):
+        """Dump all task pointers to json"""
+        return [task_p.to_json() for task_p in TaskScheduler._TASK_QUEUE]
+
+    def import_tasks(self, task_pointers):
+        """Import list of json-dumped tasks"""
+        for task_config in task_pointers:
+            task_id = task_config['task_id']
+
+            task_pointer = TaskPointer(
+                task_id=task_id,
+                execution_node=task_config['execution_node'])
+
+            self.po__register_object(task_pointer)
+
+            TaskScheduler._TASK_QUEUE.append(task_pointer)
+            TaskScheduler._TASK_POINTERS[task_id] = task_pointer
+
+            task_pointer.set_status(cancelled=task_config['cancelled'],
+                                    provisional=task_config['provisional'])
+
+            # If the task is to be executed by the local node,
+            # cancel it
+            if task_pointer.is_local:
+                self.remove_task(task_id)
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
@@ -59,14 +98,14 @@ class TaskScheduler(PyroObject):
 
     @Expose()
     def get_task_by_id(self, task_id):
+        """Get task by task ID"""
         if task_id in TaskScheduler._TASKS:
             return TaskScheduler._TASKS[task_id]
         return None
 
     @Expose()
     def get_task_pointer_by_id(self, task_id):
-        Syslogger.logger().error(TaskScheduler._TASK_POINTERS)
-        Syslogger.logger().error(task_id)
+        """Get task pointer by task ID"""
         if task_id in TaskScheduler._TASK_POINTERS:
             return TaskScheduler._TASK_POINTERS[task_id]
         return None
@@ -141,8 +180,7 @@ class TaskScheduler(PyroObject):
         # Get all successful nodes
         s_nodes = []
         f_nodes = 0
-        Syslogger.logger().debug(dist_status)
-        Syslogger.logger().debug(latest_id)
+        Syslogger.logger().debug('Distributing task: %s' % task.id_)
         for node_name in dist_status:
             if dist_status[node_name] is False:
                 f_nodes += 1
@@ -240,8 +278,8 @@ class TaskScheduler(PyroObject):
 
     def next_task(self):
         """Allow a remote node to notify a task to start"""
-        Syslogger.logger().error('Starting next task...')
+        Syslogger.logger().debug('Starting next task')
         task_p = self.get_current_running_task_pointer(provisional=False, cancelled=False)
         if task_p:
-            Syslogger.logger().error('Found task to start: %s: %s' % (task_p.task_id, task_p))
+            Syslogger.logger().debug('Task to start: %s: %s' % (task_p.task_id, task_p))
             task_p.start()

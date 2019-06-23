@@ -45,6 +45,7 @@ class TaskPointer(PyroObject):
 
     @property
     def is_provisional(self):
+        """Whether the task is in provisional state"""
         return self._provisional
 
     @property
@@ -52,13 +53,34 @@ class TaskPointer(PyroObject):
         """Return whether task is cancelled"""
         return self._cancelled
 
-    def __init__(self, task_id, execution_node=None):
+    @property
+    def is_local(self):
+        """Determine if the task will be executed locally"""
+        return self._is_local
+
+    def __init__(self, task_id, execution_node):
         """Create member required objects."""
         self._task_id = task_id
         self._execution_node = execution_node
         self._is_local = (execution_node == get_hostname())
         self._provisional = True
         self._cancelled = False
+
+    def to_json(self):
+        """Dump task as json for easily transfering to node"""
+        return {
+            'task_id': self.task_id,
+            'execution_node': self.execution_node,
+            'cancelled': self.is_cancelled,
+            'provisional': self.is_provisional
+        }
+
+    def set_status(self, cancelled=None, provisional=None):
+        """Set status of task"""
+        if cancelled is not None:
+            self._cancelled = cancelled
+        if provisional is not None:
+            self._provisional = provisional
 
     def get_task(self):
         """Obtain remote task object"""

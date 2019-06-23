@@ -739,10 +739,15 @@ class Cluster(PyroObject):
             nodes.append(get_hostname())
         return nodes
 
-    def run_remote_command(self, callback_method, nodes=None, args=[], kwargs={},
+    def run_remote_command(self, callback_method, nodes=None,
+                           args=None, kwargs=None,
                            ignore_cluster_master=False, node=None):
         """Run a remote command on all (or a given list of) remote nodes."""
         return_data = {}
+        if args is None:
+            args = []
+        if kwargs is None:
+            kwargs = {}
 
         # If the user has not specified a list of nodes, obtain all remote nodes
         if nodes is None and node is None:
