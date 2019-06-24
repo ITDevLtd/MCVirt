@@ -28,11 +28,6 @@ from mcvirt.syslogger import Syslogger
 class TaskPointer(PyroObject):
     """Provide a pointer to a task, which is distributed to all nodes in cluster"""
 
-    @staticmethod
-    def get_id_code():
-        """Return default Id code for object."""
-        return 'ta'
-
     @property
     def task_id(self):
         """Obtain task ID"""
@@ -66,7 +61,7 @@ class TaskPointer(PyroObject):
         self._provisional = True
         self._cancelled = False
 
-    def to_json(self):
+    def dump(self):
         """Dump task as json for easily transfering to node"""
         return {
             'task_id': self.task_id,
