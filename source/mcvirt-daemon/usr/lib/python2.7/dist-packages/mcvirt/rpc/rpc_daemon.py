@@ -75,6 +75,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
         # Store MCVirt instance
         self.registered_factories = {}
+        self.registered_factories_lst = []
 
     def handshake__set_defaults(self):
         """Reset/set Pyro context defaults."""
@@ -274,14 +275,17 @@ class RpcNSMixinDaemon(object):
             signal.signal(sig, self.shutdown)
 
         Syslogger.logger().debug('Initialising modules')
-        for registered_object in RpcNSMixinDaemon.DAEMON.registered_factories:
-            obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
+        for registered_object, obj in RpcNSMixinDaemon.DAEMON.registered_factories_lst:
             if type(obj) is not types.TypeType:  # noqa
                 Syslogger.logger().debug('Initialising module %s' % registered_object)
                 try:
                     obj.initialise()
-                except Exception:
-                    Syslogger.logger().error('Failed to initailise module: %s' % registered_object)
+                except Exception, exc:
+                    Syslogger.logger().error(
+                        'Failed to initailise module: %s\n:%s' % (registered_object, str(exc)))
+
+        RpcNSMixinDaemon.DAEMON.registered_factories_lst = None
+        Syslogger.logger().debug('Module Initialising complete')
 
     def start(self, *args, **kwargs):
         """Start the Pyro daemon."""
@@ -311,10 +315,18 @@ class RpcNSMixinDaemon(object):
         Syslogger.logger().debug('Registering object: %s' % objectId)
         obj_or_class._pyro_server_ref = RpcNSMixinDaemon.DAEMON
         uri = RpcNSMixinDaemon.DAEMON.register(obj_or_class, *args, **kwargs)
-        ns = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
-        ns.register(objectId, uri)
-        ns = None
+
+        # Create connection to NS and register
+        ns_conn = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
+        ns_conn.register(objectId, uri)
+        ns_conn = None
+
+        # Store object for lookup
         RpcNSMixinDaemon.DAEMON.registered_factories[objectId] = obj_or_class
+
+        # Store object in list to initialise in correct order
+        RpcNSMixinDaemon.DAEMON.registered_factories_lst.append((objectId, obj_or_class))
+
         return uri
 
     def register_factories(self):
