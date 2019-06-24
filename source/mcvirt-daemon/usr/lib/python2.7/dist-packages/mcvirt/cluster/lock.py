@@ -71,8 +71,6 @@ class ClusterLock(PyroObject):
                  'just locking local node'))
             return
 
-            self.locked_nodes = self.lock_node(all_nodes=True).keys()
-
     def __exit__(self, exc_type, exc_value, traceback):
         """Unlock cluster."""
         self.unlock_node(nodes=self.locked_nodes)
