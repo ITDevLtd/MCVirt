@@ -49,7 +49,8 @@ class TaskScheduler(PyroObject):
             try:
                 node_object = cluster.get_remote_node(node=node)
                 remote_task_scheduler = node_object.get_connection('task_scheduler')
-                self.import_tasks(remote_task_scheduler.dump_task_pointers())
+                self.import_tasks(remote_task_scheduler.dump_task_pointer_queue())
+                Syslogger.logger().debug('Successfully replicated tasks from %s' % node)
                 break
             except InaccessibleNodeException:
                 pass
@@ -57,11 +58,12 @@ class TaskScheduler(PyroObject):
     @Expose()
     def dump_task_pointer_queue(self):
         """Dump all task pointers to json"""
-        return [task_p.to_json() for task_p in TaskScheduler._TASK_QUEUE]
+        return [task_p.dump() for task_p in TaskScheduler._TASK_QUEUE]
 
     def import_tasks(self, task_pointers):
         """Import list of json-dumped tasks"""
         for task_config in task_pointers:
+            Syslogger.logger().debug('Importing task: %s' % task_config)
             task_id = task_config['task_id']
 
             task_pointer = TaskPointer(
