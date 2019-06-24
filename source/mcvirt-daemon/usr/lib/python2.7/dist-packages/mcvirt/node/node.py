@@ -23,7 +23,6 @@ from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.rpc.lock import MethodLock
 from mcvirt.version import VERSION
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.system import System
