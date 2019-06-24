@@ -284,7 +284,7 @@ class RpcNSMixinDaemon(object):
                     Syslogger.logger().error(
                         'Failed to initailise module: %s\n:%s' % (registered_object, str(exc)))
 
-        RpcNSMixinDaemon.DAEMON.registered_factories_lst = None
+        RpcNSMixinDaemon.DAEMON.registered_factories_lst = []
         Syslogger.logger().debug('Module Initialising complete')
 
     def start(self, *args, **kwargs):
