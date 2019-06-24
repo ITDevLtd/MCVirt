@@ -25,19 +25,6 @@ from mcvirt.utils import get_hostname
 from mcvirt.syslogger import Syslogger
 
 
-class MethodLock(object):
-    """Class for storing/generating/obtaining a lock object."""
-
-    _lock = None
-
-    @classmethod
-    def get_lock(cls):
-        """Obtain the lock object and return."""
-        if cls._lock is None:
-            cls._lock = Lock()
-        return cls._lock
-
-
 def lock_log_and_call(function_obj):
     """Provide functionality to lock the cluster, log the command
     and then call it
@@ -53,7 +40,6 @@ def lock_log_and_call(function_obj):
         callback, instance_method,
         object_type, args=args,
         kwargs=kwargs)
-    lock = MethodLock.get_lock()
 
     # If the current Pyro connection has the lock, then do not attempt
     # to lock again, as this will be caused by a locking method calling
