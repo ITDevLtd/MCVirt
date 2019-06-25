@@ -63,11 +63,13 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         """Override the error function."""
         # Force the argument parser to throw an MCVirt exception on error.
+        print '\nError: %s\n' % message
+        self.print_help()
         raise ArgumentParserException(message)
 
 
 class Parser(object):
-    """Provides an argument parser for MCVirt."""
+    """Provide an argument parser for MCVirt."""
 
     AUTH_FILE = '.mcvirt-auth'
 
@@ -268,6 +270,7 @@ class Parser(object):
         self.username = self.rpc.username
 
     def store_cached_session(self, args):
+        """Store session details in temporary file"""
         # If successfully authenticated then store session ID and username in auth file
         if args.cache_credentials:
             try:
