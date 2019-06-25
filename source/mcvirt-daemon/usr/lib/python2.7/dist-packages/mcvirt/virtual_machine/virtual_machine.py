@@ -1786,6 +1786,16 @@ class VirtualMachine(PyroObject):
         """Obtain an agent connection object."""
         return AgentConnection(self)
 
+    def get_libvirt_memory_stats(self):
+        """Obtain memory stats from libvirt"""
+        return self._get_libvirt_domain_object().memoryStats()
+
+    def get_libvirt_cpu_stats(self):
+        """Obtain memory stats from libvirt"""
+        # Return aggregated CPU stats and CPU-specific stats
+        return (self._get_libvirt_domain_object().getCPUStats(True),  # Aggregated stats
+                self._get_libvirt_domain_object().getCPUStats(False))  # CPU-specific stats
+
     def get_host_agent_path(self):
         """Obtain the path of the serial interface for the VM on the host."""
         if self._get_power_state() is not PowerStates.RUNNING:

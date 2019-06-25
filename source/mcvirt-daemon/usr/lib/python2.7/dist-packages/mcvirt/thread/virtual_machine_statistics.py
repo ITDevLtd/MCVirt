@@ -148,6 +148,26 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
                 self.virtual_machine.get_name())
             return
 
+        # Obtain statistics from libvirt
+        self.obtain_libvirt_stats()
+        self.obtain_agent_stats()
+
+        self.insert_into_stat_db()
+
+        Pyro4.current_context.INTERNAL_REQUEST = False
+        Syslogger.logger().debug('Statistics daemon complete: %s' %
+                                 self.virtual_machine.get_name())
+
+    def obtain_libvirt_stats(self):
+        """Obtain statistics from libvirt"""
+        memory_stats = self.virtual_machine.get_libvirt_memory_stats()
+        aggregated_cpu_stats, cpu_stats = self.virtual_machine.get_libvirt_cpu_stats()
+        Syslogger.logger().debug(memory_stats)
+        Syslogger.logger().debug(aggregated_cpu_stats)
+        Syslogger.logger().debug(cpu_stats)
+
+    def obtain_agent_stats(self):
+        """Obtain statistics from agent"""
         agent_conn = self.virtual_machine.get_agent_connection()
 
         resp = None
@@ -167,9 +187,3 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
                 resp['cpu_usage']
                 if 'cpu_usage' in resp else
                 None)
-
-        self.insert_into_stat_db()
-
-        Pyro4.current_context.INTERNAL_REQUEST = False
-        Syslogger.logger().debug('Statistics daemon complete: %s' %
-                                 self.virtual_machine.get_name())
