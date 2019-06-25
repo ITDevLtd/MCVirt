@@ -752,9 +752,9 @@ class VirtualMachine(PyroObject):
         def update_libvirt(domain_xml):
             """Update RAM allocation and unit measurement."""
             domain_xml.find('./memory').text = str(memory_allocation)
-            domain_xml.find('./memory').set('unit', 'KiB')
+            domain_xml.find('./memory').set('unit', 'B')
             domain_xml.find('./currentMemory').text = str(memory_allocation)
-            domain_xml.find('./currentMemory').set('unit', 'KiB')
+            domain_xml.find('./currentMemory').set('unit', 'B')
 
         self.update_libvirt_config(update_libvirt)
 
