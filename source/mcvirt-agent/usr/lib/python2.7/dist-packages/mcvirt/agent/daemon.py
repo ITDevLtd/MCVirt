@@ -19,12 +19,12 @@ from mcvirt.agent.host_connection import HostConnection
 
 
 class Daemon(object):
-    """MCVirt agent daemon"""
+    """MCVirt agent daemon."""
 
     def __init__(self):
-        """Store member variables"""
+        """Store member variables."""
         self.host_connection = HostConnection()
 
     def start(self):
-        """Start the daemon"""
+        """Start the daemon."""
         self.host_connection.start_loop()

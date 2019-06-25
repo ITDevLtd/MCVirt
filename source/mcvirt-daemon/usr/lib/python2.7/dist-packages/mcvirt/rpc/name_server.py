@@ -1,4 +1,4 @@
-"""Thread for running the name server"""
+"""Thread for running the name server."""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -23,7 +23,7 @@ from mcvirt.rpc.ssl_socket import SSLSocket
 
 
 class NameServer(object):
-    """Thread for running the name server"""
+    """Thread for running the name server."""
 
     def __init__(self):
         """Perform configuration of Pyro4"""
@@ -39,7 +39,7 @@ class NameServer(object):
         Pyro4.config.CREATE_BROADCAST_SOCKET_METHOD = SSLSocket.create_broadcast_ssl_socket
 
     def start(self):
-        """Start the Pyro name server"""
+        """Start the Pyro name server."""
         # self.daemon.requestLoop()
         Pyro4.config.USE_MSG_WAITALL = False
         Pyro4.naming.startNSloop(host=get_hostname(), port=9090, enableBroadcast=False)

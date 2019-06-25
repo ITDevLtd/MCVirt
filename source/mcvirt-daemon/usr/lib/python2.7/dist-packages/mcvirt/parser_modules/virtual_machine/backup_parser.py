@@ -19,10 +19,10 @@
 
 
 class BackupParser(object):
-    """Handle backup management parser"""
+    """Handle backup management parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for backup management"""
+        """Create subparser for backup management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -39,7 +39,7 @@ class BackupParser(object):
         self.register_delete_snapshot()
 
     def register_create_snapshot(self):
-        """Register create snapshot parser"""
+        """Register create snapshot parser."""
         self.create_snapshot_parser = self.subparser.add_parser(
             'create-snapshot',
             help='Create a snapshot of the specified disk',
@@ -54,7 +54,7 @@ class BackupParser(object):
             'vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     def handle_create_snapshot(self, p_, args):
-        """Handle create snapshot"""
+        """Handle create snapshot."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
@@ -67,7 +67,7 @@ class BackupParser(object):
         p_.print_status(hard_drive_object.create_backup_snapshot())
 
     def register_delete_snapshot(self):
-        """Register delete snapshot parser"""
+        """Register delete snapshot parser."""
         self.delete_snapshot_parser = self.subparser.add_parser(
             'delete-snapshot',
             help='Delete the snapshot of the specified disk',
@@ -82,7 +82,7 @@ class BackupParser(object):
             'vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     def handle_delete_snapshot(self, p_, args):
-        """Handle delete snapshot"""
+        """Handle delete snapshot."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)

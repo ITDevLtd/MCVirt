@@ -30,34 +30,34 @@ class NodeTests(TestBase):
 
     @staticmethod
     def suite():
-        """Return a test suite"""
+        """Return a test suite."""
         suite = unittest.TestSuite()
         suite.addTest(NodeTests('test_set_ip_address'))
         suite.addTest(NodeTests('test_set_invalid_ip_address'))
         return suite
 
     def setUp(self):
-        """Create various objects and deletes any test VMs"""
+        """Create various objects and deletes any test VMs."""
         super(NodeTests, self).setUp()
         self.original_ip_address = MCVirtConfig().get_config()['cluster']['cluster_ip']
 
     def tearDown(self):
-        """Reset any values changed to the MCVirt config"""
+        """Reset any values changed to the MCVirt config."""
         def reset_config(config):
-            """Reset cluster IP"""
+            """Reset cluster IP."""
             config['cluster']['cluster_ip'] = self.original_ip_address
         MCVirtConfig().update_config(reset_config, 'Reset node configurations')
 
         super(NodeTests, self).tearDown()
 
     def test_set_ip_address(self):
-        """Change the cluster IP address using the argument parser"""
+        """Change the cluster IP address using the argument parser."""
         test_ip_address = '1.1.1.1'
         self.parser.parse_arguments('node --set-ip-address %s' %
                                     test_ip_address)
         self.assertEqual(MCVirtConfig().get_config()['cluster']['cluster_ip'], test_ip_address)
 
     def test_set_invalid_ip_address(self):
-        """Test the validity checks for IP addresses uses ArgumentValidator"""
+        """Test the validity checks for IP addresses uses ArgumentValidator."""
         with self.assertRaises(MCVirtTypeError):
             self.parser.parse_arguments('node --set-ip-address test_string')

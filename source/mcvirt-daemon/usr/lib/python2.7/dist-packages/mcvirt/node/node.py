@@ -23,7 +23,6 @@ from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.rpc.lock import MethodLock
 from mcvirt.version import VERSION
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.system import System
@@ -44,23 +43,23 @@ class Node(PyroObject):
                  for line in net_tcp_contents.strip().split('\n')[1:]]
         if include_remote:
             def remote_command(remote_object):
-                """Get listen ports from remote node"""
+                """Get listen ports from remote node."""
                 node_object = remote_object.get_connection('node')
                 ports.extend(node_object.get_listen_ports())
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
         return ports
 
     @Expose(locking=True)
     def set_cluster_ip_address(self, ip_address):
         """Update the cluster IP address for the node."""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
 
         ArgumentValidator.validate_ip_address(ip_address)
 
         # Update global MCVirt configuration
         def update_config(config):
-            """Update cluster IP in MCVirt config"""
+            """Update cluster IP in MCVirt config."""
             config['cluster']['cluster_ip'] = ip_address
         mcvirt_config = MCVirtConfig()
         mcvirt_config.update_config(update_config, 'Set node cluster IP address to %s' %
@@ -68,16 +67,5 @@ class Node(PyroObject):
 
     @Expose()
     def get_version(self):
-        """Return the version of the running daemon"""
+        """Return the version of the running daemon."""
         return VERSION
-
-    @Expose()
-    def clear_method_lock(self):
-        """Force clear a method lock to escape deadlock"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
-        lock = MethodLock.get_lock()
-        if lock.locked():
-            lock.release()
-            Pyro4.current_context.has_lock = False
-            return True
-        return False

@@ -21,10 +21,10 @@ from mcvirt.constants import LockStates
 
 
 class LockParser(object):
-    """Handle lock parser"""
+    """Handle lock parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for disk lock"""
+        """Create subparser for disk lock."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -46,7 +46,7 @@ class LockParser(object):
         self.parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     def handle_lock(self, p_, args):
-        """Handle lock"""
+        """Handle lock."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)

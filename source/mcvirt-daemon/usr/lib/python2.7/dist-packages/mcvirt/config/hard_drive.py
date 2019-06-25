@@ -20,22 +20,22 @@ import mcvirt.config.migrations.hard_drive as migrations
 
 
 class HardDrive(BaseSubconfig):
-    """Provides operations to obtain and set the MCVirt configuration for a VM"""
+    """Provides operations to obtain and set the MCVirt configuration for a VM."""
 
     SUBTREE_ARRAY = ['hard_drives']
 
     def __init__(self, hard_drive_obj):
-        """Sets member variables"""
+        """Sets member variables."""
         self.hard_drive_obj = hard_drive_obj
         super(HardDrive, self).__init__()
 
     def _get_config_key(self):
-        """Get the key for the config"""
+        """Get the key for the config."""
         return self.hard_drive_obj.id_
 
     @staticmethod
     def create(hard_drive_id, config):
-        """Add a storage backend config"""
+        """Add a storage backend config."""
 
         # Write the configuration to disk
         HardDrive._add_config(
@@ -43,5 +43,5 @@ class HardDrive(BaseSubconfig):
             'Add storage backend config: %s' % hard_drive_id)
 
     def _upgrade(self, config):
-        """Perform an upgrade of the configuration file"""
+        """Perform an upgrade of the configuration file."""
         pass

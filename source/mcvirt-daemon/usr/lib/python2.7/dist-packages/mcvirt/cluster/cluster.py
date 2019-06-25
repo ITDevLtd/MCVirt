@@ -1,4 +1,4 @@
-"""Provide cluster classes"""
+"""Provide cluster classes."""
 
 # Copyright (c) 2014 - I.T. Dev Ltd
 #
@@ -44,13 +44,13 @@ from mcvirt.syslogger import Syslogger
 
 
 class Cluster(PyroObject):
-    """Class to perform node management within the MCVirt cluster"""
+    """Class to perform node management within the MCVirt cluster."""
 
     @Expose()
     def generate_connection_info(self):
-        """Generate required information to connect to this node from a remote node"""
+        """Generate required information to connect to this node from a remote node."""
         # Ensure user has required permissions
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_CLUSTER
         )
 
@@ -58,9 +58,9 @@ class Cluster(PyroObject):
         self.check_ip_configuration()
 
         # Create connection user
-        user_factory = self._get_registered_object('user_factory')
+        user_factory = self.po__get_registered_object('user_factory')
         connection_username, connection_password = user_factory.generate_user(ConnectionUser)
-        ssl_object = self._get_registered_object(
+        ssl_object = self.po__get_registered_object(
             'certificate_generator_factory').get_cert_generator(get_hostname())
         return [get_hostname(), self.get_cluster_ip_address(),
                 connection_username, connection_password,
@@ -68,9 +68,9 @@ class Cluster(PyroObject):
 
     @Expose()
     def get_connection_string(self):
-        """Generate a string to connect to this node from a remote cluster"""
+        """Generate a string to connect to this node from a remote cluster."""
         # Only superusers can generate a connection string
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_CLUSTER
         )
 
@@ -88,7 +88,7 @@ class Cluster(PyroObject):
 
     @Expose()
     def print_info(self):
-        """Print information about the nodes in the cluster"""
+        """Print information about the nodes in the cluster."""
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.header(('Node', 'IP Address', 'Status', 'CPU Usage', 'Memory Usage'))
@@ -97,8 +97,8 @@ class Cluster(PyroObject):
             get_hostname(),
             self.get_cluster_ip_address(),
             'Local',
-            self._get_registered_object('host_statistics').get_cpu_usage_string(),
-            self._get_registered_object('host_statistics').get_memory_usage_string()))
+            self.po__get_registered_object('host_statistics').get_cpu_usage_string(),
+            self.po__get_registered_object('host_statistics').get_memory_usage_string()))
 
         # Add remote nodes
         for node in self.get_nodes(return_all=True):
@@ -124,11 +124,11 @@ class Cluster(PyroObject):
         and checks the node Status
         """
         def check_version(connection):
-            """Check node config on remote node"""
+            """Check node config on remote node."""
             node = connection.get_connection('node')
             return node.get_version()
         node_versions = self.run_remote_command(check_version)
-        local_version = self._get_registered_object('node').get_version()
+        local_version = self.po__get_registered_object('node').get_version()
         for node in node_versions:
             if node_versions[node] != local_version:
                 raise NodeVersionMismatch('Node %s is running MCVirt %s. Local version: %s' %
@@ -141,10 +141,10 @@ class Cluster(PyroObject):
         """Add MCVirt node to configuration, generates a cluster user on the remote node
         and stores credentials against node in the MCVirt configuration.
         """
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
 
         # Create CA file
-        ssl_object = self._get_registered_object(
+        ssl_object = self.po__get_registered_object(
             'certificate_generator_factory').get_cert_generator(node_name)
         ssl_object.ca_pub_file = ca_key
 
@@ -158,7 +158,7 @@ class Cluster(PyroObject):
 
         # Add node to configuration file
         def add_node_config(mcvirt_config):
-            """Add node config to MCVirt config"""
+            """Add node config to MCVirt config."""
             mcvirt_config['cluster']['nodes'][node_name] = {
                 'ip_address': ip_address,
                 'username': username,
@@ -195,7 +195,7 @@ class Cluster(PyroObject):
         and clusters the machines.
         """
         # Ensure the user has privileges to manage the cluster
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
 
         # Ensure that the IP address configurations has been made correctly
         self.check_ip_configuration()
@@ -220,7 +220,7 @@ class Cluster(PyroObject):
                 'Node %s is already connected to the cluster' % node_config['hostname'])
 
         # Create CA public key for machine
-        ssl_object = self._get_registered_object(
+        ssl_object = self.po__get_registered_object(
             'certificate_generator_factory'
         ).get_cert_generator(node_config['hostname'])
         ssl_object.ca_pub_file = node_config['ca_cert']
@@ -269,7 +269,7 @@ class Cluster(PyroObject):
         csr = new_node_cert_gen.generate_csr()
 
         # Sign CSR
-        cert_gen_factory = self._get_registered_object('certificate_generator_factory')
+        cert_gen_factory = self.po__get_registered_object('certificate_generator_factory')
         cert_gen = cert_gen_factory.get_cert_generator(node_config['hostname'],
                                                        remote=True)
         pub_key = cert_gen.sign_csr(csr)
@@ -368,14 +368,14 @@ class Cluster(PyroObject):
         self.sync_config(remote_node)
 
     def sync_drbd_config(self, remote_node):
-        """Sync the DRBD config from the local node to the remote one"""
+        """Sync the DRBD config from the local node to the remote one."""
         Syslogger.logger().debug('Syncing DRBD config')
-        if self._get_registered_object('node_drbd').is_enabled():
+        if self.po__get_registered_object('node_drbd').is_enabled():
             remote_drbd = remote_node.get_connection('node_drbd')
             remote_drbd.enable(secret=MCVirtConfig().get_config()['drbd']['secret'])
 
     def sync_users(self, remote_node):
-        """Synchronise the local users with the remote node"""
+        """Synchronise the local users with the remote node."""
         # Remove all users on the remote node
         remote_user_factory = remote_node.get_connection('user_factory')
         for remote_user in remote_user_factory.get_all_users():
@@ -383,14 +383,14 @@ class Cluster(PyroObject):
             if remote_user.is_locally_managed():
                 remote_user.delete()
 
-        user_factory = self._get_registered_object('user_factory')
+        user_factory = self.po__get_registered_object('user_factory')
         for user in user_factory.get_all_users():
             if user.is_locally_managed():
                 remote_user_factory.add_config(user.get_username(), user.get_config())
 
     def sync_networks(self, remote_object):
-        """Add the local networks to the remote node"""
-        network_factory = self._get_registered_object('network_factory')
+        """Add the local networks to the remote node."""
+        network_factory = self.po__get_registered_object('network_factory')
 
         # Remove all networks from remote node
         remote_network_factory = remote_object.get_connection('network_factory')
@@ -403,8 +403,8 @@ class Cluster(PyroObject):
                                           physical_interface=network.get_adapter())
 
     def sync_permissions(self, remote_object):
-        """Duplicate the global permissions on the local node onto the remote node"""
-        auth_instance = self._get_registered_object('auth')
+        """Duplicate the global permissions on the local node onto the remote node."""
+        auth_instance = self.po__get_registered_object('auth')
         remote_auth_instance = remote_object.get_connection('auth')
         remote_user_factory = remote_object.get_connection('user_factory')
 
@@ -415,17 +415,17 @@ class Cluster(PyroObject):
             if not remote_user_object.is_superuser():
                 remote_auth_instance.add_superuser(remote_user_object)
 
-        group_factory = self._get_registered_object('group_factory')
+        group_factory = self.po__get_registered_object('group_factory')
         remote_group_factory = remote_object.get_connection('group_factory')
 
         # Sync group configuration
         remote_group_factory.set_config(group_factory.get_config())
 
     def sync_storage_backends(self, remote_object, location_overrides):
-        """Duplicate the storage backend objects to the new node"""
+        """Duplicate the storage backend objects to the new node."""
         # Sync entire storage backend configuration to new node
         Syslogger.logger().debug('Syncing storage backends')
-        storage_factory = self._get_registered_object('storage_factory')
+        storage_factory = self.po__get_registered_object('storage_factory')
         remote_storage_factory = remote_object.get_connection('storage_factory')
         storage_factory_config = storage_factory.get_config()
 
@@ -461,7 +461,7 @@ class Cluster(PyroObject):
                 storage_backend.add_node(remote_object.name)
 
     def sync_virtual_machines(self, remote_object):
-        """Duplicate the VM configurations on the local node onto the remote node"""
+        """Duplicate the VM configurations on the local node onto the remote node."""
         # Syncronise hard drive configurations and virtual machine configurations
         hard_drive_config = HardDriveConfig.get_global_config()
         virtual_machine_config = VirtualMachineConfig.get_global_config()
@@ -477,8 +477,8 @@ class Cluster(PyroObject):
                                                        ' joining node to cluster.'))
 
     def sync_config(self, remote_connection):
-        """Sync MCVirt configuration"""
-        local_config = self._get_registered_object('mcvirt_config')().get_config()
+        """Sync MCVirt configuration."""
+        local_config = self.po__get_registered_object('mcvirt_config')().get_config()
         remote_mcvirt_config_obj = remote_connection.get_connection('mcvirt_config')
         remote_config = remote_mcvirt_config_obj.get_config_remote()
 
@@ -499,7 +499,7 @@ class Cluster(PyroObject):
             raise RemoteObjectConflict('Remote node already part of a cluster')
 
         # Get local and remote storage factories
-        storage_factory = self._get_registered_object('storage_factory')
+        storage_factory = self.po__get_registered_object('storage_factory')
         remote_storage_factory = remote_connection.get_connection('storage_factory')
 
         # Ensure that all global storage backends (which will be replicated to new
@@ -527,7 +527,7 @@ class Cluster(PyroObject):
 
         # Check that each of the interfaces, used for the networks, is present on the
         # remote node
-        network_factory = self._get_registered_object('network_factory')
+        network_factory = self.po__get_registered_object('network_factory')
         for local_network in network_factory.get_all_network_objects():
             remote_network_factory.pre_check_network(local_network.get_name(),
                                                      local_network.get_adapter())
@@ -543,7 +543,7 @@ class Cluster(PyroObject):
         # and is not already enabled
         remote_node_drbd = remote_connection.get_connection('node_drbd')
 
-        if self._get_registered_object('node_drbd').is_enabled():
+        if self.po__get_registered_object('node_drbd').is_enabled():
             if not remote_node_drbd.is_installed():
                 raise DrbdNotInstalledException('Drbd is not installed on the remote node')
 
@@ -552,15 +552,15 @@ class Cluster(PyroObject):
 
     @Expose(locking=True)
     def remove_node(self, node_name_to_remove):
-        """Remove a node from the MCVirt cluster"""
+        """Remove a node from the MCVirt cluster."""
         # Ensure the user has privileges to manage the cluster
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_CLUSTER)
 
         # Ensure node exists
         self.ensure_node_exists(node_name_to_remove)
 
         # Check for any VMs that the node, to be removed, is available to
-        vm_factory = self._get_registered_object('virtual_machine_factory')
+        vm_factory = self.po__get_registered_object('virtual_machine_factory')
         all_vm_objects = vm_factory.get_all_virtual_machines()
         for vm_object in all_vm_objects:
             vm_available_nodes = vm_object.getAvailableNodes()
@@ -570,7 +570,7 @@ class Cluster(PyroObject):
 
         # Ensure that node can be removed from any storage backends that it is
         # part of
-        for storage_backend in self._get_registered_object('storage_factory').get_all(
+        for storage_backend in self.po__get_registered_object('storage_factory').get_all(
                 nodes=[node_name_to_remove]):
             storage_backend.ensure_can_remove_node(node_name_to_remove)
 
@@ -579,7 +579,7 @@ class Cluster(PyroObject):
         all_nodes.remove(node_name_to_remove)
 
         def remove_vm(remote_connection, vm_name):
-            """Remove VM from remote node"""
+            """Remove VM from remote node."""
             if remote_connection is not None:
                 remote_vm_factory = remote_connection.get_connection('virtual_machine_factory')
                 remote_vm = remote_vm_factory.get_virtual_machine_by_name(vm_name)
@@ -597,7 +597,7 @@ class Cluster(PyroObject):
                 remove_vm(node_to_remove_con, vm_object.get_name())
 
         # Remove node from any storage backends that it's part of
-        for storage_backend in self._get_registered_object('storage_factory').get_all(
+        for storage_backend in self.po__get_registered_object('storage_factory').get_all(
                 nodes=[node_name_to_remove]):
             storage_backend.remove_node(node_name_to_remove)
 
@@ -606,17 +606,17 @@ class Cluster(PyroObject):
 
     @Expose()
     def remove_node_ssl_certificates(self, remote_node):
-        """Exposed method for _remove_node_ssl_certificates"""
-        self._get_registered_object('auth').check_user_type('ClusterUser')
+        """Exposed method for _remove_node_ssl_certificates."""
+        self.po__get_registered_object('auth').check_user_type('ClusterUser')
         self._remove_node_ssl_certificates(remote_node)
 
     def _remove_node_ssl_certificates(self, remote_node):
         """Remove the SSL certificates relating to a node
         that is being removed from the cluster
         """
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remove_auth(node_connection, remove_nodes):
-                """Removes the SSL certificates for the remote node"""
+                """Removes the SSL certificates for the remote node."""
                 remote_cluster = node_connection.get_connection('cluster')
                 for remove_node in remove_nodes:
                     remote_cluster.remove_node_ssl_certificates(remove_node)
@@ -635,13 +635,13 @@ class Cluster(PyroObject):
                                     kwargs={'remove_nodes': other_nodes})
 
         # Remove authentication from the local node to the node to be removed
-        cert_generator = self._get_registered_object(
+        cert_generator = self.po__get_registered_object(
             'certificate_generator_factory'
         ).get_cert_generator(remote_node)
         cert_generator.remove_certificates()
 
         # Remove local cluster user
-        user_factory = self._get_registered_object('user_factory')
+        user_factory = self.po__get_registered_object('user_factory')
         user = user_factory.get_cluster_user_by_node(remote_node)
         user.delete()
 
@@ -649,13 +649,13 @@ class Cluster(PyroObject):
         self.remove_node_configuration(remote_node)
 
     def get_cluster_ip_address(self):
-        """Return the cluster IP address of the local node"""
+        """Return the cluster IP address of the local node."""
         cluster_config = self.get_cluster_config()
         return cluster_config['cluster_ip']
 
     def get_remote_node(self, node, ignore_cluster_master=False, set_cluster_master=False):
-        """Obtain a Remote object for a node, caching the object"""
-        if not self._is_cluster_master and not ignore_cluster_master:
+        """Obtain a Remote object for a node, caching the object."""
+        if not self.po__is_cluster_master and not ignore_cluster_master:
             raise ClusterNotInitialisedException('Cannot get remote node %s' % node +
                                                  ' as the cluster is not initialised')
 
@@ -666,7 +666,7 @@ class Cluster(PyroObject):
                 cluster_master=(set_cluster_master if set_cluster_master else None)
             )
         except Exception, exc:
-            if not self._cluster_disabled:
+            if not self.po__cluster_disabled:
                 Syslogger.logger().error('Could not connect to node \'%s\':\n%s' %
                                          (node, str(exc)))
                 raise InaccessibleNodeException('Cannot connect to node \'%s\'' % node)
@@ -677,11 +677,11 @@ class Cluster(PyroObject):
         return node_object
 
     def get_cluster_config(self):
-        """Get the MCVirt cluster configuration"""
+        """Get the MCVirt cluster configuration."""
         return MCVirtConfig().get_config()['cluster']
 
     def get_node_config(self, node, include_local=False):
-        """Return the configuration for a node"""
+        """Return the configuration for a node."""
         self.ensure_node_exists(node, include_local=True)
         if node == get_hostname():
             return {
@@ -691,22 +691,22 @@ class Cluster(PyroObject):
             return self.get_cluster_config()['nodes'][node]
 
     def set_context_defaults(self):
-        """Set the cluster-specific pyro default context"""
+        """Set the cluster-specific pyro default context."""
         # Reset list of failing nodes, as this state is only
         # persisted for a single connection.
         Pyro4.current_context.inaccessible_nodes = []
 
     @property
     def inaccessible_nodes(self):
-        """Return list of inaccessible nodes"""
-        if self._is_pyro_initialised:
+        """Return list of inaccessible nodes."""
+        if self.po__is_pyro_initialised:
             return Pyro4.current_context.inaccessible_nodes
         else:
             return []
 
     def add_inaccessible_node(self, node):
-        """Add node to list of inaccessible nodes"""
-        if self._is_pyro_initialised:
+        """Add node to list of inaccessible nodes."""
+        if self.po__is_pyro_initialised:
             if node not in self.inaccessible_nodes:
                 Pyro4.current_context.inaccessible_nodes.append(node)
         else:
@@ -715,7 +715,7 @@ class Cluster(PyroObject):
 
     @Expose()
     def get_nodes(self, return_all=False, include_local=False):
-        """Return an array of node configurations"""
+        """Return an array of node configurations."""
         cluster_config = self.get_cluster_config()
         nodes = cluster_config['nodes'].keys()
 
@@ -725,13 +725,13 @@ class Cluster(PyroObject):
         # so without it, it's being assumed that the response
         # is being used for executing a command on a remote node,
         # which shouldn't be performed if not the cluster master
-        if not return_all and not self._is_cluster_master:
+        if not return_all and not self.po__is_cluster_master:
             Syslogger.logger().warn(
                 'Requesting cluster get_nodes: is not cluster master and '
                 'is not return_all')
             return [get_hostname()]
 
-        if self._cluster_disabled and not return_all:
+        if self.po__cluster_disabled and not return_all:
             for node in self.inaccessible_nodes:
                 if node in nodes:
                     nodes.remove(node)
@@ -739,10 +739,15 @@ class Cluster(PyroObject):
             nodes.append(get_hostname())
         return nodes
 
-    def run_remote_command(self, callback_method, nodes=None, args=[], kwargs={},
+    def run_remote_command(self, callback_method, nodes=None,
+                           args=None, kwargs=None,
                            ignore_cluster_master=False, node=None):
-        """Run a remote command on all (or a given list of) remote nodes"""
+        """Run a remote command on all (or a given list of) remote nodes."""
         return_data = {}
+        if args is None:
+            args = []
+        if kwargs is None:
+            kwargs = {}
 
         # If the user has not specified a list of nodes, obtain all remote nodes
         if nodes is None and node is None:
@@ -775,11 +780,11 @@ class Cluster(PyroObject):
         return return_data
 
     def check_node_exists(self, node_name, include_local=False):
-        """Determine if a node is already present in the cluster"""
+        """Determine if a node is already present in the cluster."""
         return node_name in self.get_nodes(return_all=True, include_local=include_local)
 
     def ensure_node_exists(self, node, include_local=False):
-        """Check if node exists and throws exception if it does not"""
+        """Check if node exists and throws exception if it does not."""
         if not self.check_node_exists(node_name=node, include_local=include_local):
             raise NodeDoesNotExistException('Node %s does not exist' % node)
 
@@ -788,13 +793,13 @@ class Cluster(PyroObject):
         authorized_keys file
         """
         def remove_node_config(mcvirt_config):
-            """Remove node config from MCVirt config"""
+            """Remove node config from MCVirt config."""
             del mcvirt_config['cluster']['nodes'][node_name]
         MCVirtConfig().update_config(remove_node_config)
 
     def get_compatible_nodes(self, storage_backends, networks):
         """Determine a list of available networks, based on required storage
-           backends and networks"""
+           backends and networks."""
         node_lists = [storage_backend.nodes for storage_backend in storage_backends] + \
                      [network.nodes for network in networks]
 

@@ -19,10 +19,10 @@
 
 
 class CreateParser(object):
-    """Handle VM create parser"""
+    """Handle VM create parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for creating VMs"""
+        """Create subparser for creating VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -79,7 +79,7 @@ class CreateParser(object):
                                         dest='modification_flags', action='append')
 
     def handle_create(self, p_, args):
-        """Handle create"""
+        """Handle create."""
         if args.storage_backend:
             storage_factory = p_.rpc.get_connection('storage_factory')
             storage_backend = storage_factory.get_object_by_name(args.storage_backend)

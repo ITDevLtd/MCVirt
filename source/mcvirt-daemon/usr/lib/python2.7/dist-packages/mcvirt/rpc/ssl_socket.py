@@ -1,4 +1,4 @@
-"""Provides methods for wrapping Pyro methods with SSL"""
+"""Provides methods for wrapping Pyro methods with SSL."""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -25,7 +25,7 @@ from mcvirt.rpc.certificate_generator_factory import CertificateGeneratorFactory
 
 
 class SSLSocket(object):
-    """Provides methods for wrapping Pyro methods with SSL"""
+    """Provides methods for wrapping Pyro methods with SSL."""
 
     CIPHERS = ('ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:' +
                'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:' +
@@ -40,7 +40,7 @@ class SSLSocket(object):
 
     @staticmethod
     def wrap_socket(socket_object, *args, **kwargs):
-        """Wrap a Pyro socket connection with SSL"""
+        """Wrap a Pyro socket connection with SSL."""
         server_side = ('bind' in kwargs.keys())
         ssl_kwargs = {
             'do_handshake_on_connect': True,
@@ -99,14 +99,14 @@ class SSLSocket(object):
 
     @staticmethod
     def create_ssl_socket(*args, **kwargs):
-        """Override the Pyro createSocket method and wrap with SSL"""
+        """Override the Pyro createSocket method and wrap with SSL."""
         socket = socketutil.createSocket(*args, **kwargs)
         ssl_socket = SSLSocket.wrap_socket(socket, *args, **kwargs)
         return ssl_socket
 
     @staticmethod
     def create_broadcast_ssl_socket(*args, **kwargs):
-        """Override the Pyro createBroadcastSocket method and wrap with SSL"""
+        """Override the Pyro createBroadcastSocket method and wrap with SSL."""
         socket = socketutil.createBroadcastSocket(*args, **kwargs)
         ssl_socket = SSLSocket.wrap_socket(socket, *args, **kwargs)
         return ssl_socket

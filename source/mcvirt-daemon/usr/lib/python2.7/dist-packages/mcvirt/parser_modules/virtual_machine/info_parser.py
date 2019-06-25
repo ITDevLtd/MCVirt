@@ -19,10 +19,10 @@
 
 
 class InfoParser(object):
-    """Handle VM info parser"""
+    """Handle VM info parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for getting VM info"""
+        """Create subparser for getting VM info."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -50,7 +50,7 @@ class InfoParser(object):
                                       nargs='?', default=None)
 
     def handle_info(self, p_, args):
-        """Handle info function"""
+        """Handle info function."""
         if not args.vm_name and (args.vnc_port or args.node):
             p_.parser.error('Must provide a VM Name')
         if args.vm_name:

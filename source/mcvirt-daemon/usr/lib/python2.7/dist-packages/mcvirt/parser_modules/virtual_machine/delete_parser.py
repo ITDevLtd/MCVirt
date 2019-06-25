@@ -21,10 +21,10 @@ from argparse import SUPPRESS
 
 
 class DeleteParser(object):
-    """Handle VM delete parser"""
+    """Handle VM delete parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for deleting VMs"""
+        """Create subparser for deleting VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -51,7 +51,7 @@ class DeleteParser(object):
         self.delete_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     def handle_delete(self, p_, args):
-        """Handle delete"""
+        """Handle delete."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)

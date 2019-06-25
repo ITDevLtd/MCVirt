@@ -22,15 +22,15 @@ from mcvirt.syslogger import Syslogger
 
 
 class RepeatTimer(PyroObject):
-    """Timer that auto-repeats"""
+    """Timer that auto-repeats."""
 
     @property
     def interval(self):
-        """Method for returning interval for timer"""
+        """Method for returning interval for timer."""
         raise NotImplementedError
 
     def __init__(self, args=None, kwargs=None, repeat_after_run=True):
-        """Create member variables for repeat status and position of restart"""
+        """Create member variables for repeat status and position of restart."""
         # State to determine if next run should kick off another timer
         self.repeat = True
         # Timer object
@@ -43,19 +43,19 @@ class RepeatTimer(PyroObject):
         self.repeat_after_run = repeat_after_run
 
     def initialise(self):
-        """Create timer object and start timer"""
+        """Create timer object and start timer."""
         if self.interval and self.interval > 0:
             self.timer = Timer(float(self.interval), self.repeat_run)
             self.timer.start()
 
     def cancel(self):
-        """Cancel timer, if it is running"""
+        """Cancel timer, if it is running."""
         self.repeat = False
         if self.timer:
             self.timer.cancel()
 
     def repeat_run(self):
-        """Re-start timer once run has complete"""
+        """Re-start timer once run has complete."""
         # Restart timer, if set to repeat before run
         if not self.repeat_after_run and self.repeat:
             self.timer = Timer(float(self.interval), self.repeat_run)
@@ -77,5 +77,5 @@ class RepeatTimer(PyroObject):
         return return_output
 
     def run(self, *args, **kwargs):
-        """Method to run"""
+        """Method to run."""
         raise NotImplementedError

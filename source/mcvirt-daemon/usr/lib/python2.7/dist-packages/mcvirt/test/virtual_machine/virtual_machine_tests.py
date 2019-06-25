@@ -49,11 +49,11 @@ from mcvirt.virtual_machine.hard_drive.drbd import DrbdDiskState
 
 
 class VirtualMachineTests(TestBase):
-    """Provide unit tests for the VirtualMachine class"""
+    """Provide unit tests for the VirtualMachine class."""
 
     @staticmethod
     def suite():
-        """Return a test suite of the Virtual Machine tests"""
+        """Return a test suite of the Virtual Machine tests."""
         suite = unittest.TestSuite()
         suite.addTest(VirtualMachineTests('test_create_local'))
         suite.addTest(VirtualMachineTests('test_delete_local'))
@@ -102,16 +102,16 @@ class VirtualMachineTests(TestBase):
         return suite
 
     def test_create_local(self):
-        """Perform the test_create test with Local storage"""
+        """Perform the test_create test with Local storage."""
         self.test_create('Local')
 
     @skip_drbd(True)
     def test_create_drbd(self):
-        """Perform the test_create test with Drbd storage"""
+        """Perform the test_create test with Drbd storage."""
         self.test_create('Drbd')
 
     def test_create(self, storage_type):
-        """Test the creation of VMs through the argument parser"""
+        """Test the creation of VMs through the argument parser."""
         # Ensure VM does not exist
         self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
@@ -161,7 +161,7 @@ class VirtualMachineTests(TestBase):
 
     @skip_drbd(False)
     def test_create_drbd_not_enabled(self):
-        """Attempt to create a VM with Drbd storage on a node that doesn't have Drbd enabled"""
+        """Attempt to create a VM with Drbd storage on a node that doesn't have Drbd enabled."""
         # Attempt to create VM and ensure exception is thrown
         with self.assertRaises(DrbdNotEnabledOnNode):
             self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
@@ -173,16 +173,16 @@ class VirtualMachineTests(TestBase):
                                         (self.test_vms['TEST_VM_1']['networks'][0], 'Drbd'))
 
     def test_delete_local(self):
-        """Perform the test_delete test with Local storage"""
+        """Perform the test_delete test with Local storage."""
         self.test_delete('Local')
 
     @skip_drbd(True)
     def test_delete_drbd(self):
-        """Perform the test_delete test with Drbd storage"""
+        """Perform the test_delete test with Drbd storage."""
         self.test_delete('Drbd')
 
     def test_delete(self, storage_type):
-        """Test the deletion of a VM through the argument parser"""
+        """Test the deletion of a VM through the argument parser."""
         # Create Virtual machine
         self.create_vm('TEST_VM_1', storage_type)
 
@@ -198,7 +198,7 @@ class VirtualMachineTests(TestBase):
         ))
 
     def test_clone_local(self):
-        """Test the VM cloning in MCVirt using the argument parser"""
+        """Test the VM cloning in MCVirt using the argument parser."""
         # Create Virtual machine
         test_vm_parent = self.create_vm('TEST_VM_1', 'Local')
 
@@ -251,7 +251,7 @@ class VirtualMachineTests(TestBase):
 
     @skip_drbd(True)
     def test_clone_drbd(self):
-        """Attempt to clone a Drbd-based VM"""
+        """Attempt to clone a Drbd-based VM."""
         # Create parent VM
         test_vm_parent = self.create_vm('TEST_VM_1', 'Drbd')
 
@@ -265,12 +265,12 @@ class VirtualMachineTests(TestBase):
         test_vm_parent.delete()
 
     def test_duplicate_local(self):
-        """Perform test_duplicate test with Local storage"""
+        """Perform test_duplicate test with Local storage."""
         self.test_duplicate('Local')
 
     @skip_drbd(True)
     def test_duplicate_drbd(self):
-        """Perform the test_duplicate test with Drbd storage"""
+        """Perform the test_duplicate test with Drbd storage."""
         self.test_duplicate('Drbd')
 
     def test_duplicate(self, storage_type):
@@ -325,7 +325,7 @@ class VirtualMachineTests(TestBase):
         test_vm_duplicate.delete()
 
     def test_invalid_name(self):
-        """Attempt to create a virtual machine with an invalid name"""
+        """Attempt to create a virtual machine with an invalid name."""
         invalid_vm_name = 'invalid.name+'
 
         # Ensure VM does not exist
@@ -347,7 +347,7 @@ class VirtualMachineTests(TestBase):
         self.assertFalse(self.vm_factory.check_exists_by_name(invalid_vm_name))
 
     def test_create_duplicate(self):
-        """Attempt to create two VMs with the same name"""
+        """Attempt to create two VMs with the same name."""
         # Create Virtual machine
         original_memory_allocation = 80000
         test_vm_object = self.vm_factory.create(
@@ -381,7 +381,7 @@ class VirtualMachineTests(TestBase):
         test_vm_object.delete()
 
     def test_vm_directory_already_exists(self):
-        """Attempt to create a VM whilst the directory for the VM already exists"""
+        """Attempt to create a VM whilst the directory for the VM already exists."""
         # Create the directory for the VM
         os.makedirs(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
 
@@ -406,16 +406,16 @@ class VirtualMachineTests(TestBase):
             shutil.rmtree(VirtualMachine.get_vm_dir(self.test_vms['TEST_VM_1']['name']))
 
     def test_start_local(self):
-        """Perform the test_start test with Local storage"""
+        """Perform the test_start test with Local storage."""
         self.test_start('Local')
 
     @skip_drbd(True)
     def test_start_drbd(self):
-        """Perform the test_start test with Drbd storage"""
+        """Perform the test_start test with Drbd storage."""
         self.test_start('DRDB')
 
     def test_start(self, storage_type):
-        """Test starting VMs through the argument parser"""
+        """Test starting VMs through the argument parser."""
         # Create Virtual machine
         test_vm_object = self.create_vm('TEST_VM_1', storage_type)
 
@@ -426,7 +426,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(test_vm_object.get_power_state() is PowerStates.RUNNING.value)
 
     def test_start_running_vm(self):
-        """Attempt to start a running VM"""
+        """Attempt to start a running VM."""
         # Create Virtual machine and start it
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
         test_vm_object.start()
@@ -438,7 +438,7 @@ class VirtualMachineTests(TestBase):
                 self.test_vms['TEST_VM_1']['name'])
 
     def test_reset(self):
-        """Reset a running VM"""
+        """Reset a running VM."""
         # Create Virtual machine and start it
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
         test_vm_object.start()
@@ -449,7 +449,7 @@ class VirtualMachineTests(TestBase):
             self.test_vms['TEST_VM_1']['name'])
 
     def test_reset_stopped_vm(self):
-        """Attempt to reset a stopped VM"""
+        """Attempt to reset a stopped VM."""
         # Create Virtual machine and start it
         self.create_vm('TEST_VM_1', 'Local')
 
@@ -460,16 +460,16 @@ class VirtualMachineTests(TestBase):
                 self.test_vms['TEST_VM_1']['name'])
 
     def test_stop_local(self):
-        """Perform the test_stop test with Local storage"""
+        """Perform the test_stop test with Local storage."""
         self.test_stop('Local')
 
     @skip_drbd(True)
     def test_stop_drbd(self):
-        """Perform the test_stop test with Drbd storage"""
+        """Perform the test_stop test with Drbd storage."""
         self.test_stop('Drbd')
 
     def test_stop(self, storage_type):
-        """Test stopping VMs through the argument parser"""
+        """Test stopping VMs through the argument parser."""
         # Create virtual machine for testing
         test_vm_object = self.create_vm('TEST_VM_1', storage_type)
 
@@ -486,7 +486,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(test_vm_object.get_power_state() is PowerStates.STOPPED.value)
 
     def test_stop_stopped_vm(self):
-        """Attempt to stop an already stopped VM"""
+        """Attempt to stop an already stopped VM."""
         # Create Virtual machine
         self.create_vm('TEST_VM_1', 'Local')
 
@@ -498,7 +498,7 @@ class VirtualMachineTests(TestBase):
 
     @skip_drbd(True)
     def test_offline_migrate(self):
-        """Test the offline migration of a VM"""
+        """Test the offline migration of a VM."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Drbd')
 
         # Get the first available remote node for the VM
@@ -549,7 +549,7 @@ class VirtualMachineTests(TestBase):
         self.assertFalse(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
     def test_lock(self):
-        """Exercise VM locking"""
+        """Exercise VM locking."""
         # Create a test VM
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
@@ -579,7 +579,7 @@ class VirtualMachineTests(TestBase):
 
     @skip_drbd(False)
     def test_unspecified_storage_type_local(self):
-        """Create a VM without specifying the storage type"""
+        """Create a VM without specifying the storage type."""
         # Create virtual machine using parser, without specifying the storage_type
         self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
                                     ' --cpu-count %s --disk-size %s --memory %s' %
@@ -593,7 +593,7 @@ class VirtualMachineTests(TestBase):
 
     @skip_drbd(True)
     def test_unspecified_storage_type_drbd(self):
-        """Create a VM without specifying the storage type"""
+        """Create a VM without specifying the storage type."""
         # Create virtual machine using parser, without specifying the storage_type.
         # Assert that an exception is thrown as the storage_type has not been specified
         with self.assertRaises(UnknownStorageTypeException):
@@ -606,7 +606,7 @@ class VirtualMachineTests(TestBase):
                                         self.test_vms['TEST_VM_1']['networks'][0])
 
     def test_invalid_network_name(self):
-        """Attempt to create a VM using a network that does not exist"""
+        """Attempt to create a VM using a network that does not exist."""
         with self.assertRaises(NetworkDoesNotExistException):
             self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
                                         ' --cpu-count %s --disk-size %s --memory %s' %
@@ -617,7 +617,7 @@ class VirtualMachineTests(TestBase):
                                         ' --storage-type Local')
 
     def test_create_alternative_driver(self):
-        """Create VMs using alternative hard drive drivers"""
+        """Create VMs using alternative hard drive drivers."""
         for disk_driver in [['IDE', 'ide'], ['VIRTIO', 'virtio'], ['SCSI', 'scsi']]:
             self.parser.parse_arguments('create %s' % self.test_vms['TEST_VM_1']['name'] +
                                         ' --cpu-count %s --disk-size %s --memory %s' %
@@ -641,7 +641,7 @@ class VirtualMachineTests(TestBase):
             vm_object.delete()
 
     def test_live_iso_change(self):
-        """Change the ISO attached to a running VM"""
+        """Change the ISO attached to a running VM."""
         # Create a test VM and start
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
         test_vm_object.start()
@@ -675,7 +675,7 @@ class VirtualMachineTests(TestBase):
         test_vm_object.delete()
 
     def test_enable_delete_protection(self):
-        """Enable delete protection on a VM"""
+        """Enable delete protection on a VM."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Ensure that delete protection is disabled
@@ -688,7 +688,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(test_vm_object.get_delete_protection_state())
 
     def test_enable_delete_protection_already_enabled(self):
-        """Attempt to enable delete protection on a VM that it is already enabled on"""
+        """Attempt to enable delete protection on a VM that it is already enabled on."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Enable delete protection on VM
@@ -703,7 +703,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(test_vm_object.get_delete_protection_state())
 
     def test_disable_delete_protection(self):
-        """Disable delete protection on a VM"""
+        """Disable delete protection on a VM."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Enable delete protection on VM
@@ -717,7 +717,7 @@ class VirtualMachineTests(TestBase):
         self.assertFalse(test_vm_object.get_delete_protection_state())
 
     def test_disable_delete_protection_incorrect_check(self):
-        """Attempt to disable delete protection on a VM with an incorrect confirmation string"""
+        """Attempt to disable delete protection on a VM with an incorrect confirmation string."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Enable delete protection on VM
@@ -732,7 +732,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(test_vm_object.get_delete_protection_state())
 
     def test_disable_delete_protection_already_disabled(self):
-        """Attempt to disable delete protection on a VM where it is already disabled"""
+        """Attempt to disable delete protection on a VM where it is already disabled."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Ensure that delete protection is disabled
@@ -746,7 +746,7 @@ class VirtualMachineTests(TestBase):
         self.assertFalse(test_vm_object.get_delete_protection_state())
 
     def test_delete_vm_with_delete_protection(self):
-        """Attempt to delete a VM with delete protection enabled"""
+        """Attempt to delete a VM with delete protection enabled."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Ensure that delete protection is disabled
@@ -761,7 +761,7 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))
 
     def test_create_backup_snapshot(self):
-        """Create VM backup snapshot"""
+        """Create VM backup snapshot."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Reset parser output
@@ -806,7 +806,7 @@ class VirtualMachineTests(TestBase):
             self.assertEqual(fh.read(8), test_data)
 
     def test_delete_backup_snapshot(self):
-        """Delete a backup snapshot from a VM"""
+        """Delete a backup snapshot from a VM."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Create snapshot
@@ -832,7 +832,7 @@ class VirtualMachineTests(TestBase):
         self.assertEqual(test_vm_object.getLockState(), 0)
 
     def test_create_second_backup_snapshot(self):
-        """Attempt to create a backup snapshot for a VM that already has one"""
+        """Attempt to create a backup snapshot for a VM that already has one."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Create snapshot
@@ -860,7 +860,7 @@ class VirtualMachineTests(TestBase):
         # @TODO Test create new snapshot, which should raise exception (does't currently)
 
     def test_delete_non_exist_backup_snapshot(self):
-        """Attempt to delete a snapshot when it doens't exist"""
+        """Attempt to delete a snapshot when it doens't exist."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Lock the VM first

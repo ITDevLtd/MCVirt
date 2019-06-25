@@ -19,10 +19,10 @@
 
 
 class HardDriveParser(object):
-    """Handle hard drive parser"""
+    """Handle hard drive parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for hard rive management"""
+        """Create subparser for hard rive management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -45,19 +45,19 @@ class HardDriveParser(object):
         self.register_delete()
 
     def register_list(self):
-        """Register network list parser"""
+        """Register network list parser."""
         self.list_parser = self.subparser.add_parser(
             'list', help='List the hard drives on the node',
             parents=[self.parent_parser])
         self.list_parser.set_defaults(func=self.handle_list)
 
     def handle_list(self, p_, args):
-        """Handle network listing"""
+        """Handle network listing."""
         hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
         p_.print_status(hard_drive_factory.get_hard_drive_list_table())
 
     def register_attach(self):
-        """Register parser to handle network creation"""
+        """Register parser to handle network creation."""
         self.attach_parser = self.subparser.add_parser(
             'attach',
             help='Attach a hard drive to a virtual machine',
@@ -72,7 +72,7 @@ class HardDriveParser(object):
             help='Name of the virtual machine')
 
     def handle_attach(self, p_, args):
-        """Handle network creation"""
+        """Handle network creation."""
         virtual_machine_factory = p_.rpc.get_connection('virtual_machine_factory')
         virtual_machine = virtual_machine_factory.get_virtual_machine_by_name(
             args.virtual_machine_name)
@@ -86,7 +86,7 @@ class HardDriveParser(object):
         hard_drive_attachment_factory.create(virtual_machine, hard_drive)
 
     def register_detach(self):
-        """Register parser to handle hard drive detaching from VM"""
+        """Register parser to handle hard drive detaching from VM."""
         self.detach_parser = self.subparser.add_parser(
             'detach',
             help='Detach a hard drive from a virtual machine',
@@ -98,7 +98,7 @@ class HardDriveParser(object):
             help='ID of the hard drive to be detached from virtual machine')
 
     def handle_detach(self, p_, args):
-        """Handle hard drive detach"""
+        """Handle hard drive detach."""
         hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
         hard_drive = hard_drive_factory.get_object(args.hard_drive_id)
         p_.rpc.annotate_object(hard_drive)
@@ -110,7 +110,7 @@ class HardDriveParser(object):
         attachment.delete()
 
     def register_import(self):
-        """Register parser to import hard drive"""
+        """Register parser to import hard drive."""
         self.import_parser = self.subparser.add_parser(
             'import',
             help=('Import a hard drive into MCVirt. '
@@ -132,7 +132,7 @@ class HardDriveParser(object):
             required=False, default=None)
 
     def handle_import(self, p_, args):
-        """Perform hard drive import"""
+        """Perform hard drive import."""
         if args.virtual_machine:
             vm_factory = p_.rpc.get_connection('virtual_machine_factory')
             virtual_machine = vm_factory.get_virtual_machine_by_name(args.virtual_machine)
@@ -154,7 +154,7 @@ class HardDriveParser(object):
 
 
     def register_delete(self):
-        """Register parser to handle hard drive deletion"""
+        """Register parser to handle hard drive deletion."""
         self.delete_parser = self.subparser.add_parser(
             'delete',
             help='Delete a hard drive',
@@ -166,7 +166,7 @@ class HardDriveParser(object):
             help='ID of the hard drive to be deleted')
 
     def handle_delete(self, p_, args):
-        """Handle hard drive deletion"""
+        """Handle hard drive deletion."""
         hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
         hard_drive = hard_drive_factory.get_object(args.hard_drive_id)
         p_.rpc.annotate_object(hard_drive)

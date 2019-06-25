@@ -17,5 +17,5 @@
 
 
 def migrate(config_obj, config):
-    """Add snapshots config to virtual machine"""
+    """Add snapshots config to virtual machine."""
     config['snapshots'] = []

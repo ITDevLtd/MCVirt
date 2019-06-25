@@ -21,10 +21,10 @@ import os
 
 
 class NodeParser(object):
-    """Handle node parser"""
+    """Handle node parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for node related config"""
+        """Create subparser for node related config."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -158,7 +158,7 @@ class NodeParser(object):
                                                     help='Clear the store LDAP CA cert file.')
 
     def handle_node(self, p_, args):
-        """Handle node change"""
+        """Handle node change."""
         node = p_.rpc.get_connection('node')
         ldap = p_.rpc.get_connection('ldap_factory')
 

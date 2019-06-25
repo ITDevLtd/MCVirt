@@ -29,11 +29,11 @@ from mcvirt.argument_validator import ArgumentValidator
 
 
 class Lvm(Base):
-    """Storage backend for LVM based storage"""
+    """Storage backend for LVM based storage."""
 
     @classmethod
     def check_permissions(cls, libvirt_config, directory):
-        """No permission checking is required for LVM"""
+        """No permission checking is required for LVM."""
         return
 
     @classmethod
@@ -45,7 +45,7 @@ class Lvm(Base):
 
     @classmethod
     def ensure_exists(cls, location):
-        """Ensure that the volume group exists"""
+        """Ensure that the volume group exists."""
         if not cls.check_exists_local(location):
             raise InvalidStorageConfiguration(
                 'Volume group %s does not exist' % location
@@ -53,22 +53,22 @@ class Lvm(Base):
 
     @classmethod
     def validate_location_name(cls, location):
-        """Ensure directory is a valid name"""
+        """Ensure directory is a valid name."""
         ArgumentValidator.validate_vg_name(location)
 
     @property
     def _volume_class(self):
-        """Return the volume class for the storage backend"""
+        """Return the volume class for the storage backend."""
         return LvmVolume
 
     @property
     def libvirt_device_type(self):
-        """The libvirt property for storage path"""
+        """The libvirt property for storage path."""
         return 'block'
 
     @property
     def libvirt_source_parameter(self):
-        """The libvirt property for source"""
+        """The libvirt property for source."""
         return 'dev'
 
     @Expose(remote_nodes=True)
@@ -87,21 +87,21 @@ class Lvm(Base):
 
 
 class LvmVolume(BaseVolume):
-    """Overriden volume object from base"""
+    """Overriden volume object from base."""
 
     def _validate_name(self):
-        """Ensurue name of object is valid"""
+        """Ensurue name of object is valid."""
         ArgumentValidator.validate_logical_volume_name(self.name)
 
     def get_path(self, node=None):
-        """Return the full path of a given logical volume"""
+        """Return the full path of a given logical volume."""
         return '/dev/' + self.storage_backend.get_location(node=node) + '/' + self.name
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def create(self, size, _f=None):
-        """Create volume in storage backend"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        """Create volume in storage backend."""
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
         # Ensure volume does not already exist
         if self.check_exists():
             raise VolumeAlreadyExistsError('Volume (%s) already exists' % self.name)
@@ -122,14 +122,15 @@ class LvmVolume(BaseVolume):
 
     @Expose(locking=True, remote_nodes=True)
     def undo__create(self, *args, **kwargs):
-        """Undo function for create"""
+        """Undo function for create."""
         self.delete(ignore_non_existent=False)
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def delete(self, ignore_non_existent=False, _f=None):
-        """Delete volume"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        """Delete volume."""
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
+
         # Create command arguments
         command_args = ['lvremove', '-f', self.get_path()]
 
@@ -149,9 +150,9 @@ class LvmVolume(BaseVolume):
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def activate(self, _f=None):
-        """Activate volume"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        """Activate volume."""
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
         # Ensure volume exists
         self.ensure_exists()
         # Create command arguments
@@ -166,13 +167,13 @@ class LvmVolume(BaseVolume):
             )
 
     def is_active(self):
-        """Return whether volume is activated"""
+        """Return whether volume is activated."""
         # Ensure volume exists
         self.ensure_exists()
         return os.path.exists(self.get_path())
 
     def snapshot(self, destination_volume, size):
-        """Snapshot volume"""
+        """Snapshot volume."""
         # Ensure volume exists
         self.ensure_exists()
         try:
@@ -185,11 +186,11 @@ class LvmVolume(BaseVolume):
             )
 
     def undo__snapshot(self, destination_volume, *args, **kwargs):
-        """Undo snapshot created"""
+        """Undo snapshot created."""
         destination_volume.delete()
 
     def clone(self, destination_volume):
-        """Clone a volume to a new volume"""
+        """Clone a volume to a new volume."""
         try:
             self.snapshot(destination_volume, size=self.get_size())
         except ExternalStorageCommandErrorException, esc:
@@ -198,14 +199,14 @@ class LvmVolume(BaseVolume):
             )
 
     def deactivate(self):
-        """Deactivate volume"""
+        """Deactivate volume."""
         return
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def resize(self, size, increase=True, _f=None):
-        """Reszie volume"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        """Reszie volume."""
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
         # Ensure volume exists
         self.ensure_exists()
 
@@ -229,16 +230,16 @@ class LvmVolume(BaseVolume):
             )
 
     def undo__resize(self, original_size, *args, **kwargs):
-        """Rerun resize to set volume back to the orignial size"""
+        """Rerun resize to set volume back to the orignial size."""
         self.resize(size=original_size, increase=False)
 
     def check_exists(self):
-        """Determine whether logical volume exists"""
+        """Determine whether logical volume exists."""
         return os.path.lexists(self.get_path())
 
     @Expose(remote_nodes=True)
     def get_size(self):
-        """Obtain the size of a logical volume"""
+        """Obtain the size of a logical volume."""
         self.ensure_exists()
         # Use 'lvs' to obtain the size of the disk
         command_args = (

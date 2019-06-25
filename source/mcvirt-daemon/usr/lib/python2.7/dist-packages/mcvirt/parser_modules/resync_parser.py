@@ -19,10 +19,10 @@
 
 
 class ResyncParser(object):
-    """Handle resync parser"""
+    """Handle resync parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for disk resync"""
+        """Create subparser for disk resync."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -49,7 +49,7 @@ class ResyncParser(object):
                                  help='Specify the Disk ID to resync (default: 1)')
 
     def handle_resync(self, p_, args):
-        """Handle resync"""
+        """Handle resync."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')

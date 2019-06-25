@@ -19,10 +19,10 @@
 
 
 class ClearMethodLockParser(object):
-    """Handle clear method lock parser"""
+    """Handle clear method lock parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for clearing method lock"""
+        """Create subparser for clearing method lock."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -34,9 +34,9 @@ class ClearMethodLockParser(object):
         self.method_lock_parser.set_defaults(func=self.handle_clear_method_lock)
 
     def handle_clear_method_lock(self, p_, args):
-        """Handle method lock clear"""
-        node = p_.rpc.get_connection('node')
-        if node.clear_method_lock():
-            p_.print_status('Successfully cleared method lock')
+        """Handle method lock clear."""
+        task_scheduler = p_.rpc.get_connection('task_scheduler')
+        if task_scheduler.cancel_current_task():
+            p_.print_status('Running task cancelled')
         else:
-            p_.print_status('Method lock already cleared')
+            p_.print_status('No running tasks')

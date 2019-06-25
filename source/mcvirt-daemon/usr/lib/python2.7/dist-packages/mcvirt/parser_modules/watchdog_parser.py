@@ -19,10 +19,10 @@
 
 
 class WatchdogParser(object):
-    """Handle watchdog management parser"""
+    """Handle watchdog management parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for watchdog management"""
+        """Create subparser for watchdog management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -41,7 +41,7 @@ class WatchdogParser(object):
         self.register_set_boot_wait()
 
     def register_enable(self):
-        """Register enable parser"""
+        """Register enable parser."""
         self.enable_parser = self.subparser.add_parser(
             'enable', help='Enable watchdog on a VM',
             parents=[self.parent_parser])
@@ -49,7 +49,7 @@ class WatchdogParser(object):
         self.enable_parser.set_defaults(func=self.handle_enable)
 
     def handle_enable(self, p_, args):
-        """Handle watchdog enable"""
+        """Handle watchdog enable."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         virtual_machine = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(virtual_machine)
@@ -57,7 +57,7 @@ class WatchdogParser(object):
         p_.print_status('Successfully enabled watchdog for VM: %s' % virtual_machine.get_name())
 
     def register_disable(self):
-        """Register disable parser"""
+        """Register disable parser."""
         self.disable_parser = self.subparser.add_parser(
             'disable', help='Disable watchdog on a VM',
             parents=[self.parent_parser])
@@ -65,7 +65,7 @@ class WatchdogParser(object):
         self.disable_parser.set_defaults(func=self.handle_disable)
 
     def handle_disable(self, p_, args):
-        """Handle disable watchdog"""
+        """Handle disable watchdog."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         virtual_machine = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(virtual_machine)
@@ -73,7 +73,7 @@ class WatchdogParser(object):
         p_.print_status('Successfully disabled watchdog for VM: %s' % virtual_machine.get_name())
 
     def register_set_interval(self):
-        """Register set interval parser"""
+        """Register set interval parser."""
         self.interval_parser = self.subparser.add_parser(
             'set-interval', help=('Set watchdog check interval '
                                   '(either the global default or per VM)'),
@@ -90,7 +90,7 @@ class WatchdogParser(object):
         self.interval_parser.set_defaults(func=self.handle_set_interval)
 
     def handle_set_interval(self, p_, args):
-        """Handle set watchdog interval"""
+        """Handle set watchdog interval."""
         if args.vm_name is None:
             watchdog_factory = p_.rpc.get_connection('watchdog_factory')
             watchdog_factory.set_global_interval(args.interval)
@@ -111,7 +111,7 @@ class WatchdogParser(object):
                     (args.interval, virtual_machine.get_name()))
 
     def register_set_reset_fail_count(self):
-        """Register set reset fail count parser"""
+        """Register set reset fail count parser."""
         self.reset_fail_count_parser = self.subparser.add_parser(
             'set-reset-fail-count',
             help=('Set number for watchdog failures before a VM is reset '
@@ -130,7 +130,7 @@ class WatchdogParser(object):
         self.reset_fail_count_parser.set_defaults(func=self.handle_set_reset_fail_count)
 
     def handle_set_reset_fail_count(self, p_, args):
-        """Handle set watchdog reset fail count"""
+        """Handle set watchdog reset fail count."""
         if args.vm_name is None:
             watchdog_factory = p_.rpc.get_connection('watchdog_factory')
             watchdog_factory.set_global_reset_fail_count(args.count)
@@ -151,7 +151,7 @@ class WatchdogParser(object):
                     (args.count, virtual_machine.get_name()))
 
     def register_set_boot_wait(self):
-        """Register set boot wait period parser"""
+        """Register set boot wait period parser."""
         self.boot_wait_parser = self.subparser.add_parser(
             'set-boot-wait', help=('Set grace period during VM boot before watchdog starts '
                                    '(either the global default or per VM)'),
@@ -169,7 +169,7 @@ class WatchdogParser(object):
         self.boot_wait_parser.set_defaults(func=self.handle_set_boot_wait)
 
     def handle_set_boot_wait(self, p_, args):
-        """Handle set watchdog interval"""
+        """Handle set watchdog interval."""
         if args.vm_name is None:
             watchdog_factory = p_.rpc.get_connection('watchdog_factory')
             watchdog_factory.set_global_boot_wait(args.time)

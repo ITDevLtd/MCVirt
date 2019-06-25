@@ -1,4 +1,4 @@
-"""Provides an interface to obtain certificate generator objects"""
+"""Provides an interface to obtain certificate generator objects."""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -23,17 +23,17 @@ from mcvirt.syslogger import Syslogger
 
 
 class CertificateGeneratorFactory(PyroObject):
-    """Provides an interface to obtain certificate generator objects"""
+    """Provides an interface to obtain certificate generator objects."""
 
     CACHED_OBJECTS = {}
 
     @Expose()
     def get_cert_generator(self, server, remote=False):
-        """Obtain a certificate generator object for a given server"""
+        """Obtain a certificate generator object for a given server."""
         if (server, remote) not in CertificateGeneratorFactory.CACHED_OBJECTS:
             cert_generator = CertificateGenerator(server, remote=remote)
-            self._register_object(cert_generator)
-            if not self._is_pyro_initialised:
+            self.po__register_object(cert_generator)
+            if not self.po__is_pyro_initialised:
                 return cert_generator
             CertificateGeneratorFactory.CACHED_OBJECTS[(server, remote)] = cert_generator
 

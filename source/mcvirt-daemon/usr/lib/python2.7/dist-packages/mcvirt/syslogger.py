@@ -22,13 +22,13 @@ from mcvirt.constants import DirectoryLocation
 
 
 class Syslogger(object):
-    """Provide interface for logging to log file"""
+    """Provide interface for logging to log file."""
 
     LOGGER_INSTANCE = None
 
     @staticmethod
     def logger():
-        """Obtain logger instance if not already create, else return cached object"""
+        """Obtain logger instance if not already create, else return cached object."""
         if Syslogger.LOGGER_INSTANCE is None:
             logger = logging.getLogger('mcvirtd')
             logger.setLevel(getattr(logging, Syslogger.get_log_level(), 30))

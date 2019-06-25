@@ -19,10 +19,10 @@
 
 
 class RegisterParser(object):
-    """Handle VM register parser"""
+    """Handle VM register parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for registering VMs"""
+        """Create subparser for registering VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -35,7 +35,7 @@ class RegisterParser(object):
                                           help='Name of VM')
 
     def handle_register(self, p_, args):
-        """Handle register"""
+        """Handle register."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)

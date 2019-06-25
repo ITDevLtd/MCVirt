@@ -32,7 +32,7 @@ from mcvirt.system import System
 
 
 class File(Base):
-    """Storage backend for file based storage"""
+    """Storage backend for file based storage."""
 
     @classmethod
     def check_permissions(cls, libvirt_config, directory):
@@ -74,7 +74,7 @@ class File(Base):
 
     @classmethod
     def ensure_exists(cls, location):
-        """Ensure that the volume group exists"""
+        """Ensure that the volume group exists."""
         if not cls.check_exists_local(location):
             raise InvalidStorageConfiguration(
                 'Directory %s does not exist' % location
@@ -82,27 +82,27 @@ class File(Base):
 
     @classmethod
     def validate_location_name(cls, location):
-        """Ensure volume group name is valid"""
+        """Ensure volume group name is valid."""
         ArgumentValidator.validate_directory(location)
 
     @property
     def _volume_class(self):
-        """Return the volume class for the storage backend"""
+        """Return the volume class for the storage backend."""
         return FileVolume
 
     @property
     def libvirt_device_type(self):
-        """The libvirt property for storage path"""
+        """The libvirt property for storage path."""
         return 'file'
 
     @property
     def libvirt_source_parameter(self):
-        """The libvirt property for source"""
+        """The libvirt property for source."""
         return 'file'
 
     @property
     def _id_volume_name(self):
-        """Return the name of the identification volume"""
+        """Return the name of the identification volume."""
         # Create a hidden file with the ID
         return '.%s' % self.id_
 
@@ -121,20 +121,20 @@ class File(Base):
 
 
 class FileVolume(BaseVolume):
-    """Object for handling file volume functions"""
+    """Object for handling file volume functions."""
 
     def _validate_name(self):
-        """Ensurue name of object is valid"""
+        """Ensurue name of object is valid."""
         ArgumentValidator.validate_file_name(self.name)
 
     def get_path(self, node=None):
-        """Return the full path of a given volume"""
+        """Return the full path of a given volume."""
         return self.storage_backend.get_location(node=node) + '/' + self.name
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def create(self, size, _f=None):
-        """Create volume in storage backend"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
+        """Create volume in storage backend."""
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume does not already exist
         if self.check_exists():
             raise VolumeAlreadyExistsError('Volume (%s) already exists' % self.name)
@@ -151,8 +151,8 @@ class FileVolume(BaseVolume):
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def delete(self, ignore_non_existent=False, _f=None):
-        """Delete volume"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
+        """Delete volume."""
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Determine if logical volume exists before attempting to remove it
         if not self.check_exists() and not ignore_non_existent:
             raise VolumeDoesNotExistError(
@@ -169,8 +169,8 @@ class FileVolume(BaseVolume):
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def activate(self, _f=None):
-        """Activate volume"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
+        """Activate volume."""
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume exists
         self.ensure_exists()
 
@@ -181,7 +181,7 @@ class FileVolume(BaseVolume):
         required_permissions_global = (
             stat.S_IROTH | stat.S_IWOTH
         )
-        libvirt_config = self._get_registered_object('libvirt_config')
+        libvirt_config = self.po__get_registered_object('libvirt_config')
         libvirt_user_uid = pwd.getpwnam(libvirt_config.LIBVIRT_USER).pw_uid
         libvirt_group_gid = grp.getgrnam(libvirt_config.LIBVIRT_GROUP).gr_gid
         stat_info = os.stat(self.get_path())
@@ -205,13 +205,13 @@ class FileVolume(BaseVolume):
         return
 
     def is_active(self):
-        """Return whether volume is activated"""
+        """Return whether volume is activated."""
         # File has no state of 'active', just ensure it
         # exists
         return self.check_exists()
 
     def snapshot(self, destination_volume, size):
-        """Snapshot volume"""
+        """Snapshot volume."""
         # Ensure volume exists
         self.ensure_exists()
 
@@ -220,14 +220,14 @@ class FileVolume(BaseVolume):
         raise NotImplementedError
 
     def deactivate(self):
-        """Deactivate volume"""
+        """Deactivate volume."""
         # There is nothing to do to deactivate
         pass
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def resize(self, size, increase=True, _f=None):
-        """Reszie volume"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
+        """Reszie volume."""
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_VOLUME)
         # Ensure volume exists
         self.ensure_exists()
 
@@ -235,12 +235,12 @@ class FileVolume(BaseVolume):
         raise NotImplementedError
 
     def check_exists(self):
-        """Determine whether logical volume exists"""
+        """Determine whether logical volume exists."""
         return os.path.exists(self.get_path())
 
     @Expose(remote_nodes=True)
     def get_size(self):
-        """Obtain the size of a logical volume"""
+        """Obtain the size of a logical volume."""
         self.ensure_exists()
 
         # Obtain size from os stat (in bytes)

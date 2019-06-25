@@ -19,10 +19,10 @@
 
 
 class UnregisterParser(object):
-    """Handle VM un-register parser"""
+    """Handle VM un-register parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for unregistering VMs"""
+        """Create subparser for unregistering VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -35,7 +35,7 @@ class UnregisterParser(object):
                                             help='Name of VM')
 
     def handle_unregister(self, p_, args):
-        """Handle unregister"""
+        """Handle unregister."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)

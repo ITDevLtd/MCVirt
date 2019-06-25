@@ -31,10 +31,10 @@ from mcvirt.syslogger import Syslogger
 
 
 class SessionInfo(object):
-    """Store information about a session"""
+    """Store information about a session."""
 
     def __init__(self, username, user_class):
-        """Set member variables and expiry time if applicable"""
+        """Set member variables and expiry time if applicable."""
         self.username = username
 
         # If the user session expires, set disabled
@@ -51,7 +51,7 @@ class SessionInfo(object):
             self.expires = False
 
     def is_valid(self):
-        """Return True if this session is valid"""
+        """Return True if this session is valid."""
         # Session is valid if expiry time is greater than
         # the current time or expires has been disabled
         return self.expires is False or self.expires > time.time()
@@ -70,7 +70,7 @@ class SessionInfo(object):
 
     @staticmethod
     def get_timeout():
-        """Return the session timeout in seconds"""
+        """Return the session timeout in seconds."""
         return MCVirtConfig().get_config()['session_timeout'] * 60
 
 
@@ -83,7 +83,7 @@ class Session(PyroObject):
         """Authenticate using username/password and store
         session
         """
-        user_factory = self._get_registered_object('user_factory')
+        user_factory = self.po__get_registered_object('user_factory')
         user_object = user_factory.authenticate(username, password)
         if user_object:
             # Generate Session ID
@@ -112,7 +112,7 @@ class Session(PyroObject):
             # Check session has not expired
             if Session.USER_SESSIONS[session].is_valid():
                 Session.USER_SESSIONS[session].renew()
-                user_factory = self._get_registered_object('user_factory')
+                user_factory = self.po__get_registered_object('user_factory')
                 return user_factory.get_user_by_username(username)
             else:
                 del Session.USER_SESSIONS[session]
@@ -122,7 +122,7 @@ class Session(PyroObject):
     def get_proxy_user_object(self):
         """Return the user that is being proxied as."""
         current_user = self.get_current_user_object()
-        user_factory = self._get_registered_object('user_factory')
+        user_factory = self.po__get_registered_object('user_factory')
         if (current_user.allow_proxy_user and 'proxy_user' in dir(Pyro4.current_context) and
                 Pyro4.current_context.proxy_user):
             try:
@@ -136,16 +136,16 @@ class Session(PyroObject):
         if Pyro4.current_context.session_id:
             session_id = Pyro4.current_context.session_id
             username = Session.USER_SESSIONS[session_id].username
-            user_factory = self._get_registered_object('user_factory')
+            user_factory = self.po__get_registered_object('user_factory')
             return user_factory.get_user_by_username(username)
         raise CurrentUserError('Cannot obtain current user')
 
     @Expose()
     def get_session_id(self):
-        """Return the client's current session ID"""
-        return self._get_session_id()
+        """Return the client's current session ID."""
+        return self.get_session_id_()
 
-    def _get_session_id(self):
-        """Return the client's current session ID"""
+    def get_session_id_(self):
+        """Return the client's current session ID."""
         if 'session_id' in dir(Pyro4.current_context) and Pyro4.current_context.session_id:
             return Pyro4.current_context.session_id

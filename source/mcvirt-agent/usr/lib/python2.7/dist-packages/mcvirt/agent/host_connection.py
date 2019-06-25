@@ -25,10 +25,10 @@ from mcvirt.version import VERSION
 
 
 class HostConnection(object):
-    """Provide loop that connects to host and runs commands"""
+    """Provide loop that connects to host and runs commands."""
 
     def start_loop(self):
-        """Obtain serial connection and start receiving loop"""
+        """Obtain serial connection and start receiving loop."""
         conn = Serial(port=AgentSerialConfig.AGENT_PORT_PATH,
                       baudrate=AgentSerialConfig.BAUD_RATE,
                       timeout=0,
@@ -47,7 +47,7 @@ class HostConnection(object):
             time.sleep(1)
 
     def _handle_command(self, conn, msg):
-        """Proces command from host"""
+        """Proces command from host."""
         # Response to ping
         if msg == 'ping':
             conn.write('pong\n')

@@ -24,11 +24,11 @@ from mcvirt.test.test_base import TestBase
 
 
 class NetworkTests(TestBase):
-    """Test suite for performing tests on the network class"""
+    """Test suite for performing tests on the network class."""
 
     @staticmethod
     def suite():
-        """Return a test suite of the network tests"""
+        """Return a test suite of the network tests."""
         suite = unittest.TestSuite()
         suite.addTest(NetworkTests('test_create'))
         suite.addTest(NetworkTests('test_duplicate_name_create'))
@@ -40,7 +40,7 @@ class NetworkTests(TestBase):
         return suite
 
     def setUp(self):
-        """Remove test networks if they exist"""
+        """Remove test networks if they exist."""
         # Remove the test network, if it exists
         if self.network_factory.check_exists(self.test_network_name):
             network = self.network_factory.get_network_by_name(self.test_network_name)
@@ -48,7 +48,7 @@ class NetworkTests(TestBase):
             network.delete()
 
     def test_create(self):
-        """Test the creation of network through the argument parser"""
+        """Test the creation of network through the argument parser."""
         # Ensure network does not exist
         self.assertFalse(self.network_factory.check_exists(self.test_network_name))
 
@@ -71,7 +71,7 @@ class NetworkTests(TestBase):
         network_object.delete()
 
     def test_duplicate_name_create(self):
-        """Test attempting to create a network with a duplicate name through the argument parser"""
+        """Test attempting to create a network with a duplicate name through the argument parser."""
         # Create network
         self.network_factory.create(self.test_network_name, self.test_physical_interface)
 
@@ -87,7 +87,7 @@ class NetworkTests(TestBase):
         network_object.delete()
 
     def test_delete(self):
-        """Test deleting a network through the argument parser"""
+        """Test deleting a network through the argument parser."""
         # Create network
         self.network_factory.create(self.test_network_name, self.test_physical_interface)
 
@@ -99,7 +99,7 @@ class NetworkTests(TestBase):
         self.assertFalse(self.network_factory.check_exists(self.test_network_name))
 
     def test_delete_non_existent(self):
-        """Attempt to delete a non-existent network"""
+        """Attempt to delete a non-existent network."""
         # Ensure the network does not exist
         self.assertFalse(self.network_factory.check_exists(self.test_network_name))
 
@@ -109,7 +109,7 @@ class NetworkTests(TestBase):
                                         self.test_network_name)
 
     def test_delete_utilized(self):
-        """Attempt to remove a network that is in use by a VM"""
+        """Attempt to remove a network that is in use by a VM."""
         # Create test network and create test VM connected to the network
         self.network_factory.create(self.test_network_name, self.test_physical_interface)
         self.vm_factory.create(self.test_vms['TEST_VM_1']['name'], 1, '50MB', ['100MiB'],
@@ -121,7 +121,7 @@ class NetworkTests(TestBase):
                                         self.test_network_name)
 
     def test_list(self):
-        """Attempt to use the parser to list the networks"""
+        """Attempt to use the parser to list the networks."""
         # Run the network list, to ensure an exception is not thrown
         self.parser.parse_arguments('network list')
 

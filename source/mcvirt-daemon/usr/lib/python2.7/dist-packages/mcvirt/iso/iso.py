@@ -1,4 +1,4 @@
-"""Provide class for managing ISO files"""
+"""Provide class for managing ISO files."""
 
 # Copyright (c) 2015 - I.T. Dev Ltd
 #
@@ -31,7 +31,7 @@ from mcvirt.auth.permissions import PERMISSIONS
 
 
 class Iso(PyroObject):
-    """Provides management of ISOs for use in MCVirt"""
+    """Provides management of ISOs for use in MCVirt."""
 
     def __init__(self, name):
         """Ensure the VM exists, checks the file permissions and creates
@@ -46,17 +46,17 @@ class Iso(PyroObject):
 
     @Expose()
     def get_name(self):
-        """Return the name of the ISO"""
+        """Return the name of the ISO."""
         return self.name
 
     @Expose()
     def get_path(self):
-        """Return the full path of the ISO"""
+        """Return the full path of the ISO."""
         return DirectoryLocation.ISO_STORAGE_DIR + '/' + self.get_name()
 
     @staticmethod
     def get_filename_from_path(path, append_iso=True):
-        """Return filename part of path"""
+        """Return filename part of path."""
         filename = path.split('/')[-1]
         if not filename:
             raise NameNotSpecifiedException('Name cannot be determined from "%s".' % path + "\n" +
@@ -86,8 +86,8 @@ class Iso(PyroObject):
 
     @Expose()
     def delete(self):
-        """Delete an ISO"""
-        self._get_registered_object('auth').assert_permission(
+        """Delete an ISO."""
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_ISO
         )
 
@@ -100,9 +100,9 @@ class Iso(PyroObject):
         os.remove(self.get_path())
 
         # Unregister Pyro object and remove cached object
-        if self.get_name() in self._get_registered_object('iso_factory').CACHED_OBJECTS:
-            del self._get_registered_object('iso_factory').CACHED_OBJECTS[self.get_name()]
-        self.unregister_object()
+        if self.get_name() in self.po__get_registered_object('iso_factory').CACHED_OBJECTS:
+            del self.po__get_registered_object('iso_factory').CACHED_OBJECTS[self.get_name()]
+        self.po__unregister_object()
 
         if not os.path.isfile(self.get_path()):
             return True
@@ -113,8 +113,8 @@ class Iso(PyroObject):
 
     @property
     def in_use(self):
-        """Determine if the ISO is currently in use by a VM"""
-        virtual_machine_factory = self._get_registered_object('virtual_machine_factory')
+        """Determine if the ISO is currently in use by a VM."""
+        virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
         for vm_name in virtual_machine_factory.getAllVmNames(node=get_hostname()):
             vm_object = virtual_machine_factory.get_virtual_machine_by_name(vm_name)
             disk_drive_object = vm_object.get_disk_drive()

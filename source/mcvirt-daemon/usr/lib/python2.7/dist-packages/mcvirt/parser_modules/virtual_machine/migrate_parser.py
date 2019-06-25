@@ -19,10 +19,10 @@
 
 
 class MigrateParser(object):
-    """Handle VM migration parser"""
+    """Handle VM migration parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for VM migration"""
+        """Create subparser for VM migration."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -62,7 +62,7 @@ class MigrateParser(object):
         self.migrate_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     def handle_migrate(self, p_, args):
-        """Handle migration"""
+        """Handle migration."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)

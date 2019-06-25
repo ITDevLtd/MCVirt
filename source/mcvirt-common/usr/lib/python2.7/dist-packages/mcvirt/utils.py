@@ -21,17 +21,17 @@ import collections
 
 
 class HostnameCache(object):
-    """Class to hold cached hostname"""
+    """Class to hold cached hostname."""
     HOSTNAME = None
 
 
 def get_network_hostname():
-    """Return the hostname of the system, using the socket"""
+    """Return the hostname of the system, using the socket."""
     return socket.gethostname()
 
 
 def get_hostname():
-    """Return the hostname of the system stored in a custom config file"""
+    """Return the hostname of the system stored in a custom config file."""
     # Hard code file location as constants DirectoryLocation class
     # needs to use this function to obtain /var/lib/mcvirt/<hostname>
     # It's need is greater than our own
@@ -81,7 +81,7 @@ def ensure_hostname_consistent():
 
 
 def get_all_submodules(target_class):
-    """Return all inheriting classes, recursively"""
+    """Return all inheriting classes, recursively."""
     subclasses = []
     for subclass in target_class.__subclasses__():
         subclasses.append(subclass)

@@ -21,10 +21,10 @@ from mcvirt.exceptions import ArgumentParserException
 
 
 class PermissionParser(object):
-    """Handle permission parser"""
+    """Handle permission parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for managing permissions VMs"""
+        """Create subparser for managing permissions VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -102,7 +102,7 @@ class PermissionParser(object):
         )
 
     def handle_permission(self, p_, args):
-        """Handle permission changes"""
+        """Handle permission changes."""
         auth_object = p_.rpc.get_connection('auth')
         p_.rpc.annotate_object(auth_object)
 

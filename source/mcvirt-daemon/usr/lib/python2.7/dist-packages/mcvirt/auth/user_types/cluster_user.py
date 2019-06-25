@@ -49,13 +49,13 @@ class ClusterUser(UserBase):
 
     @property
     def node(self):
-        """Return the node that the user is used for"""
+        """Return the node that the user is used for."""
         return self._get_config()['host']
 
     def update_host(self, host):
         """Update the host associated with the user."""
         def update_config(config):
-            """Update host in user config in MCVirt config"""
+            """Update host in user config in MCVirt config."""
             config['users'][self.get_username()]['host'] = host
         MCVirtConfig().update_config(update_config, 'Updated host for \'%s\'' %
                                                     self.get_username())

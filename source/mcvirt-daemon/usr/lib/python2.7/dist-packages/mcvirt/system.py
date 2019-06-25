@@ -58,7 +58,7 @@ class System(object):
 
     @staticmethod
     def getUserInput(display_text, password=False):
-        """Prompt the user for input"""
+        """Prompt the user for input."""
         if password:
             return getpass.getpass(display_text)
         else:
@@ -79,14 +79,14 @@ class System(object):
 
     @staticmethod
     def is_running_systemd():
-        """Determine if machine is running systemd"""
+        """Determine if machine is running systemd."""
         exit_code, _, _ = System.runCommand(['pidof', 'systemd'], raise_exception_on_failure=False)
         return exit_code == 0
 
     @staticmethod
     def perform_dd(source, destination, size):
         """Perform a 'dd' system command to replicate storage
-           block-by-block"""
+           block-by-block."""
         # If wipe is specified, zero the destination
         if source is System.WIPE:
             source = '/dev/zero'

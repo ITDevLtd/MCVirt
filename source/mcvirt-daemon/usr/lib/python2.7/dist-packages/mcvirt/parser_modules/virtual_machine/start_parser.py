@@ -19,10 +19,10 @@
 
 
 class StartParser(object):
-    """Handle VM start parser"""
+    """Handle VM start parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for starting VMs"""
+        """Create subparser for starting VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -36,7 +36,7 @@ class StartParser(object):
                                        help='Names of VMs')
 
     def handle_start(self, p_, args):
-        """Handle start"""
+        """Handle start."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         for vm_name in args.vm_names:
             try:

@@ -26,7 +26,7 @@ from mcvirt.rpc.expose_method import Expose
 
 
 class ConnectionUser(UserBase):
-    """User type for initial connection users"""
+    """User type for initial connection users."""
 
     USER_PREFIX = 'mcv-connection-'
     CAN_GENERATE = True

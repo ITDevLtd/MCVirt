@@ -23,10 +23,10 @@ from mcvirt.exceptions import ArgumentParserException
 
 
 class IsoParser(object):
-    """Handle ISO parser"""
+    """Handle ISO parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for ISO management"""
+        """Create subparser for ISO management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -46,7 +46,7 @@ class IsoParser(object):
         self.register_delete()
 
     def register_list(self):
-        """Register parser for listing ISOs"""
+        """Register parser for listing ISOs."""
         self.list_parser = self.sub_parsers.add_parser(
             'list',
             help='List available ISOs',
@@ -57,12 +57,12 @@ class IsoParser(object):
                                       metavar='Node', default=None)
 
     def handle_list(self, p_, args):
-        """Perform list of groups"""
+        """Perform list of groups."""
         iso_factory = p_.rpc.get_connection('iso_factory')
         p_.print_status(iso_factory.get_iso_list(node=args.iso_node))
 
     def register_add(self):
-        """Register parser for adding iso"""
+        """Register parser for adding iso."""
         self.add_parser = self.sub_parsers.add_parser(
             'add', help='Add an ISO', parents=[self.parent_parser])
         self.add_parser.set_defaults(func=self.handle_add)
@@ -79,7 +79,7 @@ class IsoParser(object):
                                      metavar='Node', default=None)
 
     def handle_add(self, p_, args):
-        """Handle add of ISO"""
+        """Handle add of ISO."""
         iso_factory = p_.rpc.get_connection('iso_factory')
 
         if args.add_path:
@@ -104,7 +104,7 @@ class IsoParser(object):
             p_.print_status('Successfully added ISO: %s' % iso_name)
 
     def register_delete(self):
-        """Register parser for deleting ISOs"""
+        """Register parser for deleting ISOs."""
         self.delete_parser = self.sub_parsers.add_parser(
             'delete', help='Delete an ISO', parents=[self.parent_parser])
         self.delete_parser.set_defaults(func=self.handle_delete)
@@ -115,7 +115,7 @@ class IsoParser(object):
                                         metavar='Node', default=None)
 
     def handle_delete(self, p_, args):
-        """Handle deletion of ISO"""
+        """Handle deletion of ISO."""
         iso_factory = p_.rpc.get_connection('iso_factory')
         if args.iso_node:
             raise ArgumentParserException('Cannot remove ISO from remote node')

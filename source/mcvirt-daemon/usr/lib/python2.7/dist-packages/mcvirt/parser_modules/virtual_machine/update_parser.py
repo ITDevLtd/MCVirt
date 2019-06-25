@@ -21,10 +21,10 @@ from mcvirt.exceptions import ArgumentParserException
 
 
 class UpdateParser(object):
-    """Handle VM update parser"""
+    """Handle VM update parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for starting VMs"""
+        """Create subparser for starting VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -137,7 +137,7 @@ class UpdateParser(object):
             help='Disable VM delete protection. Must provide name of VM in reverse.')
 
     def handle_update(self, p_, args):
-        """Handle VM update"""
+        """Handle VM update."""
         if bool(args.change_network) != bool(args.new_network):
             raise ArgumentParserException('--new-network must be used with --change-network')
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')

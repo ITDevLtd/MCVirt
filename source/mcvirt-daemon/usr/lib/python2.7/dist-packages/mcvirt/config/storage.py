@@ -20,22 +20,22 @@ import mcvirt.config.migrations.storage as migrations
 
 
 class Storage(BaseSubconfig):
-    """Provides operations to obtain and set the MCVirt configuration for a VM"""
+    """Provides operations to obtain and set the MCVirt configuration for a VM."""
 
     SUBTREE_ARRAY = ['storage_backends']
 
     def __init__(self, storage_obj):
-        """Sets member variables"""
+        """Sets member variables."""
         self.storage_obj = storage_obj
         super(Storage, self).__init__()
 
     def _get_config_key(self):
-        """Get the key for the config"""
+        """Get the key for the config."""
         return self.storage_obj.id_
 
     @staticmethod
     def create(storage_backend_id, config):
-        """Add a storage backend config"""
+        """Add a storage backend config."""
 
         # Write the configuration to disk
         Storage._add_config(
@@ -43,5 +43,5 @@ class Storage(BaseSubconfig):
             'Add storage backend config: %s' % storage_backend_id)
 
     def _upgrade(self, config):
-        """Perform an upgrade of the configuration file"""
+        """Perform an upgrade of the configuration file."""
         pass

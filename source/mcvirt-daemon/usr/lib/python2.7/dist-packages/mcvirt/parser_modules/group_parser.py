@@ -19,10 +19,10 @@
 
 
 class GroupParser(object):
-    """Handle group parser"""
+    """Handle group parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for group management"""
+        """Create subparser for group management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -46,7 +46,7 @@ class GroupParser(object):
         self.register_remove_user()
 
     def register_list(self):
-        """Register parser for listing group"""
+        """Register parser for listing group."""
         self.list_parser = self.sub_parsers.add_parser(
             'list',
             help='List the groups',
@@ -54,12 +54,12 @@ class GroupParser(object):
         self.list_parser.set_defaults(func=self.handle_list)
 
     def handle_list(self, p_, args):
-        """Perform list of groups"""
+        """Perform list of groups."""
         group_factory = p_.rpc.get_connection('group_factory')
         p_.print_status(group_factory.list())
 
     def register_create(self):
-        """Register parser for creating group"""
+        """Register parser for creating group."""
         self.create_parser = self.sub_parsers.add_parser(
             'create',
             help='Create a permission group',
@@ -68,13 +68,13 @@ class GroupParser(object):
         self.create_parser.add_argument(dest='name', metavar='Group Name')
 
     def handle_create(self, p_, args):
-        """Perform creation of group"""
+        """Perform creation of group."""
         group_factory = p_.rpc.get_connection('group_factory')
         group_factory.create(args.name)
         p_.print_status('Created group \'%s\'' % args.name)
 
     def register_delete(self):
-        """Register parser for deleting group"""
+        """Register parser for deleting group."""
         self.delete_parser = self.sub_parsers.add_parser(
             'delete',
             help='Delete a permission group',
@@ -83,7 +83,7 @@ class GroupParser(object):
         self.delete_parser.add_argument(dest='name', metavar='Group Name')
 
     def handle_delete(self, p_, args):
-        """Perform deletionn of group"""
+        """Perform deletionn of group."""
         group_factory = p_.rpc.get_connection('group_factory')
         group = group_factory.get_object_by_name(args.name)
         p_.rpc.annotate_object(group)
@@ -91,7 +91,7 @@ class GroupParser(object):
         p_.print_status('Deleted group \'%s\'' % args.name)
 
     def register_add_permission(self):
-        """Register parser for adding permission to group"""
+        """Register parser for adding permission to group."""
         self.add_permission_parser = self.sub_parsers.add_parser(
             'add-permission',
             help='Add a permission to a group',
@@ -106,7 +106,7 @@ class GroupParser(object):
                                                       '--list)'))
 
     def handle_add_permission(self, p_, args):
-        """Perform addition of permission to group"""
+        """Perform addition of permission to group."""
         group_factory = p_.rpc.get_connection('group_factory')
         group = group_factory.get_object_by_name(args.name)
         p_.rpc.annotate_object(group)
@@ -117,7 +117,7 @@ class GroupParser(object):
             p_.print_status('Added \'%s\' to group \'%s\'' % (permission, args.name))
 
     def register_remove_permission(self):
-        """Register parser for removing permission from group"""
+        """Register parser for removing permission from group."""
         self.remove_permission_parser = self.sub_parsers.add_parser(
             'remove-permission',
             help='Remove a permission from a group',
@@ -130,7 +130,7 @@ class GroupParser(object):
                                                          'group (see mcvirt permission --list)'))
 
     def handle_remove_permission(self, p_, args):
-        """Perform removal of permission from group"""
+        """Perform removal of permission from group."""
         group_factory = p_.rpc.get_connection('group_factory')
         group = group_factory.get_object_by_name(args.name)
         p_.rpc.annotate_object(group)
@@ -141,7 +141,7 @@ class GroupParser(object):
             p_.print_status('Removed \'%s\' to group \'%s\'' % (permission, args.name))
 
     def register_add_user(self):
-        """Register parser for adding user to group"""
+        """Register parser for adding user to group."""
         self.add_user_parser = self.sub_parsers.add_parser(
             'add-user',
             help='Add a user to a permission group',
@@ -156,7 +156,7 @@ class GroupParser(object):
                                           help='List of users to add to group')
 
     def handle_add_user(self, p_, args):
-        """Perform adding of user to group"""
+        """Perform adding of user to group."""
         group_factory = p_.rpc.get_connection('group_factory')
         group = group_factory.get_object_by_name(args.name)
         p_.rpc.annotate_object(group)
@@ -177,7 +177,7 @@ class GroupParser(object):
             p_.print_status('Added \'%s\' to group \'%s\'' % (username, args.name))
 
     def register_remove_user(self):
-        """Register parser for removing user from group"""
+        """Register parser for removing user from group."""
         self.remove_user_parser = self.sub_parsers.add_parser(
             'remove-user',
             help='Remove a user from a permission group',
@@ -192,7 +192,7 @@ class GroupParser(object):
                                              help='List of users to remove from group')
 
     def handle_remove_user(self, p_, args):
-        """Perform removal of user from group"""
+        """Perform removal of user from group."""
         group_factory = p_.rpc.get_connection('group_factory')
         group = group_factory.get_object_by_name(args.name)
         p_.rpc.annotate_object(group)

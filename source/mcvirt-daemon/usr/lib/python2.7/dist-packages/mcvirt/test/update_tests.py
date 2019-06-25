@@ -29,7 +29,7 @@ class UpdateTests(TestBase):
 
     @staticmethod
     def suite():
-        """Return a test suite"""
+        """Return a test suite."""
         suite = unittest.TestSuite()
         suite.addTest(UpdateTests('test_remove_network'))
         suite.addTest(UpdateTests('test_remove_network_non_existant'))
@@ -37,12 +37,12 @@ class UpdateTests(TestBase):
         return suite
 
     def setUp(self):
-        """Create network adapter factory"""
+        """Create network adapter factory."""
         super(UpdateTests, self).setUp()
         self.network_adapter_factory = self.rpc.get_connection('network_adapter_factory')
 
     def tearDown(self):
-        """Tear down network adapter factory"""
+        """Tear down network adapter factory."""
         self.network_adapter_factory = None
         super(UpdateTests, self).tearDown()
 
@@ -101,7 +101,7 @@ class UpdateTests(TestBase):
         self.assertEqual(len(network_adapters), 1)
 
     def test_set_windows_flag(self):
-        """Set the Windows CPU flag and check the XML is modified correctly"""
+        """Set the Windows CPU flag and check the XML is modified correctly."""
         # Create test VM
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 

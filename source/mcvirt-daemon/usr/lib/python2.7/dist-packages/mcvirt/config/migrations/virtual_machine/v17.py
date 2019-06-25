@@ -18,5 +18,5 @@
 
 def migrate(config_obj, config):
     """No migration required for release, as this
-    is performed in the mcvirt_config release"""
+    is performed in the mcvirt_config release."""
     pass

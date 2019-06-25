@@ -1,4 +1,4 @@
-"""Module for handling agent connection"""
+"""Module for handling agent connection."""
 # Copyright (c) 2018 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.
@@ -28,17 +28,17 @@ from mcvirt.version import VERSION
 
 
 class AgentConnection(PyroObject):
-    """Obtain connection and perform commands with VM agent"""
+    """Obtain connection and perform commands with VM agent."""
 
     LOCKS = {}
     LOCK_TIMEOUT = 2
 
     def __init__(self, virtual_machine):
-        """Store member variables"""
+        """Store member variables."""
         self.virtual_machine = virtual_machine
 
     def get_lock_condition(self):
-        """Return lock object for VM"""
+        """Return lock object for VM."""
         cache_key = self.virtual_machine.get_name()
 
         # Create lock if it does not exist for VM
@@ -48,12 +48,12 @@ class AgentConnection(PyroObject):
         return AgentConnection.LOCKS[cache_key]
 
     def check_agent_version(self):
-        """Check the version of the agent"""
+        """Check the version of the agent."""
         resp = self.wait_lock(command='version')
         return resp, VERSION
 
     def wait_lock(self, callback=None, command=None):
-        """Wait for lock"""
+        """Wait for lock."""
         # @TODO Replace with 'with' statement
         # Get lock and condition object
         lock = self.get_lock_condition()
@@ -89,7 +89,7 @@ class AgentConnection(PyroObject):
             return resp
 
     def get_serial_connection(self):
-        """Obtain serial connection object"""
+        """Obtain serial connection object."""
         serial_port = self.virtual_machine.get_host_agent_path()
         timeout = self.virtual_machine.get_agent_timeout()
         serial_obj = Serial(port=serial_port,
@@ -107,49 +107,49 @@ class AgentConnection(PyroObject):
 
 
 class LockObject(object):
-    """Lock object for timeout locks"""
+    """Lock object for timeout locks."""
 
     def __init__(self):
-        """Create lock and condition objects"""
+        """Create lock and condition objects."""
         self.lock = Lock()
         self.cond = Condition()
 
     def release(self):
-        """Release lock and notify the condition"""
+        """Release lock and notify the condition."""
         self.lock.release()
         with self.cond:
             self.cond.notify()
 
 
 class TimeoutLock(object):
-    """Provide lock functionality with a timeout"""
+    """Provide lock functionality with a timeout."""
 
     def __init__(self, lock, timeout):
-        """Store member variables"""
+        """Store member variables."""
         self.lock = lock
         self.timeout = timeout
 
     def __enter__(self):
-        """Once entered a 'with' clause"""
+        """Once entered a 'with' clause."""
         self.acquire()
         return self
 
     def __exit__(self, type, value, tb):
-        """Release lock when exiting 'with' clause and did not raise an exception"""
+        """Release lock when exiting 'with' clause and did not raise an exception."""
         self.release()
 
     def acquire(self):
-        """Attempt ot aquire lock"""
+        """Attempt ot aquire lock."""
         if not self._waitLock():
             raise TimeoutExceededSerialLockError(
                 'Timeout exceeded whilst waiting for agent communications')
 
     def release(self):
-        """Release lock object"""
+        """Release lock object."""
         self.lock.release()
 
     def _waitLock(self):
-        """Loop until either getting lock or timeout exceeded"""
+        """Loop until either getting lock or timeout exceeded."""
         with self.lock.cond:
             current_time = start_time = time.time()
             while current_time < start_time + self.timeout:
