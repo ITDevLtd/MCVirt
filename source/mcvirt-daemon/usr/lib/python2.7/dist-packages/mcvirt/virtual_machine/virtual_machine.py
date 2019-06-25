@@ -72,6 +72,8 @@ class VirtualMachine(PyroObject):
         self.disk_drive_object = None
         self.current_guest_memory_usage = None
         self.current_guest_cpu_usage = None
+        self.current_host_memory_usage = None
+        self.current_host_cpu_usage = None
 
     @staticmethod
     def get_id_code():
@@ -1793,8 +1795,9 @@ class VirtualMachine(PyroObject):
     def get_libvirt_cpu_stats(self):
         """Obtain memory stats from libvirt"""
         # Return aggregated CPU stats and CPU-specific stats
-        return (self._get_libvirt_domain_object().getCPUStats(True),  # Aggregated stats
-                self._get_libvirt_domain_object().getCPUStats(False))  # CPU-specific stats
+        dom = self._get_libvirt_domain_object()
+        return ([dom.getCPUStats(True)[0]['cpu_time']]  # Aggregated stats
+                + [cpu['vcpu_time'] for cpu in dom.getCPUStats(False)])  # CPU-specific stats
 
     def get_host_agent_path(self):
         """Obtain the path of the serial interface for the VM on the host."""

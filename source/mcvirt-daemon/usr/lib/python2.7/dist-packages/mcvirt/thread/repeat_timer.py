@@ -54,6 +54,12 @@ class RepeatTimer(PyroObject):
         if self.timer:
             self.timer.cancel()
 
+    def _log_error(self, msg):
+        """Log generic error"""
+        Syslogger.logger().error(
+            'Error ocurred during thread (%s): %s' %
+            (self.__class__.__name__, str(msg)))
+
     def repeat_run(self):
         """Re-start timer once run has complete."""
         # Restart timer, if set to repeat before run
@@ -66,9 +72,7 @@ class RepeatTimer(PyroObject):
             # Run command
             return_output = self.run(*self.run_args, **self.run_kwargs)
         except Exception, exc:
-            Syslogger.logger().error(
-                'Error ocurred during thread: %s\n%s' %
-                (self.__class__.__name__, str(exc)))
+            self._log_error(exc)
 
         # Restart timer, if set to repeat after run
         if self.repeat_after_run and self.repeat:

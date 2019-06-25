@@ -310,9 +310,7 @@ class StatisticsSync(RepeatTimer):
             # Run command
             return_output = self.run(*self.run_args, **self.run_kwargs)
         except Exception, exc:
-            Syslogger.logger().error(
-                'Error ocurred during thread: %s\n%s' %
-                (self.__class__.__name__, str(exc)))
+            self._log_error(exc)
 
         self.original_timer_start = None
         self.timer = None
