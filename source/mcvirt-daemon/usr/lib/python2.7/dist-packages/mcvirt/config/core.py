@@ -34,7 +34,7 @@ class Core(Base):
     REGENERATE_DRBD_CONFIG = False
 
     def __init__(self):
-        """Set member variables and obtains libvirt domain object"""
+        """Set member variables and obtains libvirt domain object."""
         if not os.path.isdir(DirectoryLocation.BASE_STORAGE_DIR):
             self._createConfigDirectories()
 
@@ -46,16 +46,16 @@ class Core(Base):
 
     @property
     def config_file(self):
-        """Return the location of the config file"""
+        """Return the location of the config file."""
         return DirectoryLocation.NODE_STORAGE_DIR + '/config.json'
 
     def _get_config_subtree_array(self):
-        """Get a list of dict keys to traverse the parent config"""
+        """Get a list of dict keys to traverse the parent config."""
         # Return empty array as MCVirt uses base config
         return []
 
     def _createConfigDirectories(self):
-        """Create the configuration directories for the node"""
+        """Create the configuration directories for the node."""
         # Initialise the git repository
         os.mkdir(DirectoryLocation.BASE_STORAGE_DIR)
         os.mkdir(DirectoryLocation.NODE_STORAGE_DIR)
@@ -74,7 +74,7 @@ class Core(Base):
         return config_ip if config_ip else '0.0.0.0'
 
     def create(self):
-        """Create a basic VM configuration for new VMs"""
+        """Create a basic VM configuration for new VMs."""
         # Create basic config
         json_data = \
             {
@@ -178,7 +178,7 @@ class Core(Base):
         Core._writeJSON(json_data, self.config_file)
 
     def _upgrade(self, config):
-        """Perform an upgrade of the configuration file"""
+        """Perform an upgrade of the configuration file."""
         if self._getVersion() < 16:
             raise IntermediateUpgradeRequiredError(
                 'Must upgrade to MCVirt v10.0.2 before upgrading to <=v11.0.0')

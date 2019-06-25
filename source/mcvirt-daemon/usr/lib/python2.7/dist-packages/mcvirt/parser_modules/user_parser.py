@@ -21,10 +21,10 @@ from mcvirt.system import System
 
 
 class UserParser(object):
-    """Handle user parser"""
+    """Handle user parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for user management"""
+        """Create subparser for user management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -48,7 +48,7 @@ class UserParser(object):
         self.register_remove_permission()
 
     def register_list(self):
-        """Register parser for listing group"""
+        """Register parser for listing group."""
         self.list_parser = self.sub_parsers.add_parser(
             'list',
             help='List users',
@@ -56,12 +56,12 @@ class UserParser(object):
         self.list_parser.set_defaults(func=self.handle_list)
 
     def handle_list(self, p_, args):
-        """Perform list of groups"""
+        """Perform list of groups."""
         user_factory = p_.rpc.get_connection('user_factory')
         p_.print_status(user_factory.list())
 
     def register_change_password(self):
-        """Register change password parser"""
+        """Register change password parser."""
         self.change_password_parser = self.sub_parsers.add_parser(
             'change-password',
             help='Change a user password',
@@ -82,7 +82,7 @@ class UserParser(object):
         )
 
     def handle_change_password(self, p_, args):
-        """Handle change password"""
+        """Handle change password."""
         user_factory = p_.rpc.get_connection('user_factory')
         target_user = args.target_user or p_.username
         user = user_factory.get_user_by_username(target_user)
@@ -92,7 +92,7 @@ class UserParser(object):
         p_.print_status('Updated password')
 
     def register_create(self):
-        """Register create parser"""
+        """Register create parser."""
         self.create_parser = self.sub_parsers.add_parser(
             'create',
             help='Create a new user',
@@ -122,7 +122,7 @@ class UserParser(object):
         )
 
     def handle_create(self, p_, args):
-        """Handle creation"""
+        """Handle creation."""
         user_factory = p_.rpc.get_connection('user_factory')
 
         if args.generate_password:
@@ -137,7 +137,7 @@ class UserParser(object):
             p_.print_status('Password: %s' % new_password)
 
     def register_delete(self):
-        """Register deletion parser"""
+        """Register deletion parser."""
         self.delete_parser = self.sub_parsers.add_parser(
             'delete',
             help='Delete a user',
@@ -152,7 +152,7 @@ class UserParser(object):
         )
 
     def handle_delete(self, p_, args):
-        """Handle deletion"""
+        """Handle deletion."""
         user_factory = p_.rpc.get_connection('user_factory')
         user = user_factory.get_user_by_username(args.delete_username)
         p_.rpc.annotate_object(user)
@@ -160,7 +160,7 @@ class UserParser(object):
         p_.print_status('Deleted user')
 
     def register_add_permission(self):
-        """Register parser for adding permission to user"""
+        """Register parser for adding permission to user."""
         self.add_permission_parser = self.sub_parsers.add_parser(
             'add-permission',
             help='Add a permission to a user',
@@ -173,7 +173,7 @@ class UserParser(object):
                                                       '(see mcvirt permission --list)'))
 
     def handle_add_permission(self, p_, args):
-        """Perform addition of permission to user"""
+        """Perform addition of permission to user."""
         user_factory = p_.rpc.get_connection('user_factory')
         user = user_factory.get_user_by_username(args.user)
         p_.rpc.annotate_object(user)
@@ -184,7 +184,7 @@ class UserParser(object):
             p_.print_status('Added \'%s\' to user \'%s\'' % (permission, args.user))
 
     def register_remove_permission(self):
-        """Register parser for removing permission from user"""
+        """Register parser for removing permission from user."""
         self.remove_permission_parser = self.sub_parsers.add_parser(
             'remove-permission',
             help='Remove a permission from a user',
@@ -198,7 +198,7 @@ class UserParser(object):
                                                          'permission --list)'))
 
     def handle_remove_permission(self, p_, args):
-        """Perform removal of permission from user"""
+        """Perform removal of permission from user."""
         user_factory = p_.rpc.get_connection('user_factory')
         user = user_factory.get_user_by_username(args.user)
         p_.rpc.annotate_object(user)

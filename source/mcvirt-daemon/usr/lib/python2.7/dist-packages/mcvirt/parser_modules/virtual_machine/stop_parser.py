@@ -19,10 +19,10 @@
 
 
 class StopParser(object):
-    """Handle VM stop parser"""
+    """Handle VM stop parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for stopping VMs"""
+        """Create subparser for stopping VMs."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -33,7 +33,7 @@ class StopParser(object):
                                       help='Names of VMs')
 
     def handle_stop(self, p_, args):
-        """Handle stop"""
+        """Handle stop."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         for vm_name in args.vm_names:
             try:

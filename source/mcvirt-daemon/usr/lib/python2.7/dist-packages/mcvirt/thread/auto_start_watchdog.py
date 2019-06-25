@@ -26,38 +26,38 @@ from mcvirt.syslogger import Syslogger
 
 
 class AutoStartWatchdog(RepeatTimer):
-    """Object to perform regular checks to determine that VMs are running"""
+    """Object to perform regular checks to determine that VMs are running."""
 
     @property
     def interval(self):
-        """Return the timer interval"""
+        """Return the timer interval."""
         return self.get_autostart_interval()
 
     @Expose()
     def get_autostart_interval(self):
-        """Return the autostart interval for the node"""
-        return self._get_registered_object('mcvirt_config')().get_config()['autostart_interval']
+        """Return the autostart interval for the node."""
+        return self.po__get_registered_object('mcvirt_config')().get_config()['autostart_interval']
 
     @Expose(locking=True)
     def set_autostart_interval(self, interval_time):
-        """Update the autostart interval for the node"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
+        """Update the autostart interval for the node."""
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_NODE)
         ArgumentValidator.validate_integer(interval_time)
         interval_time = int(interval_time)
 
         def update_config(config):
-            """Update autostart interval in MCVirt config"""
+            """Update autostart interval in MCVirt config."""
             config['autostart_interval'] = interval_time
-        self._get_registered_object('mcvirt_config')().update_config(update_config,
+        self.po__get_registered_object('mcvirt_config')().update_config(update_config,
                                                                      'Update autostart interval')
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
 
             def remote_update(node):
-                """Update autostart interval on remote node"""
+                """Update autostart interval on remote node."""
                 autostart_watchdog = node.get_connection('autostart_watchdog')
                 autostart_watchdog.set_autostart_interval(interval_time)
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_update)
 
         # If the timer has been set to 0, disable the timer
@@ -72,9 +72,9 @@ class AutoStartWatchdog(RepeatTimer):
                 self.repeat_run()
 
     def initialise(self):
-        """Perform the ON_BOOT autostart and start timer"""
+        """Perform the ON_BOOT autostart and start timer."""
         Pyro4.current_context.INTERNAL_REQUEST = True
-        vm_factory = self._get_registered_object('virtual_machine_factory')
+        vm_factory = self.po__get_registered_object('virtual_machine_factory')
         try:
             vm_factory.autostart(AutoStartStates.ON_BOOT)
         except Exception, exc:
@@ -83,9 +83,9 @@ class AutoStartWatchdog(RepeatTimer):
         super(AutoStartWatchdog, self).initialise()
 
     def run(self):
-        """Perform ON_POLL autostart"""
+        """Perform ON_POLL autostart."""
         Pyro4.current_context.INTERNAL_REQUEST = True
-        vm_factory = self._get_registered_object('virtual_machine_factory')
+        vm_factory = self.po__get_registered_object('virtual_machine_factory')
         try:
             vm_factory.autostart(AutoStartStates.ON_POLL)
         except Exception, exc:

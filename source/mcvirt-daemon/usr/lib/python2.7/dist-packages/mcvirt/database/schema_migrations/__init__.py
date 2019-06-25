@@ -22,6 +22,6 @@ SCHEMA_VERSION = 1
 
 
 def update_schema_version(db_inst):
-    """Update version of DB schema"""
+    """Update version of DB schema."""
     db_inst.cursor.execute("""UPDATE mcvirt_schema SET version=?""",
                            (SCHEMA_VERSION, ))

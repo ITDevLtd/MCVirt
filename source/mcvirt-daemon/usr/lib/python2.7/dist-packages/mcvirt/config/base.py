@@ -1,4 +1,4 @@
-"""Provide base class for configuration files"""
+"""Provide base class for configuration files."""
 
 # Copyright (c) 2018 - Matt Comben
 #
@@ -32,13 +32,13 @@ from mcvirt.exceptions import UserDoesNotExistException
 
 
 class Base(PyroObject):
-    """Provides operations to obtain and set the MCVirt configuration for a VM"""
+    """Provides operations to obtain and set the MCVirt configuration for a VM."""
 
     CURRENT_VERSION = 21
     GIT = '/usr/bin/git'
 
     def __init__(self):
-        """Set member variables"""
+        """Set member variables."""
         raise NotImplementedError
 
     def get_config(self):
@@ -51,13 +51,13 @@ class Base(PyroObject):
 
     @Expose(locking=True)
     def get_config_remote(self):
-        """Provide an exposed method for reading MCVirt configuration"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
+        """Provide an exposed method for reading MCVirt configuration."""
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.SUPERUSER)
         return self.get_config()
 
     @Expose(locking=True)
     def manual_update_config(self, config, reason=''):
-        """Provide an exposed method for updating the config"""
+        """Provide an exposed method for updating the config."""
         def set_config(origin_config):
             origin_config.clear()
             origin_config.update(config)
@@ -72,13 +72,13 @@ class Base(PyroObject):
         self.setConfigPermissions()
 
     def getPermissionConfig(self):
-        """Obtain the permission config"""
+        """Obtain the permission config."""
         config = self.get_config()
         return config['permissions']
 
     @staticmethod
     def _writeJSON(data, file_name):
-        """Parse and writes the JSON VM config file"""
+        """Parse and writes the JSON VM config file."""
         json_data = json.dumps(data, indent=2, separators=(',', ': '))
 
         # Open the config file and write to contents
@@ -92,14 +92,14 @@ class Base(PyroObject):
 
     @staticmethod
     def create(self):
-        """Create a basic VM configuration for new VMs"""
+        """Create a basic VM configuration for new VMs."""
         raise NotImplementedError
 
     def setConfigPermissions(self):
-        """Set file permissions for config directories"""
+        """Set file permissions for config directories."""
 
         def set_permission(path, directory=True, owner=0):
-            """Ser permissions on directory"""
+            """Ser permissions on directory."""
             permission_mode = stat.S_IRUSR
             if directory:
                 permission_mode = permission_mode | stat.S_IWUSR | stat.S_IXUSR
@@ -126,16 +126,16 @@ class Base(PyroObject):
                            owner=pwd.getpwnam('libvirt-qemu').pw_uid)
 
     def _upgrade(self, config):
-        """Updates the configuration file"""
+        """Updates the configuration file."""
         raise NotImplementedError
 
     def upgrade(self):
-        """Performs an upgrade of the config file"""
+        """Performs an upgrade of the config file."""
         # Check the version of the configuration file
         current_version = self._getVersion()
         if current_version < self.CURRENT_VERSION:
             def upgradeConfig(config):
-                """Update config in config file"""
+                """Update config in config file."""
                 # Perform the configuration sub-class specific upgrade
                 # tasks
                 self._upgrade(config)
@@ -149,7 +149,7 @@ class Base(PyroObject):
                  self.CURRENT_VERSION))
 
     def _getVersion(self):
-        """Return the version number of the configuration file"""
+        """Return the version number of the configuration file."""
         config = self.get_config()
         if 'version' in config.keys():
             return config['version']
@@ -157,9 +157,9 @@ class Base(PyroObject):
             return 0
 
     def gitAdd(self, message=''):
-        """Commit changes to an added or modified configuration file"""
+        """Commit changes to an added or modified configuration file."""
         if self._checkGitRepo():
-            session_obj = self._get_registered_object('mcvirt_session')
+            session_obj = self.po__get_registered_object('mcvirt_session')
             username = ''
             user = None
             if session_obj:
@@ -187,9 +187,9 @@ class Base(PyroObject):
                 pass
 
     def gitRemove(self, message='', custom_file=None):
-        """Remove and commits a configuration file"""
+        """Remove and commits a configuration file."""
         if self._checkGitRepo():
-            session_obj = self._get_registered_object('mcvirt_session')
+            session_obj = self.po__get_registered_object('mcvirt_session')
             username = ''
             user = None
             if session_obj:
@@ -216,7 +216,7 @@ class Base(PyroObject):
                 pass
 
     def _checkGitRepo(self):
-        """Clone the configuration repo, if necessary, and updates the repo"""
+        """Clone the configuration repo, if necessary, and updates the repo."""
         from mcvirt.config.core import Core
 
         # Only attempt to create a git repository if the git

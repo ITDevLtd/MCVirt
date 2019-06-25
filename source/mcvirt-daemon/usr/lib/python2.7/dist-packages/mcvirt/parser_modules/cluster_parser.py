@@ -21,10 +21,10 @@ from mcvirt.system import System
 
 
 class ClusterParser(object):
-    """Handle cluster parser"""
+    """Handle cluster parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for cluster management"""
+        """Create subparser for cluster management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -45,7 +45,7 @@ class ClusterParser(object):
         self.register_remove()
 
     def register_get_connect_string(self):
-        """Register get connect string parser"""
+        """Register get connect string parser."""
         self.connection_string_subparser = self.subparser.add_parser(
             'get-connect-string',
             help='Generates a connection string to add the node to a cluster',
@@ -55,12 +55,12 @@ class ClusterParser(object):
             func=self.handle_get_connect_string)
 
     def handle_get_connect_string(self, p_, args):
-        """Handle get connection string"""
+        """Handle get connection string."""
         cluster_object = p_.rpc.get_connection('cluster')
         p_.print_status(cluster_object.get_connection_string())
 
     def register_add(self):
-        """Register node add parser"""
+        """Register node add parser."""
         self.node_add_parser = self.subparser.add_parser(
             'add-node',
             help='Adds a node to the MCVirt cluster',
@@ -75,7 +75,7 @@ class ClusterParser(object):
             help='Connect string from the target node')
 
     def handle_add(self, p_, args):
-        """Handle add of node"""
+        """Handle add of node."""
         cluster_object = p_.rpc.get_connection('cluster')
         if args.connect_string:
             connect_string = args.connect_string
@@ -85,7 +85,7 @@ class ClusterParser(object):
         p_.print_status('Successfully added node')
 
     def register_remove(self):
-        """Register parser for removing node"""
+        """Register parser for removing node."""
         self.node_remove_parser = self.subparser.add_parser(
             'remove-node',
             help='Removes a node to the MCVirt cluster',
@@ -101,7 +101,7 @@ class ClusterParser(object):
             help='Hostname of the remote node to remove from the cluster')
 
     def handle_remove(self, p_, args):
-        """Handle remove node"""
+        """Handle remove node."""
         cluster_object = p_.rpc.get_connection('cluster')
         cluster_object.remove_node(args.node)
         p_.print_status('Successfully removed node %s' % args.node)

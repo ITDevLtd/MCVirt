@@ -1,4 +1,4 @@
-"""Provides constants for the RPC daemon"""
+"""Provides constants for the RPC daemon."""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
 # This file is part of MCVirt.

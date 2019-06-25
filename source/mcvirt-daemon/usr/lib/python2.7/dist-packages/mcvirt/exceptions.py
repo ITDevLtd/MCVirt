@@ -27,97 +27,97 @@ from mcvirt.utils import get_all_submodules
 # Common - Shared exceptions used throughout the codebase
 
 class MCVirtException(Exception):
-    """Provide an exception to be thrown for errors in MCVirt"""
+    """Provide an exception to be thrown for errors in MCVirt."""
 
     pass
 
 
 class ConnectionFailureToRemoteLibvirtInstance(MCVirtException):
-    """Connection failure whilst attempting to obtain a remote libvirt connection"""
+    """Connection failure whilst attempting to obtain a remote libvirt connection."""
 
     pass
 
 
 class CACertificateNotFoundException(MCVirtException):
-    """CA certificate for host could not be found"""
+    """CA certificate for host could not be found."""
 
     pass
 
 
 class OpenSSLNotFoundException(MCVirtException):
-    """The OpenSSL executable could not be found"""
+    """The OpenSSL executable could not be found."""
 
     pass
 
 
 class UserNotPresentInGroup(MCVirtException):
-    """User to be removed from group is not in the group"""
+    """User to be removed from group is not in the group."""
 
     pass
 
 
 class InsufficientPermissionsException(MCVirtException):
-    """User does not have the required permission"""
+    """User does not have the required permission."""
 
     pass
 
 
 class UnprivilegedUserException(MCVirtException):
-    """Unprivileged user running executable"""
+    """Unprivileged user running executable."""
 
     pass
 
 
 class InvalidPermissionGroupException(MCVirtException):
-    """Attempted to perform actions on an invalid permission group"""
+    """Attempted to perform actions on an invalid permission group."""
 
     pass
 
 
 class MCVirtLockException(MCVirtException):
-    """A lock has already been found"""
+    """A lock has already been found."""
 
     pass
 
 
 class LibVirtConnectionException(MCVirtException):
-    """An error occurred whilst connecting to LibVirt"""
+    """An error occurred whilst connecting to LibVirt."""
 
     pass
 
 
 class DuplicatePermissionException(MCVirtException):
-    """User already exists in group"""
+    """User already exists in group."""
 
     pass
 
 
 class NodeAlreadyPresent(MCVirtException):
-    """Node being added is already connected to cluster"""
+    """Node being added is already connected to cluster."""
 
     pass
 
 
 class NodeDoesNotExistException(MCVirtException):
-    """The node does not exist. Tag: Cluster"""
+    """The node does not exist. Tag: Cluster."""
 
     pass
 
 
 class RemoteObjectConflict(MCVirtException):
-    """The remote node contains an object that will cause conflict when syncing"""
+    """The remote node contains an object that will cause conflict when syncing."""
 
     pass
 
 
 class ClusterNotInitialisedException(MCVirtException):
-    """The cluster has not been initialised, so cannot connect to the remote node. Tag: Cluster"""
+    """The cluster has not been initialised, so cannot connect to the remote node. Tag: Cluster."""
 
     pass
 
 
 class InvalidConnectionString(MCVirtException):
-    """Connection string is invalid"""
+    """Connection string is invalid."""
 
     pass
 
@@ -129,67 +129,67 @@ class CAFileAlreadyExists(MCVirtException):
 
 
 class IncorrectCredentials(MCVirtException):
-    """The supplied credentials are incorrect. Tag: Authentication"""
+    """The supplied credentials are incorrect. Tag: Authentication."""
 
     pass
 
 
 class InvalidUsernameException(MCVirtException):
-    """Username is within a reserved namespace. Tag: Authentication"""
+    """Username is within a reserved namespace. Tag: Authentication."""
 
     pass
 
 
 class AuthenticationError(MCVirtException):
-    """Incorrect credentials. Tag: Authentication"""
+    """Incorrect credentials. Tag: Authentication."""
 
     pass
 
 
 class CurrentUserError(MCVirtException):
-    """Error whilst obtaining current pyro user. Tag: Authentication"""
+    """Error whilst obtaining current pyro user. Tag: Authentication."""
 
     pass
 
 
 class UserDoesNotExistException(MCVirtException):
-    """The specified user does not exist. Tag: Authentication"""
+    """The specified user does not exist. Tag: Authentication."""
 
     pass
 
 
 class PasswordsDoNotMatchException(MCVirtException):
-    """The new passwords do not match. Tag: Authentication"""
+    """The new passwords do not match. Tag: Authentication."""
 
     pass
 
 
 class RemoteCommandExecutionFailedException(MCVirtException):
-    """A remote command execution fails. Tag: Cluster"""
+    """A remote command execution fails. Tag: Cluster."""
 
     pass
 
 
 class UnknownRemoteCommandException(MCVirtException):
-    """An unknown command was passed to the remote machine. Tag: Cluster"""
+    """An unknown command was passed to the remote machine. Tag: Cluster."""
 
     pass
 
 
 class NodeAuthenticationException(MCVirtException):
-    """Incorrect password supplied for remote nodeTag: Cluster"""
+    """Incorrect password supplied for remote nodeTag: Cluster."""
 
     pass
 
 
 class CouldNotConnectToNodeException(MCVirtException):
-    """Could not connect to remove cluster node. Tag: Cluster"""
+    """Could not connect to remove cluster node. Tag: Cluster."""
 
     pass
 
 
 class RemoteNodeLockedException(MCVirtException):
-    """Remote node is locked. Tag: Cluster"""
+    """Remote node is locked. Tag: Cluster."""
 
     pass
 
@@ -203,43 +203,43 @@ class IsoNotPresentOnDestinationNodeException(MCVirtException):
 
 
 class InvalidISOPathException(MCVirtException):
-    """ISO to add does not exist"""
+    """ISO to add does not exist."""
 
     pass
 
 
 class NameNotSpecifiedException(MCVirtException):
-    """A name has not been specified and cannot be determined by the path/URL"""
+    """A name has not been specified and cannot be determined by the path/URL."""
 
     pass
 
 
 class IsoAlreadyExistsException(MCVirtException):
-    """An ISO with the same name already exists"""
+    """An ISO with the same name already exists."""
 
     pass
 
 
 class FailedToRemoveFileException(MCVirtException):
-    """A failure occurred whilst trying to remove an ISO"""
+    """A failure occurred whilst trying to remove an ISO."""
 
     pass
 
 
 class IsoInUseException(MCVirtException):
-    """The ISO is in use, so cannot be removed"""
+    """The ISO is in use, so cannot be removed."""
 
     pass
 
 
 class DrbdNotInstalledException(MCVirtException):
-    """Drbd is not installed. Tag: Drbd"""
+    """Drbd is not installed. Tag: Drbd."""
 
     pass
 
 
 class DrbdAlreadyEnabled(MCVirtException):
-    """Drbd has already been enabled on this node. Tag: Drbd"""
+    """Drbd has already been enabled on this node. Tag: Drbd."""
 
     pass
 
@@ -254,61 +254,61 @@ class DrbdNotEnabledOnNode(MCVirtException):
 
 
 class NetworkAlreadyExistsException(MCVirtException):
-    """Network already exists with the same name"""
+    """Network already exists with the same name."""
 
     pass
 
 
 class LibvirtException(MCVirtException):
-    """Issue with performing libvirt command"""
+    """Issue with performing libvirt command."""
 
     pass
 
 
 class NetworkDoesNotExistException(MCVirtException):
-    """Network does not exist"""
+    """Network does not exist."""
 
     pass
 
 
 class NetworkUtilizedException(MCVirtException):
-    """Network is utilized by virtual machines"""
+    """Network is utilized by virtual machines."""
 
     pass
 
 
 class ArgumentParserException(MCVirtException):
-    """An invalid argument was provided. Tag: Common"""
+    """An invalid argument was provided. Tag: Common."""
 
     pass
 
 
 class StorageTypeNotSpecified(MCVirtException):
-    """Storage type has not been specified"""
+    """Storage type has not been specified."""
 
     pass
 
 
 class InvalidNodesException(MCVirtException):
-    """The nodes passed is invalid. Tag: Common"""
+    """The nodes passed is invalid. Tag: Common."""
 
     pass
 
 
 class HardDriveDoesNotExistException(MCVirtException):
-    """The given hard drive does not exist"""
+    """The given hard drive does not exist."""
 
     pass
 
 
 class StorageTypesCannotBeMixedException(MCVirtException):
-    """Storage types cannot be mixed within a single VM"""
+    """Storage types cannot be mixed within a single VM."""
 
     pass
 
 
 class LogicalVolumeDoesNotExistException(MCVirtException):
-    """A required logical volume does not exist"""
+    """A required logical volume does not exist."""
 
     pass
 
@@ -322,49 +322,49 @@ class LogicalVolumeIsNotActiveException(MCVirtException):
 
 
 class VolumeIsNotActiveException(MCVirtException):
-    """Volume is not active"""
+    """Volume is not active."""
 
     pass
 
 
 class BackupSnapshotAlreadyExistsException(MCVirtException):
-    """The backup snapshot for the logical volume already exists"""
+    """The backup snapshot for the logical volume already exists."""
 
     pass
 
 
 class BackupSnapshotDoesNotExistException(MCVirtException):
-    """The backup snapshot for the logical volume does not exist"""
+    """The backup snapshot for the logical volume does not exist."""
 
     pass
 
 
 class ExternalStorageCommandErrorException(MCVirtException):
-    """An error occurred whilst performing an external command"""
+    """An error occurred whilst performing an external command."""
 
     pass
 
 
 class ReachedMaximumStorageDevicesException(MCVirtException):
-    """Reached the limit to number of hard disks attached to VM"""
+    """Reached the limit to number of hard disks attached to VM."""
 
     pass
 
 
 class DrbdStateException(MCVirtException):
-    """The Drbd state is not OK"""
+    """The Drbd state is not OK."""
 
     pass
 
 
 class DrbdBlockDeviceDoesNotExistException(MCVirtException):
-    """Drbd block device does not exist"""
+    """Drbd block device does not exist."""
 
     pass
 
 
 class DrbdVolumeNotInSyncException(MCVirtException):
-    """The last Drbd verification of the volume failed"""
+    """The last Drbd verification of the volume failed."""
 
     pass
 
@@ -376,115 +376,115 @@ class InsufficientSpaceException(MCVirtException):
 
 
 class UnknownStorageTypeException(MCVirtException):
-    """An hard drive object with an unknown disk type has been initialised"""
+    """An hard drive object with an unknown disk type has been initialised."""
 
     pass
 
 
 class NetworkAdapterDoesNotExistException(MCVirtException):
-    """The network adapter does not exist"""
+    """The network adapter does not exist."""
 
     pass
 
 
 class ConfigFileCouldNotBeFoundException(MCVirtException):
-    """Config file could not be found"""
+    """Config file could not be found."""
 
     pass
 
 
 class MigrationFailureExcpetion(MCVirtException):
-    """A Libvirt Exception occurred whilst performing a migration"""
+    """A Libvirt Exception occurred whilst performing a migration."""
 
     pass
 
 
 class InvalidVirtualMachineNameException(MCVirtException):
-    """VM is being created with an invalid name"""
+    """VM is being created with an invalid name."""
 
     pass
 
 
 class VmAlreadyExistsException(MCVirtException):
-    """VM is being created with a duplicate name"""
+    """VM is being created with a duplicate name."""
 
     pass
 
 
 class VmDirectoryAlreadyExistsException(MCVirtException):
-    """Directory for a VM already exists"""
+    """Directory for a VM already exists."""
 
     pass
 
 
 class VmAlreadyStoppedException(MCVirtException):
-    """VM is already stopped when attempting to stop it"""
+    """VM is already stopped when attempting to stop it."""
 
     pass
 
 
 class VmAlreadyStartedException(MCVirtException):
-    """VM is already started when attempting to start it"""
+    """VM is already started when attempting to start it."""
 
     pass
 
 
 class VmAlreadyRegisteredException(MCVirtException):
-    """VM is already registered on a node"""
+    """VM is already registered on a node."""
 
     pass
 
 
 class VmRegisteredElsewhereException(MCVirtException):
-    """Attempt to perform an action on a VM registered on another node"""
+    """Attempt to perform an action on a VM registered on another node."""
 
     pass
 
 
 class VmRunningException(MCVirtException):
-    """An offline migration can only be performed on a powered off VM"""
+    """An offline migration can only be performed on a powered off VM."""
 
     pass
 
 
 class VmStoppedException(MCVirtException):
-    """An online migration can only be performed on a powered on VM"""
+    """An online migration can only be performed on a powered on VM."""
 
     pass
 
 
 class UnsuitableNodeException(MCVirtException):
-    """The node is unsuitable to run the VM. Tag: Common"""
+    """The node is unsuitable to run the VM. Tag: Common."""
 
     pass
 
 
 class VmNotRegistered(MCVirtException):
-    """The virtual machine is not currently registered on a node"""
+    """The virtual machine is not currently registered on a node."""
 
     pass
 
 
 class CannotStartClonedVmException(MCVirtException):
-    """Cloned VMs cannot be started"""
+    """Cloned VMs cannot be started."""
 
     pass
 
 
 class CannotCloneDrbdBasedVmsException(MCVirtException):
-    """Cannot clone Drbd-based VMs"""
+    """Cannot clone Drbd-based VMs."""
 
     pass
 
 
 class CannotDeleteClonedVmException(MCVirtException):
-    """Cannot delete a cloned VM"""
+    """Cannot delete a cloned VM."""
 
     pass
 
 
 class VirtualMachineLockException(MCVirtException):
-    """Lock cannot be set to the current lock state"""
+    """Lock cannot be set to the current lock state."""
 
     pass
 
@@ -500,61 +500,61 @@ class InvalidArgumentException(MCVirtException):
 
 
 class VirtualMachineDoesNotExistException(MCVirtException):
-    """Virtual machine does not exist"""
+    """Virtual machine does not exist."""
 
     pass
 
 
 class VmIsCloneException(MCVirtException):
-    """VM is a clone"""
+    """VM is a clone."""
 
     pass
 
 
 class VncNotEnabledException(MCVirtException):
-    """VNC is not enabled on the VM"""
+    """VNC is not enabled on the VM."""
 
     pass
 
 
 class CannotMigrateLocalDiskException(MCVirtException):
-    """Local disks cannot be migrated"""
+    """Local disks cannot be migrated."""
 
     pass
 
 
 class DiskAlreadyExistsException(MCVirtException):
-    """The disk already exists"""
+    """The disk already exists."""
 
     pass
 
 
 class MCVirtCommandException(MCVirtException):
-    """Provides an exception to be thrown after errors whilst calling external commands"""
+    """Provides an exception to be thrown after errors whilst calling external commands."""
 
     pass
 
 
 class InterfaceDoesNotExist(MCVirtException):
-    """Physical interface does not exist"""
+    """Physical interface does not exist."""
 
     pass
 
 
 class MissingConfigurationException(MCVirtException):
-    """Configuration is missing"""
+    """Configuration is missing."""
 
     pass
 
 
 class CACertificateAlreadyExists(MCVirtException):
-    """CA file for server already exists"""
+    """CA file for server already exists."""
 
     pass
 
 
 class MustGenerateCertificateException(MCVirtException):
-    """The certificate cannot be manually added and must be generated"""
+    """The certificate cannot be manually added and must be generated."""
 
     pass
 
@@ -572,115 +572,115 @@ class UserAlreadyExistsException(MCVirtException):
 
 
 class LibvirtNotInstalledException(MCVirtException):
-    """Libvirt does not appear to be installed"""
+    """Libvirt does not appear to be installed."""
 
     pass
 
 
 class AttributeAlreadyChanged(MCVirtException):
-    """Attribute, user is trying to change, has already changed"""
+    """Attribute, user is trying to change, has already changed."""
 
     pass
 
 
 class BlankPasswordException(MCVirtException):
-    """The provided password is blank"""
+    """The provided password is blank."""
 
     pass
 
 
 class NodeVersionMismatch(MCVirtException, Pyro4.errors.SecurityError):
-    """A node is running a different version of MCVirt. Tag: Cluster"""
+    """A node is running a different version of MCVirt. Tag: Cluster."""
 
     pass
 
 
 class InaccessibleNodeException(MCVirtException, Pyro4.errors.SecurityError):
-    """Unable to connect to node in the cluster. Tag: Cluster"""
+    """Unable to connect to node in the cluster. Tag: Cluster."""
 
     pass
 
 
 class LdapConnectionFailedException(MCVirtException):
-    """Connection to the LDAP server failed"""
+    """Connection to the LDAP server failed."""
 
     pass
 
 
 class LdapNotEnabledException(MCVirtException):
-    """Ldap has not been enabled on the node"""
+    """Ldap has not been enabled on the node."""
 
     pass
 
 
 class ResyncNotSupportedException(MCVirtException):
-    """Resync is not supported on this storage type"""
+    """Resync is not supported on this storage type."""
 
     pass
 
 
 class InvalidGraphicsDriverException(MCVirtException):
-    """The provided graphics driver name was not valid"""
+    """The provided graphics driver name was not valid."""
 
     pass
 
 
 class TooManyParametersException(MCVirtException):
-    """Too many parameters have been defined. Tag: Common"""
+    """Too many parameters have been defined. Tag: Common."""
 
     pass
 
 
 class InvalidModificationFlagException(MCVirtException):
-    """The provided modification flag name was invalid"""
+    """The provided modification flag name was invalid."""
 
     pass
 
 
 class MCVirtTypeError(MCVirtException):
-    """TypeError raised by MCVirt. Tag: Common"""
+    """TypeError raised by MCVirt. Tag: Common."""
 
     pass
 
 
 class UsbDeviceAttachedToVirtualMachine(MCVirtException):
-    """The USB device is already attached to a virtual machine"""
+    """The USB device is already attached to a virtual machine."""
 
     pass
 
 
 class UnknownLdapError(MCVirtException):
-    """An unknown LDAP error has occurred"""
+    """An unknown LDAP error has occurred."""
 
     pass
 
 
 class StorageBackendDoesNotExist(MCVirtException):
-    """Storage backend does not exist"""
+    """Storage backend does not exist."""
 
     pass
 
 
 class InvalidStorageConfiguration(MCVirtException):
-    """Invalid storage configuration"""
+    """Invalid storage configuration."""
 
     pass
 
 
 class NodeAlreadyConfiguredInStorageBackend(MCVirtException):
-    """Node is already configured for the storage backend"""
+    """Node is already configured for the storage backend."""
 
     pass
 
 
 class StorageBackendInUse(MCVirtException):
-    """Storage is in use and cannot be deleted"""
+    """Storage is in use and cannot be deleted."""
 
     pass
 
 
 class StorageBackendNotAvailableOnNode(MCVirtException):
-    """Storage backend defined, is not available on the given node"""
+    """Storage backend defined, is not available on the given node."""
 
     pass
 
@@ -694,43 +694,43 @@ class UnknownStorageBackendException(MCVirtException):
 
 
 class VolumeDoesNotExistError(MCVirtException):
-    """Volume does not exist"""
+    """Volume does not exist."""
 
     pass
 
 
 class VolumeAlreadyExistsError(MCVirtException):
-    """Volume already exists"""
+    """Volume already exists."""
 
     pass
 
 
 class DDCommandError(MCVirtException):
-    """An error ocurred whilst running dd"""
+    """An error ocurred whilst running dd."""
 
     pass
 
 
 class NetworkNotAvailableOnNodeError(MCVirtException):
-    """Network is not available on given node"""
+    """Network is not available on given node."""
 
     pass
 
 
 class InvalidStorageBackendError(MCVirtException):
-    """Selected storage backend does not support DRBD"""
+    """Selected storage backend does not support DRBD."""
 
     pass
 
 
 class InconsistentVolumeSizeError(MCVirtException):
-    """Volumes are of an inconsistent size across cluster"""
+    """Volumes are of an inconsistent size across cluster."""
 
     pass
 
 
 class StorageBackendAlreadyExistsError(MCVirtException):
-    """Storage volume already exist with same name"""
+    """Storage volume already exist with same name."""
 
     pass
 
@@ -752,127 +752,127 @@ class CannotUnshareInUseStorageBackendError(MCVirtException):
 
 
 class NodeUsedByStaticVirtualMachine(MCVirtException):
-    """Node is in use by static virtual machines"""
+    """Node is in use by static virtual machines."""
 
     pass
 
 
 class NodeNotConfiguredInStorageBackend(MCVirtException):
-    """Node is not configured for the storage backend"""
+    """Node is not configured for the storage backend."""
 
     pass
 
 
 class CannotRemoveNodeFromGlobalStorageBackend(MCVirtException):
-    """A node cannot be removed from a global storage backend"""
+    """A node cannot be removed from a global storage backend."""
 
     pass
 
 
 class AlreadyElevatedPermissionsError(MCVirtException):
-    """Cannot elevate permissions twice"""
+    """Cannot elevate permissions twice."""
 
     pass
 
 
 class GroupAlreadyExistsError(MCVirtException):
-    """Group already exists"""
+    """Group already exists."""
 
     pass
 
 
 class GroupDoesNotExistError(MCVirtException):
-    """Group does not exist"""
+    """Group does not exist."""
 
     pass
 
 
 class GropuInUseError(MCVirtException):
-    """Group is in use"""
+    """Group is in use."""
 
     pass
 
 
 class GroupAlreadyContainsPermissionError(MCVirtException):
-    """Group already contains permission"""
+    """Group already contains permission."""
 
     pass
 
 
 class GroupDoesNotContainPermissionError(MCVirtException):
-    """Group does not contain permission"""
+    """Group does not contain permission."""
 
     pass
 
 
 class InvalidPermissionError(MCVirtTypeError):
-    """An invalid permission was passed"""
+    """An invalid permission was passed."""
 
     pass
 
 
 class UserAlreadyHasPermissionError(MCVirtException):
-    """User already has permission"""
+    """User already has permission."""
 
     pass
 
 
 class UserDoesNotHavePermissionError(MCVirtException):
-    """User does not have permission"""
+    """User does not have permission."""
 
     pass
 
 
 class TimeoutExceededSerialLockError(MCVirtException):
-    """Timeout exceeded whilst waiting for serial lock"""
+    """Timeout exceeded whilst waiting for serial lock."""
 
     pass
 
 
 class SizeMustBeMultipleOf512Error(MCVirtException):
-    """Storage sizes must be a multiple of 512 bytes"""
+    """Storage sizes must be a multiple of 512 bytes."""
 
     pass
 
 
 class InvalidSizeFormatError(MCVirtException):
-    """Size was specified in an invalid format"""
+    """Size was specified in an invalid format."""
 
     pass
 
 
 class InvalidSizeSuffixError(MCVirtException):
-    """Size does not use a valid suffix"""
+    """Size does not use a valid suffix."""
 
     pass
 
 
 class SizeNotIntegerBytesError(MCVirtException):
-    """Size resolves to a decimal amount of bytes"""
+    """Size resolves to a decimal amount of bytes."""
 
     pass
 
 
 class InvalidConfirmationCodeError(MCVirtException):
-    """Confirmation code is not correct"""
+    """Confirmation code is not correct."""
 
     pass
 
 
 class DeleteProtectionAlreadyEnabledError(MCVirtException):
-    """Delete protection is already enabled"""
+    """Delete protection is already enabled."""
 
     pass
 
 
 class DeleteProtectionNotEnabledError(MCVirtException):
-    """Delete protection is not enabled on the VM"""
+    """Delete protection is not enabled on the VM."""
 
     pass
 
 
 class DeleteProtectionEnabledError(MCVirtTypeError):
-    """Delete protection is enabled on the VM"""
+    """Delete protection is enabled on the VM."""
 
     pass
 
@@ -886,43 +886,55 @@ class IntermediateUpgradeRequiredError(MCVirtException):
 
 
 class HardDriveNotAttachedToVirtualMachineError(MCVirtException):
-    """Hard drive is not attached to a virtual machine"""
+    """Hard drive is not attached to a virtual machine."""
 
     pass
 
 
 class HardDriveAttachmentDoesNotExistError(MCVirtException):
-    """Hard drive attachment does not exist"""
+    """Hard drive attachment does not exist."""
 
     pass
 
 
 class VirtualMachineNotRegisteredWithLibvirt(MCVirtException):
-    """Virtual machine is not registered with libvirt"""
+    """Virtual machine is not registered with libvirt."""
 
     pass
 
 
 class DatabaseClassAlreadyInstanciatedError(MCVirtException):
-    """Database class already instanciated"""
+    """Database class already instanciated."""
 
     pass
 
 
 class DoNotHaveDatabaseConnectionLockError(MCVirtException):
-    """Do not have DB connection lock"""
+    """Do not have DB connection lock."""
 
     pass
 
 
 class UnableToObtainDatabaseLockError(MCVirtException):
-    """Obtain to obtain database lock"""
+    """Obtain to obtain database lock."""
 
     pass
 
 
 class UnknownAgentCommandRun(MCVirtException):
-    """Agent run command was not known"""
+    """Agent run command was not known."""
+
+    pass
+
+
+class TaskSchedulerConflictError(MCVirtException):
+    """Task scheduler suffered a conflict with another node"""
+
+    pass
+
+
+class TaskCancelledError(MCVirtException):
+    """Task has been cancelled"""
 
     pass
 

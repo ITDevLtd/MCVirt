@@ -30,7 +30,7 @@ from mcvirt.node.ldap_factory import LdapFactory
 
 
 class LdapTests(TestBase):
-    """Provides unit tests for LDAP authentication"""
+    """Provides unit tests for LDAP authentication."""
 
     TEST_LDAP_CONFIG = {
         "bind_pass": "",
@@ -63,25 +63,25 @@ class LdapTests(TestBase):
 
     @classmethod
     def setUpClass(cls):
-        """Setup class, creating mock ldap object"""
+        """Setup class, creating mock ldap object."""
         super(cls, LdapTests).setUpClass()
         cls.mockldap = MockLdap(cls.DIRECTORY)
 
     @classmethod
     def tearDownClass(cls):
-        """REmove mock ldap object"""
+        """REmove mock ldap object."""
         del cls.mockldap
         super(cls, LdapTests).tearDownClass()
 
     def setUp(self):
-        """Create test Ldap configuration"""
+        """Create test Ldap configuration."""
         super(LdapTests, self).setUp()
 
         # Keep a copy of the original Ldap config so it can be restored in the tear down
         self.original_ldap_config = MCVirtConfig().get_config()['ldap']
 
         def update_config(config):
-            """Upate LDAP config in MCVirt config"""
+            """Upate LDAP config in MCVirt config."""
             config['ldap'] = LdapTests.TEST_LDAP_CONFIG
         MCVirtConfig().update_config(update_config, 'Create test Ldap configuration')
 
@@ -91,9 +91,9 @@ class LdapTests(TestBase):
         self.ldap_factory = LdapFactory()
 
     def tearDown(self):
-        """Restore the correct Ldap configuration"""
+        """Restore the correct Ldap configuration."""
         def reset_config(config):
-            """Reset LDAP config in MCVirt config"""
+            """Reset LDAP config in MCVirt config."""
             config['ldap'] = self.original_ldap_config
         MCVirtConfig().update_config(reset_config, 'Reset Ldap configuration')
 
@@ -104,7 +104,7 @@ class LdapTests(TestBase):
 
     @staticmethod
     def suite():
-        """Returns a test suite of the Ldap tests"""
+        """Returns a test suite of the Ldap tests."""
         suite = unittest.TestSuite()
         suite.addTest(LdapTests('test_valid_user'))
         suite.addTest(LdapTests('test_invalid_user'))
@@ -113,18 +113,18 @@ class LdapTests(TestBase):
         return suite
 
     def run_test_command(self, username, password):
-        """Run the list command with the provided credentials"""
+        """Run the list command with the provided credentials."""
         Parser(verbose=False).parse_arguments('list --username %s --password %s' %
                                               (username, password))
 
     def check_parser(self, command, option, expected_value):
         """Run the provided command and assert that the specified option in the Ldap config has
-        changed to the appropriate value"""
+        changed to the appropriate value."""
         self.parser.parse_arguments(command)
         self.assertEquals(MCVirtConfig().get_config()['ldap'][option], expected_value)
 
     def test_parser(self):
-        """Test the Ldap options work correctly in the parser"""
+        """Test the Ldap options work correctly in the parser."""
         self.check_parser('node --enable-ldap', 'enabled', True)
         self.check_parser('node --disable-ldap', 'enabled', False)
 
@@ -163,7 +163,7 @@ class LdapTests(TestBase):
         self.assertTrue(os.path.exists(ca_cert_path))
 
     def test_valid_user(self):
-        """Test running a command with valid Ldap credentials"""
+        """Test running a command with valid Ldap credentials."""
         try:
             self.run_test_command(LdapTests.TEST_USERS[0]['username'],
                                   LdapTests.TEST_USERS[0]['password'])
@@ -171,7 +171,7 @@ class LdapTests(TestBase):
             self.fail('Valid Ldap credentials resulted in authentication failure')
 
     def test_invalid_user(self):
-        """Test running a command with invalid Ldap credentials"""
+        """Test running a command with invalid Ldap credentials."""
         # Test using a valid username but invalid password
         with self.assertRaises(AuthenticationError):
             self.run_test_command(LdapTests.TEST_USERS[0]['username'], 'wrong-password')
@@ -181,9 +181,9 @@ class LdapTests(TestBase):
             self.run_test_command('invalid-user', 'wrong-password')
 
     def test_user_search(self):
-        """Test that getting LDAP usernames takes the user_search attribute into account"""
+        """Test that getting LDAP usernames takes the user_search attribute into account."""
         def update_config(config):
-            """Update LDAP config in MCVirt config"""
+            """Update LDAP config in MCVirt config."""
             config['ldap']['user_search'] = '(loginShell=/bin/bash)'
         MCVirtConfig().update_config(update_config, 'Set user_search')
 

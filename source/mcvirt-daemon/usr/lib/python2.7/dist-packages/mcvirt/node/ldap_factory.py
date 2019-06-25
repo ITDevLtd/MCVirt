@@ -30,18 +30,18 @@ from mcvirt.constants import DirectoryLocation
 
 
 class LdapFactory(PyroObject):
-    """Performs configuration of DRBD on the node"""
+    """Performs configuration of DRBD on the node."""
 
     CONNECTION = None
     UNCHANGED = object()
 
     @property
     def ldap_ca_cert_path(self):
-        """Return the path for the LDAP CA certificate"""
+        """Return the path for the LDAP CA certificate."""
         return '%s/ldap-ca.crt' % (DirectoryLocation.NODE_STORAGE_DIR)
 
     def get_connection(self, bind_dn=None, password=None):
-        """Return an LDAP object"""
+        """Return an LDAP object."""
         if not LdapFactory.is_enabled():
             raise LdapNotEnabledException('Ldap has not been configured on this node')
 
@@ -73,7 +73,7 @@ class LdapFactory(PyroObject):
 
     @staticmethod
     def is_enabled():
-        """Determine if LDAP authentication is enabled"""
+        """Determine if LDAP authentication is enabled."""
         return MCVirtConfig().get_config()['ldap']['enabled']
 
     @Expose(locking=True)
@@ -81,23 +81,23 @@ class LdapFactory(PyroObject):
         """Flag as to whether LDAP authentication
         is enabled or disabled.
         """
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
 
         def update_config(config):
-            """Enable LDAP in MCVirt config"""
+            """Enable LDAP in MCVirt config."""
             config['ldap']['enabled'] = enable
         MCVirtConfig().update_config(update_config, 'Updated LDAP status')
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remote_command(node_connection):
-                """Enable ldap on a remote node"""
+                """Enable ldap on a remote node."""
                 remote_ldap_factory = node_connection.get_connection('ldap_factory')
                 remote_ldap_factory.set_enable(enable)
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
     def get_user_filter(self, username=None):
-        """Determine a search filter based on user filtering and custom search filter"""
+        """Determine a search filter based on user filtering and custom search filter."""
         ldap_config = MCVirtConfig().get_config()['ldap']
         if username:
             username_filter = '(%s=%s)' % (ldap_config['username_attribute'], username)
@@ -122,7 +122,7 @@ class LdapFactory(PyroObject):
             return '(%s=*)' % ldap_config['username_attribute']
 
     def get_all_usernames(self):
-        """Return all users in the searchable LDAP directory"""
+        """Return all users in the searchable LDAP directory."""
         if not LdapFactory.is_enabled():
             return []
 
@@ -139,7 +139,7 @@ class LdapFactory(PyroObject):
         return [user_obj[1][ldap_config['username_attribute']][0] for user_obj in res]
 
     def search_dn(self, username):
-        """Determine a DN for a given username"""
+        """Determine a DN for a given username."""
         ldap_config = MCVirtConfig().get_config()['ldap']
         ldap_con = self.get_connection()
 
@@ -166,7 +166,7 @@ class LdapFactory(PyroObject):
         Setting values to None will set them to None in the config, as well as any passed
         string.
         """
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         config_changes = {}
         for config in ['server_uri', 'base_dn', 'user_search', 'bind_dn', 'bind_pass',
                        'username_attribute']:
@@ -175,7 +175,7 @@ class LdapFactory(PyroObject):
                 config_changes[config] = value
 
         def update_config(config):
-            """Update LDAP conifg in MCVirt config"""
+            """Update LDAP conifg in MCVirt config."""
             config['ldap'].update(config_changes)
         MCVirtConfig().update_config(update_config, 'Updated LDAP configuration')
 
@@ -188,10 +188,10 @@ class LdapFactory(PyroObject):
                 ca_fh.write(ca_cert)
             config_changes['ca_cert'] = ca_cert
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remote_command(node_connection):
-                """Update ldap config in remote nodes"""
+                """Update ldap config in remote nodes."""
                 remote_ldap_factory = node_connection.get_connection('ldap_factory')
                 remote_ldap_factory.set_config(**config_changes)
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)

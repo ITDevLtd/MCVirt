@@ -19,10 +19,10 @@
 
 
 class CloneParser(object):
-    """Handle VM clone parser"""
+    """Handle VM clone parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for VM clone"""
+        """Create subparser for VM clone."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -39,7 +39,7 @@ class CloneParser(object):
         self.clone_parser.add_argument('vm_name', metavar='VM Name', type=str, help='Name of VM')
 
     def handle_clone(self, p_, args):
-        """Handle VM clone"""
+        """Handle VM clone."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.template)
         p_.rpc.annotate_object(vm_object)

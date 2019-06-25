@@ -46,61 +46,61 @@ WATCHDOG_STATES = Enum(
 
 
 class WatchdogFactory(PyroObject):
-    """Object to configure and create watchdog daemons"""
+    """Object to configure and create watchdog daemons."""
 
     def __init__(self):
-        """Intialise state of watchdogs"""
+        """Intialise state of watchdogs."""
         self.watchdogs = {}
 
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
-        """Obtain an instance of the watchdog factory on a remote node"""
-        cluster = self._get_registered_object('cluster')
+        """Obtain an instance of the watchdog factory on a remote node."""
+        cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
         return node_object.get_connection('watchdog_factory')
 
     def initialise(self):
-        """Detect running VMs on local node and create watchdog daemon"""
+        """Detect running VMs on local node and create watchdog daemon."""
         # Check all VMs
-        for virtual_machine in self._get_registered_object(
+        for virtual_machine in self.po__get_registered_object(
                 'virtual_machine_factory').get_all_virtual_machines():
 
             Syslogger.logger().debug('Registering watchdog for: %s' % virtual_machine.get_name())
             self.start_watchdog(virtual_machine)
 
     def start_watchdog(self, virtual_machine):
-        """Create watchdog and start"""
+        """Create watchdog and start."""
         watchdog = self.get_watchdog(virtual_machine)
         watchdog.initialise()
 
     def stop_watchdog(self, virtual_machine):
-        """Stop watchdog"""
+        """Stop watchdog."""
         watchdog = self.get_watchdog(virtual_machine)
         watchdog.cancel()
 
     def get_watchdog(self, virtual_machine):
-        """Get a watchdog obect for a given virtual machine"""
+        """Get a watchdog obect for a given virtual machine."""
         if virtual_machine.get_name() not in self.watchdogs:
             self.watchdogs[virtual_machine.get_name()] = Watchdog(virtual_machine)
         return self.watchdogs[virtual_machine.get_name()]
 
     def cancel(self):
-        """Stop all threads"""
+        """Stop all threads."""
         for watchdog in self.watchdogs.values():
             watchdog.repeat = False
             watchdog.cancel()
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def update_watchdog_config(self, change_dict, reason, _f):
-        """Update global watchdog config using dict"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        """Update global watchdog config using dict."""
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def update_config(config):
-            """Update mcvirt config"""
+            """Update mcvirt config."""
             _f.add_undo_argument(original_config=dict(config['watchdog']))
             dict_merge(config['watchdog'], change_dict)
 
@@ -108,12 +108,12 @@ class WatchdogFactory(PyroObject):
 
     @Expose(locking=True)
     def undo__update_vm_config(self, change_dict, reason, _f, original_config=None):
-        """Undo config change"""
-        self._get_registered_object('auth').assert_user_type('ClusterUser',
+        """Undo config change."""
+        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
                                                              allow_indirect=True)
 
         def revert_config(config):
-            """Revert config"""
+            """Revert config."""
             config['watchdog'] = original_config
 
         if original_config is not None:
@@ -121,59 +121,59 @@ class WatchdogFactory(PyroObject):
 
     @Expose(locking=True)
     def set_global_interval(self, interval):
-        """Set global default watchdog check interval"""
+        """Set global default watchdog check interval."""
         ArgumentValidator.validate_positive_integer(interval)
 
         # Check permissions
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
 
         self.update_watchdog_config(
             change_dict={'interval': interval},
             reason='Update global watchdog interval',
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
     @Expose(locking=True)
     def set_global_reset_fail_count(self, count):
-        """Set global default watchdog reset fail count"""
+        """Set global default watchdog reset fail count."""
         ArgumentValidator.validate_positive_integer(count)
 
         # Check permissions
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
 
         self.update_watchdog_config(
             change_dict={'reset_fail_count': count},
             reason='Update global watchdog reset fail count',
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
     @Expose(locking=True)
     def set_global_boot_wait(self, wait):
-        """Set the global default boot wait period"""
+        """Set the global default boot wait period."""
         ArgumentValidator.validate_positive_integer(wait)
 
         # Check permissions
-        self._get_registered_object('auth').assert_permission(
+        self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.MANAGE_GLOBAL_WATCHDOG)
 
         self.update_watchdog_config(
             change_dict={'boot_wait': wait},
             reason='Update global watchdog boot wait period',
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
 
 class Watchdog(RepeatTimer):
-    """Watchdog timer thread for checking VM status"""
+    """Watchdog timer thread for checking VM status."""
 
     def __init__(self, virtual_machine, *args, **kwargs):
-        """Store virtual machine and initialise state"""
+        """Store virtual machine and initialise state."""
         self.virtual_machine = virtual_machine
         self.state = WATCHDOG_STATES.INITIALISING
         self.fail_count = 0
         super(Watchdog, self).__init__(*args, **kwargs)
 
     def set_state(self, new_state):
-        """Set state"""
+        """Set state."""
         if self.state != new_state:
             Syslogger.logger().debug(
                 'State for (%s) changed from %s to %s' %
@@ -183,7 +183,7 @@ class Watchdog(RepeatTimer):
 
     @property
     def interval(self):
-        """Return the timer interval"""
+        """Return the timer interval."""
         if self.state is WATCHDOG_STATES.STARTUP:
             boot_wait = self.virtual_machine.get_watchdog_boot_wait()
             Syslogger.logger().debug(
@@ -193,7 +193,7 @@ class Watchdog(RepeatTimer):
             return self.virtual_machine.get_watchdog_interval()
 
     def run(self):
-        """Perform watchdog check"""
+        """Perform watchdog check."""
         Syslogger.logger().debug('Watchdog checking: %s' %
                                  self.virtual_machine.get_name())
         Pyro4.current_context.INTERNAL_REQUEST = True

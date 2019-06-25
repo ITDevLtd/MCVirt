@@ -19,10 +19,10 @@
 
 
 class ListParser(object):
-    """Handle VM list parser"""
+    """Handle VM list parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for VM list"""
+        """Create subparser for VM list."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -39,7 +39,7 @@ class ListParser(object):
                                       help='Include HDD column', action='store_true')
 
     def handle_list(self, p_, args):
-        """Handle VM listing"""
+        """Handle VM listing."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         p_.print_status(vm_factory.listVms(include_cpu=args.include_cpu,
                                            include_ram=args.include_ram,

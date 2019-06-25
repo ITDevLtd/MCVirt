@@ -41,7 +41,7 @@ from mcvirt.size_converter import SizeConverter
 
 
 class GraphicsDriver(Enum):
-    """Enums for specifying the graphics driver type"""
+    """Enums for specifying the graphics driver type."""
 
     VGA = 'vga'
     CIRRUS = 'cirrus'
@@ -52,7 +52,7 @@ class GraphicsDriver(Enum):
 
 
 class Factory(PyroObject):
-    """Class for obtaining virtual machine objects"""
+    """Class for obtaining virtual machine objects."""
 
     OBJECT_TYPE = 'virtual machine'
     VIRTUAL_MACHINE_CLASS = VirtualMachine
@@ -61,7 +61,7 @@ class Factory(PyroObject):
     CACHED_SERIAL_OBJECTS = {}
 
     def autostart(self, start_type=AutoStartStates.ON_POLL):
-        """Autostart VMs"""
+        """Autostart VMs."""
         Syslogger.logger().info('Starting autostart: %s' % start_type.name)
         for vm in self.get_all_virtual_machines():
             try:
@@ -85,8 +85,8 @@ class Factory(PyroObject):
     def get_remote_object(self,
                           node=None,     # The name of the remote node to connect to
                           node_object=None):   # Otherwise, pass a remote node connection
-        """Obtain an instance of the virtual machine factory on a remote node"""
-        cluster = self._get_registered_object('cluster')
+        """Obtain an instance of the virtual machine factory on a remote node."""
+        cluster = self.po__get_registered_object('cluster')
         if node_object is None:
             node_object = cluster.get_remote_node(node)
 
@@ -94,7 +94,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_virtual_machine_by_name(self, vm_name):
-        """Obtain a VM object, based on VM name"""
+        """Obtain a VM object, based on VM name."""
         ArgumentValidator.validate_hostname(vm_name)
         name_id_dict = {
             val['name']: key
@@ -109,7 +109,7 @@ class Factory(PyroObject):
 
     @Expose()
     def get_virtual_machine_by_id(self, vm_id):
-        """Obtain a VM object, based on VM name"""
+        """Obtain a VM object, based on VM name."""
         # Validate VM ID
         ArgumentValidator.validate_id(vm_id, VirtualMachine)
 
@@ -124,7 +124,7 @@ class Factory(PyroObject):
             # If not, create object, register with pyro
             # and store in cached object dict
             vm_object = VirtualMachine(vm_id)
-            self._register_object(vm_object)
+            self.po__register_object(vm_object)
             vm_object.initialise()
             Factory.CACHED_OBJECTS[vm_id] = vm_object
 
@@ -133,17 +133,17 @@ class Factory(PyroObject):
 
     @Expose()
     def get_all_virtual_machines(self, node=None):
-        """Return objects for all virtual machines"""
+        """Return objects for all virtual machines."""
         return [self.get_virtual_machine_by_id(vm_id) for vm_id in self.get_all_vm_ids(node=node)]
 
     @Expose()
     def get_all_vm_ids(self, node=None):
-        """Get all VM IDs"""
+        """Get all VM IDs."""
         return VirtualMachineConfig.get_global_config().keys()
 
     @Expose()
     def getAllVmNames(self, node=None):
-        """Returns a list of all VMs within the cluster or those registered on a specific node"""
+        """Returns a list of all VMs within the cluster or those registered on a specific node."""
         if node is not None:
             ArgumentValidator.validate_hostname(node)
 
@@ -157,27 +157,27 @@ class Factory(PyroObject):
             #         and use a seperate function to get libvirt
             #         registered VMs
             # Obtain array of all domains from libvirt
-            all_domains = self._get_registered_object(
+            all_domains = self.po__get_registered_object(
                 'libvirt_connector').get_connection().listAllDomains()
             return [vm.name() for vm in all_domains]
 
         else:
             # Return list of VMs registered on remote node
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
 
             def remote_command(node_connection):
-                """Get virtual machine names from remote node"""
+                """Get virtual machine names from remote node."""
                 virtual_machine_factory = node_connection.get_connection('virtual_machine_factory')
                 return virtual_machine_factory.getAllVmNames(node=node)
             return cluster.run_remote_command(callback_method=remote_command, nodes=[node])[node]
 
     @Expose()
     def listVms(self, include_ram=False, include_cpu=False, include_disk=False):
-        """Lists the VMs that are currently on the host"""
+        """Lists the VMs that are currently on the host."""
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        self._get_registered_object('auth').set_permission_asserted()
+        self.po__get_registered_object('auth').set_permission_asserted()
 
         # Create base table
         table = Texttable()
@@ -221,7 +221,7 @@ class Factory(PyroObject):
 
     @Expose()
     def check_exists(self, id_):
-        """Determines if a VM exists, given a name"""
+        """Determines if a VM exists, given a name."""
         try:
             ArgumentValidator.validate_id(id_, VirtualMachine)
         except (MCVirtTypeError, InvalidVirtualMachineNameException):
@@ -231,7 +231,7 @@ class Factory(PyroObject):
 
     @Expose()
     def check_exists_by_name(self, name):
-        """Determines if a VM exists, given a name"""
+        """Determines if a VM exists, given a name."""
         try:
             ArgumentValidator.validate_hostname(name)
         except (MCVirtTypeError, InvalidVirtualMachineNameException):
@@ -257,7 +257,7 @@ class Factory(PyroObject):
         return True
 
     def ensure_graphics_driver_valid(self, driver):
-        """Check that the provided graphics driver name is valid"""
+        """Check that the provided graphics driver name is valid."""
         if driver not in [i.value for i in list(GraphicsDriver)]:
             raise InvalidGraphicsDriverException('Invalid graphics driver \'%s\'' % driver)
 
@@ -271,7 +271,7 @@ class Factory(PyroObject):
         """
         networks = [] if networks is None else networks
 
-        cluster = self._get_registered_object('cluster')
+        cluster = self.po__get_registered_object('cluster')
 
         # Ensure all nodes are valid, if defined
         if nodes:
@@ -289,7 +289,7 @@ class Factory(PyroObject):
         # If defined, ensure that all networks exist
         if networks:
             for network in networks:
-                network_factory = self._get_registered_object('network_factory')
+                network_factory = self.po__get_registered_object('network_factory')
                 network_factory.ensure_exists(network)
 
                 # Obtain network object
@@ -312,7 +312,7 @@ class Factory(PyroObject):
         if required_storage_size:
             # Use the hard drive factory to determine whether the given
             # storage requirements are possible, given the available nodes.
-            hard_drive_factory = self._get_registered_object('hard_drive_factory')
+            hard_drive_factory = self.po__get_registered_object('hard_drive_factory')
             nodes, storage_type, storage_backend = hard_drive_factory.ensure_hdd_valid(
                 size=required_storage_size, storage_type=storage_type, nodes=nodes,
                 storage_backend=storage_backend, nodes_predefined=nodes_predefined
@@ -322,8 +322,8 @@ class Factory(PyroObject):
 
     @Expose(locking=True, instance_method=True)
     def create(self, *args, **kwargs):
-        """Exposed method for creating a VM, that performs a permission check"""
-        self._get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
+        """Exposed method for creating a VM, that performs a permission check."""
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.CREATE_VM)
         return self._create(*args, **kwargs)
 
     def _create(self,
@@ -344,7 +344,7 @@ class Factory(PyroObject):
                                         # will default to an available storage backend,
                                         # if only 1 is avaiallbe.
                 is_static=None):  # Manually override whether the VM is marked as static
-        """Create a VM and returns the virtual_machine object for it"""
+        """Create a VM and returns the virtual_machine object for it."""
         # @TODO: Does this method need to do EVERYTHING?
         #       Maybe it should create the BARE MINIMUM required for a VM
         #       and leave it up to the parser to create everything else.
@@ -370,7 +370,7 @@ class Factory(PyroObject):
                              SizeConverter.from_string(memory_allocation).to_bytes())
 
         if storage_backend:
-            storage_backend = self._convert_remote_object(storage_backend)
+            storage_backend = self.po__convert_remote_object(storage_backend)
 
         # Ensure name is valid, as well as other attributes
         self.checkName(name)
@@ -386,7 +386,7 @@ class Factory(PyroObject):
         for available_node in available_nodes:
             ArgumentValidator.validate_hostname(available_node)
 
-        cluster_object = self._get_registered_object('cluster')
+        cluster_object = self.po__get_registered_object('cluster')
         local_hostname = get_hostname()
 
         if node and available_nodes and node not in available_nodes:
@@ -406,13 +406,13 @@ class Factory(PyroObject):
             node = local_hostname
 
         # Ensure that the local node is included in the list of available nodes
-        if self._is_cluster_master and local_hostname not in available_nodes:
+        if self.po__is_cluster_master and local_hostname not in available_nodes:
             raise InvalidNodesException('Local node must included in available nodes')
 
         # Ensure storage_type is a valid type, if specified
-        hard_drive_factory = self._get_registered_object('hard_drive_factory')
+        hard_drive_factory = self.po__get_registered_object('hard_drive_factory')
         assert storage_type in [None] + [
-            storage_type_itx.__name__ for storage_type_itx in self._get_registered_object(
+            storage_type_itx.__name__ for storage_type_itx in self.po__get_registered_object(
                 'hard_drive_factory').get_all_storage_types()
         ]
 
@@ -429,7 +429,7 @@ class Factory(PyroObject):
 
         # Ensure the cluster has not been ignored, as VMs cannot be created with MCVirt running
         # in this state
-        if self._cluster_disabled:
+        if self.po__cluster_disabled:
             raise ClusterNotInitialisedException('VM cannot be created whilst the cluster' +
                                                  ' is not initialised')
 
@@ -441,7 +441,7 @@ class Factory(PyroObject):
         if os_path_exists(VirtualMachine.get_vm_dir(name)):
             raise VmDirectoryAlreadyExistsException('Error: VM directory already exists')
 
-        if local_hostname not in available_nodes and self._is_cluster_master:
+        if local_hostname not in available_nodes and self.po__is_cluster_master:
             raise InvalidNodesException('One of the nodes must be the local node')
 
         # Create VM configuration file
@@ -460,21 +460,21 @@ class Factory(PyroObject):
 
         vm_object = self.create_config(
             id_, name, config_nodes, cpu_cores, memory_allocation, graphics_driver,
-            nodes=self._get_registered_object('cluster').get_nodes(include_local=True))
+            nodes=self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
         if node == get_hostname():
             # Register VM with LibVirt. If MCVirt has not been initialised on this node,
             # do not set the node in the VM configuration, as the change can't be
             # replicated to remote nodes
-            vm_object._register(set_node=self._is_cluster_master)
-        elif self._is_cluster_master:
+            vm_object._register(set_node=self.po__is_cluster_master)
+        elif self.po__is_cluster_master:
             # If MCVirt has been initialised on this node and the local machine is
             # not the node that the VM will be registered on, set the node on the VM
             vm_object._setNode(node)
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             # Create disk images
-            hard_drive_factory = self._get_registered_object('hard_drive_factory')
+            hard_drive_factory = self.po__get_registered_object('hard_drive_factory')
             for hard_drive_size in hard_drives:
                 hard_drive_factory.create(vm_object=vm_object, size=hard_drive_size,
                                           storage_type=storage_type, driver=hard_drive_driver,
@@ -483,8 +483,8 @@ class Factory(PyroObject):
 
             # If any have been specified, add a network configuration for each of the
             # network interfaces to the domain XML
-            network_adapter_factory = self._get_registered_object('network_adapter_factory')
-            network_factory = self._get_registered_object('network_factory')
+            network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
+            network_factory = self.po__get_registered_object('network_factory')
             if network_interfaces is not None:
                 for network in network_interfaces:
                     network_object = network_factory.get_network_by_name(network)
@@ -493,14 +493,14 @@ class Factory(PyroObject):
             # Add modification flags
             vm_object._update_modification_flags(add_flags=modification_flags)
 
-        t.finish()
+        t.set_complete()
 
         return vm_object
 
     @Expose(remote_nodes=True)
     def create_config(self, id_, name, config_nodes, cpu_cores, memory_allocation,
                       graphics_driver):
-        """Create required VM configs"""
+        """Create required VM configs."""
         VirtualMachineConfig.create(id_, name, config_nodes, cpu_cores, memory_allocation,
                                     graphics_driver)
 
@@ -508,5 +508,5 @@ class Factory(PyroObject):
         return self.get_virtual_machine_by_name(name)
 
     def undo__create_config(self, id_, name, *args, **kwargs):
-        """Remove any directories or configs that were created for VM"""
+        """Remove any directories or configs that were created for VM."""
         self.get_virtual_machine_by_id(id_).get_config_object().delete()

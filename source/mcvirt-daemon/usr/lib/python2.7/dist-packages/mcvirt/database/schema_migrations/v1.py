@@ -17,7 +17,7 @@
 
 
 def migrate(db_inst):
-    """Initial schema for database"""
+    """Initial schema for database."""
 
     # Create table for storing schema version and insert row for version
     db_inst.cursor.execute("""CREATE TABLE mcvirt_schema(version INT)""")

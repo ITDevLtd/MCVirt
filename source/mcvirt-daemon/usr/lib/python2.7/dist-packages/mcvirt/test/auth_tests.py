@@ -29,14 +29,14 @@ from mcvirt.client.rpc import Connection
 
 
 class AuthTests(TestBase):
-    """Provides unit tests for the Auth class"""
+    """Provides unit tests for the Auth class."""
 
     TEST_USERNAME = 'test-user'
     TEST_PASSWORD = 'test-password'
     TEST_USERNAME_ALTERNATIVE = 'user-to-delete'
 
     def create_test_user(self, username, password):
-        """Create a test user, annotate the user object and return it"""
+        """Create a test user, annotate the user object and return it."""
         # Ensure that user does not already exist:
         try:
             test_user = self.user_factory.get_user_by_username(username)
@@ -51,12 +51,12 @@ class AuthTests(TestBase):
         return new_user
 
     def parse_command(self, command, username, password):
-        """Parse the specified command with the specified credentials"""
+        """Parse the specified command with the specified credentials."""
         Parser(verbose=False).parse_arguments('%s --username %s --password %s' %
                                               (command, username, password))
 
     def setUp(self):
-        """Set up a test user"""
+        """Set up a test user."""
         super(AuthTests, self).setUp()
 
         self.auth = self.rpc.get_connection('auth')
@@ -65,7 +65,7 @@ class AuthTests(TestBase):
         self.test_user = self.create_test_user(self.TEST_USERNAME, self.TEST_PASSWORD)
 
     def tearDown(self):
-        """Remove the test user"""
+        """Remove the test user."""
         # If test_remove_user_account() failed then a user called 'user-to-delete' may still exist
         test_user = None
         try:
@@ -85,7 +85,7 @@ class AuthTests(TestBase):
 
     @staticmethod
     def suite():
-        """Returns a test suite of the Auth tests"""
+        """Returns a test suite of the Auth tests."""
         suite = unittest.TestSuite()
         suite.addTest(AuthTests('test_add_remove_user_vm_permission'))
         suite.addTest(AuthTests('test_add_remove_user_global_permission'))
@@ -99,15 +99,15 @@ class AuthTests(TestBase):
         return suite
 
     def test_add_remove_user_vm_permission(self):
-        """Permission permission tests using VM role"""
+        """Permission permission tests using VM role."""
         self.test_add_remove_user_permission(global_permission=False)
 
     def test_add_remove_user_global_permission(self):
-        """Permission permission tests using global role"""
+        """Permission permission tests using global role."""
         self.test_add_remove_user_permission(global_permission=True)
 
     def test_add_remove_user_permission(self, global_permission):
-        """Add a user to a virtual machine, using the argument parser"""
+        """Add a user to a virtual machine, using the argument parser."""
         # Ensure VM does not exist
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
@@ -169,7 +169,7 @@ class AuthTests(TestBase):
                                password=self.TEST_PASSWORD)
 
     def test_add_delete_superuser(self):
-        """Add/delete a user to/from the superuser role"""
+        """Add/delete a user to/from the superuser role."""
         # Assert that the user is not already a superuser
         self.assertFalse(
             self.TEST_USERNAME in
@@ -217,7 +217,7 @@ class AuthTests(TestBase):
         )
 
     def test_attempt_add_superuser_to_vm(self):
-        """Attempts to add a user as a superuser to a VM"""
+        """Attempts to add a user as a superuser to a VM."""
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         with self.assertRaises(ArgumentParserException):
@@ -225,7 +225,7 @@ class AuthTests(TestBase):
                                         (self.TEST_USERNAME, test_vm_object.get_name()))
 
     def test_add_duplicate_superuser(self):
-        """Attempts to add a superuser twice"""
+        """Attempts to add a superuser twice."""
         # Add the user as a superuser
         self.auth.add_superuser(self.test_user)
 
@@ -234,13 +234,13 @@ class AuthTests(TestBase):
                                         self.TEST_USERNAME)
 
     def test_delete_non_existant_superuser(self):
-        """Attempts to remove a non-existent user from the superuser group"""
+        """Attempts to remove a non-existent user from the superuser group."""
         with self.assertRaises(UserNotPresentInGroup):
             self.parser.parse_arguments('permission --delete-superuser %s --global' %
                                         self.TEST_USERNAME)
 
     def test_change_password(self):
-        """Change the password of a user through the parser"""
+        """Change the password of a user through the parser."""
         # Change the password of the test user
         new_password = 'new-password-here'
         self.parse_command('user change-password --new-password %s' % new_password,
@@ -257,7 +257,7 @@ class AuthTests(TestBase):
             self.fail('Password not changed successfully')
 
     def test_add_new_user(self):
-        """Create a new user through the parser"""
+        """Create a new user through the parser."""
         username = 'brand-new-user'
         password = 'pass'
         create_command = 'user create %s --user-password %s' % (username, password)
@@ -295,7 +295,7 @@ class AuthTests(TestBase):
             self.fail('User not created')
 
     def test_remove_user_account(self):
-        """Delete a user through the parser"""
+        """Delete a user through the parser."""
         self.user_to_delete = self.create_test_user(self.TEST_USERNAME_ALTERNATIVE, 'pass')
         delete_command = 'user delete %s' % self.TEST_USERNAME_ALTERNATIVE
 

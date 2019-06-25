@@ -19,10 +19,10 @@
 
 
 class DuplicateParser(object):
-    """Handle VM duplicate parser"""
+    """Handle VM duplicate parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for VM duplicate"""
+        """Create subparser for VM duplicate."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -40,7 +40,7 @@ class DuplicateParser(object):
                                            help='Name of duplicate VM')
 
     def handle_duplicate(self, p_, args):
-        """Handle VM duplication"""
+        """Handle VM duplication."""
         vm_factory = p_.rpc.get_connection('virtual_machine_factory')
         vm_object = vm_factory.get_virtual_machine_by_name(args.template)
         p_.rpc.annotate_object(vm_object)

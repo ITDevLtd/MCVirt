@@ -22,10 +22,10 @@ from mcvirt.exceptions import ArgumentParserException
 
 
 class StorageParser(object):
-    """Handle storage parser"""
+    """Handle storage parser."""
 
     def __init__(self, subparser, parent_parser):
-        """Create subparser for storage management"""
+        """Create subparser for storage management."""
         self.parent_subparser = subparser
         self.parent_parser = parent_parser
 
@@ -47,7 +47,7 @@ class StorageParser(object):
         self.register_remove_node()
 
     def register_list(self):
-        """Register storage list parser"""
+        """Register storage list parser."""
         self.list_parser = self.subparser.add_parser(
             'list',
             help='List storage backends',
@@ -55,12 +55,12 @@ class StorageParser(object):
         self.list_parser.set_defaults(func=self.handle_list)
 
     def handle_list(self, p_, args):
-        """Handle list of storage"""
+        """Handle list of storage."""
         storage_factory = p_.rpc.get_connection('storage_factory')
         p_.print_status(storage_factory.list())
 
     def register_create(self):
-        """Register storage create parser"""
+        """Register storage create parser."""
 
         self.create_parser = self.subparser.add_parser(
             'create',
@@ -118,7 +118,7 @@ class StorageParser(object):
         )
 
     def handle_create(self, p_, args):
-        """Handle storage create"""
+        """Handle storage create."""
         storage_factory = p_.rpc.get_connection('storage_factory')
         location = None
         if args.storage_type == 'Lvm' and args.volume_group_name:
@@ -153,7 +153,7 @@ class StorageParser(object):
                                location=location)
 
     def register_delete(self):
-        """Register storage deletion parser"""
+        """Register storage deletion parser."""
         self.delete_parser = self.subparser.add_parser(
             'delete',
             help='Delete storage backend',
@@ -162,14 +162,14 @@ class StorageParser(object):
         self.delete_parser.add_argument('Name', help='Name of storage backend')
 
     def handle_delete(self, p_, args):
-        """Handle storage deletion"""
+        """Handle storage deletion."""
         storage_factory = p_.rpc.get_connection('storage_factory')
         storage_backend = storage_factory.get_object_by_name(args.Name)
         p_.rpc.annotate_object(storage_backend)
         storage_backend.delete()
 
     def register_add_node(self):
-        """Register storage add node parser"""
+        """Register storage add node parser."""
         self.add_node_parser = self.subparser.add_parser(
             'add-node',
             help='Add node to storage backend',
@@ -196,7 +196,7 @@ class StorageParser(object):
         )
 
     def handle_add_node(self, p_, args):
-        """Handle node add to storage"""
+        """Handle node add to storage."""
         storage_factory = p_.rpc.get_connection('storage_factory')
         storage_backend = storage_factory.get_object_by_name(args.Name)
         p_.rpc.annotate_object(storage_backend)
@@ -214,7 +214,7 @@ class StorageParser(object):
                 custom_location=(node[1] if len(node) == 2 else None))
 
     def register_remove_node(self):
-        """Register parser to remove node from storage"""
+        """Register parser to remove node from storage."""
         self.remove_node_parser = self.subparser.add_parser(
             'remove-node',
             help='Add node to storage backend',
@@ -231,7 +231,7 @@ class StorageParser(object):
         )
 
     def handle_remove_node(self, p_, args):
-        """Hanlde remove of node from storage"""
+        """Hanlde remove of node from storage."""
         storage_factory = p_.rpc.get_connection('storage_factory')
         storage_backend = storage_factory.get_object_by_name(args.Name)
         p_.rpc.annotate_object(storage_backend)

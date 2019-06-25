@@ -26,11 +26,11 @@ from mcvirt.test.test_base import TestBase, skip_drbd
 
 
 class DrbdTests(TestBase):
-    """Provides unit tests for the Drbd hard drive class"""
+    """Provides unit tests for the Drbd hard drive class."""
 
     @staticmethod
     def suite():
-        """Return a test suite of the Virtual Machine tests"""
+        """Return a test suite of the Virtual Machine tests."""
         suite = unittest.TestSuite()
         suite.addTest(DrbdTests('test_verify'))
 
@@ -38,7 +38,7 @@ class DrbdTests(TestBase):
 
     @skip_drbd(True)
     def test_verify(self):
-        """Test the Drbd verification for both in-sync and out-of-sync Drbd volumes"""
+        """Test the Drbd verification for both in-sync and out-of-sync Drbd volumes."""
         # Create Virtual machine
         test_vm_object = self.create_vm('TEST_VM_1', 'Drbd')
         self.assertTrue(self.vm_factory.check_exists_by_name(self.test_vms['TEST_VM_1']['name']))

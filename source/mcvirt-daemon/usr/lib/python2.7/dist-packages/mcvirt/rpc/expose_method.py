@@ -21,15 +21,17 @@ from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.lock import lock_log_and_call
 from mcvirt.utils import get_hostname
 from mcvirt.syslogger import Syslogger
+from mcvirt.exceptions import TaskCancelledError
 
 
 class Transaction(object):
-    """Perform a saga-transaction, allowing functions
-    that make system mofications, the ability to be rolled
-    back.
+    """Perform a saga-transaction.
+
+    This provides the ability for functions, which make system mofications,
+    to be able to be rolled back.
     """
 
-    # LIFO Stack of running transactions
+    # FILO Stack of running transactions
     transactions = []
 
     # Determine if currently undo-ing
@@ -37,16 +39,16 @@ class Transaction(object):
 
     @classmethod
     def in_transaction(cls):
-        """Determine if a transaction is currently in progress"""
+        """Determine if a transaction is currently in progress."""
         return len(cls.transactions) > 0
 
     @property
-    def id(self):
-        """Return the ID of the transaction"""
+    def id_(self):
+        """Return the ID of the transaction."""
         return self._id
 
     def __init__(self):
-        """Setup member variables and register transaction"""
+        """Setup member variables and register transaction."""
         # Determine transaction ID.
         self._id = len(Transaction.transactions)
 
@@ -62,13 +64,13 @@ class Transaction(object):
             Transaction.transactions.insert(0, self)
             Syslogger.logger().debug('Starting new transaction')
 
-    def finish(self):
-        """Mark the transaction as having been completed"""
+    def set_complete(self):
+        """Mark the transaction as having been completed."""
         self.comlpete = True
         # Only remove transaction if it is the last
         # transaction in the stack
-        if self.id == Transaction.transactions[-1].id:
-            Syslogger.logger().debug('End of transaction stack')
+        if self.id_ == Transaction.transactions[-1].id_:
+            Syslogger.logger().debug('End of last transaction in stack')
 
             # Tear down all transactions
             for transaction in Transaction.transactions:
@@ -96,7 +98,7 @@ class Transaction(object):
 
     @classmethod
     def register_function(cls, function):
-        """Register a function with the current transactions"""
+        """Register a function with the current transactions."""
         # Only register function if a transaction is in progress
         if cls.in_transaction() and not Transaction.undo_state:
             for transaction in Transaction.transactions:
@@ -107,10 +109,11 @@ class Transaction(object):
                     transaction.functions.insert(0, function)
 
     @classmethod
-    def function_failed(cls, function):
-        """Called when a function fails - perform
-        the undo method on all previous functions on each of the
-        transactions
+    def on_function_fail(cls, function):
+        """Called when a function fails.
+
+        Performs the undo method on all previous functions on each of the
+        transactions.
         """
         # If already undoing transaction, do not undo the undo methods
         if Transaction.undo_state:
@@ -130,7 +133,7 @@ class Transaction(object):
 
                     # Mark the transaction as complete, removing
                     # it from global list and all functions
-                    transaction_ar.finish()
+                    transaction_ar.set_complete()
             else:
                 # Otherwise, undo single function
                 function.undo()
@@ -142,7 +145,7 @@ class Transaction(object):
             for transaction_ar in cls.transactions:
                 # Mark the transaction as complete, removing
                 # it from global list and all functions
-                transaction_ar.finish()
+                transaction_ar.set_complete()
 
             # Reset undo state flag
             Transaction.undo_state = False
@@ -161,11 +164,16 @@ class Function(PyroObject):
 
     def __init__(self, function, obj, args, kwargs,
                  locking, object_type, instance_method,
-                 remote_nodes,  # remote_nodes - Determine whether the remote_nodes and
-                                #                return_dict arguments are used by the
+                 remote_nodes,  # remote_nodes - Determine whether the nodes and
+                                #                all_nodes arguments are used by the
                                 #                wrapper to execute the method on
                                 #                remote nodes, otherwise it is passed
-                                #                to the function
+                                #                to the function.
+                                #                Note: this is mainly for backwards
+                                #                compatibility. Try not to use for new
+                                #                methods, i.e. avoid using 'nodes' and
+                                #                'all_nodes' as arguments for the
+                                #                method.
                  support_callback,  # Determines whether the method support the _f
                                     # callback class
                  undo_method,  # Override the name of the undo method
@@ -187,7 +195,7 @@ class Function(PyroObject):
             all_nodes = kwargs['all_nodes']
             del kwargs['all_nodes']
             if all_nodes:
-                nodes = self._get_registered_object('cluster').get_nodes(
+                nodes = obj.po__get_registered_object('cluster').get_nodes(
                     include_local=True)
             else:
                 nodes = [get_hostname()]
@@ -246,13 +254,13 @@ class Function(PyroObject):
         return False
 
     def unregister(self, force=False):
-        """De-register object after deletion"""
+        """De-register object after deletion."""
         if force or not Transaction.in_transaction():
-            self.unregister_object(self, debug=False)
+            self.po__unregister_object(self, debug=False)
 
     @property
     def _undo_function_name(self):
-        """Return the name of the undo function"""
+        """Return the name of the undo function."""
         # If running on a remote node and a remote undo method
         # is defined, return that
         if self.current_node != get_hostname() and self.remote_undo_method:
@@ -267,16 +275,24 @@ class Function(PyroObject):
         return 'undo__%s' % self.function.__name__
 
     def run(self):
-        """Run the function"""
+        """Run the function."""
         # Register instance and functions with pyro
-        self.obj._register_object(self, debug=False)
+        if not self.po__is_pyro_initialised:
+            self.obj.po__register_object(self, debug=False)
+
+        # Ensure that task has not been cancelled
+        task_scheduler = self.po__get_registered_object('task_scheduler')
+        if task_scheduler:
+            current_task_pointer = task_scheduler.get_current_task_pointer()
+            if current_task_pointer and current_task_pointer.is_cancelled:
+                raise TaskCancelledError('Task has been cancelled')
 
         # Pause the session timeout
         self._pause_user_session()
 
         # If the machine is the cluster master, run
         # the fuction with the transaction abilities
-        if self.obj._is_cluster_master:
+        if self.obj.po__is_cluster_master:
             Transaction.register_function(self)
 
         # Catch all exceptions to ensure that user
@@ -308,9 +324,9 @@ class Function(PyroObject):
         except Exception:
             # Also try-catch the tear-down
             try:
-                if self.obj._is_cluster_master:
+                if self.obj.po__is_cluster_master:
                     # Notify that the transaction that the functino has failed
-                    Transaction.function_failed(self)
+                    Transaction.on_function_fail(self)
             except Exception:
                 # Reset user session after the command is
                 # complete
@@ -337,8 +353,8 @@ class Function(PyroObject):
         # Return the data from the function
         return self._get_response_data()
 
-    def _get_kwargs(self):
-        """Obtain kwargs for passing to the function"""
+    def get_kwargs(self):
+        """Obtain kwargs for passing to the function."""
         # Create copy of kwargs before modifying them
         kwargs = dict(self.nodes[self.current_node]['kwargs'])
 
@@ -349,7 +365,7 @@ class Function(PyroObject):
         return kwargs
 
     def _call_function_local(self):
-        """Perform the actual command on the local node"""
+        """Perform the actual command on the local node."""
         # Set the current node to the local node
         local_hostname = get_hostname()
         self.current_node = local_hostname
@@ -359,20 +375,16 @@ class Function(PyroObject):
         if self.locking:
 
             self.nodes[local_hostname]['return_val'] = \
-                lock_log_and_call(self.function,
-                                  [self.obj] + self.nodes[local_hostname]['args'],
-                                  self._get_kwargs(),
-                                  self.instance_method,
-                                  self.object_type)
+                lock_log_and_call(self)
 
         # Otherwise run the command directly
         else:
             self.nodes[local_hostname]['return_val'] = \
                 self.function(self.obj, *self.nodes[local_hostname]['args'],
-                              **self._get_kwargs())
+                              **self.get_kwargs())
 
     def _call_function_remote(self, node, undo=False):
-        """Run the function on a remote node"""
+        """Run the function on a remote node."""
         # Set current node to remote node
         self.current_node = node
 
@@ -395,7 +407,7 @@ class Function(PyroObject):
         # Convert local object in args and kwargs
         args, kwargs = self._convert_local_object(node,
                                                   self.nodes[node]['args'],
-                                                  self._get_kwargs())
+                                                  self.get_kwargs())
 
         # Run the method by obtaining the member attribute, based on the name of
         # the callback function from of the remote object
@@ -406,28 +418,29 @@ class Function(PyroObject):
         if not undo:
             self.nodes[node]['return_val'] = response
 
-    def _convert_local_object(self, node, args, kwargs):
-        """Convert any local objects in args and kwargs to
-        get remote objects
-        """
+    @staticmethod
+    def _convert_local_object(node, args, kwargs):
+        """Convert any local objects in args and kwargs to remote objects."""
         # @TODO: Inspect lists and dicts within each argumnet
         # Create new list of args and kwargs
         args = list(args)
         kwargs = dict(kwargs)
         for itx, arg in enumerate(args):
-            if isinstance(arg, PyroObject) and arg.convert_to_remote_object_in_args:
+            if (isinstance(arg, PyroObject) and
+                    arg.convert_to_remote_object_in_args):
                 remote_object = arg.get_remote_object(node=node)
                 args[itx] = remote_object
 
         for key, val in kwargs.iteritems():
-            if isinstance(val, PyroObject) and val.convert_to_remote_object_in_args:
+            if (isinstance(val, PyroObject) and
+                    val.convert_to_remote_object_in_args):
                 remote_object = val.get_remote_object(node=node)
                 kwargs[key] = remote_object
 
         return args, kwargs
 
     def _get_response_data(self):
-        """Determine and return response data"""
+        """Determine and return response data."""
         # Return dict of node -> output, if a dict response was
         # specified
         if self.return_dict:
@@ -447,22 +460,24 @@ class Function(PyroObject):
 
     @Pyro4.expose
     def add_undo_argument(self, **kwargs):
-        """Add an additional keyword argument to be
-        passed to the undo method, when it is run
+        """Add an additional keyword argument.
+
+        This is to be passed to the undo method, when it is run.
         """
         self.nodes[self.current_node]['kwargs'].update(kwargs)
 
     @Pyro4.expose
     def complete(self):
-        """Mark the function as having completed
-        successfully. Once run, if any exception occurs within
+        """Mark the function as having completed successfully.
+
+        Once run, if any exception occurs within
         the function (or, if in one, the rest of the transaction),
         the undo method will be called
         """
         self.nodes[self.current_node]['complete'] = True
 
     def undo(self):
-        """Execute the undo method for the function"""
+        """Execute the undo method for the function."""
         # If the local node is in the list of complete
         # commands, then undo it first
         if (get_hostname() in self.nodes and
@@ -497,29 +512,32 @@ class Function(PyroObject):
             self._call_function_remote(node=node, undo=True)
 
     def _pause_user_session(self):
-        """Pause the user session"""
-        # Determine if session ID is present in current context and the session object has
+        """Pause the user session."""
+        # Determine if session ID is present in current context and the session
+        # object has
         # been set
-        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
+        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT.get_session_id_():
             # Disable the expiration whilst the method runs
             Expose.SESSION_OBJECT.USER_SESSIONS[
-                Expose.SESSION_OBJECT._get_session_id()
+                Expose.SESSION_OBJECT.get_session_id_()
             ].disable()
 
     def _reset_user_session(self):
-        """Reset the user session"""
-        # Determine if session ID is present in current context and the session object has
+        """Reset the user session."""
+        # Determine if session ID is present in current context and the
+        # session object has
         # been set
-        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT._get_session_id():
+        if Expose.SESSION_OBJECT is not None and Expose.SESSION_OBJECT.get_session_id_():
             # Renew session expiry
-            Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT._get_session_id()].renew()
+            Expose.SESSION_OBJECT.USER_SESSIONS[Expose.SESSION_OBJECT.get_session_id_()].renew()
 
 
 class Expose(object):
-    """Decorator for exposing method via Pyro and optional log and locking"""
+    """Decorator for exposing method via Pyro and optional log and locking."""
     # @TODO Add permission checking, which is only performed during
     #       pyro call to method
 
+    # Set in rpc_daemon during startup
     SESSION_OBJECT = None
 
     def __init__(self, locking=False, object_type=None,
@@ -530,7 +548,7 @@ class Expose(object):
                                # exposed to pyro
                  remote_method=None,
                  remote_undo_method=None):
-        """Setup variables passed in via decorator as member variables"""
+        """Setup variables passed in via decorator as member variables."""
         self.locking = locking
         self.object_type = object_type
         self.instance_method = instance_method
@@ -542,9 +560,12 @@ class Expose(object):
         self.remote_undo_method = remote_undo_method
 
     def __call__(self, callback):
-        """Run when object is created. The returned value is the method that is executed"""
+        """Run when object is created.
+
+        The returned value is the method that is executed
+        """
         def inner(self_obj, *args, **kwargs):
-            """Run when the wrapping method is called"""
+            """Run when the wrapping method is called."""
             # Create function object and run
             function = Function(function=callback, obj=self_obj,
                                 args=args, kwargs=kwargs,

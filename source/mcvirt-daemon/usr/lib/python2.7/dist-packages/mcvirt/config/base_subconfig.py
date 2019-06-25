@@ -1,4 +1,4 @@
-"""Provide base class for configuration files"""
+"""Provide base class for configuration files."""
 
 # Copyright (c) 2018 - Matt Comben
 #
@@ -22,22 +22,22 @@ from mcvirt.rpc.expose_method import Expose
 
 
 class BaseSubconfig(Core):
-    """Provides operations to obtain and set the MCVirt configuration for a VM"""
+    """Provides operations to obtain and set the MCVirt configuration for a VM."""
 
     SUBTREE_ARRAY = []
 
     def __init__(self):
-        """Perform upgrade"""
+        """Perform upgrade."""
         # If performing an upgrade has been specified, do so
         self.upgrade()
 
     def _get_config_key(self):
-        """Get the key for the config, default to no key, which will be skipped"""
+        """Get the key for the config, default to no key, which will be skipped."""
         return None
 
     @classmethod
     def get_global_config(cls):
-        """Obtain entire config for this object type"""
+        """Obtain entire config for this object type."""
         # Get config from parent, which should be the whole config
         parent_config = Core().get_config()
 
@@ -52,11 +52,11 @@ class BaseSubconfig(Core):
     @Expose()
     @classmethod
     def set_global_config(cls, config):
-        """Set global config"""
-        cls._get_registered_object('auth').assert_user_type('ClusterUser')
+        """Set global config."""
+        cls.po__get_registered_object('auth').assert_user_type('ClusterUser')
 
         def update_config(parent_config):
-            """Update parent config"""
+            """Update parent config."""
             subconfig = parent_config
             for key_itx in cls.SUBTREE_ARRAY[:-1]:
                 subconfig = subconfig[key_itx]
@@ -72,7 +72,7 @@ class BaseSubconfig(Core):
     def update_config(self, callback_function, reason=''):
         """Write a provided configuration back to the configuration file."""
         def update_sub_config(config):
-            """Update the subconfig"""
+            """Update the subconfig."""
             # Traverse the parent config to get the subconfig
             subconfig = config
             for key_itx in self.__class__.SUBTREE_ARRAY + [self._get_config_key()]:
@@ -88,9 +88,9 @@ class BaseSubconfig(Core):
 
     @classmethod
     def _add_config(cls, id_, config, reason):
-        """Add config to parent config"""
+        """Add config to parent config."""
         def add_config_to_parent_config(mcvirt_config):
-            """Add subconfig to parent config"""
+            """Add subconfig to parent config."""
             # Traverse down parent config to get parent dict
             subconfig = mcvirt_config
             for key_itx in cls.SUBTREE_ARRAY:
@@ -105,11 +105,11 @@ class BaseSubconfig(Core):
             reason)
 
     def delete(self):
-        """Remove config from parent config"""
+        """Remove config from parent config."""
         config_key = self._get_config_key()
 
         def remove_from_parent(config):
-            """Remove item from parent config"""
+            """Remove item from parent config."""
             # Traverse down parent config to get parent dict
             subconfig = config
             for key_itx in self.__class__.SUBTREE_ARRAY:

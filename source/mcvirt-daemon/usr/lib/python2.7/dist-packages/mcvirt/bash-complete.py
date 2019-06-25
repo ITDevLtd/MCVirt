@@ -28,16 +28,16 @@ class NonSuperuserAuth(Auth):
     """Class to override the auth module, so that
        the argparser can attempt to check
        user permissions when performing bash
-       completion without root privileges"""
+       completion without root privileges."""
 
     def __init__(self, *args, **kwargs):
         """Override inherited init function to stop
-           root privilege check"""
+           root privilege check."""
         pass
 
     def check_permission(self, *args, **kwargs):
         """Return all permissions as false as they
-           cannot be determined without running as root"""
+           cannot be determined without running as root."""
         return False
 
 

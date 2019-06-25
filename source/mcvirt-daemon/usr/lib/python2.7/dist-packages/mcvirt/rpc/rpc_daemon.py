@@ -23,6 +23,7 @@ import signal
 import types
 import time
 
+from mcvirt.task_scheduler.scheduler import TaskScheduler
 from mcvirt.database import DatabaseFactory, StatisticsSync
 from mcvirt.auth.auth import Auth
 from mcvirt.auth.permissions import PERMISSIONS
@@ -61,10 +62,10 @@ from mcvirt.thread.host_statistics import HostStatistics
 
 
 class BaseRpcDaemon(Pyro4.Daemon):
-    """Override Pyro daemon to add authentication checks and MCVirt integration"""
+    """Override Pyro daemon to add authentication checks and MCVirt integration."""
 
     def __init__(self, *args, **kwargs):
-        """Override init to set required configuration and create nameserver connection"""
+        """Override init to set required configuration and create nameserver connection."""
         # Require all methods/classes to be exposed
         # DO NOT CHANGE THIS OPTION!
         Pyro4.config.REQUIRE_EXPOSE = True
@@ -74,9 +75,10 @@ class BaseRpcDaemon(Pyro4.Daemon):
 
         # Store MCVirt instance
         self.registered_factories = {}
+        self.registered_factories_lst = []
 
     def handshake__set_defaults(self):
-        """Reset/set Pyro context defaults"""
+        """Reset/set Pyro context defaults."""
         # Reset session_id for current context
         Pyro4.current_context.STARTUP_PERIOD = False
         Pyro4.current_context.INTERNAL_REQUEST = False
@@ -90,7 +92,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         self.registered_factories['cluster'].set_context_defaults()
 
     def handshake__authenticate_user(self, data):
-        """Authenticate user with either password or session ID"""
+        """Authenticate user with either password or session ID."""
         # Check and store username from connection
         if Annotations.USERNAME not in data:
             raise Pyro4.errors.SecurityError('Username and password or Session must be passed')
@@ -121,12 +123,12 @@ class BaseRpcDaemon(Pyro4.Daemon):
         return username, session_id
 
     def handshake__set_proxy_user(self, data, user_object):
-        """Is specified and allowed, set proxy user"""
+        """Is specified and allowed, set proxy user."""
         if user_object.allow_proxy_user and Annotations.PROXY_USER in data:
             Pyro4.current_context.proxy_user = data[Annotations.PROXY_USER]
 
     def handshake__set_cluster_master(self, data, user_object):
-        """SEt cluster master status in context"""
+        """Set cluster master status in context."""
         # If the user is a cluster/connection user, treat this connection
         # as a cluster client (the command as been executed on a remote node)
         # unless specified otherwise
@@ -139,14 +141,14 @@ class BaseRpcDaemon(Pyro4.Daemon):
             Pyro4.current_context.cluster_master = True
 
     def handshake__set_has_lock(self, data, user_object):
-        """Set has lock in context"""
+        """Set has lock in context."""
         if user_object.CLUSTER_USER and Annotations.HAS_LOCK in data:
             Pyro4.current_context.has_lock = data[Annotations.HAS_LOCK]
         else:
             Pyro4.current_context.has_lock = False
 
     def handshake__set_ignore_cluster(self, data, user_object):
-        """Set ignore cluster in context"""
+        """Set ignore cluster in context."""
         auth = self.registered_factories['auth']
         if (auth.check_permission(PERMISSIONS.CAN_IGNORE_CLUSTER,
                                   user_object=user_object) and
@@ -156,7 +158,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
             Pyro4.current_context.ignore_cluster = False
 
     def handshake__set_ignore_drbd(self, data, user_object):
-        """Set ignore drbd in context"""
+        """Set ignore drbd in context."""
         auth = self.registered_factories['auth']
         if (auth.check_permission(PERMISSIONS.CAN_IGNORE_DRBD,
                                   user_object=user_object) and
@@ -166,16 +168,16 @@ class BaseRpcDaemon(Pyro4.Daemon):
             Pyro4.current_context.ignore_drbd = False
 
     def handshake__check_cluster_version(self):
-        """Perform node version check on cluster"""
+        """Perform node version check on cluster."""
         if Pyro4.current_context.cluster_master:
             self.registered_factories['cluster'].check_node_versions()
 
     def handshake__raise_exception(self):
-        """Raise standard exception for all authentication errors"""
+        """Raise standard exception for all authentication errors."""
         raise AuthenticationError('Invalid username/password/session')
 
     def validateHandshake(self, conn, data):  # Override name of upstream method # noqa
-        """Perform authentication on new connections"""
+        """Perform authentication on new connections."""
         self.handshake__set_defaults()
 
         # Attempt to perform authentication sequence
@@ -224,7 +226,7 @@ class RpcNSMixinDaemon(object):
     DAEMON = None
 
     def __init__(self):
-        """Store required object member variables and create MCVirt object"""
+        """Store required object member variables and create MCVirt object."""
         # Before doing ANYTHING, ensure that the hostname that MCVirt thinks the
         # machine is (i.e. the hostname that the machine was already setup as)
         # matches the current hostname of the machine
@@ -272,15 +274,21 @@ class RpcNSMixinDaemon(object):
                     signal.SIGSEGV, signal.SIGTERM):
             signal.signal(sig, self.shutdown)
 
-        Syslogger.logger().debug('Initialising objects')
-        for registered_object in RpcNSMixinDaemon.DAEMON.registered_factories:
-            obj = RpcNSMixinDaemon.DAEMON.registered_factories[registered_object]
+        Syslogger.logger().debug('Initialising modules')
+        for registered_object, obj in RpcNSMixinDaemon.DAEMON.registered_factories_lst:
             if type(obj) is not types.TypeType:  # noqa
-                Syslogger.logger().debug('Initialising object %s' % registered_object)
-                obj.initialise()
+                Syslogger.logger().debug('Initialising module %s' % registered_object)
+                try:
+                    obj.initialise()
+                except Exception, exc:
+                    Syslogger.logger().error(
+                        'Failed to initailise module: %s\n:%s' % (registered_object, str(exc)))
+
+        RpcNSMixinDaemon.DAEMON.registered_factories_lst = []
+        Syslogger.logger().debug('Module Initialising complete')
 
     def start(self, *args, **kwargs):
-        """Start the Pyro daemon"""
+        """Start the Pyro daemon."""
         Pyro4.current_context.STARTUP_PERIOD = False
         Syslogger.logger().debug('Authentication enabled')
         Syslogger.logger().debug('Obtaining lock')
@@ -291,7 +299,7 @@ class RpcNSMixinDaemon(object):
         Syslogger.logger().debug('Daemon request loop finished')
 
     def shutdown(self, signum, frame):
-        """Shutdown Pyro Daemon"""
+        """Shutdown Pyro Daemon."""
         Syslogger.logger().error('Received signal: %s' % signum)
         for timer in self.timer_objects:
             Syslogger.logger().info('Shutting down timer: %s' % timer)
@@ -307,15 +315,24 @@ class RpcNSMixinDaemon(object):
         Syslogger.logger().debug('Registering object: %s' % objectId)
         obj_or_class._pyro_server_ref = RpcNSMixinDaemon.DAEMON
         uri = RpcNSMixinDaemon.DAEMON.register(obj_or_class, *args, **kwargs)
-        ns = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
-        ns.register(objectId, uri)
-        ns = None
+
+        # Create connection to NS and register
+        ns_conn = Pyro4.naming.locateNS(host=self.hostname, port=9090, broadcast=False)
+        ns_conn.register(objectId, uri)
+        ns_conn = None
+
+        # Store object for lookup
         RpcNSMixinDaemon.DAEMON.registered_factories[objectId] = obj_or_class
+
+        # Store object in list to initialise in correct order
+        RpcNSMixinDaemon.DAEMON.registered_factories_lst.append((objectId, obj_or_class))
+
         return uri
 
     def register_factories(self):
-        """Register base MCVirt factories with RPC daemon"""
+        """Register base MCVirt factories with RPC daemon."""
         registration_factories = [
+            [TaskScheduler(), 'task_scheduler'],
             [DatabaseFactory(), 'database_factory'],
             [VirtualMachineFactory(), 'virtual_machine_factory'],
             [NetworkFactory(), 'network_factory'],
@@ -346,7 +363,10 @@ class RpcNSMixinDaemon(object):
             [AutoStartWatchdog(), 'autostart_watchdog']
         ]
         for factory_object, name in registration_factories:
-            self.register(factory_object, objectId=name, force=True)
+            try:
+                self.register(factory_object, objectId=name, force=True)
+            except Exception, e:
+                Syslogger.logger().error('Failed to register module: %s: %s' % (name, str(e)))
 
         Pyro4.CERTIFICATE_GENERATOR_FACTORY = RpcNSMixinDaemon.DAEMON.registered_factories[
             'certificate_generator_factory']

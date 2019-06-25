@@ -55,7 +55,7 @@ class Auth(PyroObject):
                 Pyro4.current_context.INTERNAL_REQUEST):
             return True
 
-        user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
+        user_object = self.po__get_registered_object('mcvirt_session').get_current_user_object()
         if user_object.__class__.__name__ in user_type_names:
             return True
         else:
@@ -71,14 +71,14 @@ class Auth(PyroObject):
             )
 
     def has_permission_asserted(self):
-        """Return whether permission has been asserted using assert_permission"""
+        """Return whether permission has been asserted using assert_permission."""
         if 'PERMISSION_ASSERTED' in dir(Pyro4.current_context):
             return Pyro4.current_context.PERMISSION_ASSERTED is True
         else:
             return False
 
     def set_permission_asserted(self):
-        """Called when user has passed a permission requirement"""
+        """Called when user has passed a permission requirement."""
         # Mark in the context that user has passed permission checks
         if 'PERMISSION_ASSERTED' in dir(Pyro4.current_context):
             Pyro4.current_context.PERMISSION_ASSERTED = True
@@ -121,10 +121,10 @@ class Auth(PyroObject):
             return True
 
         if user_object is None:
-            user_object = self._get_registered_object('mcvirt_session').get_current_user_object()
+            user_object = self.po__get_registered_object('mcvirt_session').get_current_user_object()
 
         if vm_object:
-            self._convert_remote_object(vm_object)
+            self.po__convert_remote_object(vm_object)
 
         # Check the users permissions and determine if the permission is present
         if permission_enum in user_object.get_permissions(virtual_machine=vm_object):
@@ -138,22 +138,22 @@ class Auth(PyroObject):
         # Cluster users can do anything
         if self.check_user_type('ClusterUser'):
             return True
-        user_object = self._get_registered_object('mcvirt_session').get_proxy_user_object()
+        user_object = self.po__get_registered_object('mcvirt_session').get_proxy_user_object()
         username = user_object.get_username()
         superusers = self.get_superusers()
 
         return username in superusers
 
     def get_superusers(self):
-        """Return a list of superusers"""
+        """Return a list of superusers."""
         mcvirt_config = MCVirtConfig()
         return mcvirt_config.get_config()['superusers']
 
     @Expose(locking=True)
     def add_superuser(self, user_object, ignore_duplicate=False):
         """Add a new superuser."""
-        assert isinstance(self._convert_remote_object(user_object),
-                          self._get_registered_object('user_factory').USER_CLASS)
+        assert isinstance(self.po__convert_remote_object(user_object),
+                          self.po__get_registered_object('user_factory').USER_CLASS)
         ArgumentValidator.validate_boolean(ignore_duplicate)
 
         # Ensure the user is a superuser
@@ -161,7 +161,7 @@ class Auth(PyroObject):
             raise InsufficientPermissionsException(
                 'User must be a superuser to manage superusers'
             )
-        user_object = self._convert_remote_object(user_object)
+        user_object = self.po__convert_remote_object(user_object)
         username = user_object.get_username()
 
         mcvirt_config = MCVirtConfig()
@@ -169,7 +169,7 @@ class Auth(PyroObject):
         # Ensure user is not already a superuser
         if username not in self.get_superusers():
             def update_config(config):
-                """Append superuser to MCVirt config"""
+                """Append superuser to MCVirt config."""
                 config['superusers'].append(username)
             mcvirt_config.update_config(update_config, 'Added superuser \'%s\'' % username)
 
@@ -178,22 +178,22 @@ class Auth(PyroObject):
                 'User \'%s\' is already a superuser' % username
             )
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remote_command(connection):
-                """Add superuser to remote node"""
+                """Add superuser to remote node."""
                 remote_user_factory = connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(user_object.get_username())
                 remote_auth = connection.get_connection('auth')
                 remote_auth.add_superuser(remote_user, ignore_duplicate=ignore_duplicate)
 
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
     @Expose(locking=True)
     def delete_superuser(self, user_object):
         """Remove a superuser."""
-        assert isinstance(self._convert_remote_object(user_object),
-                          self._get_registered_object('user_factory').USER_CLASS)
+        assert isinstance(self.po__convert_remote_object(user_object),
+                          self.po__get_registered_object('user_factory').USER_CLASS)
 
         # Ensure the user is a superuser
         if not self.is_superuser():
@@ -201,7 +201,7 @@ class Auth(PyroObject):
                 'User must be a superuser to manage superusers'
             )
 
-        user_object = self._convert_remote_object(user_object)
+        user_object = self.po__convert_remote_object(user_object)
         username = user_object.get_username()
 
         # Ensure user to be removed is a superuser
@@ -211,20 +211,20 @@ class Auth(PyroObject):
         mcvirt_config = MCVirtConfig()
 
         def update_config(config):
-            """Remove superuser from MCVirt config"""
+            """Remove superuser from MCVirt config."""
             config['superusers'].remove(username)
         mcvirt_config.update_config(update_config, 'Removed \'%s\' from superuser group' %
                                                    username)
 
-        if self._is_cluster_master:
+        if self.po__is_cluster_master:
             def remote_command(connection):
-                """Remove superuser from remote nodes"""
+                """Remove superuser from remote nodes."""
                 remote_user_factory = connection.get_connection('user_factory')
                 remote_user = remote_user_factory.get_user_by_username(user_object.get_username())
                 remote_auth = connection.get_connection('auth')
                 remote_auth.delete_superuser(remote_user)
 
-            cluster = self._get_registered_object('cluster')
+            cluster = self.po__get_registered_object('cluster')
             cluster.run_remote_command(remote_command)
 
     def copy_permissions(self, source_vm, dest_vm):
@@ -236,7 +236,7 @@ class Auth(PyroObject):
 
         # Add permissions configuration from source VM to destination VM
         def add_user_to_group(vm_config):
-            """Copy permissions to config"""
+            """Copy permissions to config."""
             vm_config['permissions'] = permission_config
 
         dest_vm.get_config_object().update_config(add_user_to_group,
@@ -245,7 +245,7 @@ class Auth(PyroObject):
 
     @Expose()
     def list_permissions(self):
-        """Create a tabular view of permissions and permission descriptions"""
+        """Create a tabular view of permissions and permission descriptions."""
         # Create table and add headers
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
@@ -264,14 +264,14 @@ class Auth(PyroObject):
 
 
 class ElevatePermission(object):
-    """Object to allow temporary permission elevation"""
+    """Object to allow temporary permission elevation."""
 
     def __init__(self, *permissions):
-        """Store permissions in member variable"""
+        """Store permissions in member variable."""
         self.permissions = permissions
 
     def __enter__(self):
-        """Assign the elevated permissions"""
+        """Assign the elevated permissions."""
         # Check whether elevated permissions have already been assigned
         if ('ELEVATED_PERMISSIONS' in dir(Pyro4.current_context) and
                 Pyro4.current_context.ELEVATED_PERMISSIONS):
@@ -281,7 +281,7 @@ class ElevatePermission(object):
             Pyro4.current_context.ELEVATED_PERMISSIONS = self.permissions
 
     def __exit__(self, type, value, traceback):
-        """Remove elevated permissions"""
+        """Remove elevated permissions."""
         if 'ELEVATED_PERMISSIONS' in dir(Pyro4.current_context):
             del Pyro4.current_context.ELEVATED_PERMISSIONS
             Syslogger.logger().info('de-elevating permissions: %s' % str(self.permissions))
