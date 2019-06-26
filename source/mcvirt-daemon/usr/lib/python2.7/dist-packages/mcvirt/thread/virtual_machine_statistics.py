@@ -163,30 +163,15 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         """Obtain statistics from libvirt"""
         try:
             memory_stats = self.virtual_machine.get_libvirt_memory_stats()
-            cpu_time_pre = self.virtual_machine.get_libvirt_cpu_stats()
-            dt_pre = datetime.now()
-
-            # Wait 1 second
-            sleep(5)
-
-            cpu_time_post = self.virtual_machine.get_libvirt_cpu_stats()
-            dt_post = datetime.now()
-
-            cpu_perc = []
-            diff_s = (dt_post - dt_pre).total_seconds()
-            Syslogger.logger().error(cpu_time_pre)
-            Syslogger.logger().error(cpu_time_post)
-            for itx, _ in enumerate(cpu_time_pre):
-                Syslogger.logger().error(itx)
-                cpu_perc.append((cpu_time_post[itx] - cpu_time_pre[itx]) / (diff_s * 1000))
-            Syslogger.logger().error(cpu_perc)
+            cpu_perc = self.virtual_machine.get_libvirt_cpu_stats()
+            capture_time = datetime.now()
 
         except Exception, exc:
             Syslogger.logger().error('Failed to obtain VM statistics from libvirt: %s' % str(exc))
             Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
         else:
-
             self.virtual_machine.current_host_memory_usage = memory_stats['rss']
+            self.virtual_machine.current_host_cpu_usage = [cpu_perc, capture_time]
             Syslogger.logger().debug(memory_stats)
 
     def obtain_agent_stats(self):
