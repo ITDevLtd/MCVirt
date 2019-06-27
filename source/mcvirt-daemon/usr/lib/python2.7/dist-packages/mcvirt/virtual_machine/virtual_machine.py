@@ -73,7 +73,7 @@ class VirtualMachine(PyroObject):
         self.current_guest_memory_usage = None
         self.current_guest_cpu_usage = None
         self.current_host_memory_usage = None
-        self.current_host_cpu_usage = None
+        self.current_host_cpu_usage = [None, None]
 
     @staticmethod
     def get_id_code():
