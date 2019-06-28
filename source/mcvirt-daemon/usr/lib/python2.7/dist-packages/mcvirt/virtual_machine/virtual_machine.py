@@ -1796,8 +1796,13 @@ class VirtualMachine(PyroObject):
         """Obtain memory stats from libvirt"""
         # Return aggregated CPU stats and CPU-specific stats
         dom = self._get_libvirt_domain_object()
-        return ([dom.getCPUStats(True)[0]['cpu_time']]  # Aggregated stats
-                + [cpu['vcpu_time'] for cpu in dom.getCPUStats(False)])  # CPU-specific stats
+
+        return (
+            # Aggregated stats
+            [dom.getCPUStats(True)[0]['cpu_time']]
+            # CPU-specific stats
+            + [cpu['vcpu_time'] for cpu in dom.getCPUStats(False)]
+        )
 
     def get_host_agent_path(self):
         """Obtain the path of the serial interface for the VM on the host."""
