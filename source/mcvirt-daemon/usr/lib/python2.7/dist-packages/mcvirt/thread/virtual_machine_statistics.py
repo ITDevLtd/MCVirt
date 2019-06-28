@@ -17,7 +17,6 @@
 
 import json
 from datetime import datetime
-from time import sleep
 import Pyro4
 
 from mcvirt.thread.repeat_timer import RepeatTimer
@@ -26,7 +25,6 @@ from mcvirt.syslogger import Syslogger
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.utils import dict_merge
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.constants import (StatisticsDeviceType,
                               VirtualMachineStatisticsStatType)
