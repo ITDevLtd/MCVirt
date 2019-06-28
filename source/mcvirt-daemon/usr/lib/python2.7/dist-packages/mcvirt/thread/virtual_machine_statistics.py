@@ -118,7 +118,7 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         db_rows = []
 
         now = "{:%s}".format(datetime.now())
-        for stat_type, val in db_rows:
+        for stat_type, val in data_res:
             db_rows.append(
                 (StatisticsDeviceType.VIRTUAL_MACHINE.value,
                  self.virtual_machine.id_,
