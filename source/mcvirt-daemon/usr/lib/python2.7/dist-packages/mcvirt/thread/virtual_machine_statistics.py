@@ -25,10 +25,9 @@ from mcvirt.syslogger import Syslogger
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.rpc.expose_method import Expose
-from mcvirt.utils import dict_merge
 from mcvirt.auth.permissions import PERMISSIONS
 from mcvirt.constants import (StatisticsDeviceType,
-                              StatisticsStatType)
+                              VirtualMachineStatisticsStatType)
 
 
 class VirtualMachineStatisticsFactory(PyroObject):
@@ -111,22 +110,21 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         # @TODO This will be slow
         return MCVirtConfig().get_config()['statistics']['interval']
 
-    def insert_into_stat_db(self):
+    def insert_into_stat_db(self, data_res):
         """Add statistics to statistics database."""
         db_factory = self.po__get_registered_object('database_factory')
-        db_rows = [
-            (StatisticsDeviceType.VIRTUAL_MACHINE.value,
-             self.virtual_machine.id_,
-             StatisticsStatType.CPU_USAGE.value,
-             self.virtual_machine.current_guest_cpu_usage,
-             "{:%s}".format(datetime.now())),
+        db_rows = []
 
-            (StatisticsDeviceType.VIRTUAL_MACHINE.value,
-             self.virtual_machine.id_,
-             StatisticsStatType.MEMORY_USAGE.value,
-             self.virtual_machine.current_guest_memory_usage,
-             "{:%s}".format(datetime.now()))
-        ]
+        now = "{:%s}".format(datetime.now())
+        for stat_type, val in data_res:
+            db_rows.append(
+                (StatisticsDeviceType.VIRTUAL_MACHINE.value,
+                 self.virtual_machine.id_,
+                 stat_type.value,
+                 val,
+                 now)
+            )
+
         with db_factory.get_locking_connection() as db_inst:
             db_inst.cursor.executemany(
                 """INSERT INTO stats(
@@ -148,28 +146,64 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
                 self.virtual_machine.get_name())
             return
 
+        data_res = {
+            'guest_memory': [VirtualMachineStatisticsStatType.GUEST_MEMORY_USAGE, None],
+            'guest_cpu': [VirtualMachineStatisticsStatType.GUEST_CPU_USAGE, None],
+            'host_memory': [VirtualMachineStatisticsStatType.HOST_MEMORY_USAGE, None],
+            'host_cpu': [VirtualMachineStatisticsStatType.HOST_CPU_USAGE, None]
+        }
+
+        # Obtain statistics from libvirt
+        self.obtain_libvirt_stats(data_res)
+        self.obtain_agent_stats(data_res)
+
+        self.insert_into_stat_db(data_res)
+
+        Pyro4.current_context.INTERNAL_REQUEST = False
+        Syslogger.logger().debug('Statistics daemon complete: %s' %
+                                 self.virtual_machine.get_name())
+
+    def obtain_libvirt_stats(self, data_res):
+        """Obtain statistics from libvirt"""
+        try:
+            memory_stats = self.virtual_machine.get_libvirt_memory_stats()
+            cpu_perc = self.virtual_machine.get_libvirt_cpu_stats()
+            capture_time = datetime.now()
+
+        except Exception, exc:
+            Syslogger.logger().error('Failed to obtain VM statistics from libvirt: %s' % str(exc))
+            Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
+        else:
+            vm_obj = self.virtual_machine
+            data_res['host_memory'][1] = vm_obj.current_host_memory_usage = memory_stats['rss']
+
+            vm_obj.current_host_cpu_usage[0] = vm_obj.current_host_cpu_usage[1]
+            data_res['host_cpu'][1] = vm_obj.current_host_cpu_usage[1] = [cpu_perc, capture_time]
+
+    def obtain_agent_stats(self, data_res):
+        """Obtain statistics from agent"""
         agent_conn = self.virtual_machine.get_agent_connection()
 
         resp = None
         try:
             resp = agent_conn.wait_lock(command='stats')
-        except Exception, e:
-            Syslogger.logger().error(e)
+        except Exception, exc:
+            Syslogger.logger().error(
+                'Failed to obtain connection to agent: ' % str(exc))
 
-        if resp is not None:
-            resp = json.loads(resp)
+        try:
+            if resp is not None:
+                resp = json.loads(resp)
+                vm_obj = self.virtual_machine
+                data_res['guest_memory'][1] = vm_obj.current_guest_memory_usage = (
+                    resp['memory_usage']
+                    if 'memory_usage' in resp else
+                    None)
 
-            self.virtual_machine.current_guest_memory_usage = (
-                resp['memory_usage']
-                if 'memory_usage' in resp else
-                None)
-            self.virtual_machine.current_guest_cpu_usage = (
-                resp['cpu_usage']
-                if 'cpu_usage' in resp else
-                None)
+                data_res['guest_cpu'][1] = vm_obj.current_guest_cpu_usage = (
+                    resp['cpu_usage']
+                    if 'cpu_usage' in resp else
+                    None)
 
-        self.insert_into_stat_db()
-
-        Pyro4.current_context.INTERNAL_REQUEST = False
-        Syslogger.logger().debug('Statistics daemon complete: %s' %
-                                 self.virtual_machine.get_name())
+        except:
+            pass

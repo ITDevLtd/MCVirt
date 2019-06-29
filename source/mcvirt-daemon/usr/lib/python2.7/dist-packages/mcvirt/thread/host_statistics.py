@@ -21,7 +21,7 @@ import Pyro4
 from mcvirt.thread.repeat_timer import RepeatTimer
 from mcvirt.constants import (AutoStartStates,
                               StatisticsDeviceType,
-                              StatisticsStatType)
+                              HostStatisticsStatType)
 from mcvirt.rpc.expose_method import Expose
 from mcvirt.argument_validator import ArgumentValidator
 from mcvirt.auth.permissions import PERMISSIONS
@@ -64,11 +64,11 @@ class HostStatistics(RepeatTimer):
         db_factory = self.po__get_registered_object('database_factory')
         db_rows = [
             (StatisticsDeviceType.HOST.value, get_hostname(),
-             StatisticsStatType.CPU_USAGE.value, self._cpu_usage,
+             HostStatisticsStatType.CPU_USAGE.value, self._cpu_usage,
              "{:%s}".format(datetime.now())),
 
             (StatisticsDeviceType.HOST.value, get_hostname(),
-             StatisticsStatType.MEMORY_USAGE.value, self._memory_usage,
+             HostStatisticsStatType.MEMORY_USAGE.value, self._memory_usage,
              "{:%s}".format(datetime.now()))
         ]
         with db_factory.get_locking_connection() as db_inst:

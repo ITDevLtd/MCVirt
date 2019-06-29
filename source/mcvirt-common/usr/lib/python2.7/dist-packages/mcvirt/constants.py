@@ -77,10 +77,18 @@ class StatisticsDeviceType(Enum):
     VIRTUAL_MACHINE = 2
 
 
-class StatisticsStatType(Enum):
+class HostStatisticsStatType(Enum):
     """Statistics stat type."""
     CPU_USAGE = 1
     MEMORY_USAGE = 2
+
+
+class VirtualMachineStatisticsStatType(Enum):
+    """Statistics stat type."""
+    GUEST_CPU_USAGE = 1
+    GUEST_MEMORY_USAGE = 2
+    HOST_CPU_USAGE = 3
+    HOST_MEMORY_USAGE = 4
 
 
 # Name of the default storage backend, used during upgrade
