@@ -131,7 +131,7 @@ class Factory(PyroObject):
         if id_ not in Factory.CACHED_OBJECTS:
             base_hdd = Base(id_)
             storage_type = base_hdd.get_type()
-            hard_drive_object = self.getClass(storage_type)(id_)
+            hard_drive_object = self.get_class(storage_type)(id_)
             self.po__register_object(hard_drive_object)
             Factory.CACHED_OBJECTS[id_] = hard_drive_object
 
@@ -307,11 +307,11 @@ class Factory(PyroObject):
             nodes_predefined=nodes_predefined)
 
         # Genrate ID for hard drive
-        id_ = self.getClass(storage_type).generate_id('whatshouldthisbe')
+        id_ = self.get_class(storage_type).generate_id('whatshouldthisbe')
         _f.add_undo_argument(id_=id_)
 
         # Generate config for hard drive
-        config = self.getClass(storage_type).generate_config(
+        config = self.get_class(storage_type).generate_config(
             driver=driver,
             storage_backend=storage_backend,
             nodes=nodes,
@@ -365,8 +365,8 @@ class Factory(PyroObject):
             node = get_hostname()
 
         storage_type = 'Local'
-        id_ = self.getClass(storage_type).generate_id('whatshouldthisbe')
-        config = self.getClass(storage_type).generate_config(
+        id_ = self.get_class(storage_type).generate_id('whatshouldthisbe')
+        config = self.get_class(storage_type).generate_config(
             driver=driver,
             storage_backend=storage_backend,
             nodes=[node],
@@ -448,7 +448,7 @@ class Factory(PyroObject):
                     hdd_size = SizeConverter(hard_drive_obj.get_size()).to_string()
                 except (VolumeDoesNotExistError,
                         HardDriveDoesNotExistException,
-                        StorageBackendDoesNotExist), exc:
+                        StorageBackendDoesNotExist) as exc:
                     hdd_size = str(exc)
 
                 table.add_row((hard_drive_obj.id_, hdd_size,
@@ -460,7 +460,7 @@ class Factory(PyroObject):
         """Return all hard drive objects."""
         return [self.get_object(id_) for id_ in HardDriveConfig.get_global_config().keys()]
 
-    def getClass(self, storage_type, allow_base=False):
+    def get_class(self, storage_type, allow_base=False):
         """Obtains the hard drive class for a given storage type."""
         # If allowed to return base class and storage_type is
         # null, return the base class
