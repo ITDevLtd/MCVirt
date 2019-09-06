@@ -102,13 +102,13 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
     def __init__(self, virtual_machine, *args, **kwargs):
         """Store virtual machine."""
         self.virtual_machine = virtual_machine
+        self._interval = MCVirtConfig().get_config()['statistics']['interval']
         super(VirtualMachineStatisticsAgent, self).__init__(*args, **kwargs)
 
     @property
     def interval(self):
         """Return the timer interval."""
-        # @TODO This will be slow
-        return MCVirtConfig().get_config()['statistics']['interval']
+        return self._interval
 
     def insert_into_stat_db(self, data_res):
         """Add statistics to statistics database."""
@@ -170,8 +170,8 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
             cpu_perc = self.virtual_machine.get_libvirt_cpu_stats()
             capture_time = datetime.now()
 
-        except Exception, exc:
-            Syslogger.logger().error('Failed to obtain VM statistics from libvirt: %s' % str(exc))
+        except Exception as exc:
+            Syslogger.logger().error('Failed to obtain VM statistics from libvirt: {}'.format(str(exc)))
             Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
         else:
             vm_obj = self.virtual_machine
@@ -187,9 +187,9 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         resp = None
         try:
             resp = agent_conn.wait_lock(command='stats')
-        except Exception, exc:
+        except Exception as exc:
             Syslogger.logger().error(
-                'Failed to obtain connection to agent: ' % str(exc))
+                'Failed to obtain connection to agent: {}'.format(str(exc)))
 
         try:
             if resp is not None:
