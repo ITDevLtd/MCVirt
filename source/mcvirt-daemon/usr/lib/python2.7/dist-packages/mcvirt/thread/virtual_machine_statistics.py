@@ -205,5 +205,7 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
                     if 'cpu_usage' in resp else
                     None)
 
-        except:
+        except Exception as exc:
+            Syslogger.logger().error(
+                'Failed to obtain agent stats: {}'.format(str(exc)))
             pass
