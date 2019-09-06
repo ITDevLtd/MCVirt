@@ -194,11 +194,6 @@ class Drbd(PyroObject):
     @Expose()
     def list(self):
         """List the Drbd volumes and statuses."""
-        # Manually set permissions asserted, as this function can
-        # run high privilege calls, but doesn't not require
-        # permission checking
-        self.po__get_registered_object('auth').set_permission_asserted()
-
         # Create table and add headers
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
@@ -209,35 +204,39 @@ class Drbd(PyroObject):
         table.set_cols_width((30, 5, 5, 20, 20, 20, 13))
         table.set_cols_align(('l', 'c', 'c', 'l', 'c', 'l', 'c'))
 
-        # Iterate over Drbd objects, adding to the table
-        for drbd_object in self.get_all_drbd_hard_drive_object(True):
-            remote_node = None
-            if not (drbd_object.get_virtual_machine() and
-                    drbd_object.get_virtual_machine().isRegisteredLocally()):
-                node_name = (drbd_object.get_virtual_machine().getNode()
-                             if drbd_object.get_virtual_machine() else
-                             None)
-                available_nodes = drbd_object.nodes
-                if node_name is None:
-                    node_name, sec_remote_node_name = available_nodes
+        # Manually set permissions asserted, as this function can
+        # run high privilege calls, but doesn't not require
+        # permission checking
+        with self.po__get_registered_object('auth').set_permission_asserted():
+            # Iterate over Drbd objects, adding to the table
+            for drbd_object in self.get_all_drbd_hard_drive_object(True):
+                remote_node = None
+                if not (drbd_object.get_virtual_machine() and
+                        drbd_object.get_virtual_machine().isRegisteredLocally()):
+                    node_name = (drbd_object.get_virtual_machine().getNode()
+                                 if drbd_object.get_virtual_machine() else
+                                 None)
+                    available_nodes = drbd_object.nodes
+                    if node_name is None:
+                        node_name, sec_remote_node_name = available_nodes
+                    else:
+                        available_nodes.remove(node_name)
+                        sec_remote_node_name = available_nodes[0]
+                    # drbd_object, remote_node = drbd_object.get_remote_object(
+                    #     node_name=drbd_object.get_vm_object().getNode(), return_node=True
+                    # )
                 else:
-                    available_nodes.remove(node_name)
-                    sec_remote_node_name = available_nodes[0]
-                # drbd_object, remote_node = drbd_object.get_remote_object(
-                #     node_name=drbd_object.get_vm_object().getNode(), return_node=True
-                # )
-            else:
-                node_name = 'Local'
-                sec_remote_node_name = 'Remote'
-            table.add_row((drbd_object.get_resource_name(),
-                           drbd_object.drbd_minor,
-                           drbd_object.drbd_port,
-                           '%s: %s, %s: %s' % (node_name, drbd_object.drbdGetRole()[0][0],
-                                               sec_remote_node_name,
-                                               drbd_object.drbdGetRole()[1][0]),
-                           drbd_object.drbdGetConnectionState()[0],
-                           '%s: %s, %s: %s' % (node_name, drbd_object.drbdGetDiskState()[0][0],
-                                               sec_remote_node_name,
-                                               drbd_object.drbdGetDiskState()[1][0]),
-                           'In Sync' if drbd_object.isInSync() else 'Out of Sync'))
+                    node_name = 'Local'
+                    sec_remote_node_name = 'Remote'
+                table.add_row((drbd_object.get_resource_name(),
+                               drbd_object.drbd_minor,
+                               drbd_object.drbd_port,
+                               '%s: %s, %s: %s' % (node_name, drbd_object.drbdGetRole()[0][0],
+                                                   sec_remote_node_name,
+                                                   drbd_object.drbdGetRole()[1][0]),
+                               drbd_object.drbdGetConnectionState()[0],
+                               '%s: %s, %s: %s' % (node_name, drbd_object.drbdGetDiskState()[0][0],
+                                                   sec_remote_node_name,
+                                                   drbd_object.drbdGetDiskState()[1][0]),
+                               'In Sync' if drbd_object.isInSync() else 'Out of Sync'))
         return table.draw()

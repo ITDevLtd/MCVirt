@@ -112,10 +112,6 @@ class Factory(PyroObject):
     @Expose()
     def list(self):
         """List the Drbd volumes and statuses."""
-        # Set permissions as having been checked, as listing VMs
-        # does not require permissions
-        self.po__get_registered_object('auth').set_permission_asserted()
-
         # Create table and add headers
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES | Texttable.HLINES)
@@ -125,12 +121,16 @@ class Factory(PyroObject):
         table.set_cols_width((15, 40, 40))
         table.set_cols_align(('l', 'l', 'l'))
 
-        for group in self.get_all():
-            table.add_row((
-                group.name,
-                ', '.join([str(perm) for perm in group.get_permissions()]),
-                ', '.join([user.get_username() for user in group.get_users(virtual_machine=None)])
-            ))
+        # Set permissions as having been checked, as listing VMs
+        # does not require permissions
+        with self.po__get_registered_object('auth').set_permission_asserted():
+            for group in self.get_all():
+                table.add_row((
+                    group.name,
+                    ', '.join([str(perm) for perm in group.get_permissions()]),
+                    ', '.join([user.get_username() for user in group.get_users(virtual_machine=None)])
+                ))
+
         return table.draw()
 
     def get_config(self):

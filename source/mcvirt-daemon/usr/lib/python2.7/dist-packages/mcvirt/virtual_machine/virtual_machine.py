@@ -547,96 +547,96 @@ class VirtualMachine(PyroObject):
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        self.po__get_registered_object('auth').set_permission_asserted()
-        warnings = ''
+        with self.po__get_registered_object('auth').set_permission_asserted():
+            warnings = ''
 
-        if not self.isRegistered():
-            warnings += 'Warning: Some details are not available' + \
-                        " as the VM is not registered on a node\n"
+            if not self.isRegistered():
+                warnings += 'Warning: Some details are not available' + \
+                            " as the VM is not registered on a node\n"
 
-        if self.isRegisteredRemotely():
-            cluster = self.po__get_registered_object('cluster')
-            remote_object = cluster.get_remote_node(self.getNode())
-            remote_vm_factory = remote_object.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.get_virtual_machine_by_name(self.get_name())
-            remote_object.annotate_object(remote_vm)
-            return remote_vm.getInfo()
+            if self.isRegisteredRemotely():
+                cluster = self.po__get_registered_object('cluster')
+                remote_object = cluster.get_remote_node(self.getNode())
+                remote_vm_factory = remote_object.get_connection('virtual_machine_factory')
+                remote_vm = remote_vm_factory.get_virtual_machine_by_name(self.get_name())
+                remote_object.annotate_object(remote_vm)
+                return remote_vm.getInfo()
 
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.add_row(('Name', self.get_name()))
-        table.add_row(('CPU Cores', self.getCPU()))
-        table.add_row(('Guest CPU Usage', self.get_guest_cpu_usage_text()))
-        table.add_row(('Memory Allocation', SizeConverter(self.getRAM()).to_string()))
-        table.add_row(('Guest Memory Usage', self.get_guest_memory_usage_text()))
-        table.add_row(('State', self._get_power_state().name))
-        table.add_row(('Autostart', self._get_autostart_state().name))
-        table.add_row(('Node', self.getNode()))
-        table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
-        table.add_row(('Lock State', self._getLockState().name))
-        table.add_row(('Delete protection', ('Enabled'
-                                             if self.get_delete_protection_state() else
-                                             'Disabled')))
-        table.add_row(('UUID', self.get_uuid()))
-        table.add_row(('Graphics Driver', self.get_graphics_driver()))
-        table.add_row(('Agent version', self.get_agent_version_check_string()))
+            table = Texttable()
+            table.set_deco(Texttable.HEADER | Texttable.VLINES)
+            table.add_row(('Name', self.get_name()))
+            table.add_row(('CPU Cores', self.getCPU()))
+            table.add_row(('Guest CPU Usage', self.get_guest_cpu_usage_text()))
+            table.add_row(('Memory Allocation', SizeConverter(self.getRAM()).to_string()))
+            table.add_row(('Guest Memory Usage', self.get_guest_memory_usage_text()))
+            table.add_row(('State', self._get_power_state().name))
+            table.add_row(('Autostart', self._get_autostart_state().name))
+            table.add_row(('Node', self.getNode()))
+            table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
+            table.add_row(('Lock State', self._getLockState().name))
+            table.add_row(('Delete protection', ('Enabled'
+                                                 if self.get_delete_protection_state() else
+                                                 'Disabled')))
+            table.add_row(('UUID', self.get_uuid()))
+            table.add_row(('Graphics Driver', self.get_graphics_driver()))
+            table.add_row(('Agent version', self.get_agent_version_check_string()))
 
-        # Display clone children, if they exist
-        clone_children = self.getCloneChildren()
-        if len(clone_children):
-            table.add_row(('Clone Children', ','.join(clone_children)))
+            # Display clone children, if they exist
+            clone_children = self.getCloneChildren()
+            if len(clone_children):
+                table.add_row(('Clone Children', ','.join(clone_children)))
 
-        # Display clone parent, if it exists
-        clone_parent = self.getCloneParent()
-        if clone_parent:
-            table.add_row(('Clone Parent', clone_parent))
+            # Display clone parent, if it exists
+            clone_parent = self.getCloneParent()
+            if clone_parent:
+                table.add_row(('Clone Parent', clone_parent))
 
-        # The ISO can only be displayed if the VM is on the local node
-        if self.isRegisteredLocally():
-            # Display the path of the attached ISO (if present)
-            disk_object = self.get_disk_drive()
-            iso_object = disk_object.getCurrentDisk()
-            if iso_object:
-                disk_name = iso_object.get_name()
+            # The ISO can only be displayed if the VM is on the local node
+            if self.isRegisteredLocally():
+                # Display the path of the attached ISO (if present)
+                disk_object = self.get_disk_drive()
+                iso_object = disk_object.getCurrentDisk()
+                if iso_object:
+                    disk_name = iso_object.get_name()
+                else:
+                    disk_name = None
             else:
-                disk_name = None
-        else:
-            disk_name = 'Unavailable'
+                disk_name = 'Unavailable'
 
-        if disk_name:
-            table.add_row(('ISO location', disk_name))
+            if disk_name:
+                table.add_row(('ISO location', disk_name))
 
-        # Get info for each disk
-        hdd_attachments = self.get_hard_drive_attachments()
-        if len(hdd_attachments):
-            table.add_row(('-- Disk ID --', '-- Disk Size --'))
-            for attachment in sorted(hdd_attachments,
-                                     key=lambda attachment: attachment.attachment_id):
-                table.add_row((
-                    str(attachment.attachment_id),
-                    SizeConverter(
-                        attachment.get_hard_drive_object().get_size()).to_string()))
-        else:
-            warnings += "No hard disks present on machine\n"
+            # Get info for each disk
+            hdd_attachments = self.get_hard_drive_attachments()
+            if len(hdd_attachments):
+                table.add_row(('-- Disk ID --', '-- Disk Size --'))
+                for attachment in sorted(hdd_attachments,
+                                         key=lambda attachment: attachment.attachment_id):
+                    table.add_row((
+                        str(attachment.attachment_id),
+                        SizeConverter(
+                            attachment.get_hard_drive_object().get_size()).to_string()))
+            else:
+                warnings += "No hard disks present on machine\n"
 
-        # Create info table for network adapters
-        network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
-        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
-        if len(network_adapters) != 0:
-            table.add_row(('-- MAC Address --', '-- Network --'))
-            for network_adapter in network_adapters:
-                table.add_row(
-                    (network_adapter.getMacAddress(),
-                     network_adapter.getConnectedNetwork()))
-        else:
-            warnings += "No network adapters present on machine\n"
+            # Create info table for network adapters
+            network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
+            network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
+            if len(network_adapters) != 0:
+                table.add_row(('-- MAC Address --', '-- Network --'))
+                for network_adapter in network_adapters:
+                    table.add_row(
+                        (network_adapter.getMacAddress(),
+                         network_adapter.getConnectedNetwork()))
+            else:
+                warnings += "No network adapters present on machine\n"
 
-        # Get information about the permissions for the VM
-        table.add_row(('-- Group --', '-- Users --'))
-        for group in self.po__get_registered_object('group_factory').get_all():
-            users = group.get_users(virtual_machine=self)
-            users_string = ','.join(sorted([user.get_username() for user in users]))
-            table.add_row((group.name, users_string))
+            # Get information about the permissions for the VM
+            table.add_row(('-- Group --', '-- Users --'))
+            for group in self.po__get_registered_object('group_factory').get_all():
+                users = group.get_users(virtual_machine=self)
+                users_string = ','.join(sorted([user.get_username() for user in users]))
+                table.add_row((group.name, users_string))
         return table.draw() + "\n" + warnings
 
     @Expose(locking=True)
@@ -664,39 +664,39 @@ class VirtualMachine(PyroObject):
 
         # Manually set permission asserted, since we do a complex permission
         # check, which doesn't explicitly use assert_permission
-        self.po__get_registered_object('auth').set_permission_asserted()
+        with self.po__get_registered_object('auth').set_permission_asserted():
 
-        # Delete if delete protection is enabled
-        if self.get_delete_protection_state():
-            raise DeleteProtectionEnabledError('VM is configured with delete protection')
+            # Delete if delete protection is enabled
+            if self.get_delete_protection_state():
+                raise DeleteProtectionEnabledError('VM is configured with delete protection')
 
-        # Determine if VM is running
-        if self.po__is_cluster_master and self._get_power_state() == PowerStates.RUNNING:
-            raise VmAlreadyStartedException('Error: Can\'t delete running VM')
+            # Determine if VM is running
+            if self.po__is_cluster_master and self._get_power_state() == PowerStates.RUNNING:
+                raise VmAlreadyStartedException('Error: Can\'t delete running VM')
 
-        # Ensure VM is unlocked
-        self.ensureUnlocked()
+            # Ensure VM is unlocked
+            self.ensureUnlocked()
 
-        # Ensure that VM has not been cloned
-        if self.getCloneChildren():
-            raise CannotDeleteClonedVmException('Can\'t delete cloned VM')
+            # Ensure that VM has not been cloned
+            if self.getCloneChildren():
+                raise CannotDeleteClonedVmException('Can\'t delete cloned VM')
 
-        # Unless 'keep_disks' has been passed as True, delete disks associated
-        # with VM
-        for hdd_attachment in self.get_hard_drive_attachments():
-            hdd = hdd_attachment.get_hard_drive_object()
+            # Unless 'keep_disks' has been passed as True, delete disks associated
+            # with VM
+            for hdd_attachment in self.get_hard_drive_attachments():
+                hdd = hdd_attachment.get_hard_drive_object()
 
-            # Remove hard drive attachment
-            hdd_attachment.delete(local_only=local_only)
+                # Remove hard drive attachment
+                hdd_attachment.delete(local_only=local_only)
 
-            if not keep_disks:
-                hdd.delete(local_only=local_only)
+                if not keep_disks:
+                    hdd.delete(local_only=local_only)
 
-        nodes = ([get_hostname()]
-                 if local_only else
-                 self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes = ([get_hostname()]
+                     if local_only else
+                     self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
-        self.delete_config(nodes=nodes, keep_config=keep_config)
+            self.delete_config(nodes=nodes, keep_config=keep_config)
 
     @Expose(locking=True, remote_nodes=True)
     def delete_config(self, keep_config):

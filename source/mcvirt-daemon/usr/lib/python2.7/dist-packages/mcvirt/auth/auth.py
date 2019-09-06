@@ -33,6 +33,28 @@ from mcvirt.auth.permissions import PERMISSIONS, PERMISSION_DESCRIPTIONS
 from mcvirt.argument_validator import ArgumentValidator
 
 
+class PermissionAsserted(object):
+    """Provide a with-statement object for setting permission asserted"""
+
+    def __init__(self):
+        """Setup variable to determine if the permission asserted flag was set by this variable."""
+        self._permission_asserted_set = False
+
+    def __enter__(self, auth_obj):
+        """Mark permission asserted, if available and not already set."""
+        # Mark in the context that user has passed permission checks.
+        if 'PERMISSION_ASSERTED' in dir(Pyro4.current_context):
+            if not Pyro4.current_context.PERMISSION_ASSERTED:
+                self._permission_asserted_set = True
+                Pyro4.current_context.PERMISSION_ASSERTED = True
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Reset the permission asserted flag"""
+        # If the permission_asserted flag has been set, reset it.
+        if self._permission_asserted_set:
+            Pyro4.current_context.PERMISSION_ASSERTED = False
+
+
 class Auth(PyroObject):
     """Provides authentication and permissions for performing functions within MCVirt."""
 
@@ -79,16 +101,13 @@ class Auth(PyroObject):
 
     def set_permission_asserted(self):
         """Called when user has passed a permission requirement."""
-        # Mark in the context that user has passed permission checks
-        if 'PERMISSION_ASSERTED' in dir(Pyro4.current_context):
-            Pyro4.current_context.PERMISSION_ASSERTED = True
+        return PermissionAsserted(self)
 
     def assert_permission(self, permission_enum, vm_object=None, allow_indirect=False):
         """Use check_permission function to determine if a user has a given permission
         and throws an exception if the permission is not present.
         """
         if self.check_permission(permission_enum, vm_object):
-            self.set_permission_asserted()
             return True
         elif allow_indirect and self.has_permission_asserted():
             Syslogger.logger().debug('Already asserted permission and indirect')
