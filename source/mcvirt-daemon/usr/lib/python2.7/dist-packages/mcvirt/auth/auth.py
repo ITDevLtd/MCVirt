@@ -40,7 +40,7 @@ class PermissionAsserted(object):
         """Setup variable to determine if the permission asserted flag was set by this variable."""
         self._permission_asserted_set = False
 
-    def __enter__(self, auth_obj):
+    def __enter__(self):
         """Mark permission asserted, if available and not already set."""
         # Mark in the context that user has passed permission checks.
         if 'PERMISSION_ASSERTED' in dir(Pyro4.current_context):
@@ -101,7 +101,7 @@ class Auth(PyroObject):
 
     def set_permission_asserted(self):
         """Called when user has passed a permission requirement."""
-        return PermissionAsserted(self)
+        return PermissionAsserted()
 
     def assert_permission(self, permission_enum, vm_object=None, allow_indirect=False):
         """Use check_permission function to determine if a user has a given permission
