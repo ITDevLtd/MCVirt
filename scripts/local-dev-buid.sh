@@ -24,5 +24,5 @@ for i in $(seq ${MCVIRT_VM_COUNT})
 do
   ssh ${MCVIRT_VM_USER}@$MCVIRT_VM_PREFIX${i} 'rm -f *mcvirt*.deb'
   scp mcvirt{,-common,-daemon}_*.deb ${MCVIRT_VM_USER}@$MCVIRT_VM_PREFIX${i}:~/
-  ssh ${MCVIRT_VM_USER}@${MCVIRT_VM_PREFIX}${i} 'sudo dpkg -i ./*mcvirt*.deb; sudo apt-get install -f --assume-yes; echo "sudo service mcvirt-ns restart; sudo service mcvirtd restart"'
+  ssh ${MCVIRT_VM_USER}@${MCVIRT_VM_PREFIX}${i} 'sudo dpkg -i ./*mcvirt*.deb; sudo apt-get install -f --assume-yes; sudo service mcvirt-ns restart; sudo service mcvirtd restart'
 done
