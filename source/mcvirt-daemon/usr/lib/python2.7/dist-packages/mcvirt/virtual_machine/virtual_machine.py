@@ -396,7 +396,7 @@ class VirtualMachine(PyroObject):
         # Ensure VM is registered locally
         if self.isRegisteredLocally():
             # Ensure VM hasn't been cloned
-            if self.getCloneChildren():
+            if self.get_clone_children():
                 raise CannotStartClonedVmException('Cloned VMs cannot be started')
 
             # Determine if VM is stopped
@@ -565,7 +565,7 @@ class VirtualMachine(PyroObject):
             table = Texttable()
             table.set_deco(Texttable.HEADER | Texttable.VLINES)
             table.add_row(('Name', self.get_name()))
-            table.add_row(('CPU Cores', self.getCPU()))
+            table.add_row(('CPU Cores', self.get_cpu()))
             table.add_row(('Guest CPU Usage', self.get_guest_cpu_usage_text()))
             table.add_row(('Memory Allocation', SizeConverter(self.get_ram()).to_string()))
             table.add_row(('Guest Memory Usage', self.get_guest_memory_usage_text()))
@@ -582,12 +582,12 @@ class VirtualMachine(PyroObject):
             table.add_row(('Agent version', self.get_agent_version_check_string()))
 
             # Display clone children, if they exist
-            clone_children = self.getCloneChildren()
+            clone_children = self.get_clone_children()
             if len(clone_children):
                 table.add_row(('Clone Children', ','.join(clone_children)))
 
             # Display clone parent, if it exists
-            clone_parent = self.getCloneParent()
+            clone_parent = self.get_clone_parent()
             if clone_parent:
                 table.add_row(('Clone Parent', clone_parent))
 
@@ -653,7 +653,7 @@ class VirtualMachine(PyroObject):
         # that the user is the owner of the VM and the VM is a clone
         if not (self.po__get_registered_object('auth').check_permission(
                 PERMISSIONS.MODIFY_VM, self) or
-                (self.getCloneParent() and
+                (self.get_clone_parent() and
                  self.po__get_registered_object('auth').check_permission(
                      PERMISSIONS.DELETE_CLONE, self))
                 ):
@@ -678,7 +678,7 @@ class VirtualMachine(PyroObject):
             self.ensureUnlocked()
 
             # Ensure that VM has not been cloned
-            if self.getCloneChildren():
+            if self.get_clone_children():
                 raise CannotDeleteClonedVmException('Can\'t delete cloned VM')
 
             # Unless 'keep_disks' has been passed as True, delete disks associated
@@ -707,16 +707,16 @@ class VirtualMachine(PyroObject):
 
         # If VM is a clone of another VM, remove it from the configuration
         # of the parent
-        if self.getCloneParent():
+        if self.get_clone_parent():
             def remove_clone_child_config(vm_config):
                 """Remove a given child VM from a parent VM configuration."""
                 vm_config['clone_children'].remove(self.get_name())
 
             vm_factory = self.po__get_registered_object('virtual_machine_factory')
-            parent_vm_object = vm_factory.get_virtual_machine_by_name(self.getCloneParent())
+            parent_vm_object = vm_factory.get_virtual_machine_by_name(self.get_clone_parent())
             parent_vm_object.get_config_object().update_config(
                 remove_clone_child_config, 'Removed clone child \'%s\' from \'%s\'' %
-                (self.get_name(), self.getCloneParent()))
+                (self.get_name(), self.get_clone_parent()))
 
         # Remove VM from MCVirt configuration
         self.get_config_object().delete()
@@ -765,7 +765,7 @@ class VirtualMachine(PyroObject):
                            'RAM allocation has been changed to %s' % memory_allocation)
 
     @Expose()
-    def getCPU(self):
+    def get_cpu(self):
         """Returns the number of CPU cores attached to the VM."""
         return self.get_config_object().get_config()['cpu_cores']
 
@@ -782,7 +782,7 @@ class VirtualMachine(PyroObject):
             vm_object = self.get_remote_object(set_cluster_master=True)
             return vm_object.update_cpu(cpu_count, old_value)
 
-        # Ensure cpu count is an interger, greater than 0
+        # Ensure cpu count is an integer, greater than 0
         try:
             int(cpu_count)
             if int(cpu_count) <= 0 or str(cpu_count) != str(int(cpu_count)):
@@ -790,7 +790,7 @@ class VirtualMachine(PyroObject):
         except ValueError:
             raise InvalidArgumentException('CPU count must be an integer greater than 0')
 
-        current_value = self.getCPU()
+        current_value = self.get_cpu()
         if old_value and current_value != old_value:
             raise AttributeAlreadyChanged(
                 'CPU count has already been changed to %s since command call' % current_value)
@@ -1008,7 +1008,7 @@ class VirtualMachine(PyroObject):
         return domain_xml
 
     @Expose(locking=True)
-    def editConfig(self, *args, **kwargs):
+    def edit_config(self, *args, **kwargs):
         """Provides permission checking around the editConfig method and
         exposes the method
         """
@@ -1035,11 +1035,11 @@ class VirtualMachine(PyroObject):
         except Exception:
             raise LibvirtException('Error: An error occurred whilst updating the VM')
 
-    def getCloneParent(self):
+    def get_clone_parent(self):
         """Determines if a VM is a clone of another VM."""
         return self.get_config_object().get_config()['clone_parent']
 
-    def getCloneChildren(self):
+    def get_clone_children(self):
         """Returns the VMs that have been cloned from the VM."""
         return self.get_config_object().get_config()['clone_children']
 
@@ -1314,13 +1314,13 @@ class VirtualMachine(PyroObject):
             raise VirtualMachineDoesNotExistException('VM %s already exists' % clone_vm_name)
 
         # Ensure VM is not a clone, as cloning a cloned VM will cause issues
-        if self.getCloneParent():
+        if self.get_clone_parent():
             raise VmIsCloneException('Cannot clone from a clone VM')
 
         # Create new VM for clone, without hard disks
         vm_factory = self.po__get_registered_object('virtual_machine_factory')
         new_vm_object = vm_factory._create(clone_vm_name,
-                                           self.getCPU(),
+                                           self.get_cpu(),
                                            self.get_ram(),
                                            available_nodes=self.getAvailableNodes(),
                                            node=self.getNode(),
@@ -1388,7 +1388,7 @@ class VirtualMachine(PyroObject):
         # Create new VM for clone, without hard disks
         virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
 
-        new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.getCPU(),
+        new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.get_cpu(),
                                                         self.get_ram(), [], [],
                                                         available_nodes=self.getAvailableNodes(),
                                                         node=self.getNode(),
@@ -1593,7 +1593,7 @@ class VirtualMachine(PyroObject):
         domain_xml.find('./name').text = self.get_name()
         domain_xml.find('./memory').text = '%s' % str(self.get_ram())
         domain_xml.find('./memory').set('unit', 'b')
-        domain_xml.find('./vcpu').text = str(self.getCPU())
+        domain_xml.find('./vcpu').text = str(self.get_cpu())
         domain_xml.find('./devices/video/model').set('type', self.get_graphics_driver())
 
         device_xml = domain_xml.find('./devices')

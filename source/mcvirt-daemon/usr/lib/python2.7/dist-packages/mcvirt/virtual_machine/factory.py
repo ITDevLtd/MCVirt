@@ -208,7 +208,7 @@ class Factory(PyroObject):
                 if include_ram:
                     vm_row.append(SizeConverter(vm_object.get_ram()).to_string())
                 if include_cpu:
-                    vm_row.append(vm_object.getCPU())
+                    vm_row.append(vm_object.get_cpu())
                 if include_disk:
                     hard_drive_size = 0
                     for disk_object in vm_object.get_hard_drive_objects():

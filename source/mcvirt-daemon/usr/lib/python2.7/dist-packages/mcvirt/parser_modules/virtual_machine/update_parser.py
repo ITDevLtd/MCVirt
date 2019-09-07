@@ -151,7 +151,7 @@ class UpdateParser(object):
             )
 
         if args.cpu_count:
-            old_cpu_count = vm_object.getCPU()
+            old_cpu_count = vm_object.get_cpu()
             vm_object.update_cpu(args.cpu_count, old_value=old_cpu_count)
             p_.print_status(
                 'Number of virtual cores will be changed from %s to %s.' %
