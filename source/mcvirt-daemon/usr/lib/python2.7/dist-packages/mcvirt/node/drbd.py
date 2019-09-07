@@ -207,7 +207,7 @@ class Drbd(PyroObject):
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        with self.po__get_registered_object('auth').elevate_permissions():
+        with self.po__get_registered_object('auth').elevate_permissions(PERMISSIONS.MANAGE_DRBD):
             # Iterate over Drbd objects, adding to the table
             for drbd_object in self.get_all_drbd_hard_drive_object(True):
                 remote_node = None

@@ -547,7 +547,8 @@ class VirtualMachine(PyroObject):
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        with self.po__get_registered_object('auth').elevate_permissions():
+        with self.po__get_registered_object('auth').elevate_permissions(
+                PERMISSIONS.MANAGE_STORAGE_BACKEND, PERMISSIONS.MANAGE_DRBD):
             warnings = ''
 
             if not self.isRegistered():
@@ -664,7 +665,7 @@ class VirtualMachine(PyroObject):
 
         # Manually set permission asserted, since we do a complex permission
         # check, which doesn't explicitly use assert_permission
-        with self.po__get_registered_object('auth').elevate_permissions():
+        with self.po__get_registered_object('auth').elevate_permissions(PERMISSIONS.MANAGE_DRBD):
 
             # Delete if delete protection is enabled
             if self.get_delete_protection_state():
