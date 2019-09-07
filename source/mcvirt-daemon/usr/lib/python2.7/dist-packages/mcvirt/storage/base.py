@@ -235,8 +235,7 @@ class Base(PyroObject):
     def get_config(self):
         """Get config for storage backend."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_permission(
-            PERMISSIONS.MANAGE_STORAGE_BACKEND)
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         return self.get_config_object().get_config()
 
@@ -488,8 +487,8 @@ class Base(PyroObject):
     @Expose()
     def get_volume(self, name):
         """Return a volume for the current storage volume."""
-        self.po__get_registered_object('auth').assert_user_type(
-            'ClusterUser', allow_indirect=True)
+        self.po__get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_STORAGE_BACKEND)
 
         # Create volume object
         volume = self._volume_class(name=name, storage_backend=self)
