@@ -49,12 +49,12 @@ class Base(PyroObject):
 
     @staticmethod
     def get_id_name_checksum_length():
-        """Return the lenght of the name checksum to use in the ID."""
+        """Return the length of the name checksum to use in the ID."""
         return 16
 
     @staticmethod
     def get_id_date_checksum_length():
-        """Return the lenght of the name checksum to use in the ID."""
+        """Return the length of the name checksum to use in the ID."""
         return 24
 
     @classmethod
@@ -74,9 +74,9 @@ class Base(PyroObject):
         """Ensure volume group exists on node."""
         try:
             cls.ensure_exists(location)
-        except InvalidStorageConfiguration, exc:
+        except InvalidStorageConfiguration as exc:
             raise InvalidStorageConfiguration(
-                '%s on node %s' % (str(exc), get_hostname())
+                '{} on node {}'.format(str(exc), get_hostname())
             )
         cls.check_permissions(libvirt_config, location)
 
@@ -172,7 +172,7 @@ class Base(PyroObject):
             volume.create(size=2 ** 20, nodes=nodes)
         except ExternalStorageCommandErrorException:
             raise ExternalStorageCommandErrorException(
-                ('An error occured whilst adding storage backend: Either the storage '
+                ('An error occurred whilst adding storage backend: Either the storage '
                  'backend has no free space (at least 1MB required) or '
                  'shared storage is being used, but has not been specified'))
 
@@ -181,7 +181,7 @@ class Base(PyroObject):
             volume.ensure_exists(nodes=self.nodes)
         except VolumeDoesNotExistError:
             raise ExternalStorageCommandErrorException(
-                ('An error ocurred whilst verifying the storage backend: '
+                ('An error occurred whilst verifying the storage backend: '
                  'A shared storage has been specified, but it is not'))
 
     def delete_id_volume(self, nodes=None):
@@ -358,7 +358,7 @@ class Base(PyroObject):
                 'Virtual machine registered on the node require this storage backend')
 
         # Ensure that there are no virtual machines that:
-        #  - Have static availalble nodes
+        #  - Have static available nodes
         #  - Use this storage backend; and
         #  - This node is one of the available nodes
         virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
@@ -421,10 +421,10 @@ class Base(PyroObject):
 
         if self.shared and self.in_use():
             raise CannotUnshareInUseStorageBackendError(
-                'Storage backend is in use, so cannot unshare')
+                'Storage backend is in use, so cannot unset shared flag')
 
         def update_shared_config(config):
-            """Set sared parameter to new value."""
+            """Set shared parameter to new value."""
             config['shared'] = shared
         self.update_config(update_shared_config, 'Update shared status to %s' % shared)
 
@@ -521,7 +521,7 @@ class Base(PyroObject):
 
     @Expose(remote_nodes=True)
     def get_free_space(self):
-        """Return the amount of free spacae in the storage backend."""
+        """Return the amount of free space in the storage backend."""
         raise NotImplementedError
 
 
@@ -533,7 +533,7 @@ class BaseVolume(PyroObject):
     """
 
     def __init__(self, name, storage_backend):
-        """Setup vairables."""
+        """Setup variables."""
         self._name = name
         self._validate_name()
         self._storage_backend = storage_backend
@@ -556,12 +556,12 @@ class BaseVolume(PyroObject):
         if node_object is None and node is not None:
             node_object = cluster.get_remote_node(node)
 
-        # Obtian remote storage backend
+        # Obtain remote storage backend
         remote_storage = self.storage_backend.get_remote_object(
             node_object=node_object
         )
 
-        # Obtian remote volume and annotate
+        # Obtain remote volume and annotate
         remote_volume = remote_storage.get_volume(self.name)
         node_object.annotate_object(remote_volume)
 
@@ -597,7 +597,7 @@ class BaseVolume(PyroObject):
         return int(sector_size.strip())
 
     def _validate_name(self):
-        """Ensurue name of object is valid."""
+        """Ensure name of object is valid."""
         raise NotImplementedError
 
     def get_path(self, node=None):
@@ -641,7 +641,7 @@ class BaseVolume(PyroObject):
         raise NotImplementedError
 
     def ensure_active(self):
-        """Ensure that voljuem is active, otherwise, raise exception."""
+        """Ensure that volume is active, otherwise, raise exception."""
         if not self.is_active():
             raise VolumeIsNotActiveException(
                 'Volume %s is not active on %s' %
@@ -658,7 +658,7 @@ class BaseVolume(PyroObject):
 
     @Expose(locking=True, remote_nodes=True, support_callback=True)
     def resize(self, size, increase, _f=None):
-        """Reszie volume."""
+        """Resize volume."""
         self.po__get_registered_object('auth').assert_user_type(
             'ClusterUser', allow_indirect=True)
 
