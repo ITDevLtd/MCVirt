@@ -168,18 +168,19 @@ class Factory(PyroObject):
 
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
-        with self.po__get_registered_object('auth').elevate_permissions():
-            for user in self.get_all_users():
-                table.add_row((
-                    user.get_username(),
-                    user.get_user_type(),
-                    ', '.join([group.name for group in user.get_groups()])
-                ))
+        for user in self.get_all_users():
+            table.add_row((
+                user.get_username(),
+                user.get_user_type(),
+                ', '.join([group.name for group in user.get_groups()])
+            ))
         return table.draw()
 
     @Expose()
-    def get_all_user_objects(self, user_classes=[]):
+    def get_all_user_objects(self, user_classes=None):
         """Return the user objects for all users, optionally filtered by user type."""
+        if user_classes is None:
+            user_classes = []
         if len(user_classes):
             # Ensure valid user type
             for itx, user_class in enumerate(user_classes):
