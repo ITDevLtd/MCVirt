@@ -192,7 +192,7 @@ class Factory(PyroObject):
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        with self.po__get_registered_object('auth').set_permission_asserted():
+        with self.po__get_registered_object('auth').elevate_permissions():
             # Iterate over VMs and add to list
             for vm_object in sorted(self.get_all_virtual_machines(), key=lambda vm: vm.name):
                 # Attempt to obtain power state, allowing

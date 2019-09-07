@@ -436,7 +436,7 @@ class Factory(PyroObject):
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        with self.po__get_registered_object('auth').set_permission_asserted():
+        with self.po__get_registered_object('auth').elevate_permissions():
             # Obtain hard ives and add to table
             for hard_drive_obj in self.get_all():
                 vm_object = hard_drive_obj.get_virtual_machine()

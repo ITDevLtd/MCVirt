@@ -33,28 +33,6 @@ from mcvirt.auth.permissions import PERMISSIONS, PERMISSION_DESCRIPTIONS
 from mcvirt.argument_validator import ArgumentValidator
 
 
-class PermissionAsserted(object):
-    """Provide a with-statement object for setting permission asserted"""
-
-    def __init__(self):
-        """Setup variable to determine if the permission asserted flag was set by this variable."""
-        self._permission_asserted_set = False
-
-    def __enter__(self):
-        """Mark permission asserted, if available and not already set."""
-        # Mark in the context that user has passed permission checks.
-        if 'PERMISSION_ASSERTED' in dir(Pyro4.current_context):
-            if not Pyro4.current_context.PERMISSION_ASSERTED:
-                self._permission_asserted_set = True
-                Pyro4.current_context.PERMISSION_ASSERTED = True
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Reset the permission asserted flag"""
-        # If the permission_asserted flag has been set, reset it.
-        if self._permission_asserted_set:
-            Pyro4.current_context.PERMISSION_ASSERTED = False
-
-
 class Auth(PyroObject):
     """Provides authentication and permissions for performing functions within MCVirt."""
 
@@ -101,13 +79,16 @@ class Auth(PyroObject):
 
     def set_permission_asserted(self):
         """Called when user has passed a permission requirement."""
-        return PermissionAsserted()
+        # Mark in the context that user has passed permission checks.
+        if 'PERMISSION_ASSERTED' in dir(Pyro4.current_context):
+            Pyro4.current_context.PERMISSION_ASSERTED = True
 
     def assert_permission(self, permission_enum, vm_object=None, allow_indirect=False):
         """Use check_permission function to determine if a user has a given permission
         and throws an exception if the permission is not present.
         """
         if self.check_permission(permission_enum, vm_object):
+            self.set_permission_asserted()
             return True
         elif allow_indirect and self.has_permission_asserted():
             Syslogger.logger().debug('Already asserted permission and indirect')
@@ -281,29 +262,43 @@ class Auth(PyroObject):
             ))
         return table.draw()
 
+    @staticmethod
+    def elevate_permissions(*permissions):
+        """Return a permission elevation object."""
+        return ElevatePermission([p for p in permissions])
+
 
 class ElevatePermission(object):
     """Object to allow temporary permission elevation."""
 
-    def __init__(self, *permissions):
+    def __init__(self, permissions):
         """Store permissions in member variable."""
-        self.permissions = permissions
+        self._permissions_requested = permissions
+        self._permissions_assigned = []
 
     def __enter__(self):
         """Assign the elevated permissions."""
         # Check whether elevated permissions have already been assigned
-        if ('ELEVATED_PERMISSIONS' in dir(Pyro4.current_context) and
-                Pyro4.current_context.ELEVATED_PERMISSIONS):
-            raise AlreadyElevatedPermissionsError('Permissions already elevated')
+        Syslogger.logger().info(
+            'Permission elevation request: %s' % str(','.join([p.name for p in self._permissions_requested])))
+        if 'ELEVATED_PERMISSIONS' in dir(Pyro4.current_context):
+            for permission in self._permissions_requested:
+                if permission not in Pyro4.current_context.ELEVATED_PERMISSIONS:
+                    self._permissions_assigned.append(permission)
+                    Pyro4.current_context.ELEVATED_PERMISSIONS.append(permission)
+            Syslogger.logger().info(
+                'Elevating permissions: %s' % str(','.join([p.name for p in self._permissions_assigned])))
         else:
-            Syslogger.logger().info('Elevating permissions: %s' % str(self.permissions))
-            Pyro4.current_context.ELEVATED_PERMISSIONS = self.permissions
+            Syslogger.logger().warn('Cannot elevate permissions due to context not available.')
 
     def __exit__(self, type, value, traceback):
         """Remove elevated permissions."""
         if 'ELEVATED_PERMISSIONS' in dir(Pyro4.current_context):
-            del Pyro4.current_context.ELEVATED_PERMISSIONS
-            Syslogger.logger().info('de-elevating permissions: %s' % str(self.permissions))
+            Syslogger.logger().info(
+                'Removing elevated permissions: %s' % str(','.join([p.name for p in self._permissions_assigned])))
+            for permission in self._permissions_assigned:
+                if permission in Pyro4.current_context.ELEVATED_PERMISSIONS:
+                    Pyro4.current_context.ELEVATED_PERMISSIONS.remove(permission)
         else:
             Syslogger.logger().warning(
-                'Elevated permissions disaapeared before removing')
+                'De-elevation failed: elevated permissions context not available.')

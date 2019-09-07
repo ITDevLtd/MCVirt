@@ -123,7 +123,7 @@ class Factory(PyroObject):
 
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
-        with self.po__get_registered_object('auth').set_permission_asserted():
+        with self.po__get_registered_object('auth').elevate_permissions(PERMISSIONS.MANAGE_GROUPS):
             for group in self.get_all():
                 table.add_row((
                     group.name,
