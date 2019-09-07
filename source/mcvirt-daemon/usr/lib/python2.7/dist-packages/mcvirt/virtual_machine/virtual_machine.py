@@ -403,10 +403,11 @@ class VirtualMachine(PyroObject):
             if self._get_power_state() is PowerStates.RUNNING:
                 raise VmAlreadyStartedException('The VM is already running')
 
-            # Take the oportunity to update libvirt config
+            # Take the opportunity to update libvirt config
             self.check_libvirt_config_update()
 
-            with self.po__get_registered_object('auth').elevate_permissions(PERMISSIONS.MANAGE_STORAGE_BACKEND):
+            with self.po__get_registered_object('auth').elevate_permissions(
+                    PERMISSIONS.MANAGE_STORAGE_BACKEND, PERMISSIONS.MANAGE_STORAGE_VOLUME):
                 for disk_object in self.get_hard_drive_objects():
                     disk_object.activateDisk()
 
@@ -493,7 +494,7 @@ class VirtualMachine(PyroObject):
                 try:
                     # Reset the VM
                     self._get_libvirt_domain_object().reset()
-                except Exception, e:
+                except Exception as e:
                     raise LibvirtException('Failed to reset VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('Cannot reset a stopped VM')
