@@ -406,8 +406,9 @@ class VirtualMachine(PyroObject):
             # Take the oportunity to update libvirt config
             self.check_libvirt_config_update()
 
-            for disk_object in self.get_hard_drive_objects():
-                disk_object.activateDisk()
+            with self.po__get_registered_object('auth').elevate_permissions(PERMISSIONS.MANAGE_STORAGE_BACKEND):
+                for disk_object in self.get_hard_drive_objects():
+                    disk_object.activateDisk()
 
             disk_drive_object = self.get_disk_drive()
             if iso_name:
@@ -426,17 +427,17 @@ class VirtualMachine(PyroObject):
             # Start the VM
             try:
                 self._get_libvirt_domain_object().create()
-            except Exception, e:
-                # Interogate exception to attempt to determine cause
+            except Exception as exc:
+                # Interrogate exception to attempt to determine cause
                 # of failure
-                if 'Could not open ' in str(e) and ': Permission denied' in str(e):
+                if 'Could not open ' in str(exc) and ': Permission denied' in str(exc):
                     # A disk could not be opened
                     # Iterate through hard drives and disk drive to determine
                     # which of these couldn't be opened
                     # @TODO complete
                     pass
 
-                raise LibvirtException('Failed to start VM: %s' % e)
+                raise LibvirtException('Failed to start VM: %s' % str(exc))
 
         elif not self.po__cluster_disabled and self.isRegisteredRemotely():
             cluster = self.po__get_registered_object('cluster')
