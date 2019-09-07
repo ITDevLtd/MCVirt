@@ -533,7 +533,7 @@ class VirtualMachine(PyroObject):
         else:
             try:
                 agent_version, host_version = self.get_agent_connection().check_agent_version()
-            except Exception, exc:
+            except Exception as exc:
                 return str(exc)
 
         if agent_version != host_version:
@@ -567,10 +567,10 @@ class VirtualMachine(PyroObject):
             table.add_row(('Name', self.get_name()))
             table.add_row(('CPU Cores', self.getCPU()))
             table.add_row(('Guest CPU Usage', self.get_guest_cpu_usage_text()))
-            table.add_row(('Memory Allocation', SizeConverter(self.getRAM()).to_string()))
+            table.add_row(('Memory Allocation', SizeConverter(self.get_ram()).to_string()))
             table.add_row(('Guest Memory Usage', self.get_guest_memory_usage_text()))
             table.add_row(('State', self._get_power_state().name))
-            table.add_row(('Autostart', self._get_autostart_state().name))
+            table.add_row(('Auto-start', self._get_autostart_state().name))
             table.add_row(('Node', self.getNode()))
             table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
             table.add_row(('Lock State', self._getLockState().name))
@@ -708,14 +708,14 @@ class VirtualMachine(PyroObject):
         # If VM is a clone of another VM, remove it from the configuration
         # of the parent
         if self.getCloneParent():
-            def removeCloneChildConfig(vm_config):
+            def remove_clone_child_config(vm_config):
                 """Remove a given child VM from a parent VM configuration."""
                 vm_config['clone_children'].remove(self.get_name())
 
             vm_factory = self.po__get_registered_object('virtual_machine_factory')
             parent_vm_object = vm_factory.get_virtual_machine_by_name(self.getCloneParent())
             parent_vm_object.get_config_object().update_config(
-                removeCloneChildConfig, 'Removed clone child \'%s\' from \'%s\'' %
+                remove_clone_child_config, 'Removed clone child \'%s\' from \'%s\'' %
                 (self.get_name(), self.getCloneParent()))
 
         # Remove VM from MCVirt configuration
@@ -727,7 +727,7 @@ class VirtualMachine(PyroObject):
         self.po__unregister_object()
 
     @Expose()
-    def getRAM(self):
+    def get_ram(self):
         """Returns the amount of memory attached the VM."""
         return self.get_config_object().get_config()['memory_allocation']
 
@@ -1321,7 +1321,7 @@ class VirtualMachine(PyroObject):
         vm_factory = self.po__get_registered_object('virtual_machine_factory')
         new_vm_object = vm_factory._create(clone_vm_name,
                                            self.getCPU(),
-                                           self.getRAM(),
+                                           self.get_ram(),
                                            available_nodes=self.getAvailableNodes(),
                                            node=self.getNode(),
                                            is_static=self.is_static())
@@ -1389,7 +1389,7 @@ class VirtualMachine(PyroObject):
         virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
 
         new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.getCPU(),
-                                                        self.getRAM(), [], [],
+                                                        self.get_ram(), [], [],
                                                         available_nodes=self.getAvailableNodes(),
                                                         node=self.getNode(),
                                                         storage_backend=storage_backend)
@@ -1591,7 +1591,7 @@ class VirtualMachine(PyroObject):
 
         # Add Name, RAM, CPU and graphics driver variables to XML
         domain_xml.find('./name').text = self.get_name()
-        domain_xml.find('./memory').text = '%s' % str(self.getRAM())
+        domain_xml.find('./memory').text = '%s' % str(self.get_ram())
         domain_xml.find('./memory').set('unit', 'b')
         domain_xml.find('./vcpu').text = str(self.getCPU())
         domain_xml.find('./devices/video/model').set('type', self.get_graphics_driver())

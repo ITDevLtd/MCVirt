@@ -206,7 +206,7 @@ class Factory(PyroObject):
                 vm_row = [vm_object.get_name(), power_state,
                           vm_object.getNode() or 'Unregistered']
                 if include_ram:
-                    vm_row.append(SizeConverter(vm_object.getRAM()).to_string())
+                    vm_row.append(SizeConverter(vm_object.get_ram()).to_string())
                 if include_cpu:
                     vm_row.append(vm_object.getCPU())
                 if include_disk:
