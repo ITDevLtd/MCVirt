@@ -153,7 +153,7 @@ class Factory(PyroObject):
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         attachment_id = 0
         disks = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
-        hdd_class = self.po__get_registered_object('hard_drive_factory').getClass(
+        hdd_class = self.po__get_registered_object('hard_drive_factory').get_class(
             virtual_machine.getStorageType(), allow_base=True)
 
         # Ensure that the number of disks attached to the VM is not already

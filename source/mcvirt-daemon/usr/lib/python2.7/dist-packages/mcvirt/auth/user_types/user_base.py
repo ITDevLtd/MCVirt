@@ -192,11 +192,11 @@ class UserBase(PyroObject):
     @staticmethod
     def generate_password(length, numeric_only=False):
         """Return a randomly generated password."""
-        characers = string.ascii_letters
+        characters = string.ascii_letters
         if not numeric_only:
-            characers += string.digits + '!@#$%^&*()'
+            characters += string.digits + '!@#$%^&*()'
         random.seed(os.urandom(1024))
-        return ''.join(random.choice(characers) for i in range(length))
+        return ''.join(random.choice(characters) for i in range(length))
 
     @Expose()
     def add_permission(self, permission):
@@ -208,7 +208,7 @@ class UserBase(PyroObject):
 
     @Expose()
     def remove_permission(self, permission):
-        """Add permissoin to the user."""
+        """Add permission to the user."""
         # Check permissions
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         raise InvalidUserTypeException(

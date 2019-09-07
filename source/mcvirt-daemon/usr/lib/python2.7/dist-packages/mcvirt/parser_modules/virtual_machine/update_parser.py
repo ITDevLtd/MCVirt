@@ -151,7 +151,7 @@ class UpdateParser(object):
             )
 
         if args.cpu_count:
-            old_cpu_count = vm_object.getCPU()
+            old_cpu_count = vm_object.get_cpu()
             vm_object.update_cpu(args.cpu_count, old_value=old_cpu_count)
             p_.print_status(
                 'Number of virtual cores will be changed from %s to %s.' %
@@ -186,9 +186,10 @@ class UpdateParser(object):
 
         if args.add_disk:
             hard_drive_factory = p_.rpc.get_connection('hard_drive_factory')
-            hard_drive_factory.create(vm_object, size=args.add_disk,
+            hard_drive_factory.create(size=args.add_disk,
                                       storage_type=args.storage_type,
-                                      driver=args.hard_disk_driver)
+                                      driver=args.hard_disk_driver,
+                                      vm_object=vm_object)
         if args.delete_disk:
             hard_drive_attachment_factory = p_.rpc.get_connection('hard_drive_attachment_factory')
             hard_drive_object = hard_drive_attachment_factory.get_object(

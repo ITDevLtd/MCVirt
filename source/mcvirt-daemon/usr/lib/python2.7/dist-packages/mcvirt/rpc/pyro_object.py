@@ -1,3 +1,4 @@
+
 """Base class for providing Pyro-based methods for objects."""
 # Copyright (c) 2016 - I.T. Dev Ltd
 #
@@ -38,17 +39,17 @@ class PyroObject(object):
 
     @staticmethod
     def get_id_name_checksum_length():
-        """Return the lenght of the name checksum to use in the ID."""
+        """Return the length of the name checksum to use in the ID."""
         return 18
 
     @staticmethod
     def get_id_date_checksum_length():
-        """Return the lenght of the name checksum to use in the ID."""
+        """Return the length of the name checksum to use in the ID."""
         return 22
 
     @staticmethod
     def get_id_code():
-        """Return default Id code for object - should be overriden."""
+        """Return default Id code for object - should be overridden."""
         return 'po'
 
     @classmethod

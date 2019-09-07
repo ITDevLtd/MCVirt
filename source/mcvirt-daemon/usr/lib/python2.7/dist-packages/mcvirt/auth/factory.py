@@ -157,10 +157,6 @@ class Factory(PyroObject):
     @Expose()
     def list(self):
         """List the Drbd volumes and statuses."""
-        # Set permissions as having been checked, as listing VMs
-        # does not require permissions
-        self.po__get_registered_object('auth').set_permission_asserted()
-
         # Create table and add headers
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES | Texttable.HLINES)
@@ -170,6 +166,8 @@ class Factory(PyroObject):
         table.set_cols_width((15, 10, 40))
         table.set_cols_align(('l', 'l', 'l'))
 
+        # Set permissions as having been checked, as listing VMs
+        # does not require permissions
         for user in self.get_all_users():
             table.add_row((
                 user.get_username(),
@@ -179,8 +177,10 @@ class Factory(PyroObject):
         return table.draw()
 
     @Expose()
-    def get_all_user_objects(self, user_classes=[]):
+    def get_all_user_objects(self, user_classes=None):
         """Return the user objects for all users, optionally filtered by user type."""
+        if user_classes is None:
+            user_classes = []
         if len(user_classes):
             # Ensure valid user type
             for itx, user_class in enumerate(user_classes):

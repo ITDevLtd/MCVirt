@@ -396,18 +396,20 @@ class VirtualMachine(PyroObject):
         # Ensure VM is registered locally
         if self.isRegisteredLocally():
             # Ensure VM hasn't been cloned
-            if self.getCloneChildren():
+            if self.get_clone_children():
                 raise CannotStartClonedVmException('Cloned VMs cannot be started')
 
             # Determine if VM is stopped
             if self._get_power_state() is PowerStates.RUNNING:
                 raise VmAlreadyStartedException('The VM is already running')
 
-            # Take the oportunity to update libvirt config
+            # Take the opportunity to update libvirt config
             self.check_libvirt_config_update()
 
-            for disk_object in self.get_hard_drive_objects():
-                disk_object.activateDisk()
+            with self.po__get_registered_object('auth').elevate_permissions(
+                    PERMISSIONS.MANAGE_STORAGE_BACKEND, PERMISSIONS.MANAGE_STORAGE_VOLUME):
+                for disk_object in self.get_hard_drive_objects():
+                    disk_object.activateDisk()
 
             disk_drive_object = self.get_disk_drive()
             if iso_name:
@@ -426,17 +428,17 @@ class VirtualMachine(PyroObject):
             # Start the VM
             try:
                 self._get_libvirt_domain_object().create()
-            except Exception, e:
-                # Interogate exception to attempt to determine cause
+            except Exception as exc:
+                # Interrogate exception to attempt to determine cause
                 # of failure
-                if 'Could not open ' in str(e) and ': Permission denied' in str(e):
+                if 'Could not open ' in str(exc) and ': Permission denied' in str(exc):
                     # A disk could not be opened
                     # Iterate through hard drives and disk drive to determine
                     # which of these couldn't be opened
                     # @TODO complete
                     pass
 
-                raise LibvirtException('Failed to start VM: %s' % e)
+                raise LibvirtException('Failed to start VM: %s' % str(exc))
 
         elif not self.po__cluster_disabled and self.isRegisteredRemotely():
             cluster = self.po__get_registered_object('cluster')
@@ -492,7 +494,7 @@ class VirtualMachine(PyroObject):
                 try:
                     # Reset the VM
                     self._get_libvirt_domain_object().reset()
-                except Exception, e:
+                except Exception as e:
                     raise LibvirtException('Failed to reset VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('Cannot reset a stopped VM')
@@ -533,7 +535,7 @@ class VirtualMachine(PyroObject):
         else:
             try:
                 agent_version, host_version = self.get_agent_connection().check_agent_version()
-            except Exception, exc:
+            except Exception as exc:
                 return str(exc)
 
         if agent_version != host_version:
@@ -547,96 +549,97 @@ class VirtualMachine(PyroObject):
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
         # permission checking
-        self.po__get_registered_object('auth').set_permission_asserted()
-        warnings = ''
+        with self.po__get_registered_object('auth').elevate_permissions(
+                PERMISSIONS.MANAGE_STORAGE_BACKEND, PERMISSIONS.MANAGE_DRBD):
+            warnings = ''
 
-        if not self.isRegistered():
-            warnings += 'Warning: Some details are not available' + \
-                        " as the VM is not registered on a node\n"
+            if not self.isRegistered():
+                warnings += 'Warning: Some details are not available' + \
+                            " as the VM is not registered on a node\n"
 
-        if self.isRegisteredRemotely():
-            cluster = self.po__get_registered_object('cluster')
-            remote_object = cluster.get_remote_node(self.getNode())
-            remote_vm_factory = remote_object.get_connection('virtual_machine_factory')
-            remote_vm = remote_vm_factory.get_virtual_machine_by_name(self.get_name())
-            remote_object.annotate_object(remote_vm)
-            return remote_vm.getInfo()
+            if self.isRegisteredRemotely():
+                cluster = self.po__get_registered_object('cluster')
+                remote_object = cluster.get_remote_node(self.getNode())
+                remote_vm_factory = remote_object.get_connection('virtual_machine_factory')
+                remote_vm = remote_vm_factory.get_virtual_machine_by_name(self.get_name())
+                remote_object.annotate_object(remote_vm)
+                return remote_vm.getInfo()
 
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.add_row(('Name', self.get_name()))
-        table.add_row(('CPU Cores', self.getCPU()))
-        table.add_row(('Guest CPU Usage', self.get_guest_cpu_usage_text()))
-        table.add_row(('Memory Allocation', SizeConverter(self.getRAM()).to_string()))
-        table.add_row(('Guest Memory Usage', self.get_guest_memory_usage_text()))
-        table.add_row(('State', self._get_power_state().name))
-        table.add_row(('Autostart', self._get_autostart_state().name))
-        table.add_row(('Node', self.getNode()))
-        table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
-        table.add_row(('Lock State', self._getLockState().name))
-        table.add_row(('Delete protection', ('Enabled'
-                                             if self.get_delete_protection_state() else
-                                             'Disabled')))
-        table.add_row(('UUID', self.get_uuid()))
-        table.add_row(('Graphics Driver', self.get_graphics_driver()))
-        table.add_row(('Agent version', self.get_agent_version_check_string()))
+            table = Texttable()
+            table.set_deco(Texttable.HEADER | Texttable.VLINES)
+            table.add_row(('Name', self.get_name()))
+            table.add_row(('CPU Cores', self.get_cpu()))
+            table.add_row(('Guest CPU Usage', self.get_guest_cpu_usage_text()))
+            table.add_row(('Memory Allocation', SizeConverter(self.get_ram()).to_string()))
+            table.add_row(('Guest Memory Usage', self.get_guest_memory_usage_text()))
+            table.add_row(('State', self._get_power_state().name))
+            table.add_row(('Auto-start', self._get_autostart_state().name))
+            table.add_row(('Node', self.getNode()))
+            table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
+            table.add_row(('Lock State', self._getLockState().name))
+            table.add_row(('Delete protection', ('Enabled'
+                                                 if self.get_delete_protection_state() else
+                                                 'Disabled')))
+            table.add_row(('UUID', self.get_uuid()))
+            table.add_row(('Graphics Driver', self.get_graphics_driver()))
+            table.add_row(('Agent version', self.get_agent_version_check_string()))
 
-        # Display clone children, if they exist
-        clone_children = self.getCloneChildren()
-        if len(clone_children):
-            table.add_row(('Clone Children', ','.join(clone_children)))
+            # Display clone children, if they exist
+            clone_children = self.get_clone_children()
+            if len(clone_children):
+                table.add_row(('Clone Children', ','.join(clone_children)))
 
-        # Display clone parent, if it exists
-        clone_parent = self.getCloneParent()
-        if clone_parent:
-            table.add_row(('Clone Parent', clone_parent))
+            # Display clone parent, if it exists
+            clone_parent = self.get_clone_parent()
+            if clone_parent:
+                table.add_row(('Clone Parent', clone_parent))
 
-        # The ISO can only be displayed if the VM is on the local node
-        if self.isRegisteredLocally():
-            # Display the path of the attached ISO (if present)
-            disk_object = self.get_disk_drive()
-            iso_object = disk_object.getCurrentDisk()
-            if iso_object:
-                disk_name = iso_object.get_name()
+            # The ISO can only be displayed if the VM is on the local node
+            if self.isRegisteredLocally():
+                # Display the path of the attached ISO (if present)
+                disk_object = self.get_disk_drive()
+                iso_object = disk_object.getCurrentDisk()
+                if iso_object:
+                    disk_name = iso_object.get_name()
+                else:
+                    disk_name = None
             else:
-                disk_name = None
-        else:
-            disk_name = 'Unavailable'
+                disk_name = 'Unavailable'
 
-        if disk_name:
-            table.add_row(('ISO location', disk_name))
+            if disk_name:
+                table.add_row(('ISO location', disk_name))
 
-        # Get info for each disk
-        hdd_attachments = self.get_hard_drive_attachments()
-        if len(hdd_attachments):
-            table.add_row(('-- Disk ID --', '-- Disk Size --'))
-            for attachment in sorted(hdd_attachments,
-                                     key=lambda attachment: attachment.attachment_id):
-                table.add_row((
-                    str(attachment.attachment_id),
-                    SizeConverter(
-                        attachment.get_hard_drive_object().get_size()).to_string()))
-        else:
-            warnings += "No hard disks present on machine\n"
+            # Get info for each disk
+            hdd_attachments = self.get_hard_drive_attachments()
+            if len(hdd_attachments):
+                table.add_row(('-- Disk ID --', '-- Disk Size --'))
+                for attachment in sorted(hdd_attachments,
+                                         key=lambda attachment: attachment.attachment_id):
+                    table.add_row((
+                        str(attachment.attachment_id),
+                        SizeConverter(
+                            attachment.get_hard_drive_object().get_size()).to_string()))
+            else:
+                warnings += "No hard disks present on machine\n"
 
-        # Create info table for network adapters
-        network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
-        network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
-        if len(network_adapters) != 0:
-            table.add_row(('-- MAC Address --', '-- Network --'))
-            for network_adapter in network_adapters:
-                table.add_row(
-                    (network_adapter.getMacAddress(),
-                     network_adapter.getConnectedNetwork()))
-        else:
-            warnings += "No network adapters present on machine\n"
+            # Create info table for network adapters
+            network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
+            network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
+            if len(network_adapters) != 0:
+                table.add_row(('-- MAC Address --', '-- Network --'))
+                for network_adapter in network_adapters:
+                    table.add_row(
+                        (network_adapter.getMacAddress(),
+                         network_adapter.getConnectedNetwork()))
+            else:
+                warnings += "No network adapters present on machine\n"
 
-        # Get information about the permissions for the VM
-        table.add_row(('-- Group --', '-- Users --'))
-        for group in self.po__get_registered_object('group_factory').get_all():
-            users = group.get_users(virtual_machine=self)
-            users_string = ','.join(sorted([user.get_username() for user in users]))
-            table.add_row((group.name, users_string))
+            # Get information about the permissions for the VM
+            table.add_row(('-- Group --', '-- Users --'))
+            for group in self.po__get_registered_object('group_factory').get_all():
+                users = group.get_users(virtual_machine=self)
+                users_string = ','.join(sorted([user.get_username() for user in users]))
+                table.add_row((group.name, users_string))
         return table.draw() + "\n" + warnings
 
     @Expose(locking=True)
@@ -653,7 +656,7 @@ class VirtualMachine(PyroObject):
         # that the user is the owner of the VM and the VM is a clone
         if not (self.po__get_registered_object('auth').check_permission(
                 PERMISSIONS.MODIFY_VM, self) or
-                (self.getCloneParent() and
+                (self.get_clone_parent() and
                  self.po__get_registered_object('auth').check_permission(
                      PERMISSIONS.DELETE_CLONE, self))
                 ):
@@ -664,39 +667,39 @@ class VirtualMachine(PyroObject):
 
         # Manually set permission asserted, since we do a complex permission
         # check, which doesn't explicitly use assert_permission
-        self.po__get_registered_object('auth').set_permission_asserted()
+        with self.po__get_registered_object('auth').elevate_permissions(PERMISSIONS.MANAGE_DRBD):
 
-        # Delete if delete protection is enabled
-        if self.get_delete_protection_state():
-            raise DeleteProtectionEnabledError('VM is configured with delete protection')
+            # Delete if delete protection is enabled
+            if self.get_delete_protection_state():
+                raise DeleteProtectionEnabledError('VM is configured with delete protection')
 
-        # Determine if VM is running
-        if self.po__is_cluster_master and self._get_power_state() == PowerStates.RUNNING:
-            raise VmAlreadyStartedException('Error: Can\'t delete running VM')
+            # Determine if VM is running
+            if self.po__is_cluster_master and self._get_power_state() == PowerStates.RUNNING:
+                raise VmAlreadyStartedException('Error: Can\'t delete running VM')
 
-        # Ensure VM is unlocked
-        self.ensureUnlocked()
+            # Ensure VM is unlocked
+            self.ensureUnlocked()
 
-        # Ensure that VM has not been cloned
-        if self.getCloneChildren():
-            raise CannotDeleteClonedVmException('Can\'t delete cloned VM')
+            # Ensure that VM has not been cloned
+            if self.get_clone_children():
+                raise CannotDeleteClonedVmException('Can\'t delete cloned VM')
 
-        # Unless 'keep_disks' has been passed as True, delete disks associated
-        # with VM
-        for hdd_attachment in self.get_hard_drive_attachments():
-            hdd = hdd_attachment.get_hard_drive_object()
+            # Unless 'keep_disks' has been passed as True, delete disks associated
+            # with VM
+            for hdd_attachment in self.get_hard_drive_attachments():
+                hdd = hdd_attachment.get_hard_drive_object()
 
-            # Remove hard drive attachment
-            hdd_attachment.delete(local_only=local_only)
+                # Remove hard drive attachment
+                hdd_attachment.delete(local_only=local_only)
 
-            if not keep_disks:
-                hdd.delete(local_only=local_only)
+                if not keep_disks:
+                    hdd.delete(local_only=local_only)
 
-        nodes = ([get_hostname()]
-                 if local_only else
-                 self.po__get_registered_object('cluster').get_nodes(include_local=True))
+            nodes = ([get_hostname()]
+                     if local_only else
+                     self.po__get_registered_object('cluster').get_nodes(include_local=True))
 
-        self.delete_config(nodes=nodes, keep_config=keep_config)
+            self.delete_config(nodes=nodes, keep_config=keep_config)
 
     @Expose(locking=True, remote_nodes=True)
     def delete_config(self, keep_config):
@@ -707,16 +710,16 @@ class VirtualMachine(PyroObject):
 
         # If VM is a clone of another VM, remove it from the configuration
         # of the parent
-        if self.getCloneParent():
-            def removeCloneChildConfig(vm_config):
+        if self.get_clone_parent():
+            def remove_clone_child_config(vm_config):
                 """Remove a given child VM from a parent VM configuration."""
                 vm_config['clone_children'].remove(self.get_name())
 
             vm_factory = self.po__get_registered_object('virtual_machine_factory')
-            parent_vm_object = vm_factory.get_virtual_machine_by_name(self.getCloneParent())
+            parent_vm_object = vm_factory.get_virtual_machine_by_name(self.get_clone_parent())
             parent_vm_object.get_config_object().update_config(
-                removeCloneChildConfig, 'Removed clone child \'%s\' from \'%s\'' %
-                (self.get_name(), self.getCloneParent()))
+                remove_clone_child_config, 'Removed clone child \'%s\' from \'%s\'' %
+                (self.get_name(), self.get_clone_parent()))
 
         # Remove VM from MCVirt configuration
         self.get_config_object().delete()
@@ -727,7 +730,7 @@ class VirtualMachine(PyroObject):
         self.po__unregister_object()
 
     @Expose()
-    def getRAM(self):
+    def get_ram(self):
         """Returns the amount of memory attached the VM."""
         return self.get_config_object().get_config()['memory_allocation']
 
@@ -765,7 +768,7 @@ class VirtualMachine(PyroObject):
                            'RAM allocation has been changed to %s' % memory_allocation)
 
     @Expose()
-    def getCPU(self):
+    def get_cpu(self):
         """Returns the number of CPU cores attached to the VM."""
         return self.get_config_object().get_config()['cpu_cores']
 
@@ -782,7 +785,7 @@ class VirtualMachine(PyroObject):
             vm_object = self.get_remote_object(set_cluster_master=True)
             return vm_object.update_cpu(cpu_count, old_value)
 
-        # Ensure cpu count is an interger, greater than 0
+        # Ensure cpu count is an integer, greater than 0
         try:
             int(cpu_count)
             if int(cpu_count) <= 0 or str(cpu_count) != str(int(cpu_count)):
@@ -790,7 +793,7 @@ class VirtualMachine(PyroObject):
         except ValueError:
             raise InvalidArgumentException('CPU count must be an integer greater than 0')
 
-        current_value = self.getCPU()
+        current_value = self.get_cpu()
         if old_value and current_value != old_value:
             raise AttributeAlreadyChanged(
                 'CPU count has already been changed to %s since command call' % current_value)
@@ -1008,7 +1011,7 @@ class VirtualMachine(PyroObject):
         return domain_xml
 
     @Expose(locking=True)
-    def editConfig(self, *args, **kwargs):
+    def edit_config(self, *args, **kwargs):
         """Provides permission checking around the editConfig method and
         exposes the method
         """
@@ -1035,11 +1038,11 @@ class VirtualMachine(PyroObject):
         except Exception:
             raise LibvirtException('Error: An error occurred whilst updating the VM')
 
-    def getCloneParent(self):
+    def get_clone_parent(self):
         """Determines if a VM is a clone of another VM."""
         return self.get_config_object().get_config()['clone_parent']
 
-    def getCloneChildren(self):
+    def get_clone_children(self):
         """Returns the VMs that have been cloned from the VM."""
         return self.get_config_object().get_config()['clone_children']
 
@@ -1314,14 +1317,14 @@ class VirtualMachine(PyroObject):
             raise VirtualMachineDoesNotExistException('VM %s already exists' % clone_vm_name)
 
         # Ensure VM is not a clone, as cloning a cloned VM will cause issues
-        if self.getCloneParent():
+        if self.get_clone_parent():
             raise VmIsCloneException('Cannot clone from a clone VM')
 
         # Create new VM for clone, without hard disks
         vm_factory = self.po__get_registered_object('virtual_machine_factory')
         new_vm_object = vm_factory._create(clone_vm_name,
-                                           self.getCPU(),
-                                           self.getRAM(),
+                                           self.get_cpu(),
+                                           self.get_ram(),
                                            available_nodes=self.getAvailableNodes(),
                                            node=self.getNode(),
                                            is_static=self.is_static())
@@ -1388,8 +1391,8 @@ class VirtualMachine(PyroObject):
         # Create new VM for clone, without hard disks
         virtual_machine_factory = self.po__get_registered_object('virtual_machine_factory')
 
-        new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.getCPU(),
-                                                        self.getRAM(), [], [],
+        new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.get_cpu(),
+                                                        self.get_ram(), [], [],
                                                         available_nodes=self.getAvailableNodes(),
                                                         node=self.getNode(),
                                                         storage_backend=storage_backend)
@@ -1591,9 +1594,9 @@ class VirtualMachine(PyroObject):
 
         # Add Name, RAM, CPU and graphics driver variables to XML
         domain_xml.find('./name').text = self.get_name()
-        domain_xml.find('./memory').text = '%s' % str(self.getRAM())
+        domain_xml.find('./memory').text = '%s' % str(self.get_ram())
         domain_xml.find('./memory').set('unit', 'b')
-        domain_xml.find('./vcpu').text = str(self.getCPU())
+        domain_xml.find('./vcpu').text = str(self.get_cpu())
         domain_xml.find('./devices/video/model').set('type', self.get_graphics_driver())
 
         device_xml = domain_xml.find('./devices')
@@ -1618,13 +1621,13 @@ class VirtualMachine(PyroObject):
         try:
             self.po__get_registered_object(
                 'libvirt_connector').get_connection().defineXML(domain_xml_string)
-        except Exception, e:
+        except Exception as exc:
             try:
                 Syslogger.logger().error('Libvirt error whilst registering %s:\n%s' %
-                                         (self.get_name(), str(e)))
+                                         (self.get_name(), str(exc)))
             except Exception:
                 pass
-            raise LibvirtException('Error: An error occurred whilst registering VM')
+            raise LibvirtException('Error: An error occurred whilst registering VM. Please see error log.')
 
         # If UUID was initially not found, re-obtain it, to store
         # the UUID generated by Libvirt
@@ -1632,14 +1635,14 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True, undo_method='_register')
     def unregister(self):
-        """Public method for permforming VM unregister."""
+        """Public method for performing VM unregister."""
         self.po__get_registered_object('auth').assert_permission(
             PERMISSIONS.SET_VM_NODE, self
         )
         self._unregister()
 
     @Expose(expose=False)
-    def _unregister(self, *args, **kwrags):
+    def _unregister(self, *args, **kwargs):
         """Unregister the VM from the local node."""
         # Ensure VM is unlocked
         self.ensureUnlocked()
@@ -1654,7 +1657,7 @@ class VirtualMachine(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def unregister_on_node(self):
-        """Perform actual unregistration."""
+        """Perform actual un-registration."""
         # Remove VM from LibVirt
         try:
             self._get_libvirt_domain_object(auto_register=False).undefine()
@@ -1662,8 +1665,8 @@ class VirtualMachine(PyroObject):
             Syslogger.logger().warn(
                 'VM not registered with libvirt whilst attempting to unregister: %s' %
                 self.get_name())
-        except Exception, exc:
-            Syslogger.logger().error('Libvirt error: %s' % str(exc))
+        except Exception as exc:
+            Syslogger.logger().error('Libvirt error: {}'.format(str(exc)))
             raise LibvirtException('Failed to delete VM from libvirt')
 
         # De-activate the disk objects

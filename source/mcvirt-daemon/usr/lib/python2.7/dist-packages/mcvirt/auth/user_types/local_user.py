@@ -44,7 +44,7 @@ class LocalUser(UserBase):
 
     @Expose(locking=True)
     def add_permission(self, permission):
-        """Add permissoin to the user."""
+        """Add permission to the user."""
         # Check permissions
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_USERS)
         ArgumentValidator.validate_permission(permission)

@@ -217,7 +217,6 @@ class TaskScheduler(PyroObject):
     def remove_task(self, task_id):
         """Remove task from queues, lookup tables and unregister
         from daemon"""
-        Syslogger.logger().error('REMOVING TASK!: %s' % task_id)
         # If the task exists, then remove from task queue,
         # task lookup and unregister from pyro
         if task_id in TaskScheduler._TASK_POINTERS:
@@ -236,7 +235,7 @@ class TaskScheduler(PyroObject):
     @Expose()
     def get_latest_task_id(self):
         """Obtain the ID of the latest task in the queue.
-        If therre are no takss in the queue, return None.
+        If there are no tasks in the queue, return None.
         """
         task_p = self.get_current_running_task_pointer(
             provisional=True, cancelled=True)

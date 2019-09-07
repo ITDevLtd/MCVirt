@@ -126,7 +126,7 @@ class System(object):
             # Perform the dd command
             System.runCommand(command_args)
 
-        except MCVirtCommandException, e:
+        except MCVirtCommandException as e:
             raise DDCommandError(
                 "Error whilst running dd:\n" + str(e)
             )

@@ -80,7 +80,7 @@ def lock_log_and_call(function_obj):
         else:
             response = callback(*args, **kwargs)
 
-    except MCVirtException, exc:
+    except MCVirtException as exc:
 
         Syslogger.logger().error('An internal MCVirt exception occurred in lock')
         Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
@@ -91,7 +91,7 @@ def lock_log_and_call(function_obj):
         # Re-raise exception
         raise
 
-    except Exception, exc:
+    except Exception as exc:
 
         Syslogger.logger().error('Unknown exception occurred in lock')
         Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))

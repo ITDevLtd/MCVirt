@@ -131,7 +131,7 @@ class Factory(PyroObject):
         if id_ not in Factory.CACHED_OBJECTS:
             base_hdd = Base(id_)
             storage_type = base_hdd.get_type()
-            hard_drive_object = self.getClass(storage_type)(id_)
+            hard_drive_object = self.get_class(storage_type)(id_)
             self.po__register_object(hard_drive_object)
             Factory.CACHED_OBJECTS[id_] = hard_drive_object
 
@@ -306,12 +306,13 @@ class Factory(PyroObject):
             size, storage_type, nodes, storage_backend,
             nodes_predefined=nodes_predefined)
 
-        # Genrate ID for hard drive
-        id_ = self.getClass(storage_type).generate_id('whatshouldthisbe')
+        # Generate ID for hard drive
+        # @TODO Fix this ID
+        id_ = self.get_class(storage_type).generate_id('whatshouldthisbe')
         _f.add_undo_argument(id_=id_)
 
         # Generate config for hard drive
-        config = self.getClass(storage_type).generate_config(
+        config = self.get_class(storage_type).generate_config(
             driver=driver,
             storage_backend=storage_backend,
             nodes=nodes,
@@ -365,8 +366,8 @@ class Factory(PyroObject):
             node = get_hostname()
 
         storage_type = 'Local'
-        id_ = self.getClass(storage_type).generate_id('whatshouldthisbe')
-        config = self.getClass(storage_type).generate_config(
+        id_ = self.get_class(storage_type).generate_id('whatshouldthisbe')
+        config = self.get_class(storage_type).generate_config(
             driver=driver,
             storage_backend=storage_backend,
             nodes=[node],
@@ -427,41 +428,41 @@ class Factory(PyroObject):
     @Expose()
     def get_hard_drive_list_table(self):
         """Return a table of hard drives."""
-        # Manually set permissions asserted, as this function can
-        # run high privilege calls, but doesn't not require
-        # permission checking
-        self.po__get_registered_object('auth').set_permission_asserted()
-
         # Create table and set headings
         table = Texttable()
         table.set_deco(Texttable.HEADER | Texttable.VLINES)
         table.header(('ID', 'Size', 'Type', 'Storage Backend', 'Virtual Machine'))
         table.set_cols_width((50, 15, 15, 50, 20))
 
-        # Obtain hard ives and add to table
-        for hard_drive_obj in self.get_all():
-            vm_object = hard_drive_obj.get_virtual_machine()
-            hdd_type = ''
-            storage_backend_id = 'Storage backend does not exist'
-            try:
-                storage_backend_id = hard_drive_obj.storage_backend.id_
-                hdd_type = hard_drive_obj.get_type()
-                hdd_size = SizeConverter(hard_drive_obj.get_size()).to_string()
-            except (VolumeDoesNotExistError,
-                    HardDriveDoesNotExistException,
-                    StorageBackendDoesNotExist), exc:
-                hdd_size = str(exc)
+        # Manually set permissions asserted, as this function can
+        # run high privilege calls, but doesn't not require
+        # permission checking
+        with self.po__get_registered_object('auth').elevate_permissions(
+                PERMISSIONS.MANAGE_STORAGE_BACKEND):
+            # Obtain hard ives and add to table
+            for hard_drive_obj in self.get_all():
+                vm_object = hard_drive_obj.get_virtual_machine()
+                hdd_type = ''
+                storage_backend_id = 'Storage backend does not exist'
+                try:
+                    storage_backend_id = hard_drive_obj.storage_backend.id_
+                    hdd_type = hard_drive_obj.get_type()
+                    hdd_size = SizeConverter(hard_drive_obj.get_size()).to_string()
+                except (VolumeDoesNotExistError,
+                        HardDriveDoesNotExistException,
+                        StorageBackendDoesNotExist) as exc:
+                    hdd_size = str(exc)
 
-            table.add_row((hard_drive_obj.id_, hdd_size,
-                           hdd_type, storage_backend_id,
-                           vm_object.get_name() if vm_object else 'Not attached'))
+                table.add_row((hard_drive_obj.id_, hdd_size,
+                               hdd_type, storage_backend_id,
+                               vm_object.get_name() if vm_object else 'Not attached'))
         return table.draw()
 
     def get_all(self):
         """Return all hard drive objects."""
         return [self.get_object(id_) for id_ in HardDriveConfig.get_global_config().keys()]
 
-    def getClass(self, storage_type, allow_base=False):
+    def get_class(self, storage_type, allow_base=False):
         """Obtains the hard drive class for a given storage type."""
         # If allowed to return base class and storage_type is
         # null, return the base class

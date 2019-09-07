@@ -88,6 +88,7 @@ class BaseRpcDaemon(Pyro4.Daemon):
         Pyro4.current_context.has_lock = False
         Pyro4.current_context.cluster_master = True
         Pyro4.current_context.PERMISSION_ASSERTED = False
+        Pyro4.current_context.ELEVATED_PERMISSIONS = []
 
         self.registered_factories['cluster'].set_context_defaults()
 

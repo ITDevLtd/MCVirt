@@ -86,7 +86,7 @@ class Local(Base):
             raise VmAlreadyStartedException('VM must be stopped before increasing disk size')
 
         # Ensure that VM has not been cloned and is not a clone
-        if vm_object and vm_object.getCloneParent() or vm_object.getCloneChildren():
+        if vm_object and vm_object.get_clone_parent() or vm_object.get_clone_children():
             raise VmIsCloneException('Cannot increase the disk of a cloned VM or a clone.')
 
         # Obtain volume for the disk and resize

@@ -80,14 +80,14 @@ class StorageParser(object):
             dest='volume_group_name',
             required=False,
             help=("Name of default volume group for backend storage for nodes \n"
-                  '(Required for LVM storage, unless all nodes contain volume group overides)')
+                  '(Required for LVM storage, unless all nodes contain volume group overrides)')
         )
         self.create_parser.add_argument(
             '--path',
             dest='path',
             required=False,
             help=("Name of default path for backend storage for nodes \n"
-                  '(Required for File storage, unless all nodes contain path overides)')
+                  '(Required for File storage, unless all nodes contain path overrides)')
         )
         self.create_parser.add_argument(
             '--shared',
@@ -113,7 +113,7 @@ class StorageParser(object):
                   'to override the path or volume '
                   'group for the node, e.g. '
                   '--node <Node name> '
-                  '<Overriden Volume Group/Path> '
+                  '<Overridden Volume Group/Path> '
                   '--node <Node Name>...')
         )
 
@@ -191,7 +191,7 @@ class StorageParser(object):
                   'to override the path or volume '
                   'group for the node, e.g. '
                   '--node <Node name> '
-                  '<Overriden Volume Group/Path> '
+                  '<Overridden Volume Group/Path> '
                   '--node <Node Name>...')
         )
 
@@ -201,7 +201,7 @@ class StorageParser(object):
         storage_backend = storage_factory.get_object_by_name(args.Name)
         p_.rpc.annotate_object(storage_backend)
 
-        # Check lenght of each node config, to ensure it's not too long
+        # Check length of each node config, to ensure it's not too long
         invalid_nodes = [True if len(n) > 2 else None for n in args.nodes]
         if True in invalid_nodes:
             raise ArgumentParserException(('--node must only be provided with '
@@ -231,7 +231,7 @@ class StorageParser(object):
         )
 
     def handle_remove_node(self, p_, args):
-        """Hanlde remove of node from storage."""
+        """Handle remove of node from storage."""
         storage_factory = p_.rpc.get_connection('storage_factory')
         storage_backend = storage_factory.get_object_by_name(args.Name)
         p_.rpc.annotate_object(storage_backend)
