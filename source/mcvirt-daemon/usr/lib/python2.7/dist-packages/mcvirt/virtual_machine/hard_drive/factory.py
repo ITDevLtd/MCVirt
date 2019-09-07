@@ -306,7 +306,8 @@ class Factory(PyroObject):
             size, storage_type, nodes, storage_backend,
             nodes_predefined=nodes_predefined)
 
-        # Genrate ID for hard drive
+        # Generate ID for hard drive
+        # @TODO Fix this ID
         id_ = self.get_class(storage_type).generate_id('whatshouldthisbe')
         _f.add_undo_argument(id_=id_)
 
