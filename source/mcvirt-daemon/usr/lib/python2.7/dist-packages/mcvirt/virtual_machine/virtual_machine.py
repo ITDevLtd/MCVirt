@@ -277,8 +277,8 @@ class VirtualMachine(PyroObject):
             return libvirt_connection.lookupByName(
                 self.get_name()
             )
-        except libvirt.libvirtError, exc:
-            # A libvirt error occured...
+        except libvirt.libvirtError as exc:
+            # A libvirt error occurred...
             # If the error is related to domain not existing...
             if 'Domain not found: no domain with matching name' in str(exc):
                 # If the current session has a lock, then re-register with libvirt
@@ -289,7 +289,7 @@ class VirtualMachine(PyroObject):
                         return self._get_libvirt_domain_object(
                             allow_remote=allow_remote,
                             auto_register=False)
-                    except Exception, exc2:
+                    except Exception as exc2:
                         Syslogger.logger().error('Error whilst re-registering: %s' % str(exc2))
                 else:
                     raise VirtualMachineNotRegisteredWithLibvirt(
@@ -1606,9 +1606,7 @@ class VirtualMachine(PyroObject):
 
         device_xml = domain_xml.find('./devices')
 
-        memballoon_xml = self._get_memballon_xml()
-        if memballoon_xml:
-            device_xml.append(memballoon_xml)
+        device_xml.append(self._get_memballoon_xml())
 
         # Add hard drive configurations
         hard_drive_attachment_factory = self.po__get_registered_object(
@@ -1816,66 +1814,27 @@ class VirtualMachine(PyroObject):
             + [cpu['vcpu_time'] for cpu in dom.getCPUStats(False)]
         )
 
-    def _get_memballon_xml(self):
+    def _get_memballoon_xml(self):
         """Return XML object containing memballoon configuration"""
-        if not self.get_memballoon_state():
-            return None
-
         xml = ET.Element('memballoon')
         xml.set('model', 'virtio')
         xml.set('autodeflate', 'on' if self.get_memballoon_deflation_state() else 'off')
 
         return xml
 
-    def get_memballoon_state(self):
-        """Determine if memballooning is enabled."""
-        return self.get_config_object().get_config()['memballoon']['enabled']
-
     def get_memballoon_deflation_state(self):
         """Determine if memballoon deflation is enabled."""
         return self.get_config_object().get_config()['memballoon']['deflation']
 
     @Expose(locking=True, expose=True)
-    def set_memballoon_state(self, enabled):
-        """Set the memballoon state flag in the VM config."""
-
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
-
-        # If there is no change to the value, then return immediately
-        if self.get_memballoon_state() == enabled:
-            return
-
-        # Update the MCVirt configuration
-        self.update_config(['memballoon', 'enabled'], enabled,
-                           'Memballoon state set to %s' % enabled)
-
-        def add_config(domain_xml):
-            """Update memballoon config."""
-            device_xml = domain_xml.find('./devices')
-            device_xml.append(self._get_memballon_xml())
-
-        def remove_config(domain_xml):
-            """Remove memballoon config."""
-            device_xml = domain_xml.find('./devices')
-            memballoon_config = device_xml.find('./memballoon')
-            if memballoon_config:
-                device_xml.remove(memballoon_config)
-
-        if enabled:
-            self.update_libvirt_config(add_config)
-        else:
-            self.update_libvirt_config(remove_config)
-
-    @Expose(locking=True, expose=True)
-    def set_memballoon_deflation_state(self, enabled=None):
+    def set_memballoon_deflation_state(self, enabled):
         """Set the memballoon deflation flag in the VM config."""
 
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
-        # Ensure that memballoon is enabled, if enabling
-        if enabled and not self.get_memballoon_state():
-            raise MemballooningNotEnabledError(
-                'Cannot enable memballoon deflation as memballoon is not enabled')
+        # If there is no change to the value, then return immediately
+        if self.get_memballoon_deflation_state() == enabled:
+            return
 
         # Update the MCVirt configuration
         self.update_config(['memballoon', 'deflation'], enabled,

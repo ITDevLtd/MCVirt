@@ -136,17 +136,6 @@ class UpdateParser(object):
             dest='disable_delete_protection',
             help='Disable VM delete protection. Must provide name of VM in reverse.')
 
-        self.memballoon_mutual_group = self.update_parser.add_mutually_exclusive_group(
-            required=False)
-        self.memballoon_mutual_group.add_argument(
-            '--enable-memballoon', dest='enable_memballoon',
-            action='store_true',
-            help='Enable VM memory ballooning.')
-        self.memballoon_mutual_group.add_argument(
-            '--disable-memballoon', dest='disable_memballoon',
-            action='store_true',
-            help='Disable VM memory ballooning.')
-
         self.memballoon_deflation_mutual_group = self.update_parser.add_mutually_exclusive_group(
             required=False)
         self.memballoon_deflation_mutual_group.add_argument(
@@ -260,9 +249,6 @@ class UpdateParser(object):
 
         if args.disable_delete_protection:
             vm_object.disable_delete_protection(args.disable_delete_protection)
-
-        if args.enable_memballoon or args.disable_memballoon:
-            vm_object.set_memballoon_state(args.enable_memballoon)
 
         if args.enable_memballoon_deflation or args.disable_memballoon_deflation:
             vm_object.set_memballoon_deflation_state(args.enable_memballoon_deflation)
