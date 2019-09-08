@@ -139,7 +139,7 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         Pyro4.current_context.INTERNAL_REQUEST = True
 
         # Ensure that VM is registered locally, running and watchog is enabled
-        if not (self.virtual_machine.isRegisteredLocally() and
+        if not (self.virtual_machine.is_registered_locally() and
                 self.virtual_machine.is_running):
             Syslogger.logger().info(
                 'Statistics daemon not run: %s' %

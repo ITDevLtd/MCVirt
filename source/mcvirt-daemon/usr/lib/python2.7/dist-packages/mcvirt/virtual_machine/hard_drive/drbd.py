@@ -1040,8 +1040,8 @@ class Drbd(Base):
                 raise ArgumentParserException(
                     'Either source_node or auto_determine must be specified'
                 )
-            elif self.get_virtual_machine().getNode():
-                source_node = self.get_virtual_machine().getNode()
+            elif self.get_virtual_machine().get_node():
+                source_node = self.get_virtual_machine().get_node()
             else:
                 raise VmNotRegistered('Cannot auto-determine node - VM is not registered')
 

@@ -200,7 +200,7 @@ class Watchdog(RepeatTimer):
 
         # Ensure that VM is registered locally, running and watchog is enabled
         if not (self.virtual_machine.is_watchdog_enabled() and
-                self.virtual_machine.isRegisteredLocally() and
+                self.virtual_machine.is_registered_locally() and
                 self.virtual_machine.is_running):
             self.set_state(WATCHDOG_STATES.NOT_SUITABLE)
             Syslogger.logger().info(

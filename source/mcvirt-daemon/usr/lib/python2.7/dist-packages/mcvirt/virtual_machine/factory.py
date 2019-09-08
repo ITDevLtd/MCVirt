@@ -65,7 +65,7 @@ class Factory(PyroObject):
         Syslogger.logger().info('Starting autostart: %s' % start_type.name)
         for vm in self.get_all_virtual_machines():
             try:
-                if (vm.isRegisteredLocally() and vm.is_stopped and
+                if (vm.is_registered_locally() and vm.is_stopped and
                         vm._get_autostart_state() in
                         [AutoStartStates.ON_POLL, AutoStartStates.ON_BOOT] and
                         (start_type == vm._get_autostart_state() or
@@ -200,7 +200,7 @@ class Factory(PyroObject):
                 pass
 
             vm_row = [vm_object.get_name(), power_state,
-                      vm_object.getNode() or 'Unregistered']
+                      vm_object.get_node() or 'Unregistered']
             if include_ram:
                 vm_row.append(SizeConverter(vm_object.get_ram()).to_string())
             if include_cpu:
@@ -465,7 +465,7 @@ class Factory(PyroObject):
         elif self.po__is_cluster_master:
             # If MCVirt has been initialised on this node and the local machine is
             # not the node that the VM will be registered on, set the node on the VM
-            vm_object._setNode(node)
+            vm_object._set_node(node)
 
         if self.po__is_cluster_master:
             # Create disk images

@@ -204,10 +204,10 @@ class OnlineMigrateTests(TestBase):
     @skip_drbd(True)
     def test_migrate_locked(self):
         """Attempts to migrate a locked VM."""
-        self.local_vm_object._setLockState(LockStates.LOCKED)
+        self.local_vm_object._set_lock_state(LockStates.LOCKED)
 
         with self.assertRaises(VirtualMachineLockException):
-            self.test_vm_object.onlineMigrate(self.local_vm_object._get_remote_nodes()[0])
+            self.test_vm_object.online_migrate(self.local_vm_object._get_remote_nodes()[0])
 
     @skip_drbd(True)
     def test_migrate_unregistered(self):
@@ -219,7 +219,7 @@ class OnlineMigrateTests(TestBase):
 
         # Attempt to migrate VM
         with self.assertRaises(VmRegisteredElsewhereException):
-            self.test_vm_object.onlineMigrate(self.local_vm_object._get_remote_nodes()[0])
+            self.test_vm_object.online_migrate(self.local_vm_object._get_remote_nodes()[0])
 
     @skip_drbd(True)
     def test_migrate_inappropriate_node(self):
@@ -233,7 +233,7 @@ class OnlineMigrateTests(TestBase):
         self.local_vm_object.get_config_object().update_config(remote_node_config)
 
         with self.assertRaises(UnsuitableNodeException):
-            self.test_vm_object.onlineMigrate(remote_node)
+            self.test_vm_object.online_migrate(remote_node)
 
         def add_node_config(config):
             """Update available nodes config."""
@@ -247,7 +247,7 @@ class OnlineMigrateTests(TestBase):
             disk_object._drbdDisconnect()
 
         with self.assertRaises(DrbdStateException):
-            self.test_vm_object.onlineMigrate(self.local_vm_object._get_remote_nodes()[0])
+            self.test_vm_object.online_migrate(self.local_vm_object._get_remote_nodes()[0])
 
     @skip_drbd(True)
     def test_migrate_invalid_network(self):
@@ -262,7 +262,7 @@ class OnlineMigrateTests(TestBase):
 
         # Attempt to migrate the VM
         with self.assertRaises(UnsuitableNodeException):
-            self.test_vm_object.onlineMigrate(self.local_vm_object._get_remote_nodes()[0])
+            self.test_vm_object.online_migrate(self.local_vm_object._get_remote_nodes()[0])
 
         # Reset the VM configuration
         def resetNetwork(config):
@@ -293,13 +293,13 @@ class OnlineMigrateTests(TestBase):
 
         # Attempt to migrate VM
         with self.assertRaises(IsoNotPresentOnDestinationNodeException):
-            self.test_vm_object.onlineMigrate(self.local_vm_object._get_remote_nodes()[0])
+            self.test_vm_object.online_migrate(self.local_vm_object._get_remote_nodes()[0])
 
     @skip_drbd(True)
     def test_migrate_invalid_node(self):
         """Attempts to migrate the VM to a non-existent node."""
         with self.assertRaises(UnsuitableNodeException):
-            self.test_vm_object.onlineMigrate('non-existent-node')
+            self.test_vm_object.online_migrate('non-existent-node')
 
     @skip_drbd(True)
     def test_migrate_pre_migration_libvirt_failure(self):
@@ -309,12 +309,12 @@ class OnlineMigrateTests(TestBase):
 
         # Attempt to perform a migration
         with self.assertRaises(LibvirtFailureSimulationException):
-            self.test_vm_object.onlineMigrate(self.local_vm_object._get_remote_nodes()[0])
+            self.test_vm_object.online_migrate(self.local_vm_object._get_remote_nodes()[0])
 
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.NORMAL_RUN
 
         # Ensure the VM is still registered on the local node and in a running state
-        self.assertEqual(self.local_vm_object.getNode(), get_hostname())
+        self.assertEqual(self.local_vm_object.get_node(), get_hostname())
         self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING.value)
 
         # Ensure that the VM is registered with the local libvirt instance and not on the remote
@@ -352,12 +352,12 @@ class OnlineMigrateTests(TestBase):
 
         # Attempt to perform a migration
         with self.assertRaises(LibvirtFailureSimulationException):
-            self.test_vm_object.onlineMigrate(self.local_vm_object._get_remote_nodes()[0])
+            self.test_vm_object.online_migrate(self.local_vm_object._get_remote_nodes()[0])
 
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.NORMAL_RUN
 
         # Ensure the VM is still registered on the remote node and in a running state
-        self.assertEqual(self.local_vm_object.getNode(),
+        self.assertEqual(self.local_vm_object.get_node(),
                          self.local_vm_object._get_remote_nodes()[0])
         self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING)
 
@@ -395,12 +395,12 @@ class OnlineMigrateTests(TestBase):
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.CONNECTION_FAILURE
 
         with self.assertRaises(libvirt.libvirtError):
-            self.test_vm_object.onlineMigrate(self.local_vm_object._get_remote_nodes()[0])
+            self.test_vm_object.online_migrate(self.local_vm_object._get_remote_nodes()[0])
 
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.NORMAL_RUN
 
         # Ensure the VM is still registered on the local node and in a running state
-        self.assertEqual(self.local_vm_object.getNode(), get_hostname())
+        self.assertEqual(self.local_vm_object.get_node(), get_hostname())
         self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING)
 
     @skip_drbd(True)
@@ -409,7 +409,7 @@ class OnlineMigrateTests(TestBase):
         self.local_vm_object.stop()
 
         with self.assertRaises(VmStoppedException):
-            self.test_vm_object.onlineMigrate(self.local_vm_object._get_remote_nodes()[0])
+            self.test_vm_object.online_migrate(self.local_vm_object._get_remote_nodes()[0])
 
     @skip_drbd(True)
     def test_migrate(self):
@@ -425,7 +425,7 @@ class OnlineMigrateTests(TestBase):
         VirtualMachineLibvirtFail.LIBVIRT_FAILURE_MODE = LibvirtFailureMode.NORMAL_RUN
 
         # Ensure the VM is still registered on the remote node and in a running state
-        self.assertEqual(self.local_vm_object.getNode(),
+        self.assertEqual(self.local_vm_object.get_node(),
                          self.local_vm_object._get_remote_nodes()[0])
         self.assertEqual(self.local_vm_object.get_power_state(), PowerStates.RUNNING.value)
 

@@ -105,7 +105,7 @@ class VirtualMachine(PyroObject):
         # VM is registered locally
         try:
             if (config['applied_version'] < config['version'] and
-                    self.isRegisteredLocally() and
+                    self.is_registered_locally() and
                     self.is_stopped):
 
                 try:
@@ -122,11 +122,11 @@ class VirtualMachine(PyroObject):
                     # If the VM was unregistered from libvirt during the
                     # config migration, set it as unregistered
                     if self._get_libvirt_domain_object() is None:
-                        self._setNode(None)
+                        self._set_node(None)
 
                     raise
 
-        except Exception, exc:
+        except Exception as exc:
             Syslogger.logger().warning('Error during VM config upgrade: %s: %s' % (
                 self.get_name(), str(exc)))
 
@@ -139,12 +139,12 @@ class VirtualMachine(PyroObject):
         # get_remote_object has been called when VM does not exist locally and a node
         # is specified, this will not check the local config file. Used whilst
         # deleting a VM
-        if not node and self.isRegisteredLocally():
+        if not node and self.is_registered_locally():
             return self
-        elif node or self.isRegisteredRemotely():
+        elif node or self.is_registered_remotely():
             if not node_object:
                 cluster = self.po__get_registered_object('cluster')
-                node_object = cluster.get_remote_node(node or self.getNode(),
+                node_object = cluster.get_remote_node(node or self.get_node(),
                                                       set_cluster_master=set_cluster_master)
             remote_vm_factory = node_object.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.get_virtual_machine_by_id(self.get_id())
@@ -237,7 +237,7 @@ class VirtualMachine(PyroObject):
 
     def get_guest_cpu_usage_text(self):
         """Obtain text for cpu usage."""
-        if not self.isRegistered() or not self.is_running:
+        if not self.is_registered() or not self.is_running:
             return 'Not running'
         if self.current_guest_memory_usage is None:
             return 'Agent not running'
@@ -251,7 +251,7 @@ class VirtualMachine(PyroObject):
 
     def get_guest_memory_usage_text(self):
         """Obtain text for memory usage."""
-        if not self.isRegistered() or not self.is_running:
+        if not self.is_registered() or not self.is_running:
             return 'Not running'
         if self.current_guest_memory_usage is None:
             return 'Agent not running'
@@ -262,13 +262,13 @@ class VirtualMachine(PyroObject):
         """Look up LibVirt domain object, based on VM name,
         and return object
         """
-        if self.isRegisteredRemotely():
+        if self.is_registered_remotely():
             if allow_remote:
                 libvirt_connection = self.po__get_registered_object(
-                    'libvirt_connector').get_connection(server=self.getNode())
+                    'libvirt_connector').get_connection(server=self.get_node())
             else:
                 raise VmRegisteredElsewhereException('Virtual machine is registered elsewhere')
-        elif self.isRegisteredLocally():
+        elif self.is_registered_locally():
             libvirt_connection = self.po__get_registered_object('libvirt_connector').get_connection()
         else:
             raise VmNotRegistered('VM is not registered')
@@ -282,7 +282,7 @@ class VirtualMachine(PyroObject):
             # If the error is related to domain not existing...
             if 'Domain not found: no domain with matching name' in str(exc):
                 # If the current session has a lock, then re-register with libvirt
-                if self.po__has_lock and auto_register and self.isRegisteredLocally():
+                if self.po__has_lock and auto_register and self.is_registered_locally():
                     try:
                         self._register(set_node=False)
                         # Return with call from this method
@@ -323,17 +323,17 @@ class VirtualMachine(PyroObject):
         )
 
         # Determine if VM is registered on the local machine
-        if self.isRegisteredLocally():
+        if self.is_registered_locally():
             # Determine if VM is running
             if self._get_power_state() is PowerStates.RUNNING:
                 try:
                     # Stop the VM
                     self._get_libvirt_domain_object().destroy()
-                except Exception, e:
-                    raise LibvirtException('Failed to stop VM: %s' % e)
+                except Exception as exc:
+                    raise LibvirtException('Failed to stop VM: %s' % str(exc))
             else:
                 raise VmAlreadyStoppedException('The VM is already shutdown')
-        elif not self.po__cluster_disabled and self.isRegisteredRemotely():
+        elif not self.po__cluster_disabled and self.is_registered_remotely():
             remote_vm = self.get_remote_object()
             remote_vm.stop()
 
@@ -354,17 +354,17 @@ class VirtualMachine(PyroObject):
         )
 
         # Determine if VM is registered on the local machine
-        if self.isRegisteredLocally():
+        if self.is_registered_locally():
             # Determine if VM is running
             if self._get_power_state() is PowerStates.RUNNING:
                 try:
                     # Shutdown the VM
                     self._get_libvirt_domain_object().shutdown()
-                except Exception, e:
-                    raise LibvirtException('Failed to stop VM: %s' % e)
+                except Exception as exc:
+                    raise LibvirtException('Failed to stop VM: %s' % str(exc))
             else:
                 raise VmAlreadyStoppedException('The VM is already shutdown')
-        elif not self.po__cluster_disabled and self.isRegisteredRemotely():
+        elif not self.po__cluster_disabled and self.is_registered_remotely():
             remote_vm = self.get_remote_object()
             remote_vm.shutdown()
         else:
@@ -393,10 +393,10 @@ class VirtualMachine(PyroObject):
             )
 
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         # Ensure VM is registered locally
-        if self.isRegisteredLocally():
+        if self.is_registered_locally():
             # Ensure VM hasn't been cloned
             if self.get_clone_children():
                 raise CannotStartClonedVmException('Cloned VMs cannot be started')
@@ -442,9 +442,9 @@ class VirtualMachine(PyroObject):
 
                 raise LibvirtException('Failed to start VM: %s' % str(exc))
 
-        elif not self.po__cluster_disabled and self.isRegisteredRemotely():
+        elif not self.po__cluster_disabled and self.is_registered_remotely():
             cluster = self.po__get_registered_object('cluster')
-            remote_node = cluster.get_remote_node(self.getNode())
+            remote_node = cluster.get_remote_node(self.get_node())
             vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = vm_factory.get_virtual_machine_by_name(self.get_name())
             remote_node.annotate_object(remote_vm)
@@ -463,10 +463,10 @@ class VirtualMachine(PyroObject):
             PERMISSIONS.MODIFY_VM, self
         )
 
-        if self.isRegisteredRemotely():
+        if self.is_registered_remotely():
             return self.get_remote_object().update_iso(iso_name)
 
-        self.ensureRegisteredLocally()
+        self.ensure_registered_locally()
         disk_drive = self.get_disk_drive()
         live = (self._get_power_state() is PowerStates.RUNNING)
         if iso_name:
@@ -487,10 +487,10 @@ class VirtualMachine(PyroObject):
         )
 
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         # Ensure VM is registered locally
-        if self.isRegisteredLocally():
+        if self.is_registered_locally():
             # Determine if VM is running
             if self._get_power_state() is PowerStates.RUNNING:
                 try:
@@ -500,7 +500,7 @@ class VirtualMachine(PyroObject):
                     raise LibvirtException('Failed to reset VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('Cannot reset a stopped VM')
-        elif self.po__is_cluster_master and self.isRegisteredRemotely():
+        elif self.po__is_cluster_master and self.is_registered_remotely():
             remote_vm = self.get_remote_object()
             remote_vm.reset()
         else:
@@ -515,8 +515,8 @@ class VirtualMachine(PyroObject):
 
     def _get_power_state(self):
         """Return the power state of the VM in the form of a PowerStates enum."""
-        if self.isRegistered():
-            remote_libvirt = (self.isRegisteredRemotely() and not self.po__cluster_disabled)
+        if self.is_registered():
+            remote_libvirt = (self.is_registered_remotely() and not self.po__cluster_disabled)
             libvirt_object = self._get_libvirt_domain_object(allow_remote=remote_libvirt)
             if libvirt_object.state()[0] == libvirt.VIR_DOMAIN_RUNNING:
                 return PowerStates.RUNNING
@@ -528,10 +528,10 @@ class VirtualMachine(PyroObject):
     @Expose()
     def get_agent_version_check_string(self):
         """Check agent version."""
-        if not self.isRegistered():
+        if not self.is_registered():
             return 'VM is not registered'
 
-        if self.isRegisteredRemotely():
+        if self.is_registered_remotely():
             vm = self.get_remote_object()
             agent_version, host_version = vm.get_agent_version_check_string()
         else:
@@ -546,7 +546,7 @@ class VirtualMachine(PyroObject):
             return 'Up-to-date: %s' % agent_version
 
     @Expose(locking=True)
-    def getInfo(self):
+    def get_info(self):
         """Get information about the current VM."""
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
@@ -555,17 +555,17 @@ class VirtualMachine(PyroObject):
                 PERMISSIONS.MANAGE_STORAGE_BACKEND, PERMISSIONS.MANAGE_DRBD):
             warnings = ''
 
-            if not self.isRegistered():
+            if not self.is_registered():
                 warnings += 'Warning: Some details are not available' + \
                             " as the VM is not registered on a node\n"
 
-            if self.isRegisteredRemotely():
+            if self.is_registered_remotely():
                 cluster = self.po__get_registered_object('cluster')
-                remote_object = cluster.get_remote_node(self.getNode())
+                remote_object = cluster.get_remote_node(self.get_node())
                 remote_vm_factory = remote_object.get_connection('virtual_machine_factory')
                 remote_vm = remote_vm_factory.get_virtual_machine_by_name(self.get_name())
                 remote_object.annotate_object(remote_vm)
-                return remote_vm.getInfo()
+                return remote_vm.get_info()
 
             table = Texttable()
             table.set_deco(Texttable.HEADER | Texttable.VLINES)
@@ -576,9 +576,9 @@ class VirtualMachine(PyroObject):
             table.add_row(('Guest Memory Usage', self.get_guest_memory_usage_text()))
             table.add_row(('State', self._get_power_state().name))
             table.add_row(('Auto-start', self._get_autostart_state().name))
-            table.add_row(('Node', self.getNode()))
-            table.add_row(('Available Nodes', ', '.join(self.getAvailableNodes())))
-            table.add_row(('Lock State', self._getLockState().name))
+            table.add_row(('Node', self.get_node()))
+            table.add_row(('Available Nodes', ', '.join(self.get_available_nodes())))
+            table.add_row(('Lock State', self._get_lock_state().name))
             table.add_row(('Delete protection', ('Enabled'
                                                  if self.get_delete_protection_state() else
                                                  'Disabled')))
@@ -600,7 +600,7 @@ class VirtualMachine(PyroObject):
                 table.add_row(('Clone Parent', clone_parent))
 
             # The ISO can only be displayed if the VM is on the local node
-            if self.isRegisteredLocally():
+            if self.is_registered_locally():
                 # Display the path of the attached ISO (if present)
                 disk_object = self.get_disk_drive()
                 iso_object = disk_object.getCurrentDisk()
@@ -683,7 +683,7 @@ class VirtualMachine(PyroObject):
                 raise VmAlreadyStartedException('Error: Can\'t delete running VM')
 
             # Ensure VM is unlocked
-            self.ensureUnlocked()
+            self.ensure_unlocked()
 
             # Ensure that VM has not been cloned
             if self.get_clone_children():
@@ -710,7 +710,7 @@ class VirtualMachine(PyroObject):
     def delete_config(self, keep_config):
         """Remove the VM config from the disk and MCVirt config."""
         # Unregister VM
-        if self.isRegisteredLocally():
+        if self.is_registered_locally():
             self.unregister()
 
         # If VM is a clone of another VM, remove it from the configuration
@@ -750,14 +750,14 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to modify VMs
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
-        if self.isRegisteredRemotely():
+        if self.is_registered_remotely():
             vm_object = self.get_remote_object(set_cluster_master=True)
             return vm_object.update_ram(memory_allocation)
 
-        self.ensureRegisteredLocally()
+        self.ensure_registered_locally()
 
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         def update_libvirt(domain_xml):
             """Update RAM allocation and unit measurement."""
@@ -786,7 +786,7 @@ class VirtualMachine(PyroObject):
         # Check the user has permission to modify VMs
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
 
-        if self.isRegisteredRemotely():
+        if self.is_registered_remotely():
             vm_object = self.get_remote_object(set_cluster_master=True)
             return vm_object.update_cpu(cpu_count, old_value)
 
@@ -804,12 +804,12 @@ class VirtualMachine(PyroObject):
                 'CPU count has already been changed to %s since command call' % current_value)
 
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         # Determine if VM is registered on the local machine
-        self.ensureRegisteredLocally()
+        self.ensure_registered_locally()
 
-        if self.isRegistered():
+        if self.is_registered():
             def update_libvirt(domain_xml):
                 """Update RAM allocation and unit measurement."""
                 domain_xml.find('./vcpu').text = str(cpu_count)
@@ -877,15 +877,15 @@ class VirtualMachine(PyroObject):
         if remove_flags is None:
             remove_flags = []
 
-        if self.isRegisteredRemotely():
+        if self.is_registered_remotely():
             vm_object = self.get_remote_object(set_cluster_master=True)
             return vm_object.update_modification_flags(add_flags=add_flags,
                                                        remove_flags=remove_flags)
 
-        self.ensureRegisteredLocally()
+        self.ensure_registered_locally()
 
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         # Update the MCVirt configuration
         flags = self.get_modification_flags()
@@ -943,10 +943,10 @@ class VirtualMachine(PyroObject):
     @Expose(locking=True)
     def get_usb_device(self, bus, device):
         """Get USB object attached to the VM."""
-        self.ensureRegisteredLocally()
+        self.ensure_registered_locally()
         # Determine if device attached to another VM
         for vm_object in self.po__get_registered_object(
-                'virtual_machine_factory').get_all_virtual_machines(node=self.getNode()):
+                'virtual_machine_factory').get_all_virtual_machines(node=self.get_node()):
             if (int(bus), int(device)) in [(dev.get_bus(), dev.get_device())
                                            for dev in vm_object.get_attached_usb_devices()]:
                 if vm_object.get_name() != self.get_name():
@@ -1052,14 +1052,14 @@ class VirtualMachine(PyroObject):
         return self.get_config_object().get_config()['clone_children']
 
     @Expose(locking=True)
-    def offlineMigrate(self, destination_node_name, start_after_migration=False,
-                       wait_for_vm_shutdown=False):
+    def offline_migrate(self, destination_node_name, start_after_migration=False,
+                        wait_for_vm_shutdown=False):
         """Performs an offline migration of a VM to another node in the cluster."""
         ArgumentValidator.validate_hostname(destination_node_name)
         ArgumentValidator.validate_boolean(start_after_migration)
         ArgumentValidator.validate_boolean(wait_for_vm_shutdown)
 
-        if destination_node_name not in self.getAvailableNodes():
+        if destination_node_name not in self.get_available_nodes():
             raise UnsuitableNodeException('Node %s is not a valid node for this VM' %
                                           destination_node_name)
 
@@ -1067,13 +1067,13 @@ class VirtualMachine(PyroObject):
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MIGRATE_VM, self)
 
         # Ensure the VM is locally registered
-        self.ensureRegisteredLocally()
+        self.ensure_registered_locally()
 
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         # Ensure VM is using a Drbd storage type
-        self._preMigrationChecks(destination_node_name)
+        self._pre_migration_checks(destination_node_name)
 
         # Check if VM is running
         while self._get_power_state() is PowerStates.RUNNING:
@@ -1106,28 +1106,28 @@ class VirtualMachine(PyroObject):
             remote_vm.start()
 
     @Expose(locking=True)
-    def onlineMigrate(self, destination_node_name):
+    def online_migrate(self, destination_node_name):
         """Performs an online migration of a VM to another node in the cluster."""
         ArgumentValidator.validate_hostname(destination_node_name)
 
         # Ensure user has permission to migrate VM
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MIGRATE_VM, self)
 
-        if destination_node_name not in self.getAvailableNodes():
+        if destination_node_name not in self.get_available_nodes():
             raise UnsuitableNodeException('Node %s is not a valid node for this VM' %
                                           destination_node_name)
 
         factory = self.po__get_registered_object('virtual_machine_factory')
 
         # Ensure VM is registered locally and unlocked
-        self.ensureRegisteredLocally()
-        self.ensureUnlocked()
+        self.ensure_registered_locally()
+        self.ensure_unlocked()
 
         # Perform pre-migration checks
-        self._preMigrationChecks(destination_node_name)
+        self._pre_migration_checks(destination_node_name)
 
         # Perform online-migration-specific checks
-        self._preOnlineMigrationChecks(destination_node_name)
+        self._pre_online_migration_checks(destination_node_name)
 
         # Obtain cluster instance
         cluster = self.po__get_registered_object('cluster')
@@ -1163,7 +1163,7 @@ class VirtualMachine(PyroObject):
             libvirt_domain_object = self._get_libvirt_domain_object()
 
             # Clear the VM node configuration
-            self._setNode(None)
+            self._set_node(None)
 
             # Perform migration
             status = libvirt_domain_object.migrate3(
@@ -1181,7 +1181,7 @@ class VirtualMachine(PyroObject):
                 disk_object._checkDrbdStatus()
 
             # Set the VM node to the destination node node
-            self._setNode(destination_node_name)
+            self._set_node(destination_node_name)
 
         except Exception:
             # Wait 10 seconds before performing the tear-down, as Drbd
@@ -1195,7 +1195,7 @@ class VirtualMachine(PyroObject):
                     remote_disk.drbdSetSecondary()
 
                 # Re-register VM as being registered on the local node
-                self._setNode(get_hostname())
+                self._set_node(get_hostname())
 
             if self.get_name() in factory.getAllVmNames(node=destination_node_name):
                 # Otherwise, if VM is registered on remote node, set the
@@ -1205,7 +1205,7 @@ class VirtualMachine(PyroObject):
                     disk_object._drbdSetSecondary()
 
                 # Register VM as being registered on the local node
-                self._setNode(destination_node_name)
+                self._set_node(destination_node_name)
 
             # Reset disks
             for disk_object in self.get_hard_drive_objects():
@@ -1236,11 +1236,11 @@ class VirtualMachine(PyroObject):
             raise VmStoppedException('VM is in unexpected %s power state after migration' %
                                      self._get_power_state())
 
-    def _preMigrationChecks(self, destination_node_name):
+    def _pre_migration_checks(self, destination_node_name):
         """Performs checks on the state of the VM to determine if is it suitable to
            be migrated."""
         # Ensure node is in the available nodes that the VM can be run on
-        if destination_node_name not in self.getAvailableNodes():
+        if destination_node_name not in self.get_available_nodes():
             raise UnsuitableNodeException(
                 'The remote node %s is not marked as being able to host the VM %s' %
                 (destination_node_name, self.get_name()))
@@ -1267,7 +1267,7 @@ class VirtualMachine(PyroObject):
                     (connected_network, destination_node_name)
                 )
 
-    def _preOnlineMigrationChecks(self, destination_node_name):
+    def _pre_online_migration_checks(self, destination_node_name):
         """Perform online-migration-specific pre-migration checks."""
         # Ensure any attached ISOs exist on the destination node
         disk_drive_object = self.get_disk_drive()
@@ -1281,7 +1281,7 @@ class VirtualMachine(PyroObject):
             )
 
     @Expose()
-    def getStorageType(self):
+    def get_storage_type(self):
         """Returns the storage type of the VM."""
         for hdd in self.get_hard_drive_objects():
             return hdd.get_type()
@@ -1300,10 +1300,10 @@ class VirtualMachine(PyroObject):
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.CLONE_VM, self)
 
         # Ensure VM is registered locally
-        self.ensureRegisteredLocally()
+        self.ensure_registered_locally()
 
         # Ensure the storage type for the VM is not Drbd, as Drbd-based VMs cannot be cloned
-        if self.getStorageType() == 'Drbd':
+        if self.get_storage_type() == 'Drbd':
             raise CannotCloneDrbdBasedVmsException(
                 'Cannot clone VM that uses Drbd-based storage: %s' %
                 self.get_name()
@@ -1314,7 +1314,7 @@ class VirtualMachine(PyroObject):
             raise VmAlreadyStartedException('Can\'t clone running VM')
 
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         # Ensure new VM name doesn't already exist
         if self.po__get_registered_object(
@@ -1330,8 +1330,8 @@ class VirtualMachine(PyroObject):
         new_vm_object = vm_factory._create(clone_vm_name,
                                            self.get_cpu(),
                                            self.get_ram(),
-                                           available_nodes=self.getAvailableNodes(),
-                                           node=self.getNode(),
+                                           available_nodes=self.get_available_nodes(),
+                                           node=self.get_node(),
                                            is_static=self.is_static())
 
         network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
@@ -1379,10 +1379,10 @@ class VirtualMachine(PyroObject):
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.DUPLICATE_VM, self)
 
         # Ensure VM is registered locally
-        self.ensureRegisteredLocally()
+        self.ensure_registered_locally()
 
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         # Determine if VM is running
         if self._get_libvirt_domain_object().state()[0] == libvirt.VIR_DOMAIN_RUNNING:
@@ -1398,8 +1398,8 @@ class VirtualMachine(PyroObject):
 
         new_vm_object = virtual_machine_factory._create(duplicate_vm_name, self.get_cpu(),
                                                         self.get_ram(), [], [],
-                                                        available_nodes=self.getAvailableNodes(),
-                                                        node=self.getNode(),
+                                                        available_nodes=self.get_available_nodes(),
+                                                        node=self.get_node(),
                                                         storage_backend=storage_backend)
 
         network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
@@ -1432,11 +1432,11 @@ class VirtualMachine(PyroObject):
         cluster_instance = self.po__get_registered_object('cluster')
 
         # Ensure that the VM is registered on the local node
-        self.ensureRegisteredLocally()
+        self.ensure_registered_locally()
 
         # Set the source node as the local host, if the VM is VM
         # uses local-based storage
-        if self.getStorageType() == 'Local':
+        if self.get_storage_type() == 'Local':
             if source_node is None:
                 source_node = get_hostname()
 
@@ -1455,18 +1455,18 @@ class VirtualMachine(PyroObject):
             raise UnsuitableNodeException('Destination node does not exist')
         if destination_node == get_hostname():
             raise UnsuitableNodeException('VM must be migrated to a remote node')
-        if destination_node in self.getAvailableNodes():
+        if destination_node in self.get_available_nodes():
             raise UnsuitableNodeException('Destination node is already' +
                                           ' an available node for the VM')
-        if source_node not in self.getAvailableNodes():
+        if source_node not in self.get_available_nodes():
             raise UnsuitableNodeException('Source node is not configured for the VM')
 
         # Ensure that, if the VM is Drbd-backed, that the local node is not the source
-        if (self.getStorageType() == 'Drbd' and
+        if (self.get_storage_type() == 'Drbd' and
                 source_node == get_hostname()):
             raise UnsuitableNodeException('Drbd-backed VMs must be moved on the node' +
                                           ' that will remain attached to the VM')
-        elif self.getStorageType() == 'Local':
+        elif self.get_storage_type() == 'Local':
             raise UnsuitableNodeException('Local-based storage VMs cannot be moved')
 
         # Ensure that the destination node will support the volume
@@ -1485,7 +1485,7 @@ class VirtualMachine(PyroObject):
 
         # Remove the destination node from the list of available nodes for the VM and
         # add the remote node as an available node
-        available_nodes = self.getAvailableNodes()
+        available_nodes = self.get_available_nodes()
         available_nodes.remove(source_node)
         available_nodes.append(destination_node)
         self.update_config(['available_nodes'], available_nodes,
@@ -1497,11 +1497,11 @@ class VirtualMachine(PyroObject):
             disk_object.move(source_node=source_node, destination_node=destination_node)
 
         # If the VM is a Local VM, unregister it from the local node
-        if self.getStorageType() == 'Local':
+        if self.get_storage_type() == 'Local':
             self._unregister()
 
         # If the VM is a local VM, register it on the remote node
-        if self.getStorageType() == 'Local':
+        if self.get_storage_type() == 'Local':
             remote_node = cluster_instance.get_remote_node(destination_node)
             remote_vm_factory = remote_node.get_connection('virtual_machine_factory')
             remote_vm = remote_vm_factory.get_virtual_machine_by_name(self.get_name())
@@ -1516,7 +1516,7 @@ class VirtualMachine(PyroObject):
             return config_uuid
 
         # Determine if VM is registered, and obtain libvirt uuid
-        if self.isRegistered():
+        if self.is_registered():
             domain_xml = ET.fromstring(
                 self._get_libvirt_domain_object().XMLDesc(
                     libvirt.VIR_DOMAIN_XML_SECURE
@@ -1547,7 +1547,7 @@ class VirtualMachine(PyroObject):
     def _register(self, set_node=True, node=None):
         """Register a VM with LibVirt."""
         # Import domain XML template
-        current_node = self.getNode()
+        current_node = self.get_node()
         node = get_hostname() if node is None else node
 
         # Ensure that the current node is not set OR
@@ -1558,20 +1558,20 @@ class VirtualMachine(PyroObject):
                 'VM \'%s\' already registered on node: %s' %
                 (self.get_name(), current_node))
 
-        if get_hostname() not in self.getAvailableNodes():
+        if get_hostname() not in self.get_available_nodes():
             raise UnsuitableNodeException(
                 'VM \'%s\' cannot be registered on node: %s' %
                 (self.get_name(), node)
             )
 
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         self.register_on_node(nodes=[node])
 
         if set_node:
             # Mark VM as being hosted on this machine
-            self._setNode(node)
+            self._set_node(node)
 
         self.apply_cpu_flags(nodes=[node])
 
@@ -1652,15 +1652,15 @@ class VirtualMachine(PyroObject):
     def _unregister(self, *args, **kwargs):
         """Unregister the VM from the local node."""
         # Ensure VM is unlocked
-        self.ensureUnlocked()
+        self.ensure_unlocked()
 
         # Ensure VM is registered
-        self.ensureRegistered()
+        self.ensure_registered()
 
-        self.unregister_on_node(nodes=[self.getNode()])
+        self.unregister_on_node(nodes=[self.get_node()])
 
         # Remove node from VM configuration
-        self._setNode(None)
+        self._set_node(None)
 
     @Expose(locking=True, remote_nodes=True)
     def unregister_on_node(self):
@@ -1681,15 +1681,15 @@ class VirtualMachine(PyroObject):
             disk_object.deactivateDisk()
 
     @Expose(locking=True)
-    def setNodeRemote(self, node):
+    def set_node_remote(self, node):
         """Set node from remote _setNode command."""
         if node is not None:
             ArgumentValidator.validate_hostname(node)
         # @TODO Merge with setNode and check either user type or permissions
         self.po__get_registered_object('auth').assert_user_type('ClusterUser')
-        self._setNode(node)
+        self._set_node(node)
 
-    def _setNode(self, node):
+    def _set_node(self, node):
         """Sets the node of the VM."""
         self.update_vm_config(
             {'node': node},
@@ -1700,7 +1700,7 @@ class VirtualMachine(PyroObject):
         """Returns a list of remote available nodes."""
         # @TODO rename ot get_remote_nodes
         # Obtain list of available nodes
-        nodes = self.getAvailableNodes()
+        nodes = self.get_available_nodes()
 
         # Remove the local node from the list
         if get_hostname() in nodes:
@@ -1709,39 +1709,39 @@ class VirtualMachine(PyroObject):
         return nodes
 
     @Expose()
-    def isRegisteredLocally(self):
+    def is_registered_locally(self):
         """Returns true if the VM is registered on the local node."""
-        return self.getNode() == get_hostname()
+        return self.get_node() == get_hostname()
 
     @Expose()
-    def isRegisteredRemotely(self):
+    def is_registered_remotely(self):
         """Returns true if the VM is registered on a remote node."""
-        return not (self.getNode() == get_hostname() or self.getNode() is None)
+        return not (self.get_node() == get_hostname() or self.get_node() is None)
 
     @Expose()
-    def isRegistered(self):
+    def is_registered(self):
         """Returns true if the VM is registered on a node."""
-        return self.getNode() is not None
+        return self.get_node() is not None
 
-    def ensureRegistered(self):
+    def ensure_registered(self):
         """Ensures that the VM is registered."""
-        if not self.isRegistered():
+        if not self.is_registered():
             raise VmNotRegistered('The VM %s is not registered on a node' % self.get_name())
 
     @Expose()
-    def getNode(self):
+    def get_node(self):
         """Returns the node that the VM is registered on."""
         return self.get_config_object().get_config()['node']
 
-    def getStorageNodes(self):
+    def get_storage_nodes(self):
         """Defines the nodes that the storage is available to for the VM.
         Unlike getAvailableNodes, this does not change based on whether VM
         requirements exist on the node (e.g. avialable networks)
         """
         # TODO use this method during creation of storage
-        return self.getAvailableNodes()
+        return self.get_available_nodes()
 
-    def getAvailableNodes(self):
+    def get_available_nodes(self):
         """Returns the nodes that the VM can be run on."""
         # If the VM is static, return the nodes from the config file
         if self.is_static():
@@ -1759,21 +1759,21 @@ class VirtualMachine(PyroObject):
         # Obtain list of available nodes from cluster
         return cluster.get_compatible_nodes(storage_backends=storage_backends, networks=networks)
 
-    def ensureRegisteredLocally(self):
+    def ensure_registered_locally(self):
         """Ensures that the VM is registered locally, otherwise an exception is thrown."""
-        if not self.isRegisteredLocally():
-            node = self.getNode()
+        if not self.is_registered_locally():
+            node = self.get_node()
             if node:
                 raise VmRegisteredElsewhereException(
                     'The VM \'%s\' is registered on the remote node: %s' %
-                    (self.get_name(), self.getNode()))
+                    (self.get_name(), self.get_node()))
             else:
                 raise VmRegisteredElsewhereException(
                     'VM \'%s\' is not registered on a node' % self.get_name()
                 )
 
     @Expose()
-    def getVncPort(self):
+    def get_vnc_port(self):
         """Returns the port used by the VNC display for the VM."""
         # Check the user has permission to view the VM console
         self.po__get_registered_object('auth').assert_permission(
@@ -1962,9 +1962,9 @@ class VirtualMachine(PyroObject):
 
         return reset_fail_count
 
-    def ensureUnlocked(self):
+    def ensure_unlocked(self):
         """Ensures that the VM is in an unlocked state."""
-        if self._getLockState() is LockStates.LOCKED:
+        if self._get_lock_state() is LockStates.LOCKED:
             raise VirtualMachineLockException('VM \'%s\' is locked' % self.get_name())
 
     @Expose(locking=True)
@@ -1987,32 +1987,32 @@ class VirtualMachine(PyroObject):
         return AutoStartStates(self.get_config_object().get_config()['autostart'])
 
     @Expose()
-    def getLockState(self):
+    def get_lock_state(self):
         """Return the lock state for the VM."""
-        return self._getLockState().value
+        return self._get_lock_state().value
 
-    def _getLockState(self):
+    def _get_lock_state(self):
         """Returns the lock status of a VM."""
         return LockStates(self.get_config_object().get_config()['lock'])
 
     @Expose(locking=True)
-    def setLockState(self, lock_status):
+    def set_lock_state(self, lock_status):
         """Set the lock state for the VM."""
         ArgumentValidator.validate_integer(lock_status)
         try:
-            return self._setLockState(LockStates(lock_status))
+            return self._set_lock_state(LockStates(lock_status))
         except ValueError:
             raise MCVirtTypeError('Invalid lock state')
 
-    def _setLockState(self, lock_status):
+    def _set_lock_state(self, lock_status):
         """Sets the lock status of the VM."""
         # Ensure the user has permission to set VM locks
         self.po__get_registered_object('auth').assert_permission(PERMISSIONS.SET_VM_LOCK, self)
 
         # Check if the lock is already set to this state
-        if self._getLockState() == lock_status:
+        if self._get_lock_state() == lock_status:
             raise VirtualMachineLockException('Lock for \'%s\' is already set to \'%s\'' %
-                                              (self.get_name(), self._getLockState().name))
+                                              (self.get_name(), self._get_lock_state().name))
 
         def update_lock(config):
             """Update lock in VM config."""
@@ -2096,13 +2096,13 @@ class VirtualMachine(PyroObject):
             self.update_config(['graphics_driver'], driver,
                                'Graphics driver has been changed to %s' % driver)
 
-        if self.isRegisteredRemotely():
+        if self.is_registered_remotely():
             vm_object = self.get_remote_object()
             vm_object.update_graphics_driver(driver)
 
-        elif self.isRegisteredLocally():
+        elif self.is_registered_locally():
             # Ensure VM is unlocked
-            self.ensureUnlocked()
+            self.ensure_unlocked()
 
             def update_libvirt(domain_xml):
                 """Update graphics in libvirt config."""

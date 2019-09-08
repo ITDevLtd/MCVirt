@@ -365,7 +365,7 @@ class Base(PyroObject):
             used_storage_backends = [hdd.storage_backend
                                      for hdd in virtual_machine.get_hard_drive_objects()]
             if (self in used_storage_backends and virtual_machine.is_static() and
-                    node_name in virtual_machine.getAvailableNodes()):
+                    node_name in virtual_machine.get_available_nodes()):
                 raise NodeUsedByStaticVirtualMachine(
                     'Storage backend on node is used by static virtual machines')
 

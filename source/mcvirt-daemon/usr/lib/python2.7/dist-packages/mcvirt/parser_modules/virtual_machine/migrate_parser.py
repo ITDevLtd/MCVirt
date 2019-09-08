@@ -67,9 +67,9 @@ class MigrateParser(object):
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
         if args.online_migration:
-            vm_object.onlineMigrate(args.destination_node)
+            vm_object.online_migrate(args.destination_node)
         else:
-            vm_object.offlineMigrate(
+            vm_object.offline_migrate(
                 args.destination_node,
                 wait_for_vm_shutdown=args.wait_for_shutdown,
                 start_after_migration=args.start_after_migration

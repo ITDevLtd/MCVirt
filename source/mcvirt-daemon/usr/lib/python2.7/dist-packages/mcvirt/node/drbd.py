@@ -212,8 +212,8 @@ class Drbd(PyroObject):
             for drbd_object in self.get_all_drbd_hard_drive_object(True):
                 remote_node = None
                 if not (drbd_object.get_virtual_machine() and
-                        drbd_object.get_virtual_machine().isRegisteredLocally()):
-                    node_name = (drbd_object.get_virtual_machine().getNode()
+                        drbd_object.get_virtual_machine().is_registered_locally()):
+                    node_name = (drbd_object.get_virtual_machine().get_node()
                                  if drbd_object.get_virtual_machine() else
                                  None)
                     available_nodes = drbd_object.nodes
