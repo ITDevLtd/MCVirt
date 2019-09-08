@@ -1845,7 +1845,6 @@ class VirtualMachine(PyroObject):
             memballoon_config = domain_xml.find('./devices/memballoon')
             memballoon_config.set('autodeflate', 'on' if enabled else 'off')
 
-
         if self.get_memballoon_state():
             self.update_libvirt_config(update_libvirt)
 
