@@ -41,7 +41,7 @@ class NetworkAdapter(PyroObject):
 
     def _generateLibvirtXml(self):
         """Creates a basic XML configuration for a network interface,
-        encorporating the name of the network."""
+        incorporating the name of the network."""
         interface_xml = ET.Element('interface')
         interface_xml.set('type', 'network')
 

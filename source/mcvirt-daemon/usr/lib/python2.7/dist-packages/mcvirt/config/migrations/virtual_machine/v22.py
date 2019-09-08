@@ -16,4 +16,9 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 
-from . import v17, v21, v22
+def migrate(config_obj, config):
+    """Add memballoon config to virtual machine."""
+    config['memballoon'] = {
+        'enabled': True,
+        'deflation': False
+    }
