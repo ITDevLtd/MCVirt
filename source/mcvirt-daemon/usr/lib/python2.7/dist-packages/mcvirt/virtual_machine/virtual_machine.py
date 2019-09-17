@@ -585,9 +585,9 @@ class VirtualMachine(PyroObject):
             table.add_row(('UUID', self.get_uuid()))
             table.add_row(('Graphics Driver', self.get_graphics_driver()))
             table.add_row(('Agent version', self.get_agent_version_check_string()))
-            table.add_row(('Memballoon state', '{}{}'.format(
-                'Enabled' if self.get_memballoon_state() else 'Disabled',
-                ' (deflation enabled)' if self.get_memballoon_deflation_state() else '')))
+            table.add_row((
+                'Memballoon deflation state',
+                'Enabled' if self.get_memballoon_deflation_state() else 'Disabled'))
 
             # Display clone children, if they exist
             clone_children = self.get_clone_children()
