@@ -1845,8 +1845,7 @@ class VirtualMachine(PyroObject):
             memballoon_config = domain_xml.find('./devices/memballoon')
             memballoon_config.set('autodeflate', 'on' if enabled else 'off')
 
-        if self.get_memballoon_state():
-            self.update_libvirt_config(update_libvirt)
+        self.update_libvirt_config(update_libvirt)
 
     def get_host_agent_path(self):
         """Obtain the path of the serial interface for the VM on the host."""
