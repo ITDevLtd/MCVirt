@@ -591,7 +591,7 @@ class VirtualMachine(PyroObject):
 
             # Display clone children, if they exist
             clone_children = self.get_clone_children()
-            if len(clone_children):
+            if clone_children:
                 table.add_row(('Clone Children', ','.join(clone_children)))
 
             # Display clone parent, if it exists
@@ -616,7 +616,7 @@ class VirtualMachine(PyroObject):
 
             # Get info for each disk
             hdd_attachments = self.get_hard_drive_attachments()
-            if len(hdd_attachments):
+            if hdd_attachments:
                 table.add_row(('-- Disk ID --', '-- Disk Size --'))
                 for attachment in sorted(hdd_attachments,
                                          key=lambda attachment: attachment.attachment_id):
@@ -630,7 +630,7 @@ class VirtualMachine(PyroObject):
             # Create info table for network adapters
             network_adapter_factory = self.po__get_registered_object('network_adapter_factory')
             network_adapters = network_adapter_factory.getNetworkAdaptersByVirtualMachine(self)
-            if len(network_adapters) != 0:
+            if network_adapters:
                 table.add_row(('-- MAC Address --', '-- Network --'))
                 for network_adapter in network_adapters:
                     table.add_row(
@@ -663,8 +663,7 @@ class VirtualMachine(PyroObject):
                 PERMISSIONS.MODIFY_VM, self) or
                 (self.get_clone_parent() and
                  self.po__get_registered_object('auth').check_permission(
-                     PERMISSIONS.DELETE_CLONE, self))
-                ):
+                     PERMISSIONS.DELETE_CLONE, self))):
             raise InsufficientPermissionsException(
                 ('User does not have the required permission - '
                  'User must have MODIFY_VM permission or be the owner of the cloned VM')
