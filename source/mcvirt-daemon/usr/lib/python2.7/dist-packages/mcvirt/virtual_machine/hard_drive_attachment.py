@@ -128,7 +128,7 @@ class Factory(PyroObject):
 
     @Expose(locking=True, remote_nodes=True)
     def create_config(self, virtual_machine, attachment_id, config):
-        """Add hard drive attachmenrt config to VM."""
+        """Add hard drive attachment config to VM."""
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         attachment_id = str(attachment_id)
 

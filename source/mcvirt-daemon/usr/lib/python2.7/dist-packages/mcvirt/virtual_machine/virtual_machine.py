@@ -24,21 +24,23 @@ from enum import Enum
 import libvirt
 
 from mcvirt.constants import DirectoryLocation, PowerStates, LockStates, AutoStartStates
-from mcvirt.exceptions import (MigrationFailureExcpetion, InsufficientPermissionsException,
-                               VmAlreadyExistsException, LibvirtException,
-                               VmAlreadyStoppedException, VmAlreadyStartedException,
-                               VmAlreadyRegisteredException, VmRegisteredElsewhereException,
-                               VmRunningException, VmStoppedException, UnsuitableNodeException,
-                               VmNotRegistered, CannotStartClonedVmException,
-                               CannotCloneDrbdBasedVmsException, CannotDeleteClonedVmException,
-                               VirtualMachineLockException, InvalidArgumentException,
-                               VirtualMachineDoesNotExistException, VmIsCloneException,
-                               VncNotEnabledException, AttributeAlreadyChanged,
-                               InvalidModificationFlagException, MCVirtTypeError,
-                               UsbDeviceAttachedToVirtualMachine, InvalidConfirmationCodeError,
-                               DeleteProtectionAlreadyEnabledError, DeleteProtectionNotEnabledError,
-                               DeleteProtectionEnabledError, ReachedMaximumStorageDevicesException,
-                               VirtualMachineNotRegisteredWithLibvirt)
+from mcvirt.exceptions import (
+    MigrationFailureExcpetion, InsufficientPermissionsException,
+    VmAlreadyExistsException, LibvirtException,
+    VmAlreadyStoppedException, VmAlreadyStartedException,
+    VmAlreadyRegisteredException, VmRegisteredElsewhereException,
+    VmRunningException, VmStoppedException, UnsuitableNodeException,
+    VmNotRegistered, CannotStartClonedVmException,
+    CannotCloneDrbdBasedVmsException, CannotDeleteClonedVmException,
+    VirtualMachineLockException, InvalidArgumentException,
+    VirtualMachineDoesNotExistException, VmIsCloneException,
+    VncNotEnabledException, AttributeAlreadyChanged,
+    InvalidModificationFlagException, MCVirtTypeError,
+    UsbDeviceAttachedToVirtualMachine, InvalidConfirmationCodeError,
+    DeleteProtectionAlreadyEnabledError, DeleteProtectionNotEnabledError,
+    DeleteProtectionEnabledError, ReachedMaximumStorageDevicesException,
+    VirtualMachineNotRegisteredWithLibvirt, MemballooningNotEnabledError
+)
 from mcvirt.syslogger import Syslogger
 from mcvirt.virtual_machine.agent_connection import AgentConnection
 from mcvirt.config.core import Core as MCVirtConfig
@@ -275,8 +277,8 @@ class VirtualMachine(PyroObject):
             return libvirt_connection.lookupByName(
                 self.get_name()
             )
-        except libvirt.libvirtError, exc:
-            # A libvirt error occured...
+        except libvirt.libvirtError as exc:
+            # A libvirt error occurred...
             # If the error is related to domain not existing...
             if 'Domain not found: no domain with matching name' in str(exc):
                 # If the current session has a lock, then re-register with libvirt
@@ -287,7 +289,7 @@ class VirtualMachine(PyroObject):
                         return self._get_libvirt_domain_object(
                             allow_remote=allow_remote,
                             auto_register=False)
-                    except Exception, exc2:
+                    except Exception as exc2:
                         Syslogger.logger().error('Error whilst re-registering: %s' % str(exc2))
                 else:
                     raise VirtualMachineNotRegisteredWithLibvirt(
@@ -583,6 +585,9 @@ class VirtualMachine(PyroObject):
             table.add_row(('UUID', self.get_uuid()))
             table.add_row(('Graphics Driver', self.get_graphics_driver()))
             table.add_row(('Agent version', self.get_agent_version_check_string()))
+            table.add_row((
+                'Memballoon deflation state',
+                'Enabled' if self.get_memballoon_deflation_state() else 'Disabled'))
 
             # Display clone children, if they exist
             clone_children = self.get_clone_children()
@@ -1601,6 +1606,8 @@ class VirtualMachine(PyroObject):
 
         device_xml = domain_xml.find('./devices')
 
+        device_xml.append(self._get_memballoon_xml())
+
         # Add hard drive configurations
         hard_drive_attachment_factory = self.po__get_registered_object(
             'hard_drive_attachment_factory')
@@ -1806,6 +1813,39 @@ class VirtualMachine(PyroObject):
             # CPU-specific stats
             + [cpu['vcpu_time'] for cpu in dom.getCPUStats(False)]
         )
+
+    def _get_memballoon_xml(self):
+        """Return XML object containing memballoon configuration"""
+        xml = ET.Element('memballoon')
+        xml.set('model', 'virtio')
+        xml.set('autodeflate', 'on' if self.get_memballoon_deflation_state() else 'off')
+
+        return xml
+
+    def get_memballoon_deflation_state(self):
+        """Determine if memballoon deflation is enabled."""
+        return self.get_config_object().get_config()['memballoon']['deflation']
+
+    @Expose(locking=True, expose=True)
+    def set_memballoon_deflation_state(self, enabled):
+        """Set the memballoon deflation flag in the VM config."""
+
+        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MODIFY_VM, self)
+
+        # If there is no change to the value, then return immediately
+        if self.get_memballoon_deflation_state() == enabled:
+            return
+
+        # Update the MCVirt configuration
+        self.update_config(['memballoon', 'deflation'], enabled,
+                           'Memballoon state set to %s' % enabled)
+
+        def update_libvirt(domain_xml):
+            """Update RAM allocation and unit measurement."""
+            memballoon_config = domain_xml.find('./devices/memballoon')
+            memballoon_config.set('autodeflate', 'on' if enabled else 'off')
+
+        self.update_libvirt_config(update_libvirt)
 
     def get_host_agent_path(self):
         """Obtain the path of the serial interface for the VM on the host."""

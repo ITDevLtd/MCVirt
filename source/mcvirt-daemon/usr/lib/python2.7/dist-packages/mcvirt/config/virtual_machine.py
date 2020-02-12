@@ -79,6 +79,10 @@ class VirtualMachine(BaseSubconfig):
                     'interval': None,
                     'reset_fail_count': None,
                     'boot_wait': None
+                },
+                'memballoon': {
+                    'enabled': True,
+                    'deflation': False
                 }
             }
 
@@ -100,3 +104,6 @@ class VirtualMachine(BaseSubconfig):
 
         if self._getVersion() < 21:
             migrations.v21.migrate(self, config)
+
+        if self._getVersion() < 22:
+            migrations.v22.migrate(self, config)
