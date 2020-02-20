@@ -20,7 +20,7 @@
 import json
 import base64
 import socket
-from texttable import Texttable
+from prettytable import PrettyTable
 
 import Pyro4
 
@@ -89,9 +89,9 @@ class Cluster(PyroObject):
     @Expose()
     def print_info(self):
         """Print information about the nodes in the cluster."""
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('Node', 'IP Address', 'Status', 'CPU Usage', 'Memory Usage'))
+        table = PrettyTable(('Node', 'IP Address', 'Status', 'CPU Usage', 'Memory Usage'))
+        # table.set_deco(Texttable.HEADER | Texttable.VLINES)
+
         # Add this node to the table
         table.add_row((
             get_hostname(),
@@ -117,7 +117,7 @@ class Cluster(PyroObject):
                 pass
             table.add_row((node, node_config['ip_address'],
                            node_status, cpu, ram))
-        return table.draw()
+        return str(table)
 
     def check_node_versions(self):
         """Ensure that all nodes in the cluster are connected

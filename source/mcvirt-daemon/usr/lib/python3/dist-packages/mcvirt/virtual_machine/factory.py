@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from texttable import Texttable
+from prettytable import PrettyTable
 from os.path import exists as os_path_exists
 from os import makedirs
 from enum import Enum
@@ -174,9 +174,7 @@ class Factory(PyroObject):
     @Expose()
     def listVms(self, include_ram=False, include_cpu=False, include_disk=False):
         """Lists the VMs that are currently on the host."""
-        # Create base table
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        # table.set_deco(Texttable.HEADER | Texttable.VLINES)
 
         # Add headers
         headers = ['VM Name', 'State', 'Node']
@@ -187,7 +185,8 @@ class Factory(PyroObject):
         if include_disk:
             headers.append('Total disk size (MiB)')
 
-        table.header(tuple(headers))
+        # Create base table
+        table = PrettyTable(tuple(headers))
 
         # Iterate over VMs and add to list
         for vm_object in sorted(self.get_all_virtual_machines(), key=lambda vm: vm.name):
@@ -211,8 +210,7 @@ class Factory(PyroObject):
                     hard_drive_size += disk_object.get_size()
                 vm_row.append(SizeConverter(hard_drive_size).to_string())
             table.add_row(vm_row)
-        table_output = table.draw()
-        return table_output
+        return str(table)
 
     @Expose()
     def check_exists(self, id_):

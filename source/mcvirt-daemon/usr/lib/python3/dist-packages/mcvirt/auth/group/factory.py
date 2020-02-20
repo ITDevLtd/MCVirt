@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from texttable import Texttable
+from prettytable import PrettyTable
 
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose, Transaction
@@ -113,13 +113,12 @@ class Factory(PyroObject):
     def list(self):
         """List the Drbd volumes and statuses."""
         # Create table and add headers
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES | Texttable.HLINES)
-        table.header(('Name', 'Permissions', 'Global users'))
+        table = PrettyTable(('Name', 'Permissions', 'Global users'))
+        # table.set_deco(Texttable.HEADER | Texttable.VLINES | Texttable.HLINES)
 
         # Set column alignment and widths
-        table.set_cols_width((15, 40, 40))
-        table.set_cols_align(('l', 'l', 'l'))
+        # table.set_cols_width((15, 40, 40))
+        # table.set_cols_align(('l', 'l', 'l'))
 
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
@@ -131,7 +130,7 @@ class Factory(PyroObject):
                     ', '.join([user.get_username() for user in group.get_users(virtual_machine=None)])
                 ))
 
-        return table.draw()
+        return str(table)
 
     def get_config(self):
         """Return the configs for storage backends."""

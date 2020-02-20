@@ -3,7 +3,7 @@ Version: %VERSION%
 Section: utils
 Maintainer: Matt Comben <matthew@dockstudios.co.uk>
 Architecture: all
-Depends: python3, python3-libvirt, qemu, python3-lockfile, python3-texttable, python3-paramiko, python3-mako, libvirt-bin, python3-argcomplete, python3-netifaces, python3-pbkdf2, python3-ldap, python3-serial, mcvirt-common (=%VERSION%)
+Depends: python3, python3-libvirt, qemu, python3-lockfile, python3-prettytable, python3-paramiko, python3-mako, libvirt-bin, python3-argcomplete, python3-netifaces, python3-pbkdf2, python3-ldap, python3-serial, mcvirt-common (=%VERSION%)
 Recommends: git
 Suggests: iotop, iftop, htop, drbd8-utils
 Description: Virtualization host management utility.

@@ -20,7 +20,7 @@
 import os
 import json
 from binascii import hexlify
-from texttable import Texttable
+from prettytable import PrettyTable
 from mako.template import Template
 
 from mcvirt.exceptions import DrbdNotInstalledException, DrbdAlreadyEnabled
@@ -195,14 +195,13 @@ class Drbd(PyroObject):
     def list(self):
         """List the Drbd volumes and statuses."""
         # Create table and add headers
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('Volume Name', 'Minor', 'Port', 'Role', 'Connection State',
-                      'Disk State', 'Sync Status'))
+        table = PrettyTable(('Volume Name', 'Minor', 'Port', 'Role', 'Connection State',
+                             'Disk State', 'Sync Status'))
+        # table.set_deco(Texttable.HEADER | Texttable.VLINES)
 
         # Set column alignment and widths
-        table.set_cols_width((30, 5, 5, 20, 20, 20, 13))
-        table.set_cols_align(('l', 'c', 'c', 'l', 'c', 'l', 'c'))
+        # table.set_cols_width((30, 5, 5, 20, 20, 20, 13))
+        # table.set_cols_align(('l', 'c', 'c', 'l', 'c', 'l', 'c'))
 
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
@@ -239,4 +238,4 @@ class Drbd(PyroObject):
                                                    sec_remote_node_name,
                                                    drbd_object.drbdGetDiskState()[1][0]),
                                'In Sync' if drbd_object.isInSync() else 'Out of Sync'))
-        return table.draw()
+        return str(table)

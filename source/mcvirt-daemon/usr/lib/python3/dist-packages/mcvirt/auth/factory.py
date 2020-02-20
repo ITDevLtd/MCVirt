@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from texttable import Texttable
+from prettytable import PrettyTable
 
 from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.exceptions import (IncorrectCredentials, InvalidUsernameException,
@@ -157,13 +157,12 @@ class Factory(PyroObject):
     def list(self):
         """List the Drbd volumes and statuses."""
         # Create table and add headers
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES | Texttable.HLINES)
-        table.header(('Name', 'User Type', 'Groups'))
+        table = PrettyTable(('Name', 'User Type', 'Groups'))
+        # table.set_deco(Texttable.HEADER | Texttable.VLINES | Texttable.HLINES)
 
         # Set column alignment and widths
-        table.set_cols_width((15, 10, 40))
-        table.set_cols_align(('l', 'l', 'l'))
+        # table.set_cols_width((15, 10, 40))
+        # table.set_cols_align(('l', 'l', 'l'))
 
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
@@ -173,7 +172,7 @@ class Factory(PyroObject):
                 user.get_user_type(),
                 ', '.join([group.name for group in user.get_groups()])
             ))
-        return table.draw()
+        return str(table)
 
     @Expose()
     def get_all_user_objects(self, user_classes=None):

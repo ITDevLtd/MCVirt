@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from texttable import Texttable
+from prettytable import PrettyTable
 
 from mcvirt.storage.lvm import Lvm
 from mcvirt.storage.file import File
@@ -231,17 +231,17 @@ class Factory(PyroObject):
     def list(self):
         """List the Drbd volumes and statuses."""
         # Create table and add headers
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('Name', 'Type', 'Location', 'Nodes', 'Shared', 'Free Space', 'ID'))
+        table = PrettyTable(('Name', 'Type', 'Location', 'Nodes', 'Shared', 'Free Space', 'ID'))
+        # table.set_deco(Texttable.HEADER | Texttable.VLINES)
 
         # Set column alignment and widths
-        table.set_cols_width((15, 5, 30, 70, 6, 15, 50))
-        table.set_cols_align(('l', 'l', 'l', 'l', 'l', 'l', 'l'))
+        # table.set_cols_width((15, 5, 30, 70, 6, 15, 50))
+        # table.set_cols_align(('l', 'l', 'l', 'l', 'l', 'l', 'l'))
 
         # Set permissions as having been checked, as listing VMs
         # does not require permissions
-        with self.po__get_registered_object('auth').elevate_permissions(PERMISSIONS.MANAGE_STORAGE_BACKEND):
+        with self.po__get_registered_object('auth').elevate_permissions(
+                PERMISSIONS.MANAGE_STORAGE_BACKEND):
             for storage_backend in self.get_all():
                 table.add_row((
                     storage_backend.name,
@@ -252,7 +252,7 @@ class Factory(PyroObject):
                     SizeConverter(storage_backend.get_free_space()).to_string(),
                     storage_backend.id_
                 ))
-        return table.draw()
+        return str(table)
 
     @Expose(remote_nodes=True)
     def node_pre_check(self, location, storage_type):

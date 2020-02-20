@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from texttable import Texttable
+from prettytable import PrettyTable
 import xml.etree.ElementTree as ET
 import netifaces
 from libvirt import libvirtError
@@ -194,14 +194,13 @@ class Factory(PyroObject):
     def get_network_list_table(self):
         """Return a table of networks registered on the node."""
         # Create table and set headings
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('Network', 'Physical Interface'))
+        table = PrettyTable(('Network', 'Physical Interface'))
+        # table.set_deco(Texttable.HEADER | Texttable.VLINES)
 
         # Obtain network configurations and add to table
         for network_object in self.get_all_network_objects():
             table.add_row((network_object.get_name(), network_object.get_adapter()))
-        return table.draw()
+        return str(table)
 
     def ensure_exists(self, name):
         """Ensure network exists."""

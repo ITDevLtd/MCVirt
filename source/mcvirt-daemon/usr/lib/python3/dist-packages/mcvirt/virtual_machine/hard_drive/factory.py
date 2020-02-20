@@ -90,7 +90,7 @@
 #########################################################################################
 """
 
-from texttable import Texttable
+from prettytable import PrettyTable
 
 from mcvirt.exceptions import (UnknownStorageTypeException, HardDriveDoesNotExistException,
                                InsufficientSpaceException, StorageBackendNotAvailableOnNode,
@@ -429,10 +429,9 @@ class Factory(PyroObject):
     def get_hard_drive_list_table(self):
         """Return a table of hard drives."""
         # Create table and set headings
-        table = Texttable()
-        table.set_deco(Texttable.HEADER | Texttable.VLINES)
-        table.header(('ID', 'Size', 'Type', 'Storage Backend', 'Virtual Machine'))
-        table.set_cols_width((50, 15, 15, 50, 20))
+        table = PrettyTable(('ID', 'Size', 'Type', 'Storage Backend', 'Virtual Machine'))
+        # table.set_deco(Texttable.HEADER | Texttable.VLINES)
+        # table.set_cols_width((50, 15, 15, 50, 20))
 
         # Manually set permissions asserted, as this function can
         # run high privilege calls, but doesn't not require
@@ -456,7 +455,7 @@ class Factory(PyroObject):
                 table.add_row((hard_drive_obj.id_, hdd_size,
                                hdd_type, storage_backend_id,
                                vm_object.get_name() if vm_object else 'Not attached'))
-        return table.draw()
+        return str(table)
 
     def get_all(self):
         """Return all hard drive objects."""

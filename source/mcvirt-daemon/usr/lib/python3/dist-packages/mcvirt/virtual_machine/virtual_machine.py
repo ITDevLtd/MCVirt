@@ -19,7 +19,7 @@
 
 import xml.etree.ElementTree as ET
 from time import sleep
-from texttable import Texttable
+from prettytable import PrettyTable
 from enum import Enum
 import libvirt
 
@@ -567,8 +567,8 @@ class VirtualMachine(PyroObject):
                 remote_object.annotate_object(remote_vm)
                 return remote_vm.getInfo()
 
-            table = Texttable()
-            table.set_deco(Texttable.HEADER | Texttable.VLINES)
+            table = PrettyTable()
+            # table.set_deco(Texttable.HEADER | Texttable.VLINES)
             table.add_row(('Name', self.get_name()))
             table.add_row(('CPU Cores', self.get_cpu()))
             table.add_row(('Guest CPU Usage', self.get_guest_cpu_usage_text()))
@@ -645,7 +645,7 @@ class VirtualMachine(PyroObject):
                 users = group.get_users(virtual_machine=self)
                 users_string = ','.join(sorted([user.get_username() for user in users]))
                 table.add_row((group.name, users_string))
-        return table.draw() + "\n" + warnings
+        return str(table) + "\n" + warnings
 
     @Expose(locking=True)
     def delete(self, keep_disks=False, keep_config=False, local_only=False):
