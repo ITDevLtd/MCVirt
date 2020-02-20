@@ -68,7 +68,7 @@ class AgentSerialConfig(object):
 
     # Agent Port
     AGENT_PORT = "ttyS0"
-    AGENT_PORT_PATH = "/dev/%s" % AGENT_PORT
+    AGENT_PORT_PATH = "/dev/" + AGENT_PORT
 
 
 class StatisticsDeviceType(Enum):

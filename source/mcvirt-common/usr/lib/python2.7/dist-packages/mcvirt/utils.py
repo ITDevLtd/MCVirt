@@ -65,19 +65,19 @@ def ensure_hostname_consistent():
     """
     if get_hostname() != get_network_hostname():
         raise Exception(("Fatal Error: System hostname appears to have changed.\n"
-                         "Original Hostname: %(original)s, New hostname: %(new)s"
+                         "Original Hostname: {original}, New hostname: {new}"
                          "If this is expected, perform the following:\n"
                          " - Update the hostname in /etc/mcvirt/hostname.conf\n"
-                         " - Renmame the host directory /var/lib/mcvirt/%(original)s"
-                         " to /var/lib/mcvirt/%(new)s\n"
+                         " - Renmame the host directory /var/lib/mcvirt/{original}"
+                         " to /var/lib/mcvirt/{new}\n"
                          ' - Update uses of the hostname in'
-                         '/var/lib/mcvirt/%(new)s/config.json, '
+                         '/var/lib/mcvirt/{new}/config.json, '
                          '/var/lib/mcvirt/<hostname>/config.json on all remote nodes, '
-                         '/var/lib/mcvirt/%(new)s/vm/*/config.json and '
+                         '/var/lib/mcvirt/{new}/vm/*/config.json and '
                          "/var/lib/mcvirt/<hostname>/vm/*/config.json on all remote nodes.\n"
                          "\nIf this was NOT expected, please check system hostname and "
-                         "DNS configuration.") % {'original': get_hostname(),
-                                                  'new': get_network_hostname()})
+                         "DNS configuration.").format({'original': get_hostname(),
+                                                       'new': get_network_hostname()}))
 
 
 def get_all_submodules(target_class):
@@ -95,11 +95,11 @@ def convert_size_friendly(original):
     """
 
     if original <= 1024:
-        return '%iMB' % original
+        return original + 'MB'
     elif original < (1024 ** 2):
-        return '%.2fGB' % round(float(original) / 1024, 2)
+        return '{:.2f}GB'.format(round(float(original) / 1024, 2))
     else:
-        return '%.2fTB' % round(float(original) / (1024 ** 2), 2)
+        return '{:.2f}TB'.format(round(float(original) / (1024 ** 2), 2))
 
 
 def dict_merge(dct, merge_dct):
