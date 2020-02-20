@@ -17,11 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
-from Cheetah.Template import Template
 import os
-from texttable import Texttable
 import json
 from binascii import hexlify
+from texttable import Texttable
+from mako.template import Template
 
 from mcvirt.exceptions import DrbdNotInstalledException, DrbdAlreadyEnabled
 from mcvirt.config.core import Core as MCVirtConfig
@@ -144,11 +144,11 @@ class Drbd(PyroObject):
         drbd_config = self.get_config()
 
         # Replace the variables in the template with the local Drbd configuration
-        config_content = Template(file=self.GLOBAL_CONFIG_TEMPLATE, searchList=[drbd_config])
+        config_content = Template(filename=self.GLOBAL_CONFIG_TEMPLATE)
 
         # Write the Drbd configuration
         fh = open(self.GLOBAL_CONFIG, 'w')
-        fh.write(config_content.respond())
+        fh.write(config_content.render(**drbd_config))
         fh.close()
 
         # Update Drbd running configuration
