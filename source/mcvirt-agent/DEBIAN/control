@@ -3,7 +3,7 @@ Version: %VERSION%
 Section: utils
 Maintainer: Matt Comben <matthew@dockstudios.co.uk>
 Architecture: all
-Depends: python, python-serial, mcvirt-common (=%VERSION%)
+Depends: python3, python3-serial, mcvirt-common (=%VERSION%)
 Recommends: git
 Suggests: iotop, iftop, htop, drbd8-utils
 Description: Virtualization host management utility.

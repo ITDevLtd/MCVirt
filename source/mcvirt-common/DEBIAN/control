@@ -3,7 +3,7 @@ Version: %VERSION%
 Section: utils
 Maintainer: Matt Comben <matthew@dockstudios.co.uk>
 Architecture: all
-Depends: python, python-enum34, python-psutil
+Depends: python3, python3-psutil
 Description: MCVirt package provided common dependencies
  between daemon, client and agent.
  Virtualization host management utility.
