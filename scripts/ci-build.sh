@@ -58,7 +58,7 @@ EOF
   # Install pip (for installing Pyro and MockLdap), git (for obtianing Pyro source)
   # and pre-requisites for building MockLdap
   ssh ${node} 'apt-get update'
-  ssh ${node} './apt-get-wait install python-pip git libsasl2-dev python-dev libldap2-dev libssl-dev python-coverage jq --assume-yes'
+  ssh ${node} './apt-get-wait install python3-pip git libsasl2-dev python3-dev libldap2-dev libssl-dev python3-coverage jq --assume-yes'
   ssh ${node} "https_proxy=${PROXY} git clone https://github.com/MatthewJohn/Pyro4"
   ssh ${node} "pushd Pyro4; http_proxy=${PROXY} https_proxy=${PROXY} pip3 install --cache-dir /opt/pip-cache ./; popd"
   ssh ${node} "http_proxy=${PROXY} https_proxy=${PROXY} pip3 install --cache-dir /opt/pip-cache MockLdap"
@@ -139,10 +139,10 @@ function setup_nodes() {
     ssh $node_name "ps aux  | grep python | grep mcvirt | gawk '{ print \$2 }' | xargs kill -9" || true
     ssh $node_name 'service mcvirtd stop; service mcvirt-ns stop; rm -rf /var/lib/mcvirt/* /etc/mcvirt/* /var/lock/mcvir* /var/run/mcvirt*'
     scp ./analysis.patch ${node_name}:./
-    ssh $node_name 'dos2unix /usr/local/lib/python2.7/dist-packages/Pyro4/core.py'
+    ssh $node_name 'dos2unix /usr/local/lib/python3/dist-packages/Pyro4/core.py'
     ssh $node_name 'patch -p0 -d / -i /root/analysis.patch'
-    ssh $node_name 'echo -e "#!/bin/bash\nMCVIRT_DEBUG=DEBUG python-coverage run --source /usr/lib/python2.7/dist-packages/mcvirt --parallel-mode --rcfile=/root/coverage_rc /usr/sbin/mcvirtd" > /usr/bin/mcvirtd'
-    ssh $node_name 'echo -e "#!/bin/bash\nMCVIRT_DEBUG=DEBUG python-coverage run --source /usr/lib/python2.7/dist-packages/mcvirt --parallel-mode --rcfile=/root/coverage_rc /usr/sbin/mcvirt-ns" > /usr/bin/mcvirt-ns'
+    ssh $node_name 'echo -e "#!/bin/bash\nMCVIRT_DEBUG=DEBUG python3-coverage run --source /usr/lib/python3/dist-packages/mcvirt --parallel-mode --rcfile=/root/coverage_rc /usr/sbin/mcvirtd" > /usr/bin/mcvirtd'
+    ssh $node_name 'echo -e "#!/bin/bash\nMCVIRT_DEBUG=DEBUG python3-coverage run --source /usr/lib/python3/dist-packages/mcvirt --parallel-mode --rcfile=/root/coverage_rc /usr/sbin/mcvirt-ns" > /usr/bin/mcvirt-ns'
     ssh $node_name 'chmod +x /usr/bin/mcvirt-ns /usr/bin/mcvirtd'
     ssh $node_name 'systemctl daemon-reload || true'
     # Create coverage confing
@@ -182,7 +182,7 @@ function run_tests() {
   ssh mcvirt-host-1 "ps aux | grep mcvirt | grep mcvirtd | grep -v grep | grep coverage | gawk '{ print \$2 }' | xargs kill -15" || true
   # Run tests with python coverage
   set -e
-  ssh mcvirt-host-1 'python-coverage run --source /usr/lib/python2.7/dist-packages/mcvirt --parallel-mode --rcfile=/root/coverage_rc /usr/lib/python2.7/dist-packages/mcvirt/test/run_tests.py'
+  ssh mcvirt-host-1 'python3-coverage run --source /usr/lib/python3/dist-packages/mcvirt --parallel-mode --rcfile=/root/coverage_rc /usr/lib/python3/dist-packages/mcvirt/test/run_tests.py'
   set +e
 }
 
@@ -271,14 +271,14 @@ cat << 'EOF' > ./analysis.patch
  DAEMON_ARGS=""
  PIDFILE=/var/run/$NAME.pid
  SCRIPTNAME=/etc/init.d/$NAME
---- ./usr/local/lib/python2.7/dist-packages/Pyro4/core.py
-+++ ./usr/local/lib/python2.7/dist-packages/Pyro4/core.py
+--- ./usr/local/lib/python3.6/dist-packages/Pyro4/core.py
++++ ./usr/local/lib/python3.6/dist-packages/Pyro4/core.py
 @@ -1148,9 +1148,14 @@ class Daemon(object):
                      data = []
                      for method, vargs, kwargs in vargs:
                          method = util.getAttribute(obj, method)
 +                        from coverage import coverage
-+                        cov = coverage(config_file='/root/coverage_rc', source='/usr/lib/python2.7/dist-packages/mcvirt')
++                        cov = coverage(config_file='/root/coverage_rc', source='/usr/lib/python3/dist-packages/mcvirt')
 +                        cov.start()
                          try:
                              result = method(*vargs, **kwargs)  # this is the actual method call to the Pyro object
@@ -298,8 +298,8 @@ cat << 'EOF' > ./analysis.patch
                  else:
                      # normal single method call
 
---- ./usr/lib/python2.7/dist-packages/mcvirt/rpc/certificate_generator.py
-+++ ./usr/lib/python2.7/dist-packages/mcvirt/rpc/certificate_generator.py
+--- ./usr/lib/python3/dist-packages/mcvirt/rpc/certificate_generator.py
++++ ./usr/lib/python3/dist-packages/mcvirt/rpc/certificate_generator.py
 @@ -103,7 +103,7 @@ class CertificateGenerator(PyroObject):
          path = self._get_certificate_path('capriv.pem')
 
@@ -341,7 +341,7 @@ EOF
 function perform_code_analysis() {
   scp ./coverage_data* mcvirt-host-1:./
   rm -f coverage_data*
-  find_command='`find /usr/lib/python2.7/dist-packages/mcvirt -type f -name "*.py"`'
+  find_command='`find /usr/lib/python3/dist-packages/mcvirt -type f -name "*.py"`'
   ssh mcvirt-host-1 "python-coverage combine --rcfile=/root/coverage_rc"
   ssh mcvirt-host-1 "python-coverage report -m --rcfile=/root/coverage_rc $find_command"
   ssh mcvirt-host-1 "python-coverage xml --rcfile=/root/coverage_rc $find_command"
