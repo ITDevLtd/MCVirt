@@ -38,7 +38,7 @@ class LockingFunctions(PyroObject):
     @Expose(locking=True)
     def tick(self):
         sleep(1.0/10)
-        print 'tick'
+        print('tick')
 
     @Expose(locking=True)
     def hold_lock_forever(self):
@@ -48,13 +48,13 @@ class LockingFunctions(PyroObject):
             try:
                 self.tick()
             except TaskCancelledError:
-                print 'Exited forever thread'
+                print('Exited forever thread')
                 self.thread_should_stop_event.set()
 
     @Expose(locking=True)
     def take_lock(self):
         """Take lock."""
-        print "take lock"
+        print("take lock")
         return True
 
     def cleanup(self):

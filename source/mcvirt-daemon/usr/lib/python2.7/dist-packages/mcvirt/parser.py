@@ -63,7 +63,7 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         """Override the error function."""
         # Force the argument parser to throw an MCVirt exception on error.
-        print '\nError: %s\n' % message
+        print('\nError: {1}\n'.format(message))
         self.print_help()
         raise ArgumentParserException(message)
 
@@ -204,7 +204,7 @@ class Parser(object):
     def print_status(self, status):
         """Print if the user has specified that the parser should print statuses."""
         if self.verbose:
-            print status
+            print(status)
         else:
             self.print_output.append(status)
 

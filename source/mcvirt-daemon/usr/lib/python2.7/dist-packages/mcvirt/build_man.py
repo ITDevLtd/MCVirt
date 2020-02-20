@@ -211,6 +211,6 @@ if __name__ == '__main__':
 
     m = mpf.format_man_page(_parser)
 
-    print 'Generating man documentation'
+    print('Generating man documentation')
     with open('/usr/share/man/man1/mcvirt.1', 'w') as f:
         f.write(m)

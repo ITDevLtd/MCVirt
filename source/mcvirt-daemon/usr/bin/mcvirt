@@ -28,7 +28,7 @@ if __name__ == "__main__":
     try:
         parser_object = Parser()
     except MCVirtException, e:
-        print e.message
+        print(e.message)
         sys.exit(1)
 
     if (len(sys.argv) > 1):
