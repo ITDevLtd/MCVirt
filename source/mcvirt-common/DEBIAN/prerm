@@ -1,5 +1,5 @@
 #!/bin/bash
 
 # Remove any pyc files from source
-find /usr/lib/python2.7/dist-packages/mcvirt -type f -name '*.pyc' -delete || true
+find /usr/lib/python3/dist-packages/mcvirt -type f -name '*.pyc' -delete || true
 

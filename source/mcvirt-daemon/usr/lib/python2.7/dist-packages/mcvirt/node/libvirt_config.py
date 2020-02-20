@@ -33,7 +33,7 @@ class LibvirtConfig(PyroObject):
     LIBVIRT_USER = 'libvirt-qemu'
     LIBVIRT_GROUP = 'kvm'
     CONFIG_FILE = '/etc/libvirt/libvirtd.conf'
-    CONFIG_TEMPLATE = '/usr/lib/python2.7/dist-packages/mcvirt/templates/libvirtd.conf'
+    CONFIG_TEMPLATE = '/usr/lib/python3/dist-packages/mcvirt/templates/libvirtd.conf'
     DEFAULT_FILE = '/etc/default/%s'
     DEFAULT_CONFIG = """
 # Defaults for libvirtd initscript (/etc/init.d/libvirtd)

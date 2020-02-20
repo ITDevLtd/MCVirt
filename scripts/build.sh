@@ -18,7 +18,7 @@ VERSION=$(get_version)
 ARCH=all
 
 # Put version number into version file
-echo "VERSION = '$VERSION'" >> ./source/mcvirt-common/usr/lib/python2.7/dist-packages/mcvirt/version.py
+echo "VERSION = '$VERSION'" >> ./source/mcvirt-common/usr/lib/python3/dist-packages/mcvirt/version.py
 
 # Put version into debian control file
 sed -i "s/%VERSION%/$VERSION/g" ./source/*/DEBIAN/control
@@ -31,4 +31,4 @@ do
 done
 
 # Remove old version number
-git checkout -- ./source/mcvirt-common/usr/lib/python2.7/dist-packages/mcvirt/version.py ./source/*/DEBIAN/control
+git checkout -- ./source/mcvirt-common/usr/lib/python3/dist-packages/mcvirt/version.py ./source/*/DEBIAN/control
