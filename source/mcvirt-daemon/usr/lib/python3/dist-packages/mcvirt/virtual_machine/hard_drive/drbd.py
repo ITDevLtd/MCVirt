@@ -18,9 +18,9 @@
 from enum import Enum
 import os
 import math
-
 import time
-from Cheetah.Template import Template
+
+from mako.template import Template
 
 from mcvirt.virtual_machine.hard_drive.base import Base
 from mcvirt.node.drbd import Drbd as NodeDrbd
@@ -1267,12 +1267,11 @@ class Drbd(Base):
             drbd_config['nodes'].append(node_template_conf)
 
         # Replace the variables in the template with the local Drbd configuration
-        config_content = Template(file=self.DRBD_CONFIG_TEMPLATE, searchList=[drbd_config])
+        config_content = Template(filename=self.DRBD_CONFIG_TEMPLATE)
 
         # Write the Drbd configuration
-        fh = open(self._getDrbdConfigFile(), 'w')
-        fh.write(config_content.respond())
-        fh.close()
+        with open(self._getDrbdConfigFile(), 'w') as fh:
+            fh.write(config_content.render(**drbd_config))
 
     @Expose(locking=True)
     def removeDrbdConfig(self, *args, **kwargs):

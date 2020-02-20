@@ -18,7 +18,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os
-from Cheetah.Template import Template
+from mako.template import Template
 
 from mcvirt.config.core import Core as MCVirtConfig
 from mcvirt.system import System
@@ -65,11 +65,11 @@ libvirtd_opts=" --listen --verbose %s"
         libvirt_config = self.get_config()
 
         # Replace the variables in the template with the local libvirtd configuration
-        config_content = Template(file=self.CONFIG_TEMPLATE, searchList=[libvirt_config])
+        config_content = Template(filename=self.CONFIG_TEMPLATE)
 
         # Write the libvirt configurations
         with open(self.CONFIG_FILE, 'w') as fh:
-            fh.write(config_content.respond())
+            fh.write(config_content.render(**libvirt_config))
 
         if System.is_running_systemd():
             default_config = self.DEFAULT_CONFIG % ''
