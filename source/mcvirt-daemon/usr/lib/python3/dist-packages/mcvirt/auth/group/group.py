@@ -94,8 +94,9 @@ class Group(PyroObject):
             virtual_machine = self.po__convert_remote_object(virtual_machine)
 
         # Check if user running script is able to add users to permission group
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUP_MEMBERS,
-                                                              vm_object=virtual_machine)
+        self.po__get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_GROUP_MEMBERS,
+            vm_object=virtual_machine)
 
         # Convert remote objects
         user = self.po__convert_remote_object(user)
@@ -103,8 +104,9 @@ class Group(PyroObject):
         # Ensure that the user is not already in the group
         if (user in self.get_users(virtual_machine=virtual_machine) and
                 not ignore_duplicate):
-            raise DuplicatePermissionException('User %s already in group %s' %
-                                               (user.get_username(), self.name))
+            raise DuplicatePermissionException(
+                'User {} already in group {}'.format(
+                    user.get_username(), self.name))
 
         cluster = self.po__get_registered_object('cluster')
         if virtual_machine:
@@ -119,8 +121,9 @@ class Group(PyroObject):
     def add_user_to_config(self, user):
         """Add user to group config."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser',
+            allow_indirect=True)
 
         # Convert remote objects
         user = self.po__convert_remote_object(user)
@@ -128,15 +131,17 @@ class Group(PyroObject):
         def update_config(config):
             """Update config."""
             config['groups'][self.id_]['users'].append(user.get_username())
-        MCVirtConfig().update_config(update_config, 'Add user %s to group %s' %
-                                     (user.get_username(), self.name))
+        MCVirtConfig().update_config(
+            update_config, 'Add user {} to group {}'.format(
+                user.get_username(), self.name))
 
     @Expose(locking=True, remote_nodes=True, undo_method='remove_user_from_vm_config')
     def add_user_to_vm_config(self, user, virtual_machine):
         """Add user to group config."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser',
+            allow_indirect=True)
 
         # Convert remote objects
         virtual_machine = self.po__convert_remote_object(virtual_machine)
@@ -151,15 +156,16 @@ class Group(PyroObject):
 
             config['permissions']['groups'][self.id_]['users'].append(user.get_username())
         virtual_machine.get_config_object().update_config(
-            update_config, 'Add user %s to group %s' %
-            (user.get_username(), self.name))
+            update_config, 'Add user {} to group {}'.format(
+                user.get_username(), self.name))
 
     @Expose(locking=True)
     def remove_user(self, user, virtual_machine=None):
         """Remove user from group."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_permission(PERMISSIONS.MANAGE_GROUP_MEMBERS,
-                                                              vm_object=virtual_machine)
+        self.po__get_registered_object('auth').assert_permission(
+            PERMISSIONS.MANAGE_GROUP_MEMBERS,
+            vm_object=virtual_machine)
 
         # Convert remote objects
         if virtual_machine is not None:
@@ -168,8 +174,9 @@ class Group(PyroObject):
 
         # Ensure that the user is not already in the group
         if user not in self.get_users(virtual_machine=virtual_machine):
-            raise UserNotPresentInGroup('User %s not in group %s' %
-                                        (user.get_username(), self.name))
+            raise UserNotPresentInGroup(
+                'User {} not in group {}'.format(
+                    user.get_username(), self.name))
 
         cluster = self.po__get_registered_object('cluster')
         if virtual_machine:
@@ -182,8 +189,8 @@ class Group(PyroObject):
     def remove_user_from_config(self, user):
         """Add user to group config."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
 
         # Convert remote objects
         user = self.po__convert_remote_object(user)
@@ -191,15 +198,17 @@ class Group(PyroObject):
         def update_config(config):
             """Update config."""
             config['groups'][self.id_]['users'].remove(user.get_username())
-        MCVirtConfig().update_config(update_config, 'Add user %s from group %s' %
-                                     (user.get_username(), self.name))
+        MCVirtConfig().update_config(
+            update_config,
+            'Add user {} from group {}'.format(
+                user.get_username(), self.name))
 
     @Expose(locking=True, remote_nodes=True, undo_method='add_user_to_vm_config')
     def remove_user_from_vm_config(self, user, virtual_machine):
         """Add user to group config."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
 
         # Convert remote objects
         virtual_machine = self.po__convert_remote_object(virtual_machine)
@@ -214,8 +223,8 @@ class Group(PyroObject):
 
             config['permissions']['groups'][self.id_]['users'].remove(user.get_username())
         virtual_machine.get_config_object().update_config(
-            update_config, 'Remove user %s from group %s' %
-            (user.get_username(), self.name))
+            update_config, 'Remove user {} from group {}'.format(
+                user.get_username(), self.name))
 
     def in_use(self):
         """Determine if there are any users in the group."""
@@ -244,16 +253,15 @@ class Group(PyroObject):
     def remove_config(self):
         """Remove VM from MCVirt configuration."""
         # Check permissions
-        self.po__get_registered_object('auth').assert_user_type('ClusterUser',
-                                                             allow_indirect=True)
+        self.po__get_registered_object('auth').assert_user_type(
+            'ClusterUser', allow_indirect=True)
 
         def update_mcvirt_config(config):
             """Remove object from mcvirt config."""
             del config['groups'][self.id_]
         MCVirtConfig().update_config(
             update_mcvirt_config,
-            'Removed storage backend \'%s\' from global MCVirt config' %
-            self.name
+            'Removed storage backend \'{}\' from global MCVirt config'.format(self.name)
         )
 
         # Remove cached pyro object
@@ -316,8 +324,8 @@ class Group(PyroObject):
         permission_enum = PERMISSIONS[permission]
         if permission_enum in self.get_permissions():
             raise GroupAlreadyContainsPermissionError(
-                'Group \'%s\' already contains permission \'%s\'' %
-                (self.name, permission))
+                'Group \'{}\' already contains permission \'{}\''.format(
+                    self.name, permission))
 
         cluster = self.po__get_registered_object('cluster')
         self.add_permission_to_config(permission, nodes=cluster.get_nodes(include_local=True))
@@ -332,7 +340,7 @@ class Group(PyroObject):
             config['groups'][self.id_]['permissions'].append(permission)
         MCVirtConfig().update_config(
             update_config,
-            'Remove permission \'%s\' from group \'%s\'' % (permission, self.name))
+            'Remove permission \'{}\' from group \'{}\''.format(permission, self.name))
 
     @Expose(locking=True)
     def remove_permission(self, permission):
@@ -344,8 +352,8 @@ class Group(PyroObject):
 
         if permission_enum not in self.get_permissions():
             raise GroupDoesNotContainPermissionError(
-                'Group \'%s\' does not contain permission \'%s\'' %
-                (self.name, permission))
+                'Group \'{}\' does not contain permission \'{}\''.format(
+                    self.name, permission))
 
         cluster = self.po__get_registered_object('cluster')
         self.remove_permission_from_config(permission, nodes=cluster.get_nodes(include_local=True))
@@ -358,5 +366,6 @@ class Group(PyroObject):
         def update_config(config):
             """Update group config."""
             config['groups'][self.id_]['permissions'].remove(permission)
-        MCVirtConfig().update_config(update_config, 'Remove permission \'%s\' from group \'%s\'' %
-                                     (permission, self.name))
+        MCVirtConfig().update_config(
+            update_config, 'Remove permission \'{}\' from group \'{}\''.format(
+                permission, self.name))
