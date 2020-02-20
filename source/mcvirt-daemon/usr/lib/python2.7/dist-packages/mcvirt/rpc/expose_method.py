@@ -137,7 +137,7 @@ class Transaction(object):
             else:
                 # Otherwise, undo single function
                 function.undo()
-        except Exception, exc:
+        except Exception as exc:
             Syslogger.logger().error('Failed during undo: %s' % str(exc))
 
             # If exception is thrown, remove any remaining
@@ -431,7 +431,7 @@ class Function(PyroObject):
                 remote_object = arg.get_remote_object(node=node)
                 args[itx] = remote_object
 
-        for key, val in kwargs.iteritems():
+        for key, val in kwargs.items():
             if (isinstance(val, PyroObject) and
                     val.convert_to_remote_object_in_args):
                 remote_object = val.get_remote_object(node=node)
@@ -445,7 +445,7 @@ class Function(PyroObject):
         # specified
         if self.return_dict:
             return {node: self.nodes[node]['return_val']
-                    for node in self.nodes.keys()}
+                    for node in list(self.nodes.keys())}
 
         # Otherwise, default to returning data from local node
         elif get_hostname() in self.nodes:
@@ -453,7 +453,7 @@ class Function(PyroObject):
 
         # Otherwise, return the response from the first found node.
         elif self.nodes:
-            return self.nodes[self.nodes.keys()[0]]['return_val']
+            return self.nodes[list(self.nodes.keys())[0]]['return_val']
 
         # Otherwise, if no node data, return None
         return None

@@ -451,7 +451,7 @@ class Cluster(PyroObject):
                     remote_storage_factory.node_pre_check(
                         storage_type=storage_backend.storage_type,
                         location=location)
-                except Exception, exc:
+                except Exception as exc:
                     Syslogger.logger().warning(
                         'Storage backend location does not exist on node: %s %s %s %s' %
                         (storage_backend.name, remote_object.name, location, str(exc)))
@@ -505,7 +505,7 @@ class Cluster(PyroObject):
         # Ensure that all global storage backends (which will be replicated to new
         # node) exist on the remote node. Also check any locations specified in overrides
         storage_backends = storage_factory.get_all(global_=True)
-        for name in location_overrides.keys():
+        for name in list(location_overrides.keys()):
             if name not in [storage_backend.name for storage_backend in storage_backends]:
                 storage_backends.append(storage_factory.get_object(name=name))
 
@@ -665,7 +665,7 @@ class Cluster(PyroObject):
                 node, node_config,
                 cluster_master=(set_cluster_master if set_cluster_master else None)
             )
-        except Exception, exc:
+        except Exception as exc:
             if not self.po__cluster_disabled:
                 Syslogger.logger().error('Could not connect to node (%s): %s' %
                                          (node, str(exc)))
@@ -717,7 +717,7 @@ class Cluster(PyroObject):
     def get_nodes(self, return_all=False, include_local=False):
         """Return an array of node configurations."""
         cluster_config = self.get_cluster_config()
-        nodes = cluster_config['nodes'].keys()
+        nodes = list(cluster_config['nodes'].keys())
 
         # If requesting nodes (not return_all) and is not
         # the cluster master, just return the local node.

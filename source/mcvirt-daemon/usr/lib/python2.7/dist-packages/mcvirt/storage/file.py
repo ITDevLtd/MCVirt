@@ -144,7 +144,7 @@ class FileVolume(BaseVolume):
             System.perform_dd(source=System.WIPE, destination=self.get_path(),
                               size=size)
 
-        except DDCommandError, exc:
+        except DDCommandError as exc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst creating disk logical volume:\n" + str(exc)
             )
@@ -162,7 +162,7 @@ class FileVolume(BaseVolume):
         try:
             os.unlink(self.get_path())
 
-        except Exception, exc:
+        except Exception as exc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst removing logical volume:\n" + str(exc)
             )

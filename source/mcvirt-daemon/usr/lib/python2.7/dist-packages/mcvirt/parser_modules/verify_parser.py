@@ -69,7 +69,7 @@ class VerifyParser(object):
                              'without out-of-sync blocks') %
                             vm_object.get_name()
                         )
-                    except DrbdVolumeNotInSyncException, exc:
+                    except DrbdVolumeNotInSyncException as exc:
                         # Append the not-in-sync exception message to an array,
                         # so the rest of the disks can continue to be checked
                         failures.append(exc.message)

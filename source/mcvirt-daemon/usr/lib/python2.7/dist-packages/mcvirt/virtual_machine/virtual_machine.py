@@ -126,7 +126,7 @@ class VirtualMachine(PyroObject):
 
                     raise
 
-        except Exception, exc:
+        except Exception as exc:
             Syslogger.logger().warning('Error during VM config upgrade: %s: %s' % (
                 self.get_name(), str(exc)))
 
@@ -329,7 +329,7 @@ class VirtualMachine(PyroObject):
                 try:
                     # Stop the VM
                     self._get_libvirt_domain_object().destroy()
-                except Exception, e:
+                except Exception as e:
                     raise LibvirtException('Failed to stop VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('The VM is already shutdown')
@@ -360,7 +360,7 @@ class VirtualMachine(PyroObject):
                 try:
                     # Shutdown the VM
                     self._get_libvirt_domain_object().shutdown()
-                except Exception, e:
+                except Exception as e:
                     raise LibvirtException('Failed to stop VM: %s' % e)
             else:
                 raise VmAlreadyStoppedException('The VM is already shutdown')

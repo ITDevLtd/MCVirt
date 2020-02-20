@@ -70,7 +70,7 @@ class Factory(PyroObject):
     def get_objects_by_virtual_machine(self, virtual_machine):
         """Obtain attachments by virtual machine."""
         virtual_machine = self.po__convert_remote_object(virtual_machine)
-        attachment_ids = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
+        attachment_ids = list(virtual_machine.get_config_object().get_config()['hard_drives'].keys())
         return [self.get_object(virtual_machine, id_) for id_ in attachment_ids]
 
     @Expose()
@@ -152,7 +152,7 @@ class Factory(PyroObject):
         """
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         attachment_id = 0
-        disks = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
+        disks = list(virtual_machine.get_config_object().get_config()['hard_drives'].keys())
         hdd_class = self.po__get_registered_object('hard_drive_factory').get_class(
             virtual_machine.getStorageType(), allow_base=True)
 

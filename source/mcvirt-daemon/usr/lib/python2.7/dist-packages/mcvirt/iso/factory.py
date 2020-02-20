@@ -18,8 +18,8 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/
 
 import os
-import urllib2
-import urlparse
+import urllib.request, urllib.error, urllib.parse
+import urllib.parse
 import tempfile
 import shutil
 import binascii
@@ -107,7 +107,7 @@ class Factory(PyroObject):
         # Work out name from URL if name is not supplied
         if name is None:
             # Parse URL to get path part
-            url_parse = urlparse.urlparse(url)
+            url_parse = urllib.parse.urlparse(url)
             name = Iso.get_filename_from_path(url_parse.path)
 
         # Get temporary directory to store ISO
@@ -115,7 +115,7 @@ class Factory(PyroObject):
         output_path = temp_directory + '/' + name
 
         # Open file
-        iso = urllib2.urlopen(url)
+        iso = urllib.request.urlopen(url)
 
         # Read file in 16KB chunks
         chunk_size = 16 * 1024

@@ -209,10 +209,10 @@ class BaseRpcDaemon(Pyro4.Daemon):
             # Return the session id
             return session_id
 
-        except Pyro4.errors.SecurityError, e:
+        except Pyro4.errors.SecurityError as e:
             Syslogger.logger().exception('SecurityError during authentication: %s' % str(e))
             raise
-        except Exception, e:
+        except Exception as e:
             Syslogger.logger().exception('Error during authentication: %s' % str(e))
         # If no valid authentication was provided, raise an error
         self.handshake__raise_exception()
@@ -277,11 +277,11 @@ class RpcNSMixinDaemon(object):
 
         Syslogger.logger().debug('Initialising modules')
         for registered_object, obj in RpcNSMixinDaemon.DAEMON.registered_factories_lst:
-            if type(obj) is not types.TypeType:  # noqa
+            if type(obj) is not type:  # noqa
                 Syslogger.logger().debug('Initialising module %s' % registered_object)
                 try:
                     obj.initialise()
-                except Exception, exc:
+                except Exception as exc:
                     Syslogger.logger().error(
                         'Failed to initailise module: %s\n:%s' % (registered_object, str(exc)))
 
@@ -366,7 +366,7 @@ class RpcNSMixinDaemon(object):
         for factory_object, name in registration_factories:
             try:
                 self.register(factory_object, objectId=name, force=True)
-            except Exception, e:
+            except Exception as e:
                 Syslogger.logger().error('Failed to register module: %s: %s' % (name, str(e)))
 
         Pyro4.CERTIFICATE_GENERATOR_FACTORY = RpcNSMixinDaemon.DAEMON.registered_factories[

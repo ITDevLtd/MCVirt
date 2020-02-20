@@ -23,8 +23,8 @@ def migrate(config_obj, config):
     # Migrate hard drive objects from virtual machines to
     # seperate hard drive objects
     hard_drive_dict = {}
-    for vm_id, vm_config in config['virtual_machines'].items():
-        for hdd_attachment_id, vm_hdd_config in vm_config['hard_disks'].items():
+    for vm_id, vm_config in list(config['virtual_machines'].items()):
+        for hdd_attachment_id, vm_hdd_config in list(vm_config['hard_disks'].items()):
             # Get base volume name
             base_volume_name = (
                 vm_hdd_config['custom_disk_name']

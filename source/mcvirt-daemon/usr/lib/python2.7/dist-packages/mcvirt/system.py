@@ -104,10 +104,10 @@ class System(object):
         else:
             # Work forwards then backwards from the optimal size to +/-10%,
             # attempting to find a suitable BS size
-            for bs_size_test in (range(OPTIMAL_DD_BS_SIZE,
-                                       int(ceil(OPTIMAL_DD_BS_SIZE * 2))) +
-                                 list(reversed(range(int(ceil(OPTIMAL_DD_BS_SIZE * 0.5)),
-                                                     OPTIMAL_DD_BS_SIZE)))):
+            for bs_size_test in (list(range(OPTIMAL_DD_BS_SIZE,
+                                       int(ceil(OPTIMAL_DD_BS_SIZE * 2)))) +
+                                 list(reversed(list(range(int(ceil(OPTIMAL_DD_BS_SIZE * 0.5)),
+                                                     OPTIMAL_DD_BS_SIZE))))):
                 if size % bs_size_test == 0:
                     bs_size = bs_size_test
                     count = size / bs_size

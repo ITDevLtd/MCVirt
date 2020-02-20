@@ -59,7 +59,7 @@ class Factory(PyroObject):
         """Return all storage backends, with optional filtering."""
         storage_objects = []
 
-        for storage_id in self.get_config().keys():
+        for storage_id in list(self.get_config().keys()):
 
             # Obtain storage object
             storage_object = self.get_object(storage_id)
@@ -282,7 +282,7 @@ class Factory(PyroObject):
 
     def check_exists(self, id_):
         """Determine if a storage backend exists by ID."""
-        return id_ in self.get_config().keys()
+        return id_ in list(self.get_config().keys())
 
     @Expose()
     def get_object(self, id_):

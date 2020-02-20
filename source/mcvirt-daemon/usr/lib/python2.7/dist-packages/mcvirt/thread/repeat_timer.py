@@ -71,7 +71,7 @@ class RepeatTimer(PyroObject):
         try:
             # Run command
             return_output = self.run(*self.run_args, **self.run_kwargs)
-        except Exception, exc:
+        except Exception as exc:
             self._log_error(exc)
 
         # Restart timer, if set to repeat after run

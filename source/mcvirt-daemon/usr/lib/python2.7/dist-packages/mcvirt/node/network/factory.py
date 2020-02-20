@@ -180,7 +180,7 @@ class Factory(PyroObject):
     @Expose()
     def get_all_network_names(self):
         """Return a list of network names."""
-        return Network.get_network_config().keys()
+        return list(Network.get_network_config().keys())
 
     @Expose()
     def get_all_network_objects(self):
@@ -216,7 +216,7 @@ class Factory(PyroObject):
 
         # Determine if the name of any of the networks returned
         # matches the requested name
-        return name in networks.keys()
+        return name in list(networks.keys())
 
     def initialise(self):
         """Delete the default libvirt network if it exists."""

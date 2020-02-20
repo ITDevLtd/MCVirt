@@ -68,7 +68,7 @@ class Connection(object):
                                                  password=password)
             session_id = session_object._pyroHandshake[Annotations.SESSION_ID]
             return session_id
-        except Pyro4.errors.CommunicationError, exc:
+        except Pyro4.errors.CommunicationError as exc:
             if 'refused' in str(exc):
                 raise mcvirt.exceptions.InaccessibleNodeException('Error connecting to daemon')
             elif 'Cannot connect to node' in str(exc):
@@ -79,7 +79,7 @@ class Connection(object):
             raise mcvirt.exceptions.InaccessibleNodeException(
                 'MCVirt nameserver/daemon is not running on node %s' % self.__host
             )
-        except Exception, exc:
+        except Exception as exc:
             Syslogger.logger().error('An unknown error occurred whilst connecting to daemon: %s' %
                                      str(exc))
             raise mcvirt.exceptions.InaccessibleNodeException(

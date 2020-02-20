@@ -17,7 +17,7 @@
 
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.rpc.expose_method import Expose
-from network_adapter import NetworkAdapter
+from .network_adapter import NetworkAdapter
 from mcvirt.auth.permissions import PERMISSIONS
 
 
@@ -86,7 +86,7 @@ class Factory(PyroObject):
         interfaces = []
         virtual_machine = self.po__convert_remote_object(virtual_machine)
         vm_config = virtual_machine.get_config_object().get_config()
-        for mac_address in vm_config['network_interfaces'].keys():
+        for mac_address in list(vm_config['network_interfaces'].keys()):
             interface_object = self.getNetworkAdapterByMacAdress(
                 virtual_machine, mac_address
             )

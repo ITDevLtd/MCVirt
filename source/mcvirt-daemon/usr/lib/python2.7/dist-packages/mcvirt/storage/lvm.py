@@ -115,7 +115,7 @@ class LvmVolume(BaseVolume):
             # Create on local node
             System.runCommand(command_args)
 
-        except MCVirtCommandException, exc:
+        except MCVirtCommandException as exc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst creating disk logical volume:\n" + str(exc)
             )
@@ -143,7 +143,7 @@ class LvmVolume(BaseVolume):
         try:
             System.runCommand(command_args)
 
-        except MCVirtCommandException, exc:
+        except MCVirtCommandException as exc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst removing logical volume:\n" + str(exc)
             )
@@ -161,7 +161,7 @@ class LvmVolume(BaseVolume):
             # Run on the local node
             System.runCommand(command_args)
 
-        except MCVirtCommandException, exc:
+        except MCVirtCommandException as exc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst activating logical volume:\n" + str(exc)
             )
@@ -180,7 +180,7 @@ class LvmVolume(BaseVolume):
             System.runCommand(['lvcreate', '--snapshot', self.get_path(),
                                '--name', destination_volume.name,
                                '--size', str(size)])
-        except MCVirtCommandException, exc:
+        except MCVirtCommandException as exc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst snapshotting disk:\n" + str(exc)
             )
@@ -193,7 +193,7 @@ class LvmVolume(BaseVolume):
         """Clone a volume to a new volume."""
         try:
             self.snapshot(destination_volume, size=self.get_size())
-        except ExternalStorageCommandErrorException, esc:
+        except ExternalStorageCommandErrorException as esc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst cloning disk:\n" + str(esc)
             )
@@ -224,7 +224,7 @@ class LvmVolume(BaseVolume):
             # Create on local node
             System.runCommand(command_args)
 
-        except MCVirtCommandException, exc:
+        except MCVirtCommandException as exc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst resizing disk:\n" + str(exc)
             )
@@ -253,7 +253,7 @@ class LvmVolume(BaseVolume):
             self.get_path())
         try:
             _, command_output, _ = System.runCommand(command_args)
-        except MCVirtCommandException, exc:
+        except MCVirtCommandException as exc:
             raise ExternalStorageCommandErrorException(
                 "Error whilst obtaining the size of the logical volume:\n" +
                 str(exc))

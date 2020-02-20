@@ -57,7 +57,7 @@ def lock_log_and_call(function_obj):
     else:
         username = ''
     if requires_lock:
-        log = logger.create_log(callback.func_name, user=username,
+        log = logger.create_log(callback.__name__, user=username,
                                 object_name=object_name,
                                 object_type=object_type)
     else:

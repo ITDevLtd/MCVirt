@@ -74,10 +74,10 @@ class Factory(PyroObject):
                         Syslogger.logger().info('Autostarting: %s' % vm.get_name())
                         vm.start()
                         Syslogger.logger().info('Autostart successful: %s' % vm.get_name())
-                    except Exception, exc2:
+                    except Exception as exc2:
                         Syslogger.logger().error('Failed to autostart: %s: %s' %
                                                  (vm.get_name(), str(exc2)))
-            except Exception, exc:
+            except Exception as exc:
                 Syslogger.logger().error('Failed to get VM state: %s: %s' % (
                     vm.get_name(), str(exc)))
         Syslogger.logger().info('Finished autostsart: %s' % start_type.name)
@@ -98,7 +98,7 @@ class Factory(PyroObject):
         ArgumentValidator.validate_hostname(vm_name)
         name_id_dict = {
             val['name']: key
-            for key, val in VirtualMachineConfig.get_global_config().items()
+            for key, val in list(VirtualMachineConfig.get_global_config().items())
         }
         if vm_name not in name_id_dict:
             raise VirtualMachineDoesNotExistException(
@@ -139,7 +139,7 @@ class Factory(PyroObject):
     @Expose()
     def get_all_vm_ids(self, node=None):
         """Get all VM IDs."""
-        return VirtualMachineConfig.get_global_config().keys()
+        return list(VirtualMachineConfig.get_global_config().keys())
 
     @Expose()
     def getAllVmNames(self, node=None):
@@ -149,7 +149,7 @@ class Factory(PyroObject):
 
         # If no node was defined, check the local configuration for all VMs
         if node is None:
-            return [vm['name'] for vm in VirtualMachineConfig.get_global_config().values()]
+            return [vm['name'] for vm in list(VirtualMachineConfig.get_global_config().values())]
 
         elif node == get_hostname():
             # @TODO - Why is this using libvirt?! Should use

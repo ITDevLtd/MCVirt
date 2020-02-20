@@ -309,7 +309,7 @@ class StatisticsSync(RepeatTimer):
         try:
             # Run command
             return_output = self.run(*self.run_args, **self.run_kwargs)
-        except Exception, exc:
+        except Exception as exc:
             self._log_error(exc)
 
         self.original_timer_start = None

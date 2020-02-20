@@ -41,7 +41,7 @@ class SSLSocket(object):
     @staticmethod
     def wrap_socket(socket_object, *args, **kwargs):
         """Wrap a Pyro socket connection with SSL."""
-        server_side = ('bind' in kwargs.keys())
+        server_side = ('bind' in list(kwargs.keys()))
         ssl_kwargs = {
             'do_handshake_on_connect': True,
             'server_side': server_side

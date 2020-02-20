@@ -150,8 +150,7 @@ class Factory(PyroObject):
     @Expose()
     def get_all_users(self):
         """Return all the users, excluding built-in users."""
-        user_classes = filter(lambda user_class: not user_class.CLUSTER_USER,
-                              self.get_user_types())
+        user_classes = [user_class for user_class in self.get_user_types() if not user_class.CLUSTER_USER]
         return self.get_all_user_objects(user_classes=user_classes)
 
     @Expose()

@@ -151,7 +151,7 @@ class Base(PyroObject):
     def _getVersion(self):
         """Return the version number of the configuration file."""
         config = self.get_config()
-        if 'version' in config.keys():
+        if 'version' in list(config.keys()):
             return config['version']
         else:
             return 0

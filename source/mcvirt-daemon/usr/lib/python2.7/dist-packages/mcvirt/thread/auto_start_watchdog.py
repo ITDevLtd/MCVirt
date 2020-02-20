@@ -77,7 +77,7 @@ class AutoStartWatchdog(RepeatTimer):
         vm_factory = self.po__get_registered_object('virtual_machine_factory')
         try:
             vm_factory.autostart(AutoStartStates.ON_BOOT)
-        except Exception, exc:
+        except Exception as exc:
             Syslogger.logger().error('Error during autostart ON_BOOT: %s' % str(exc))
         Pyro4.current_context.INTERNAL_REQUEST = False
         super(AutoStartWatchdog, self).initialise()
@@ -88,6 +88,6 @@ class AutoStartWatchdog(RepeatTimer):
         vm_factory = self.po__get_registered_object('virtual_machine_factory')
         try:
             vm_factory.autostart(AutoStartStates.ON_POLL)
-        except Exception, exc:
+        except Exception as exc:
             Syslogger.logger().error('Error during autostart ON_POLL : %s' % str(exc))
         Pyro4.current_context.INTERNAL_REQUEST = False

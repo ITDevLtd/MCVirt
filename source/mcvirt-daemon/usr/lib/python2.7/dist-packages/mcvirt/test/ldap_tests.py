@@ -121,7 +121,7 @@ class LdapTests(TestBase):
         """Run the provided command and assert that the specified option in the Ldap config has
         changed to the appropriate value."""
         self.parser.parse_arguments(command)
-        self.assertEquals(MCVirtConfig().get_config()['ldap'][option], expected_value)
+        self.assertEqual(MCVirtConfig().get_config()['ldap'][option], expected_value)
 
     def test_parser(self):
         """Test the Ldap options work correctly in the parser."""

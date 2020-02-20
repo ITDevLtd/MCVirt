@@ -122,20 +122,20 @@ class UpdateTests(TestBase):
         # Check CPU section exists
         cpu_section = xml.find('./cpu')
         self.assertTrue(cpu_section is not None)
-        self.assertEquals(cpu_section.get('mode'), 'custom')
-        self.assertEquals(cpu_section.get('match'), 'exact')
+        self.assertEqual(cpu_section.get('mode'), 'custom')
+        self.assertEqual(cpu_section.get('match'), 'exact')
 
         # Check mode section exists
         model_section = cpu_section.find('./model')
         self.assertTrue(model_section is not None)
-        self.assertEquals(model_section.get('fallback'), 'allow')
-        self.assertEquals(model_section.text, 'core2duo')
+        self.assertEqual(model_section.get('fallback'), 'allow')
+        self.assertEqual(model_section.text, 'core2duo')
 
         # Check feature section exists
         feature_section = cpu_section.find('./feature')
         self.assertTrue(feature_section is not None)
-        self.assertEquals(feature_section.get('policy'), 'require')
-        self.assertEquals(feature_section.get('name'), 'nx')
+        self.assertEqual(feature_section.get('policy'), 'require')
+        self.assertEqual(feature_section.get('name'), 'nx')
 
         # Unset Windows flag
         self.parser.parse_arguments('update %s --remove-flag windows' %

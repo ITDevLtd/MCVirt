@@ -135,7 +135,7 @@ class Base(PyroObject):
     @property
     def nodes(self):
         """Return nodes that the storage is available to."""
-        return self.get_config()['nodes'].keys()
+        return list(self.get_config()['nodes'].keys())
 
     @property
     def storage_type(self):

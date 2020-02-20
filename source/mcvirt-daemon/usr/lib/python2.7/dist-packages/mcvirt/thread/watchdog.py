@@ -89,7 +89,7 @@ class WatchdogFactory(PyroObject):
 
     def cancel(self):
         """Stop all threads."""
-        for watchdog in self.watchdogs.values():
+        for watchdog in list(self.watchdogs.values()):
             watchdog.repeat = False
             watchdog.cancel()
 
@@ -216,7 +216,7 @@ class Watchdog(RepeatTimer):
         resp = None
         try:
             resp = agent_conn.wait_lock(command='ping')
-        except Exception, e:
+        except Exception as e:
             Syslogger.logger().error(e)
 
         # If response is valid, reset counter and state

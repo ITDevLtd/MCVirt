@@ -77,7 +77,7 @@ class VirtualMachineStatisticsFactory(PyroObject):
 
     def cancel(self):
         """Stop all threads."""
-        for stats_agent in self.statistics_agents.values():
+        for stats_agent in list(self.statistics_agents.values()):
             stats_agent.repeat = False
             stats_agent.cancel()
 

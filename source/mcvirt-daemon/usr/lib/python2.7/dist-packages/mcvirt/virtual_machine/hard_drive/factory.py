@@ -460,7 +460,7 @@ class Factory(PyroObject):
 
     def get_all(self):
         """Return all hard drive objects."""
-        return [self.get_object(id_) for id_ in HardDriveConfig.get_global_config().keys()]
+        return [self.get_object(id_) for id_ in list(HardDriveConfig.get_global_config().keys())]
 
     def get_class(self, storage_type, allow_base=False):
         """Obtains the hard drive class for a given storage type."""

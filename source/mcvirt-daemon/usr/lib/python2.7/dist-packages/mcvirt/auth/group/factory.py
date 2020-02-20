@@ -82,7 +82,7 @@ class Factory(PyroObject):
 
     def get_all(self):
         """Get all of group objects."""
-        return [self.get_object(id_) for id_ in self.get_config().keys()]
+        return [self.get_object(id_) for id_ in list(self.get_config().keys())]
 
     @Expose(remote_nodes=True)
     def create_config(self, id_, config):
@@ -151,7 +151,7 @@ class Factory(PyroObject):
 
     def check_exists(self, id_):
         """Determine if a storage backend exists by ID."""
-        return id_ in self.get_config().keys()
+        return id_ in list(self.get_config().keys())
 
     @Expose()
     def get_object(self, id_):

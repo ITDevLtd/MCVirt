@@ -506,13 +506,13 @@ class Drbd(Base):
         """
         raw_sizes = self.get_raw_volume().get_size(nodes=self.nodes,
                                                    return_dict=True)
-        if raw_sizes.values()[0] != raw_sizes.values()[1]:
+        if list(raw_sizes.values())[0] != list(raw_sizes.values())[1]:
             raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
                                               self.get_raw_volume().name)
 
         meta_sizes = self.get_meta_volume().get_size(nodes=self.nodes,
                                                      return_dict=True)
-        if meta_sizes.values()[0] != meta_sizes.values()[1]:
+        if list(meta_sizes.values())[0] != list(meta_sizes.values())[1]:
             raise InconsistentVolumeSizeError('Raw volumes for %s are not the same across nodes' %
                                               self.get_meta_volume().name)
 
