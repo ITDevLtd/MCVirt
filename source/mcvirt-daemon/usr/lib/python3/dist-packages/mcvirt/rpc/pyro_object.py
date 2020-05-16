@@ -64,8 +64,8 @@ class PyroObject(object):
 
         # Generate sha sum of name and sha sum of
         # current datetime
-        name_checksum = hashlib.sha512(name).hexdigest()
-        date_checksum = hashlib.sha512(str(datetime.datetime.now())).hexdigest()
+        name_checksum = hashlib.sha512(name.encode('utf-8')).hexdigest()
+        date_checksum = hashlib.sha512(str(datetime.datetime.now()).encode('utf-8')).hexdigest()
         return '%s-%s-%s' % (
             cls.get_id_code(),
             name_checksum[0:cls.get_id_name_checksum_length()],
