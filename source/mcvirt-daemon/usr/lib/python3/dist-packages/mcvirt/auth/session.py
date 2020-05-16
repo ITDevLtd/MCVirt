@@ -18,7 +18,8 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 import os
-from binascii import hexlify
+import random
+import string
 import Pyro4
 import time
 
@@ -78,6 +79,7 @@ class Session(PyroObject):
     """Handle daemon user sessions."""
 
     USER_SESSIONS = {}
+    SESSION_ID_LENGTH = 48
 
     def authenticate_user(self, username, password):
         """Authenticate using username/password and store
@@ -100,12 +102,12 @@ class Session(PyroObject):
     @staticmethod
     def _generate_session_id():
         """Generate random session ID."""
-        return hexlify(os.urandom(8))
+        return ''.join(random.sample(string.ascii_lowercase + string.ascii_uppercase + string.digits, Session.SESSION_ID_LENGTH))
 
     def authenticate_session(self, username, session):
         """Authenticate user session."""
         Syslogger.logger().debug("Authenticating session for user %s: %s" % (username, session))
-
+        Syslogger.logger().debug(Session.USER_SESSIONS)
         if (session in Session.USER_SESSIONS and
                 Session.USER_SESSIONS[session].username == username):
 
@@ -149,3 +151,4 @@ class Session(PyroObject):
         """Return the client's current session ID."""
         if 'session_id' in dir(Pyro4.current_context) and Pyro4.current_context.session_id:
             return Pyro4.current_context.session_id
+
