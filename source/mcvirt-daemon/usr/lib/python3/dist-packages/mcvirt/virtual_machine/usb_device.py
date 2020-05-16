@@ -38,7 +38,7 @@ class UsbDevice(PyroObject):
         usb_xml = ET.parse(DirectoryLocation.TEMPLATE_DIR + '/usb-device.xml')
         usb_xml.find('./source/address').set('bus', self.bus)
         usb_xml.find('./source/address').set('device', self.device)
-        return ET.tostring(usb_xml.getroot(), encoding='utf8', method='xml')
+        return ET.tostring(usb_xml.getroot(), encoding='unicode', method='xml')
 
     def get_bus(self):
         """Return the bus for the USB object."""

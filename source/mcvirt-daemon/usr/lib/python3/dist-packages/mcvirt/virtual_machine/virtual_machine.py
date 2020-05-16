@@ -1035,7 +1035,7 @@ class VirtualMachine(PyroObject):
         callback_function(domain_xml)
 
         # Push XML changes back to LibVirt
-        domain_xml_string = ET.tostring(domain_xml, encoding='utf8', method='xml')
+        domain_xml_string = ET.tostring(domain_xml, encoding='unicode', method='xml')
 
         try:
             self.po__get_registered_object(
@@ -1623,7 +1623,7 @@ class VirtualMachine(PyroObject):
             network_interface_xml = network_adapter_object._generateLibvirtXml()
             device_xml.append(network_interface_xml)
 
-        domain_xml_string = ET.tostring(domain_xml.getroot(), encoding='utf8', method='xml')
+        domain_xml_string = ET.tostring(domain_xml.getroot(), encoding='unicode', method='xml')
 
         try:
             self.po__get_registered_object(

@@ -132,7 +132,7 @@ class Factory(PyroObject):
         network_bridge_xml.set('name', physical_interface)
 
         # Convert XML object to string
-        network_xml_string = ET.tostring(network_xml, encoding='utf8', method='xml')
+        network_xml_string = ET.tostring(network_xml, encoding='unicode', method='xml')
 
         # Attempt to register network with LibVirt
         try:

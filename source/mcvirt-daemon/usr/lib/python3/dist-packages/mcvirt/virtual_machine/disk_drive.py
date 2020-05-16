@@ -49,7 +49,7 @@ class DiskDrive(PyroObject):
 
         # Add iso image path to cdrom XML
         cdrom_xml.find('source').set('file', iso_object.get_path())
-        cdrom_xml_string = ET.tostring(cdrom_xml.getroot(), encoding='utf8', method='xml')
+        cdrom_xml_string = ET.tostring(cdrom_xml.getroot(), encoding='unicode', method='xml')
 
         flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
 
@@ -70,7 +70,7 @@ class DiskDrive(PyroObject):
 
         if source_xml is not None:
             cdrom_xml.remove(source_xml)
-            cdrom_xml_string = ET.tostring(cdrom_xml, encoding='utf8', method='xml')
+            cdrom_xml_string = ET.tostring(cdrom_xml, encoding='unicode', method='xml')
             flags = libvirt.VIR_DOMAIN_AFFECT_LIVE if live else 0
 
             # Update the libvirt cdrom device
