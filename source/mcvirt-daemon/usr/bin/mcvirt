@@ -27,15 +27,15 @@ if __name__ == "__main__":
 
     try:
         parser_object = Parser()
-    except MCVirtException as e:
-        print((e.message))
+    except MCVirtException as exc:
+        print(str(exc))
         sys.exit(1)
 
     if (len(sys.argv) > 1):
         try:
             parser_object.parse_arguments()
-        except MCVirtException as e:
-            print(e.message)
+        except MCVirtException as exc:
+            print(str(exc))
             sys.exit(1)
     else:
         while (1):
@@ -46,6 +46,7 @@ if __name__ == "__main__":
             else:
                 try:
                     parser_object.parse_arguments(command)
-                except MCVirtException as e:
-                    print(e.message)
+                except MCVirtException as exc:
+                    print(str(exc))
             sys.stdout.flush()
+
