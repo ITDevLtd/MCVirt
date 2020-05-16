@@ -63,7 +63,7 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         """Override the error function."""
         # Force the argument parser to throw an MCVirt exception on error.
-        print(('\nError: {1}\n'.format(message)))
+        print(('\nError: {0}\n'.format(message)))
         self.print_help()
         raise ArgumentParserException(message)
 
