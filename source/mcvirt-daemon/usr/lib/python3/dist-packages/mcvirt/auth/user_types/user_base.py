@@ -20,7 +20,6 @@
 import os
 import random
 import string
-from binascii import hexlify
 from pbkdf2 import crypt
 
 from mcvirt.config.core import Core as MCVirtConfig
@@ -44,6 +43,7 @@ class UserBase(PyroObject):
     UNIQUE = False
     EXPIRE_SESSION = False
     LOCALLY_MANAGED = False
+    SALT_LENGTH = 64
 
     @classmethod
     def get_all_usernames(cls):
@@ -104,7 +104,9 @@ class UserBase(PyroObject):
     @staticmethod
     def _generate_salt():
         """Generate random salt for the user's password,"""
-        return hexlify(os.urandom(32))
+        return random.choices(
+            string.ascii_letters + string.punctuation + string.digits,
+            k=UserBase.SALT_LENGTH)
 
     def __init__(self, username):
         """Store member variables and ensures that the user exists."""
