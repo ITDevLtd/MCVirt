@@ -16,6 +16,7 @@
 # along with MCVirt.  If not, see <http://www.gnu.org/licenses/>
 
 from threading import Timer
+import Pyro4
 
 from mcvirt.rpc.pyro_object import PyroObject
 from mcvirt.syslogger import Syslogger
@@ -59,6 +60,7 @@ class RepeatTimer(PyroObject):
         Syslogger.logger().error(
             'Error ocurred during thread (%s): %s' %
             (self.__class__.__name__, str(msg)))
+        Syslogger.logger().error("".join(Pyro4.util.getPyroTraceback()))
 
     def repeat_run(self):
         """Re-start timer once run has complete."""

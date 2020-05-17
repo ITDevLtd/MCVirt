@@ -102,7 +102,10 @@ class Session(PyroObject):
     @staticmethod
     def _generate_session_id():
         """Generate random session ID."""
-        return ''.join(random.sample(string.ascii_lowercase + string.ascii_uppercase + string.digits, Session.SESSION_ID_LENGTH))
+        return ''.join(
+            random.choice(
+                string.ascii_lowercase + string.ascii_uppercase + string.digits)
+            for n in range(Session.SESSION_ID_LENGTH))
 
     def authenticate_session(self, username, session):
         """Authenticate user session."""

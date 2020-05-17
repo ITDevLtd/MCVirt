@@ -116,7 +116,8 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
         db_rows = []
 
         now = "{:%s}".format(datetime.now())
-        for stat_type, val in data_res:
+
+        for stat_type, val in data_res.values():
             db_rows.append(
                 (StatisticsDeviceType.VIRTUAL_MACHINE.value,
                  self.virtual_machine.id_,
@@ -126,6 +127,8 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
             )
 
         with db_factory.get_locking_connection() as db_inst:
+            Syslogger.logger().info('inserting: ')
+            Syslogger.logger().info(db_rows)
             db_inst.cursor.executemany(
                 """INSERT INTO stats(
                     device_type, device_id, stat_type, stat_value, stat_date
@@ -179,6 +182,7 @@ class VirtualMachineStatisticsAgent(RepeatTimer):
 
             vm_obj.current_host_cpu_usage[0] = vm_obj.current_host_cpu_usage[1]
             data_res['host_cpu'][1] = vm_obj.current_host_cpu_usage[1] = [cpu_perc, capture_time]
+            data_res['host_cpu'][1] = ','.join(data_res['host_cpu'][1])
 
     def obtain_agent_stats(self, data_res):
         """Obtain statistics from agent"""
