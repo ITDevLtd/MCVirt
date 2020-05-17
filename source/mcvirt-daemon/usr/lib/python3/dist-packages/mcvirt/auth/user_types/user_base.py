@@ -105,7 +105,7 @@ class UserBase(PyroObject):
     def _generate_salt():
         """Generate random salt for the user's password,"""
         return ''.join(random.choice(
-            string.ascii_letters + string.punctuation + string.digits)
+            string.ascii_letters + string.digits)
             for x in range(UserBase.SALT_LENGTH))
 
     def __init__(self, username):
