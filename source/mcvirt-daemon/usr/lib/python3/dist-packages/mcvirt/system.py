@@ -118,9 +118,9 @@ class System(object):
         # Compile command arguments
         count = size / bs_size
         command_args = ['dd', 'if=%s' % source, 'of=%s' % destination,
-                        'bs=%s' % bs_size,
+                        'bs=%s' % int(bs_size),
                         'conv=fsync', 'oflag=direct',
-                        'count=%s' % count]
+                        'count=%s' % int(count)]
 
         try:
             # Perform the dd command
