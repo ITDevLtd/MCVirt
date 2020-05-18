@@ -285,7 +285,7 @@ class VirtualMachineTests(TestBase):
         # Obtain the disk path for the VM and write random data to it
         for disk_object in test_vm_parent.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
-            fh = open(disk_object.getDiskPath(), 'w')
+            fh = open(disk_object.getDiskPath(), 'wb')
             fh.write(test_data)
             fh.close()
 
@@ -302,7 +302,7 @@ class VirtualMachineTests(TestBase):
         # Check data is present on target VM
         for disk_object in test_vm_duplicate.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
-            fh = open(disk_object.getDiskPath(), 'r')
+            fh = open(disk_object.getDiskPath(), 'rb')
             self.assertEqual(fh.read(8), test_data)
             fh.close()
 
@@ -772,7 +772,7 @@ class VirtualMachineTests(TestBase):
         # Obtain the disk path for the VM and write random data to it
         for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
-            with open(disk_object.getDiskPath(), 'w') as fh:
+            with open(disk_object.getDiskPath(), 'wb') as fh:
                 fh.write(test_data)
 
         # Assert that the VM is unlocked
@@ -791,18 +791,18 @@ class VirtualMachineTests(TestBase):
         self.assertTrue(re.match(r'\/dev\/.*/mcvirt-hd-.*_snapshot', self.parser.print_output[0]))
 
         # Check data is present on snapshot
-        with open(self.parser.print_output[0], 'r') as fh:
+        with open(self.parser.print_output[0], 'rb') as fh:
             self.assertEqual(fh.read(8), test_data)
 
         # Write some altereted data to original volume
         altereted_test_data = os.urandom(8)
         for disk_object in test_vm_object.get_hard_drive_objects():
             self.rpc.annotate_object(disk_object)
-            with open(disk_object.getDiskPath(), 'w') as fh:
+            with open(disk_object.getDiskPath(), 'wb') as fh:
                 fh.write(altereted_test_data)
 
         # Ensure that snapshot data has not changed
-        with open(self.parser.print_output[0], 'r') as fh:
+        with open(self.parser.print_output[0], 'rb') as fh:
             self.assertEqual(fh.read(8), test_data)
 
     def test_delete_backup_snapshot(self):
