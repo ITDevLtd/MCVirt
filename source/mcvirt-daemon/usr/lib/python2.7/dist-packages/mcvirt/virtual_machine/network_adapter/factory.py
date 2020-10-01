@@ -69,7 +69,7 @@ class Factory(PyroObject):
         network_adapter_object = self.getNetworkAdapterByMacAdress(virtual_machine, mac_address)
 
         # Only update the LibVirt configuration if VM is registered on this node
-        if virtual_machine.isRegisteredLocally():
+        if virtual_machine.is_registered_locally():
             def updateXML(domain_xml):
                 """Add network to VM libvirt config."""
                 network_xml = network_adapter_object._generateLibvirtXml()

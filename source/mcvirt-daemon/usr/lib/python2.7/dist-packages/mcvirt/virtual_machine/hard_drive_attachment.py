@@ -154,7 +154,7 @@ class Factory(PyroObject):
         attachment_id = 0
         disks = virtual_machine.get_config_object().get_config()['hard_drives'].keys()
         hdd_class = self.po__get_registered_object('hard_drive_factory').get_class(
-            virtual_machine.getStorageType(), allow_base=True)
+            virtual_machine.get_storage_type(), allow_base=True)
 
         # Ensure that the number of disks attached to the VM is not already
         # at the maximum
@@ -289,7 +289,7 @@ class HardDriveAttachment(PyroObject):
             self.virtual_machine
         )
         # Update the libvirt domain XML configuration
-        if self.virtual_machine.isRegisteredLocally():
+        if self.virtual_machine.is_registered_locally():
             self._register_libvirt()
 
     @Expose(locking=True, remote_nodes=True, undo_method='add_to_virtual_machine')
@@ -305,7 +305,7 @@ class HardDriveAttachment(PyroObject):
         )
         # If the VM that the hard drive is attached to is registered on the local
         # node, remove the hard drive from the LibVirt configuration
-        if self.virtual_machine.isRegisteredLocally():
+        if self.virtual_machine.is_registered_locally():
             self._unregister_libvirt()
 
     def _unregister_libvirt(self):

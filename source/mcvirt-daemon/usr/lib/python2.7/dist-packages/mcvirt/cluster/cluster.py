@@ -563,7 +563,7 @@ class Cluster(PyroObject):
         vm_factory = self.po__get_registered_object('virtual_machine_factory')
         all_vm_objects = vm_factory.get_all_virtual_machines()
         for vm_object in all_vm_objects:
-            vm_available_nodes = vm_object.getAvailableNodes()
+            vm_available_nodes = vm_object.get_available_nodes()
             if len(vm_available_nodes) > 1 and node_name_to_remove in vm_available_nodes:
                 raise RemoteObjectConflict('The remote node is available to VM: %s' %
                                            vm_object.get_name())
@@ -589,7 +589,7 @@ class Cluster(PyroObject):
         # Remove any VMs that are only present on the remote node
         node_to_remove_con = self.get_remote_node(node_name_to_remove)
         for vm_object in all_vm_objects:
-            if vm_object.getAvailableNodes() == [node_name_to_remove]:
+            if vm_object.get_available_nodes() == [node_name_to_remove]:
                 vm_object.delete(local_only=True)
                 self.run_remote_command(callback_method=remove_vm, nodes=all_nodes,
                                         kwargs={'vm_name': vm_object.get_name()})

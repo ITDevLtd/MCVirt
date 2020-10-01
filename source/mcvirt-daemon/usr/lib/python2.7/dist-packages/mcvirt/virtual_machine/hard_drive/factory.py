@@ -291,7 +291,7 @@ class Factory(PyroObject):
         nodes_predefined = True
         if nodes is None:
             if vm_object:
-                nodes = vm_object.getAvailableNodes()
+                nodes = vm_object.get_available_nodes()
             else:
                 nodes = self.po__get_registered_object('cluster').get_nodes(include_local=True)
                 nodes_predefined = False

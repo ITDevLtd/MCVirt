@@ -58,11 +58,11 @@ class InfoParser(object):
             vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
             p_.rpc.annotate_object(vm_object)
             if args.vnc_port:
-                p_.print_status(vm_object.getVncPort())
+                p_.print_status(vm_object.get_vnc_port())
             elif args.node:
-                p_.print_status(vm_object.getNode())
+                p_.print_status(vm_object.get_node())
             else:
-                p_.print_status(vm_object.getInfo())
+                p_.print_status(vm_object.get_info())
         else:
             cluster_object = p_.rpc.get_connection('cluster')
             p_.print_status(cluster_object.print_info())

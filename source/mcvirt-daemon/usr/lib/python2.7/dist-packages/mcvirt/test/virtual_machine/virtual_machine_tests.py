@@ -505,7 +505,7 @@ class VirtualMachineTests(TestBase):
         node_name = test_vm_object.get_remote_nodes()[0]
 
         # Assert that the VM is registered locally
-        self.assertTrue(test_vm_object.isRegisteredLocally())
+        self.assertTrue(test_vm_object.is_registered_locally())
 
         # Monitor the hard drives until they are synced
         for disk_object in test_vm_object.get_hard_drive_objects():
@@ -528,7 +528,7 @@ class VirtualMachineTests(TestBase):
             raise
 
         # Ensure the VM node matches the destination node
-        self.assertEqual(test_vm_object.getNode(), node_name)
+        self.assertEqual(test_vm_object.get_node(), node_name)
 
         # Attempt to start the VM on the remote node
         self.parser.parse_arguments('start %s' % self.test_vms['TEST_VM_1']['name'])
@@ -554,13 +554,13 @@ class VirtualMachineTests(TestBase):
         test_vm_object = self.create_vm('TEST_VM_1', 'Local')
 
         # Ensure the VM is initially unlocked
-        self.assertEqual(test_vm_object.getLockState(), LockStates.UNLOCKED.value)
+        self.assertEqual(test_vm_object.get_lock_state(), LockStates.UNLOCKED.value)
 
         # Lock the VM, using the argument parser
         self.parser.parse_arguments('lock --lock %s' % test_vm_object.get_name())
 
         # Ensure the VM is reported as locked
-        self.assertEqual(test_vm_object.getLockState(), LockStates.LOCKED.value)
+        self.assertEqual(test_vm_object.get_lock_state(), LockStates.LOCKED.value)
 
         # Attempt to start the VM
         with self.assertRaises(VirtualMachineLockException):
@@ -776,7 +776,7 @@ class VirtualMachineTests(TestBase):
                 fh.write(test_data)
 
         # Assert that the VM is unlocked
-        self.assertEqual(test_vm_object.getLockState(), 0)
+        self.assertEqual(test_vm_object.get_lock_state(), 0)
 
         # Create backup snapshot using parser.
         self.parser.parse_arguments(
@@ -784,7 +784,7 @@ class VirtualMachineTests(TestBase):
             self.test_vms['TEST_VM_1']['name'])
 
         # Assert that the backup lock is now in place
-        self.assertEqual(test_vm_object.getLockState(), 1)
+        self.assertEqual(test_vm_object.get_lock_state(), 1)
 
         # Ensure that parser gave one line output with the path of the snapshot
         self.assertEqual(len(self.parser.print_output), 1)
@@ -820,7 +820,7 @@ class VirtualMachineTests(TestBase):
 
         # Ensure that VM is locked and snapshot exists
         self.assertTrue(os.path.exists(snapshot_path))
-        self.assertEqual(test_vm_object.getLockState(), 1)
+        self.assertEqual(test_vm_object.get_lock_state(), 1)
 
         # Delete snapshot using parser
         self.parser.parse_arguments(
@@ -829,7 +829,7 @@ class VirtualMachineTests(TestBase):
 
         # Ensure that VM is now unlocked and snapshot is no longer present
         self.assertFalse(os.path.exists(snapshot_path))
-        self.assertEqual(test_vm_object.getLockState(), 0)
+        self.assertEqual(test_vm_object.get_lock_state(), 0)
 
     def test_create_second_backup_snapshot(self):
         """Attempt to create a backup snapshot for a VM that already has one."""
@@ -846,7 +846,7 @@ class VirtualMachineTests(TestBase):
 
         # Ensure that VM is locked and snapshot exists
         self.assertTrue(os.path.exists(snapshot_path))
-        self.assertEqual(test_vm_object.getLockState(), 1)
+        self.assertEqual(test_vm_object.get_lock_state(), 1)
 
         with self.assertRaises(VirtualMachineLockException):
             # Create backup snapshot using parser.
@@ -867,7 +867,7 @@ class VirtualMachineTests(TestBase):
         # @TODO should to have to do this
         self.parser.parse_arguments('lock --lock %s' % test_vm_object.get_name())
 
-        self.assertEqual(test_vm_object.getLockState(), 1)
+        self.assertEqual(test_vm_object.get_lock_state(), 1)
 
         with self.assertRaises(BackupSnapshotDoesNotExistException):
             # Delete snapshot using parser

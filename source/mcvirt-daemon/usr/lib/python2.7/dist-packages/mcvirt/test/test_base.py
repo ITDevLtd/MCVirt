@@ -179,10 +179,10 @@ class TestBase(unittest.TestCase):
                 if disk_object.get_type() == 'Drbd':
                     disk_object.setSyncState(True)
 
-            if vm_object.getLockState() is LockStates.LOCKED.value:
-                vm_object.setLockState(LockStates.UNLOCKED.value)
+            if vm_object.get_lock_state() is LockStates.LOCKED.value:
+                vm_object.set_lock_state(LockStates.UNLOCKED.value)
 
-            if not vm_object.isRegistered():
+            if not vm_object.is_registered():
                 # Manually register VM on local node
                 vm_object.register()
 

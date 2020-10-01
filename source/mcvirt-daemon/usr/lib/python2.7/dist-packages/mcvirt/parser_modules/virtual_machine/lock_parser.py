@@ -51,8 +51,8 @@ class LockParser(object):
         vm_object = vm_factory.get_virtual_machine_by_name(args.vm_name)
         p_.rpc.annotate_object(vm_object)
         if args.lock:
-            vm_object.setLockState(LockStates.LOCKED.value)
+            vm_object.set_lock_state(LockStates.LOCKED.value)
         if args.unlock:
-            vm_object.setLockState(LockStates.UNLOCKED.value)
+            vm_object.set_lock_state(LockStates.UNLOCKED.value)
         if args.check_lock:
-            p_.print_status(LockStates(vm_object.getLockState()).name)
+            p_.print_status(LockStates(vm_object.get_lock_state()).name)
